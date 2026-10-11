@@ -117,117 +117,133 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row bg-gradient-to-r from-blue-50/70 via-slate-50/40 to-blue-50/50 font-sans selection:bg-blue-100 selection:text-blue-900">
       
-      {/* LEFT PATH (50% SPLIT): SIGNATURE BLUE & WHITE THEME AS IN IMAGE 2 */}
-      <div className="w-full lg:w-1/2 bg-gradient-to-br from-blue-100/70 via-blue-50/80 to-blue-50/30 lg:border-r border-blue-200/80 p-5 sm:p-10 lg:p-16 xl:p-20 flex flex-col justify-between relative overflow-hidden">
+      {/* LEFT PATH (50% SPLIT): SIGNATURE BLUE & WHITE THEME (DESKTOP & LARGE SCREENS ONLY) */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-100/70 via-blue-50/80 to-blue-50/30 border-r border-blue-200/80 p-12 xl:p-16 flex-col justify-between relative overflow-hidden">
         
         {/* Soft blue theme ambient glow */}
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-200/40 rounded-full blur-3xl pointer-events-none -ml-24 -mt-24" />
         <div className="absolute bottom-0 right-0 w-80 h-80 bg-blue-200/30 rounded-full blur-3xl pointer-events-none -mr-20 -mb-20" />
 
         {/* Top: Logo & Firm Name */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-blue-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md shadow-blue-500/25 shrink-0 tracking-wider">
+        <div className="relative z-10 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white font-black text-sm flex items-center justify-center shadow-md shadow-blue-500/25 shrink-0 tracking-wider">
             OS
           </div>
           <div>
-            <h1 className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-none uppercase">
+            <h1 className="text-base font-black text-slate-900 tracking-tight leading-none uppercase">
               Om Sai Enterprises
             </h1>
-            <p className="text-[11px] sm:text-xs text-blue-600 font-bold mt-1">
+            <p className="text-xs text-blue-600 font-bold mt-1">
               • TexaFlow Textile
             </p>
           </div>
         </div>
 
         {/* Center Content: Making Work Easy & Growing Business */}
-        <div className="relative z-10 my-4 lg:my-auto py-2 sm:py-6 max-w-lg space-y-4 sm:space-y-6">
-          <div className="space-y-1.5 sm:space-y-2">
-            <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
+        <div className="relative z-10 my-auto py-6 max-w-lg space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
               Run Your Factory Effortlessly. <br />
               <span className="text-blue-600">Grow Your Business Faster.</span>
             </h2>
           </div>
 
-          {/* 7 Clean Value Highlights (Software Font Size text-xs/13px, No ticks) */}
-          <div className="space-y-2 pt-0.5">
-            <div className="border-l-2 border-blue-600 pl-2.5 sm:pl-3 py-0.5">
+          {/* 7 Clean Value Highlights */}
+          <div className="space-y-2.5 pt-1">
+            <div className="border-l-2 border-blue-600 pl-3 py-0.5">
               <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight">
                 Save Time Every Single Day
               </h3>
             </div>
 
-            <div className="border-l-2 border-blue-600 pl-2.5 sm:pl-3 py-0.5">
+            <div className="border-l-2 border-blue-600 pl-3 py-0.5">
               <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight">
                 Accurate Karigar Wages &amp; Upad Ledgers
               </h3>
             </div>
 
-            <div className="border-l-2 border-blue-600 pl-2.5 sm:pl-3 py-0.5">
+            <div className="border-l-2 border-blue-600 pl-3 py-0.5">
               <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight">
                 Real-Time Machine &amp; Shift Production
               </h3>
             </div>
 
-            <div className="border-l-2 border-blue-600 pl-2.5 sm:pl-3 py-0.5">
+            <div className="border-l-2 border-blue-600 pl-3 py-0.5">
               <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight">
                 Instant Party Ledger &amp; Voucher Status
               </h3>
             </div>
 
-            <div className="border-l-2 border-blue-600 pl-2.5 sm:pl-3 py-0.5">
+            <div className="border-l-2 border-blue-600 pl-3 py-0.5">
               <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight">
                 Faster Job Work Deliveries &amp; Happy Clients
               </h3>
             </div>
 
-            <div className="border-l-2 border-blue-600 pl-2.5 sm:pl-3 py-0.5">
+            <div className="border-l-2 border-blue-600 pl-3 py-0.5">
               <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight">
                 Complete Visibility on Factory Overhead &amp; Profits
               </h3>
             </div>
 
-            <div className="border-l-2 border-blue-600 pl-2.5 sm:pl-3 py-0.5">
+            <div className="border-l-2 border-blue-600 pl-3 py-0.5">
               <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight">
                 Freedom to Scale Machines &amp; Grow Your Business
               </h3>
             </div>
           </div>
 
-          {/* Modern 3-Metric Impact Strip matching Image 2 soft blue style */}
-          <div className="pt-1 sm:pt-2 grid grid-cols-3 gap-2 sm:gap-2.5">
-            <div className="bg-blue-50/90 border border-blue-200/90 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 shadow-2xs">
-              <div className="text-xs sm:text-base font-black text-slate-900">100%</div>
-              <div className="text-[10px] sm:text-[11px] text-blue-900 font-bold mt-0.5 leading-tight">Accurate Ledgers</div>
+          {/* Modern 3-Metric Impact Strip */}
+          <div className="pt-2 grid grid-cols-3 gap-2.5">
+            <div className="bg-blue-50/90 border border-blue-200/90 rounded-2xl p-3 shadow-2xs">
+              <div className="text-sm sm:text-base font-black text-slate-900">100%</div>
+              <div className="text-[11px] text-blue-900 font-bold mt-0.5 leading-tight">Accurate Ledgers</div>
             </div>
-            <div className="bg-blue-50/90 border border-blue-200/90 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 shadow-2xs">
-              <div className="text-xs sm:text-base font-black text-blue-600">Zero</div>
-              <div className="text-[10px] sm:text-[11px] text-blue-900 font-bold mt-0.5 leading-tight">Calculation Errors</div>
+            <div className="bg-blue-50/90 border border-blue-200/90 rounded-2xl p-3 shadow-2xs">
+              <div className="text-sm sm:text-base font-black text-blue-600">Zero</div>
+              <div className="text-[11px] text-blue-900 font-bold mt-0.5 leading-tight">Calculation Errors</div>
             </div>
-            <div className="bg-blue-50/90 border border-blue-200/90 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 shadow-2xs">
-              <div className="text-xs sm:text-base font-black text-slate-900">2x</div>
-              <div className="text-[10px] sm:text-[11px] text-blue-900 font-bold mt-0.5 leading-tight">Faster Decisions</div>
+            <div className="bg-blue-50/90 border border-blue-200/90 rounded-2xl p-3 shadow-2xs">
+              <div className="text-sm sm:text-base font-black text-slate-900">2x</div>
+              <div className="text-[11px] text-blue-900 font-bold mt-0.5 leading-tight">Faster Decisions</div>
             </div>
           </div>
         </div>
 
         {/* Bottom Left Status */}
-        <div className="relative z-10 pt-4 sm:pt-6 border-t border-blue-200/60 flex items-center justify-between text-xs text-slate-500 font-medium">
+        <div className="relative z-10 pt-6 border-t border-blue-200/60 flex items-center justify-between text-xs text-slate-500 font-medium">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-            <span className="text-[11px] sm:text-xs">256-Bit Encrypted Session</span>
+            <span>256-Bit Encrypted Secure Session</span>
           </div>
-          <span className="font-semibold text-blue-700 text-[11px] sm:text-xs">TexaFlow Textile</span>
+          <span className="font-semibold text-blue-700">TexaFlow Textile</span>
         </div>
       </div>
 
-      {/* RIGHT PATH (50% SPLIT): EXTENDED INLINE LOGIN & RESET PASSWORD FORM */}
-      <div className="w-full lg:w-1/2 bg-gradient-to-bl from-blue-50/50 via-slate-50/70 to-blue-50/30 flex flex-col justify-center items-center p-4 sm:p-8 lg:p-16 relative overflow-hidden">
+      {/* RIGHT PATH: CLEAN LOGIN & RESET PASSWORD FORM */}
+      <div className="w-full lg:w-1/2 min-h-screen bg-gradient-to-bl from-blue-50/60 via-slate-50/80 to-blue-50/40 flex flex-col justify-center items-center px-4 py-8 sm:px-8 sm:py-12 lg:p-16 relative overflow-hidden">
         
         {/* Soft background glow */}
         <div className="absolute -top-20 -right-20 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl pointer-events-none" />
 
+        {/* Mobile & Tablet Top Brand Header (Visible below lg) */}
+        <div className="lg:hidden flex items-center justify-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white font-black text-sm flex items-center justify-center shadow-md shadow-blue-500/25 shrink-0 tracking-wider">
+            OS
+          </div>
+          <div className="text-left">
+            <h1 className="text-base font-black text-slate-900 tracking-tight leading-none uppercase">
+              Om Sai Enterprises
+            </h1>
+            <p className="text-xs text-blue-600 font-bold mt-1">
+              • TexaFlow Textile ERP
+            </p>
+          </div>
+        </div>
+
         {/* Elongated, Comfortable Auth Card */}
-        <div className="w-full max-w-[460px] bg-white border border-blue-200/80 rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-11 shadow-sm shadow-blue-500/5 space-y-5 sm:space-y-6 relative z-10">
+        <div className="w-full max-w-[420px] sm:max-w-[460px] bg-white border border-blue-200/90 rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 shadow-sm shadow-blue-500/5 space-y-5 sm:space-y-6 relative z-10">
+
 
           
           {/* ================= VIEW 1: SIGN IN FORM ================= */}
@@ -490,9 +506,15 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
 
         </div>
 
-        {/* Footer Credit */}
-        <div className="mt-8 text-xs text-slate-400 font-medium text-center">
-          Powered & Developed by <strong className="text-slate-700 font-bold">DigiScale Infotech</strong>
+        {/* Footer Credit & Mobile Security Badge */}
+        <div className="mt-6 flex flex-col items-center gap-2 text-xs text-slate-400 font-medium text-center">
+          <div className="flex items-center gap-1.5 text-slate-500 lg:hidden">
+            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+            <span className="text-[11px] sm:text-xs">256-Bit Encrypted Secure Session</span>
+          </div>
+          <div className="text-[11px] sm:text-xs">
+            Powered & Developed by <strong className="text-slate-700 font-bold">DigiScale Infotech</strong>
+          </div>
         </div>
       </div>
 
