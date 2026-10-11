@@ -2431,8 +2431,113 @@ export default function VendorsPage() {
 
       {/* VENDORS TABLE CONTAINER */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        {/* Vendors List Table */}
-        <div className="overflow-x-auto">
+        {/* 1. MOBILE RESPONSIVE CARD VIEW (NO HORIZONTAL SCROLLING REQUIRED) */}
+        <div className="block md:hidden p-3 space-y-3">
+          {filteredVendors.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 font-medium">
+              No vendor records found.
+            </div>
+          ) : (
+            filteredVendors.map((v) => (
+              <div
+                key={v.id}
+                onClick={() => openPreviewVendor(v)}
+                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2.5 hover:border-emerald-300 transition-all cursor-pointer"
+              >
+                {/* Header: Name + Account Type + SR */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-800 font-mono font-black text-xs flex items-center justify-center shrink-0 border border-emerald-100">
+                      {v.srNo}
+                    </span>
+                    <h3 className="font-extrabold text-slate-900 text-sm truncate">
+                      {v.display_name || v.company_name}
+                    </h3>
+                  </div>
+                  <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-lg text-[10px] border border-blue-100 shrink-0">
+                    {v.account_type || "Vendor"}
+                  </span>
+                </div>
+
+                {/* Primary Contact & MSME */}
+                <div className="flex items-center justify-between text-xs text-slate-600">
+                  <span className="font-bold text-slate-800 truncate">
+                    {v.salutation ? `${v.salutation} ` : ""}{v.first_name} {v.last_name}
+                  </span>
+                  {v.is_msme && (
+                    <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 font-extrabold rounded text-[9px] border border-emerald-200 shrink-0">
+                      MSME
+                    </span>
+                  )}
+                </div>
+
+                {/* Meta Badges: GSTIN & Payment Terms */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">GSTIN / PAN</span>
+                    <span className="font-mono font-bold text-slate-700 text-[11px] truncate block">
+                      {v.gstin || v.pan || "-"}
+                    </span>
+                  </div>
+                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Terms</span>
+                    <span className="font-bold text-slate-800 text-[11px] truncate block">
+                      {v.payment_terms || "Due on Receipt"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Contact & Actions Row */}
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                  <div>
+                    {v.mobile || v.work_phone ? (
+                      <a
+                        href={`tel:${v.mobile || v.work_phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 text-xs font-mono font-bold transition-colors"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>{v.mobile || v.work_phone}</span>
+                      </a>
+                    ) : (
+                      <span className="text-slate-400 text-xs">No Phone</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => openPreviewVendor(v)}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                      title="Preview"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEditVendorForm(v)}
+                      className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                      title="Edit"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteVendor(v.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* 2. DESKTOP / TABLET DATA TABLE (VISIBLE ON md: AND ABOVE) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse divide-y divide-slate-100 min-w-[850px]">
             <thead className="bg-slate-50/90 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
               <tr>

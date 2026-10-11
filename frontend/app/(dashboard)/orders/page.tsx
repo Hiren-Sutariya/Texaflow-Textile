@@ -955,9 +955,144 @@ export default function JobOrdersPage() {
         </div>
       )}
 
-      {/* STRICT UNIFORM FIXED-HEIGHT JOB ORDERS TABLE */}
+      {/* STRICT UNIFORM FIXED-HEIGHT JOB ORDERS TABLE & MOBILE CARDS */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}
+        <div className="block md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50">
+          {filteredOrders.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 font-bold bg-white rounded-xl border border-slate-200">
+              No orders found matching your search.
+            </div>
+          ) : (
+            filteredOrders.map((item) => {
+              const cleanCode = (item.design_code || "").replace(/#/g, "").trim();
+              return (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 space-y-3"
+                >
+                  {/* Top Bar: Date, Party Name, Delete */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="font-mono text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md inline-block mb-1">
+                        {item.date || "01/10/2026"}
+                      </span>
+                      <h4 className="font-extrabold text-slate-900 text-sm truncate" title={item.party_name}>
+                        {item.party_name}
+                      </h4>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOrder(item.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                      title="Delete Record"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Machine & Status Badges */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                    <div>
+                      {item.status === "Dhaga Cutting" ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200/90 rounded-lg text-xs font-extrabold">
+                          <Scissors className="w-3 h-3 text-rose-500 shrink-0" />
+                          <span>Dhaga Cutting</span>
+                        </span>
+                      ) : item.status === "Ready for Dispatch" ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200/90 rounded-lg text-xs font-extrabold">
+                          <Check className="w-3 h-3 text-purple-500 shrink-0" />
+                          <span>Ready Dispatch</span>
+                        </span>
+                      ) : item.status === "Completed" ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/90 rounded-lg text-xs font-extrabold">
+                          <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                          <span>Completed</span>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => toggleMachinePopover(item.id, e)}
+                          className="inline-flex items-center gap-1 text-xs font-bold transition-all cursor-pointer"
+                        >
+                          {item.assigned_machine && item.assigned_machine !== "Unassigned" && item.assigned_machine !== "Select Machine" ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-extrabold shadow-2xs">
+                              <Cpu className="w-3 h-3 text-blue-600 shrink-0" />
+                              <span>{item.assigned_machine}</span>
+                              <ChevronDown className="w-3 h-3 text-current opacity-70" />
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-xs font-semibold">
+                              <span>Unassigned</span>
+                              <ChevronDown className="w-3 h-3 text-current opacity-70" />
+                            </span>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => toggleStatusPopover(item.id, e)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold border transition-all cursor-pointer shadow-2xs ${
+                        item.status === "Completed"
+                          ? "bg-purple-50 text-purple-700 border-purple-200"
+                          : item.status === "In Production"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : item.status === "Dhaga Cutting"
+                          ? "bg-rose-50 text-rose-700 border-rose-200"
+                          : item.status === "Ready for Dispatch"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200"
+                      }`}
+                    >
+                      <span>{item.status}</span>
+                      <ChevronDown className="w-3 h-3 text-current opacity-70" />
+                    </button>
+                  </div>
+
+                  {/* Description & Design Code */}
+                  <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Design Code</span>
+                      <span className="font-mono font-black text-blue-700">{cleanCode || "-"}</span>
+                    </div>
+                    {item.design_name && item.design_name.trim() !== "" && (
+                      <div className="text-slate-600 font-medium truncate mt-0.5">
+                        {item.design_name}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Total Quantity & Color Breakdown */}
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <div className="flex items-center gap-1 overflow-x-auto py-0.5 max-w-[65%] no-scrollbar">
+                      {item.colorways && item.colorways.length > 0 ? (
+                        item.colorways.map((cw, idx) => (
+                          <span key={idx} className="bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold shrink-0 inline-flex items-center gap-1">
+                            <span>{cw.color_name}:</span>
+                            <span className="text-blue-700 font-black">{cw.pcs}</span>
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-400 text-xs font-semibold">Single batch</span>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Total</span>
+                      <span className="font-black text-slate-900 text-sm">
+                        {item.total_quantity.toLocaleString()} Pcs
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* DESKTOP TABLE VIEW (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs font-sans table-fixed min-w-[1150px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider h-11">

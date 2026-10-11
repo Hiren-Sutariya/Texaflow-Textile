@@ -1024,9 +1024,97 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      {/* 4. EXPENSE REGISTER TABLE */}
+      {/* 4. EXPENSE REGISTER TABLE & MOBILE CARD VIEW */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden font-sans">
-        <div className="overflow-x-auto">
+        {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}
+        <div className="block md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50">
+          {filteredExpenses.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 bg-white rounded-xl border border-slate-200">
+              <Receipt className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="font-bold text-xs">No expense records found matching filters.</p>
+            </div>
+          ) : (
+            filteredExpenses.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 space-y-3"
+              >
+                {/* Top Row: Date, Expense No, Status */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                    {formatDateDDMMYYYY(item.date)}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                        item.payment_status === "Paid"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200"
+                      }`}
+                    >
+                      {item.payment_status}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteExpense(item.id)}
+                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      title="Delete Record"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Title & Amount */}
+                <div className="flex items-start justify-between gap-3 pt-1 border-t border-slate-100">
+                  <div className="min-w-0">
+                    <h4 className="font-extrabold text-slate-900 text-sm leading-snug">
+                      {item.title}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs font-bold text-slate-600">{item.vendor_name}</span>
+                      {item.bill_image && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBillImage({ title: item.title, expense_no: item.expense_no, image: item.bill_image! })}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] rounded-md border border-blue-200 transition-colors cursor-pointer"
+                          title="View Bill Photo"
+                        >
+                          <FileText className="w-3 h-3 text-blue-600" />
+                          <span>Bill</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-mono font-black text-slate-900 text-base">
+                      ₹{item.amount.toLocaleString("en-IN")}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Category & Payment Method */}
+                <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Category</span>
+                    <span className="font-bold text-slate-800 inline-block mt-0.5 truncate">
+                      {item.category}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Paid Via</span>
+                    <span className="font-bold text-slate-800 inline-block mt-0.5 truncate">
+                      {item.paid_via}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* DESKTOP TABLE VIEW (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs min-w-[850px]">
             <thead>
               <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">

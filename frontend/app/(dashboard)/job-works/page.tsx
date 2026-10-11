@@ -531,9 +531,138 @@ export default function KarigarIssuesPage() {
         </div>
       </div>
 
-      {/* DATA TABLE */}
+      {/* DATA TABLE & MOBILE CARD VIEW */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}
+        <div className="block md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50">
+          {filteredIssues.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 font-bold bg-white rounded-xl border border-slate-200">
+              No Karigar Issue slips found matching your filters.
+            </div>
+          ) : (
+            filteredIssues.map((issue, idx) => {
+              const progressPct =
+                issue.total_pieces > 0
+                  ? Math.min(100, Math.round((issue.completed_pieces / issue.total_pieces) * 100))
+                  : 0;
+              return (
+                <div
+                  key={issue.id}
+                  onClick={() => setPreviewIssue(issue)}
+                  className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 space-y-3 active:scale-[0.99] transition-all cursor-pointer hover:border-emerald-300"
+                >
+                  {/* Top Bar: SR No, Slip Code & Status */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                        #{idx + 1}
+                      </span>
+                      <span className="font-mono font-black text-slate-900 text-sm">
+                        {issue.slip_code}
+                      </span>
+                    </div>
+                    {issue.status === "Active In Production" && (
+                      <span className="px-2.5 py-0.5 bg-sky-50 text-sky-700 border border-sky-200/80 rounded-full text-[10px] font-extrabold shrink-0">
+                        Active In Production
+                      </span>
+                    )}
+                    {issue.status === "Completed" && (
+                      <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-full text-[10px] font-extrabold shrink-0">
+                        Completed
+                      </span>
+                    )}
+                    {issue.status === "Ready / Available" && (
+                      <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-extrabold shrink-0">
+                        Ready / Available
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Karigar & Machine */}
+                  <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-100">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {issue.karigar_photo ? (
+                        <img
+                          src={issue.karigar_photo}
+                          alt={issue.karigar_name}
+                          className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-800 font-extrabold text-xs flex items-center justify-center shrink-0 border border-emerald-200">
+                          {issue.karigar_name.charAt(0)}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-slate-900 text-sm truncate">
+                          {issue.karigar_name}
+                        </div>
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          Khata: {issue.karigar_khata}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-lg text-xs font-bold border border-slate-200 shrink-0">
+                      {issue.machine_no}
+                    </span>
+                  </div>
+
+                  {/* Design & Program Details */}
+                  <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Design Code</span>
+                      <span className="font-mono font-black text-slate-900">{issue.design_code}</span>
+                    </div>
+                    <div className="text-slate-600 font-medium truncate mt-0.5">
+                      {issue.program_name}
+                    </div>
+                  </div>
+
+                  {/* Production Stats & Progress */}
+                  <div className="space-y-1.5 bg-emerald-50/40 rounded-xl p-2.5 border border-emerald-100/70">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-bold">Progress ({progressPct}%)</span>
+                      <span className="font-black text-slate-900">
+                        <span className={issue.completed_pieces === issue.total_pieces ? "text-emerald-700 font-extrabold" : "text-slate-800"}>
+                          {issue.completed_pieces.toLocaleString()}
+                        </span>
+                        <span className="text-slate-400 font-normal"> / {issue.total_pieces.toLocaleString()} Pcs</span>
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200/80 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-1 gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewIssue(issue)}
+                      className="flex-1 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>View Slip</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteIssue(issue.id)}
+                      className="p-2 text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer"
+                      title="Delete Slip"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* DESKTOP TABLE VIEW (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[850px]">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-black text-slate-500 uppercase tracking-wider">

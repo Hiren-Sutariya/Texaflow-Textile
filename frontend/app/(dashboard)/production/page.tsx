@@ -1591,7 +1591,93 @@ export default function ProductionPage() {
 
         {filteredLogs.length > 0 ? (
           <div>
-            <div className="overflow-x-auto">
+            {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}
+            <div className="block md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50">
+              {paginatedLogs.map((log) => {
+                const stitches = log.completed_stitches;
+                const formatted = stitches ? Math.abs(stitches).toLocaleString("en-IN") : "-";
+                const lakhs = stitches ? (Math.abs(stitches) / 100000).toFixed(2) : "0";
+
+                return (
+                  <div
+                    key={log.id}
+                    className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2.5"
+                  >
+                    {/* Top Bar: Date, Shift & Machine */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                          {log.date}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            log.shift === "Day"
+                              ? "bg-amber-50 text-amber-900 border border-amber-200"
+                              : "bg-indigo-50 text-indigo-900 border border-indigo-200"
+                          }`}
+                        >
+                          {log.shift} Shift
+                        </span>
+                      </div>
+                      <span className="px-2.5 py-0.5 bg-slate-100 text-slate-800 rounded-lg text-xs font-extrabold border border-slate-200">
+                        {log.machine_name.replace(/#/g, "").trim()}
+                      </span>
+                    </div>
+
+                    {/* Operator & Design */}
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Operator</span>
+                        <span className="font-extrabold text-slate-900 text-sm">
+                          {log.operator_name}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Design Code</span>
+                        <span className="font-mono font-black text-blue-700 text-xs">
+                          {log.design_code}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Production Metrics 2-column */}
+                    <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Completed Pcs</span>
+                        <span
+                          className={`inline-block mt-0.5 px-2 py-0.5 font-black text-xs rounded-md border ${
+                            log.completed_pcs >= 0
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                              : "bg-rose-50 text-rose-800 border-rose-200"
+                          }`}
+                        >
+                          {log.completed_pcs >= 0 ? `+${log.completed_pcs}` : `${log.completed_pcs}`} Pcs
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Stitches</span>
+                        <span className="font-mono font-black text-slate-800 text-xs inline-block mt-0.5">
+                          {stitches ? (
+                            <span>{formatted} <span className="text-[10px] text-slate-500 font-semibold">({lakhs}L)</span></span>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    {log.notes && (
+                      <div className="text-[11px] text-slate-500 bg-slate-50/60 p-2 rounded-lg border border-slate-100 truncate">
+                        <span className="font-bold text-slate-600">Note: </span>{log.notes}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* DESKTOP TABLE VIEW (>= md) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs divide-y divide-slate-200 min-w-[850px]">
                 <thead className="bg-slate-50/90 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                   <tr>

@@ -310,9 +310,101 @@ export default function WorkerPayoutPage() {
         </div>
       </div>
 
-      {/* Worker Payout Table */}
+      {/* Worker Payout Table & Mobile Cards */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}
+        <div className="block md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50">
+          {filteredRecords.length === 0 ? (
+            <div className="py-8 text-center text-slate-400 font-medium bg-white rounded-xl border border-slate-200">
+              No worker payout records found matching filters.
+            </div>
+          ) : (
+            filteredRecords.map((r) => (
+              <div
+                key={r.id}
+                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 space-y-3"
+              >
+                {/* Top Row: Worker Name & Status */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <h4 className="font-extrabold text-slate-900 text-sm truncate">
+                      {r.worker_name}
+                    </h4>
+                    <span className="font-mono text-[10px] text-slate-400 font-bold block">
+                      {r.voucher_no} • {r.payout_date}
+                    </span>
+                  </div>
+                  {r.status === "Paid" ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                      Paid
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                      Pending
+                    </span>
+                  )}
+                </div>
+
+                {/* Role, Khata & Machine */}
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 text-xs">
+                  <div>
+                    <span className="font-bold text-slate-800">{r.role}</span>
+                    <span className="text-[10px] text-slate-400 block font-mono">Khata: {r.khata_no}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-bold rounded text-[11px] border border-slate-200">
+                      {r.machine_no}
+                    </span>
+                    <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">{r.unit}</span>
+                  </div>
+                </div>
+
+                {/* Earnings & Net Payable Grid */}
+                <div className="grid grid-cols-3 gap-1.5 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Gross</span>
+                    <span className="font-bold text-slate-800 text-[11px] block mt-0.5">
+                      ₹{r.gross_earning.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Advance</span>
+                    <span className="font-bold text-rose-600 text-[11px] block mt-0.5">
+                      -₹{r.advance_deducted.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Net Payable</span>
+                    <span className="font-extrabold text-emerald-700 text-xs block mt-0.5">
+                      ₹{r.net_payable.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions & Payout Mode */}
+                <div className="flex items-center justify-between pt-1 gap-2">
+                  <span className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                    {r.payout_mode}
+                  </span>
+                  {r.status === "Pending Disbursal" ? (
+                    <button
+                      type="button"
+                      onClick={() => handleMarkPaid(r.id)}
+                      className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-2xs transition-colors cursor-pointer text-center"
+                    >
+                      Disburse ₹{r.net_payable.toLocaleString("en-IN")}
+                    </button>
+                  ) : (
+                    <span className="text-xs font-bold text-slate-400 py-1.5">Settled</span>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* DESKTOP TABLE VIEW (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[850px]">
             <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
               <tr>

@@ -226,7 +226,87 @@ export default function OMSPerformancePage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}
+        <div className="block md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50">
+          {filteredMachines.map((m) => (
+            <div
+              key={m.id}
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 space-y-3"
+            >
+              {/* Top Row: Machine name, Unit & Status */}
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-sm">
+                    {m.name}
+                  </h4>
+                  <span className="text-[10px] text-emerald-600 font-bold block">{m.unit}</span>
+                </div>
+                {m.status === "Running" ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Running
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    Idle
+                  </span>
+                )}
+              </div>
+
+              {/* Operator & Speed */}
+              <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Operator</span>
+                  <span className="font-bold text-slate-800 inline-block mt-0.5">{m.operator}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Speed (RPM)</span>
+                  <span className="font-extrabold text-slate-900 inline-block mt-0.5">
+                    {m.speed_rpm > 0 ? (
+                      <span className="text-emerald-600">{m.speed_rpm} RPM</span>
+                    ) : (
+                      <span className="text-slate-400">0 RPM</span>
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* Active Order Details */}
+              <div className="text-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Active Order</span>
+                <span className="font-semibold text-slate-800 text-[11px] block mt-0.5 truncate">{m.active_order}</span>
+              </div>
+
+              {/* Stitches & Efficiency */}
+              <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Stitches Today</span>
+                  <span className="font-black text-slate-900 text-xs">
+                    {m.stitches_today.toLocaleString("en-IN")} <span className="text-slate-400 font-normal">/ {m.target_stitches.toLocaleString("en-IN")}</span>
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Efficiency</span>
+                  <span
+                    className={`font-extrabold text-xs px-2 py-0.5 rounded-md inline-block mt-0.5 ${
+                      m.efficiency >= 90
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : m.efficiency >= 70
+                        ? "bg-blue-50 text-blue-700 border border-blue-200"
+                        : "bg-rose-50 text-rose-700 border border-rose-200"
+                    }`}
+                  >
+                    {m.efficiency}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* DESKTOP TABLE VIEW (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[800px]">
             <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
               <tr>

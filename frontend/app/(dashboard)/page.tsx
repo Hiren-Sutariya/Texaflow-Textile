@@ -212,7 +212,116 @@ export default function DashboardPage() {
               View All Floor →
             </Link>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}
+          <div className="block md:hidden p-3 space-y-3 bg-slate-50/50">
+            {/* Card 1 */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  <span>M-101 (SURAJ 400)</span>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <Play className="w-2.5 h-2.5 fill-emerald-600" /> Running
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2 rounded-xl border border-slate-100">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Worker</span>
+                  <span className="font-bold text-slate-800">Ramesh Karigar</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Shift Output</span>
+                  <span className="font-extrabold text-slate-900">1,200 pcs</span>
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-500 font-medium truncate">
+                Design: <span className="font-bold text-slate-800">DES-A101 Peacock Border</span>
+              </div>
+            </div>
+
+            {/* Card 2 */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  <span>M-102 (TAJIMA Sequin)</span>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <Play className="w-2.5 h-2.5 fill-emerald-600" /> Running
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2 rounded-xl border border-slate-100">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Worker</span>
+                  <span className="font-bold text-slate-800">Suresh Operator</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Shift Output</span>
+                  <span className="font-extrabold text-slate-900">1,380 pcs</span>
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-500 font-medium truncate">
+                Design: <span className="font-bold text-slate-800">DES-A102 Sequin Neck</span>
+              </div>
+            </div>
+
+            {/* Card 3 */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                  <span>M-103 (BAUYU Cord)</span>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                  <Pause className="w-2.5 h-2.5 fill-amber-600" /> Idle
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2 rounded-xl border border-slate-100">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Worker</span>
+                  <span className="font-bold text-slate-500">Unassigned</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Shift Output</span>
+                  <span className="font-extrabold text-slate-400">0 pcs</span>
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-400 font-medium truncate">
+                Design: None
+              </div>
+            </div>
+
+            {/* Card 4 */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                  <span>M-104 (SURAJ 500)</span>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                  <Wrench className="w-2.5 h-2.5 text-blue-600" /> Maintenance
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2 rounded-xl border border-slate-100">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Worker</span>
+                  <span className="font-bold text-slate-500">Maintenance Crew</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Shift Output</span>
+                  <span className="font-extrabold text-slate-400">0 pcs</span>
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-500 font-medium truncate">
+                Design: <span className="font-bold text-slate-700">Tension Servicing</span>
+              </div>
+            </div>
+          </div>
+
+          {/* DESKTOP TABLE VIEW (>= md) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">

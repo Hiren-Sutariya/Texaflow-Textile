@@ -1688,8 +1688,130 @@ export default function EmployeesPage() {
       </div>
     </div>
 
-      {/* WORKER DIRECTORY TABLE CARD */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+      {/* 1. MOBILE RESPONSIVE CARD VIEW (NO HORIZONTAL SCROLLING REQUIRED) */}
+      <div className="block md:hidden space-y-3">
+        {filteredEmployees.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 font-medium">
+            No workers found.
+          </div>
+        ) : (
+          filteredEmployees.map((emp, index) => (
+            <div
+              key={emp.id}
+              onClick={() => setPreviewWorker(emp)}
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2.5 hover:border-emerald-300 transition-all cursor-pointer active:scale-[0.99]"
+            >
+              {/* Card Header: Avatar + Name + Status Pill + SR */}
+              <div className="flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {emp.photoUrl ? (
+                    <img
+                      src={emp.photoUrl}
+                      alt={emp.name}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveZoomedImage(emp.photoUrl || null);
+                      }}
+                      className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 font-extrabold text-sm flex items-center justify-center shrink-0 border border-emerald-200">
+                      {emp.name.charAt(0)}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <h3 className="font-extrabold text-slate-900 text-sm truncate">
+                      {emp.name}
+                    </h3>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      #{index + 1} • {emp.role || "Karigar"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Status Toggle */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEmployees(
+                      employees.map((x) =>
+                        x.id === emp.id
+                          ? { ...x, status: x.status === "Active" ? "Inactive" : "Active" }
+                          : x
+                      )
+                    );
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold border transition-all shrink-0 ${
+                    emp.status === "Active"
+                      ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                      : "bg-slate-100 text-slate-600 border-slate-300"
+                  }`}
+                >
+                  {emp.status}
+                </button>
+              </div>
+
+              {/* Card Meta Badges Grid */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Khata</span>
+                  <span className="font-mono font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[11px]">
+                    {emp.code || "-"}
+                  </span>
+                </div>
+                <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Machine</span>
+                  <span className="font-mono font-bold text-slate-800 text-[11px] truncate">
+                    {emp.assigned_machine || "Not Assigned"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Contact & Helpers Row */}
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                <div className="flex items-center gap-1.5 text-slate-700 font-mono font-bold">
+                  {emp.mobile && emp.mobile !== "-" ? (
+                    <a
+                      href={`tel:${emp.mobile}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 text-xs transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>{emp.mobile}</span>
+                    </a>
+                  ) : (
+                    <span className="text-slate-400 text-xs">No Phone</span>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => openEditWorkerForm(emp)}
+                    className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                    title="Edit Worker"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteWorker(emp.id)}
+                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                    title="Delete Worker"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* 2. DESKTOP / TABLET DATA TABLE (VISIBLE ON md: AND ABOVE) */}
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left divide-y divide-slate-100 min-w-[900px]">
             <thead className="bg-slate-50/90 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">

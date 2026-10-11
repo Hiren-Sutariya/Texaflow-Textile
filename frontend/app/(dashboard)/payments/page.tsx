@@ -512,10 +512,110 @@ export default function PaymentsAndVouchersPage() {
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 3. VOUCHERS TABLE LIST                                        */}
-      {/* ------------------------------------------------------------- */}
+      {/* 3. VOUCHERS TABLE LIST & MOBILE CARD VIEW */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}
+        <div className="block md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50">
+          {filteredVouchers.length === 0 ? (
+            <div className="py-10 text-center text-slate-400 font-medium bg-white rounded-xl border border-slate-200">
+              No payment vouchers found matching your filter criteria.
+            </div>
+          ) : (
+            filteredVouchers.map((v) => (
+              <div
+                key={v.id}
+                onClick={() => setPreviewVoucher(v)}
+                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 space-y-3 active:scale-[0.99] transition-all cursor-pointer hover:border-blue-300"
+              >
+                {/* Top Row: Date, Voucher No, Type */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                      {v.date}
+                    </span>
+                    <span className="font-mono font-extrabold text-slate-900 text-sm">
+                      {v.voucher_no}
+                    </span>
+                  </div>
+                  {v.type === "Receipt In" ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
+                      Received In
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                      Paid Out
+                    </span>
+                  )}
+                </div>
+
+                {/* Party & Amount Display */}
+                <div className="flex items-start justify-between gap-3 pt-1 border-t border-slate-100">
+                  <div className="min-w-0">
+                    <div className="font-extrabold text-slate-900 text-sm truncate">
+                      {v.party_name}
+                    </div>
+                    {v.notes && (
+                      <div className="text-[11px] text-slate-400 truncate max-w-[220px]">
+                        {v.notes}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className={`text-base font-black ${v.type === "Receipt In" ? "text-blue-600" : "text-rose-700"}`}>
+                      {v.type === "Receipt In" ? "+" : "-"}₹{v.amount.toLocaleString("en-IN")}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Details Grid: Source & Mode */}
+                <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Linked Source</span>
+                    <span className="font-bold text-slate-700 inline-block mt-0.5">
+                      {v.linked_source}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Payment Mode</span>
+                    <span className="font-bold text-slate-800 inline-block mt-0.5">
+                      {v.mode}
+                    </span>
+                    {v.mode.toLowerCase() !== "cash" &&
+                      v.ref_no &&
+                      v.ref_no !== "-" &&
+                      v.ref_no !== "N/A" &&
+                      !v.ref_no.toLowerCase().startsWith("cash") && (
+                        <div className="text-[10px] font-mono text-slate-400 truncate">{v.ref_no}</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card Actions */}
+                <div className="flex items-center justify-between pt-1 gap-2" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewVoucher(v)}
+                    className="flex-1 py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-blue-600" />
+                    <span>View Slip</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteVoucher(v.id)}
+                    className="p-2 text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer"
+                    title="Delete Voucher"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* DESKTOP TABLE VIEW (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse min-w-[850px]">
             <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
               <tr>

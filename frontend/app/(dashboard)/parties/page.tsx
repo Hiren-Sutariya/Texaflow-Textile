@@ -9,7 +9,8 @@ import {
   X,
   Check,
   Calendar,
-  Edit3
+  Edit3,
+  Phone
 } from "lucide-react";
 
 export interface Party {
@@ -329,9 +330,216 @@ export default function PartiesPage() {
           </div>
         </div>
 
+        {/* 1. MOBILE RESPONSIVE CARD VIEW (NO HORIZONTAL SCROLLING REQUIRED) */}
+        <div className="block md:hidden p-3 space-y-3">
+          {/* MOBILE INLINE ADD PARTY CARD */}
+          {isAddingInline && (
+            <div className="bg-blue-50/70 border-2 border-blue-500 rounded-2xl p-3.5 space-y-2.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between pb-1 border-b border-blue-200">
+                <span className="text-xs font-black text-blue-900 uppercase">Add New Party</span>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingInline(false)}
+                  className="p-1 text-slate-500 hover:bg-slate-200 rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Party Name *"
+                value={newParty.name}
+                onChange={(e) => setNewParty({ ...newParty, name: e.target.value })}
+                className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
+                autoFocus
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="Mobile No."
+                  value={newParty.mobile}
+                  onChange={(e) => setNewParty({ ...newParty, mobile: e.target.value })}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-mono outline-none focus:border-blue-500"
+                />
+                <input
+                  type="text"
+                  placeholder="City (e.g. Surat)"
+                  value={newParty.city}
+                  onChange={(e) => setNewParty({ ...newParty, city: e.target.value })}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-xs outline-none focus:border-blue-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="GSTIN"
+                  value={newParty.gstin}
+                  onChange={(e) => setNewParty({ ...newParty, gstin: e.target.value })}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-mono outline-none focus:border-blue-500"
+                />
+                <input
+                  type="number"
+                  placeholder="Credit Days"
+                  value={newParty.credit_days}
+                  onChange={(e) => setNewParty({ ...newParty, credit_days: e.target.value === "" ? "" : Number(e.target.value) })}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleSaveNewParty}
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs shadow-2xs transition-all"
+                >
+                  Save Party
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingInline(false)}
+                  className="px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
-        {/* PARTY DIRECTORY TABLE */}
-        <div className="overflow-x-auto">
+          {filteredParties.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 font-medium">
+              No parties found.
+            </div>
+          ) : (
+            filteredParties.map((p) => {
+              const isEditing = editingPartyId === p.id;
+              if (isEditing) {
+                return (
+                  <div key={p.id} className="bg-amber-50/70 border-2 border-amber-400 rounded-2xl p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between pb-1 border-b border-amber-200">
+                      <span className="text-xs font-black text-amber-900 uppercase">Edit Party #{p.srNo}</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditingPartyId(null)}
+                        className="p-1 text-slate-500 hover:bg-slate-200 rounded-lg"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={editPartyData.name}
+                      onChange={(e) => setEditPartyData({ ...editPartyData, name: e.target.value })}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={editPartyData.mobile}
+                        onChange={(e) => setEditPartyData({ ...editPartyData, mobile: e.target.value })}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-mono outline-none focus:border-blue-500"
+                      />
+                      <input
+                        type="text"
+                        value={editPartyData.city}
+                        onChange={(e) => setEditPartyData({ ...editPartyData, city: e.target.value })}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-xs outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleSaveEdit(p.id)}
+                        className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white font-extrabold rounded-xl text-xs shadow-2xs"
+                      >
+                        Save Changes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingPartyId(null)}
+                        className="px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={p.id}
+                  className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2.5 hover:border-blue-300 transition-all"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-700 font-mono font-black text-xs flex items-center justify-center shrink-0 border border-blue-100">
+                        {p.srNo}
+                      </span>
+                      <h3 className="font-extrabold text-slate-900 text-sm truncate">
+                        {p.name}
+                      </h3>
+                    </div>
+                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-extrabold rounded-lg text-[10px] border border-blue-100 shrink-0">
+                      {p.city}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">GSTIN</span>
+                      <span className="font-mono font-bold text-slate-700 text-[11px] truncate block">
+                        {p.gstin || "-"}
+                      </span>
+                    </div>
+                    <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Credit</span>
+                      <span className="font-extrabold text-blue-800 text-[11px] block">
+                        {p.credit_days || 30} Days
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                    <div>
+                      {p.mobile && p.mobile !== "-" ? (
+                        <a
+                          href={`tel:${p.mobile}`}
+                          className="inline-flex items-center gap-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 text-xs font-mono font-bold transition-colors"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>{formatMobileNumber(p.mobile)}</span>
+                        </a>
+                      ) : (
+                        <span className="text-slate-400 text-xs">No Phone</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEdit(p)}
+                        className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                        title="Edit Party"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteParty(p.id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        title="Delete Party"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* 2. DESKTOP / TABLET DATA TABLE (VISIBLE ON md: AND ABOVE) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse divide-y divide-slate-100 min-w-[850px]">
             <thead className="bg-slate-50/90 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
               <tr>
@@ -552,7 +760,7 @@ export default function PartiesPage() {
                         <button
                           type="button"
                           onClick={() => handleDeleteParty(p.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                           title="Delete Party"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
