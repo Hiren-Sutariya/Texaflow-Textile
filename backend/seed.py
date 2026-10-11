@@ -15,8 +15,9 @@ def seed_database():
     try:
         sample_expenses = [
             Expense(
+                id="exp-1",
                 expense_no="EXP-2026-081",
-                date="2026-09-26",
+                date="26-09-2026",
                 category="Karigar Salary",
                 title="Head Karigar & Night Shift Operators Monthly Salary Settlement",
                 vendor_name="Master Karigar Union",
@@ -27,8 +28,9 @@ def seed_database():
                 notes="Head Karigar & Night Shift Operators Monthly Salary Settlement"
             ),
             Expense(
+                id="exp-2",
                 expense_no="EXP-2026-082",
-                date="2026-09-24",
+                date="24-09-2026",
                 category="Electricity & Power",
                 title="Surat DGVCL Industrial Electricity Bill",
                 vendor_name="DGVCL Power Corp",
@@ -39,8 +41,9 @@ def seed_database():
                 notes="Surat DGVCL Industrial Electricity Bill (4200 Units)"
             ),
             Expense(
+                id="exp-3",
                 expense_no="EXP-2026-083",
-                date="2026-09-23",
+                date="23-09-2026",
                 category="Worker Advance / Upad",
                 title="Karigar Ramesh & Suresh Festival Advance",
                 vendor_name="Karigar Ramesh (Shift B)",
@@ -51,8 +54,9 @@ def seed_database():
                 notes="Karigar Ramesh & Suresh Festival Advance"
             ),
             Expense(
+                id="exp-4",
                 expense_no="EXP-2026-084",
-                date="2026-09-22",
+                date="22-09-2026",
                 category="Machine Maintenance & Repairs",
                 title="Machine 3 Laser & Bearing Service",
                 vendor_name="Ganesh Embroidery Services",
@@ -63,8 +67,9 @@ def seed_database():
                 notes="Machine 3 Laser & Bearing Service"
             ),
             Expense(
+                id="exp-5",
                 expense_no="EXP-2026-085",
-                date="2026-09-21",
+                date="21-09-2026",
                 category="Packaging Materials",
                 title="External Multi-Head Embroidery Jobwork Production Charges",
                 vendor_name="Maruti Jobwork Works Surat",
@@ -75,8 +80,9 @@ def seed_database():
                 notes="Outsourced Machine Work / Jobwork Production Charges"
             ),
             Expense(
+                id="exp-6",
                 expense_no="EXP-2026-086",
-                date="2026-09-20",
+                date="20-09-2026",
                 category="Dhaga & Consumables",
                 title="Groz-Beckert Needles (DBxK5) 10 boxes & Shuttle Hooks",
                 vendor_name="Surat Needle Mart",
@@ -87,8 +93,9 @@ def seed_database():
                 notes="Groz-Beckert Needles (DBxK5) 10 boxes & Shuttle Hooks"
             ),
             Expense(
+                id="exp-7",
                 expense_no="EXP-2026-087",
-                date="2026-09-18",
+                date="18-09-2026",
                 category="Dhaga & Consumables",
                 title="Viscose Embroidery Threads (Rani & Rama Shade)",
                 vendor_name="Shree Ram Threads Surat",
@@ -99,8 +106,9 @@ def seed_database():
                 notes="Viscose Embroidery Threads (Rani & Rama Shade)"
             ),
             Expense(
+                id="exp-8",
                 expense_no="EXP-2026-088",
-                date="2026-09-10",
+                date="10-09-2026",
                 category="Logistics & Courier",
                 title="Generator Diesel Tank Refill (200L) & Goods Tempo Freight",
                 vendor_name="Nayara Energy & Local Freight",
@@ -122,10 +130,10 @@ def seed_database():
         # 2. Seed Embroidery Machines
         if db.query(Machine).count() == 0:
             sample_machines = [
-                Machine(name="Machine 1 (Multi-Head)", heads=24, speed_rpm=850, status="Running", operator_name="Ramesh Bhai", shift="Day", efficiency_pct=96.0),
-                Machine(name="Machine 2 (Multi-Head)", heads=24, speed_rpm=820, status="Running", operator_name="Suresh Bhai", shift="Day", efficiency_pct=92.5),
-                Machine(name="Machine 3 (Laser Applique)", heads=20, speed_rpm=780, status="Maintenance", operator_name="Mukesh Bhai", shift="Day", efficiency_pct=0.0),
-                Machine(name="Machine 4 (Multi-Head)", heads=24, speed_rpm=850, status="Running", operator_name="Dinesh Bhai", shift="Night", efficiency_pct=98.0)
+                Machine(id="mch-1", name="Machine 1 (Multi-Head)", heads=24, speed_rpm=850, status="Running", operator_name="Ramesh Bhai", shift="Day", efficiency_pct=96.0),
+                Machine(id="mch-2", name="Machine 2 (Multi-Head)", heads=24, speed_rpm=820, status="Running", operator_name="Suresh Bhai", shift="Day", efficiency_pct=92.5),
+                Machine(id="mch-3", name="Machine 3 (Laser Applique)", heads=20, speed_rpm=780, status="Maintenance", operator_name="Mukesh Bhai", shift="Day", efficiency_pct=0.0),
+                Machine(id="mch-4", name="Machine 4 (Multi-Head)", heads=24, speed_rpm=850, status="Running", operator_name="Dinesh Bhai", shift="Night", efficiency_pct=98.0)
             ]
             db.add_all(sample_machines)
             db.commit()
@@ -134,11 +142,11 @@ def seed_database():
         # 3. Seed Sample Parties
         if db.query(Party).count() == 0:
             sample_parties = [
-                Party(name="Shree Ram Threads Surat", party_type="Vendor", phone="9825100001", city="Surat"),
-                Party(name="Surat Needle Mart", party_type="Vendor", phone="9825100002", city="Surat"),
-                Party(name="Maruti Jobwork Works Surat", party_type="Vendor", phone="9825100003", city="Surat"),
-                Party(name="Ganesh Embroidery Services", party_type="Vendor", phone="9825100004", city="Surat"),
-                Party(name="Radhe Krishna Sarees", party_type="Customer", phone="9825100005", city="Surat")
+                Party(id="pty-1", name="Shree Ram Threads Surat", party_type="Vendor", phone="9825100001", city="Surat"),
+                Party(id="pty-2", name="Surat Needle Mart", party_type="Vendor", phone="9825100002", city="Surat"),
+                Party(id="pty-3", name="Maruti Jobwork Works Surat", party_type="Vendor", phone="9825100003", city="Surat"),
+                Party(id="pty-4", name="Ganesh Embroidery Services", party_type="Vendor", phone="9825100004", city="Surat"),
+                Party(id="pty-5", name="Radhe Krishna Sarees", party_type="Customer", phone="9825100005", city="Surat")
             ]
             db.add_all(sample_parties)
             db.commit()

@@ -6,6 +6,7 @@ from datetime import datetime
 from app.core.database import get_db
 from app.models.expense import Expense
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseResponse
+from app.core.formatters import format_to_dd_mm_yyyy, generate_short_id
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
@@ -40,12 +41,21 @@ def get_expenses(
             (Expense.title.ilike(search_pattern))
         )
 
-    return query.order_by(Expense.date.desc(), Expense.created_at.desc()).offset(skip).limit(limit).all()
+    return query.order_by(Expense.created_at.desc(), Expense.id.desc()).offset(skip).limit(limit).all()
 
 @router.post("", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
 def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
-    # Auto-generate expense_no if not provided
     expense_data = expense_in.model_dump()
+
+    # 1. Format date to DD-MM-YYYY (e.g., 12-10-2026)
+    if expense_data.get("date"):
+        expense_data["date"] = format_to_dd_mm_yyyy(expense_data["date"])
+
+    # 2. Simple Short ID Generation (e.g., exp-1, exp-2, exp-9)
+    if not expense_data.get("id") or len(str(expense_data.get("id"))) > 10:
+        expense_data["id"] = generate_short_id(db, Expense, "exp")
+
+    # 3. Auto-generate expense_no if not provided
     if not expense_data.get("expense_no"):
         count = db.query(Expense).count()
         expense_data["expense_no"] = f"EXP-2026-{100 + count + 1}"
@@ -73,6 +83,9 @@ def update_expense(expense_id: str, expense_in: ExpenseUpdate, db: Session = Dep
         raise HTTPException(status_code=404, detail="Expense not found")
 
     update_data = expense_in.model_dump(exclude_unset=True)
+    if update_data.get("date"):
+        update_data["date"] = format_to_dd_mm_yyyy(update_data["date"])
+
     for field, value in update_data.items():
         setattr(expense, field, value)
 

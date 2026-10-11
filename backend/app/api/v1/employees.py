@@ -5,6 +5,7 @@ from typing import List, Optional
 from app.core.database import get_db
 from app.models.employee import Employee
 from app.schemas.employee import EmployeeCreate, EmployeeResponse
+from app.core.formatters import generate_short_id
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
 
@@ -23,7 +24,10 @@ def get_employees(
 
 @router.post("", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
 def create_employee(emp_in: EmployeeCreate, db: Session = Depends(get_db)):
-    employee = Employee(**emp_in.model_dump())
+    data = emp_in.model_dump()
+    if not data.get("id") or len(str(data.get("id"))) > 10:
+        data["id"] = generate_short_id(db, Employee, "emp")
+    employee = Employee(**data)
     db.add(employee)
     db.commit()
     db.refresh(employee)

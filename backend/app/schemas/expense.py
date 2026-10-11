@@ -3,8 +3,9 @@ from typing import Optional
 from datetime import datetime
 
 class ExpenseBase(BaseModel):
+    id: Optional[str] = None
     expense_no: Optional[str] = None
-    date: str = Field(..., description="Voucher date in YYYY-MM-DD")
+    date: str = Field(..., description="Voucher date in DD-MM-YYYY or YYYY-MM-DD")
     category: str = Field(..., description="Category of expense")
     vendor_name: str = Field(..., description="Vendor or Payee Name")
     invoice_no: Optional[str] = None

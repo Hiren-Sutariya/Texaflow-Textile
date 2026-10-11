@@ -203,10 +203,19 @@ export default function NewExpenseVoucherPage() {
       return;
     }
 
+    const formattedDate = (() => {
+      const d = voucherDate || getTodayStr();
+      const parts = d.trim().split("-");
+      if (parts.length === 3 && parts[0].length === 4) {
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      return d;
+    })();
+
     const newExpense = {
       id: `exp-${Date.now()}`,
       expense_no: `EXP-2026-${Math.floor(100 + Math.random() * 900)}`,
-      date: voucherDate || getTodayStr(),
+      date: formattedDate,
       category: category,
       title: remarks.trim() || `${category} Expense Voucher`,
       vendor_name: vendorName.trim() || "General Vendor",
@@ -219,12 +228,13 @@ export default function NewExpenseVoucherPage() {
     };
 
     // 1. Save directly to Supabase via FastAPI Backend
+    let createdItem: any = null;
     try {
-      await fetchApi("/expenses", {
+      createdItem = await fetchApi("/expenses", {
         method: "POST",
         body: JSON.stringify({
           expense_no: newExpense.expense_no,
-          date: newExpense.date,
+          date: formattedDate,
           category: newExpense.category,
           title: newExpense.title,
           vendor_name: newExpense.vendor_name,
@@ -236,6 +246,9 @@ export default function NewExpenseVoucherPage() {
           bill_image: newExpense.bill_image || undefined
         })
       });
+      if (createdItem && createdItem.id) {
+        newExpense.id = createdItem.id;
+      }
     } catch (apiErr) {
       console.warn("Backend API not reachable, saving to local backup:", apiErr);
     }

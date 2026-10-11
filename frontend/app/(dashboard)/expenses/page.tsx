@@ -81,9 +81,9 @@ const categoryOptions = [
 
 const initialExpenses: ExpenseItem[] = [
   {
-    id: "exp-101",
+    id: "exp-1",
     expense_no: "EXP-2026-081",
-    date: "2026-09-26",
+    date: "26-09-2026",
     category: "Karigar Salary",
     title: "Head Karigar & Night Shift Operators Monthly Salary Settlement",
     vendor_name: "Master Karigar Union",
@@ -94,9 +94,9 @@ const initialExpenses: ExpenseItem[] = [
     notes: "Head Karigar & Night Shift Operators Monthly Salary Settlement"
   },
   {
-    id: "exp-102",
+    id: "exp-2",
     expense_no: "EXP-2026-082",
-    date: "2026-09-24",
+    date: "24-09-2026",
     category: "Electricity & Power",
     title: "Surat DGVCL Industrial Electricity Bill",
     vendor_name: "DGVCL Power Corp",
@@ -108,9 +108,9 @@ const initialExpenses: ExpenseItem[] = [
     bill_image: sampleBillSvg
   },
   {
-    id: "exp-103",
+    id: "exp-3",
     expense_no: "EXP-2026-083",
-    date: "2026-09-23",
+    date: "23-09-2026",
     category: "Worker Advance / Upad",
     title: "Karigar Ramesh & Suresh Festival Advance",
     vendor_name: "Karigar Ramesh (Shift B)",
@@ -121,9 +121,9 @@ const initialExpenses: ExpenseItem[] = [
     notes: "Karigar Ramesh & Suresh Festival Advance"
   },
   {
-    id: "exp-104",
+    id: "exp-4",
     expense_no: "EXP-2026-084",
-    date: "2026-09-22",
+    date: "22-09-2026",
     category: "Machine Maintenance & Repairs",
     title: "Machine 3 Laser & Bearing Service",
     vendor_name: "Ganesh Embroidery Services",
@@ -135,9 +135,9 @@ const initialExpenses: ExpenseItem[] = [
     bill_image: sampleBillSvg
   },
   {
-    id: "exp-105",
+    id: "exp-5",
     expense_no: "EXP-2026-085",
-    date: "2026-09-21",
+    date: "21-09-2026",
     category: "Packaging Materials",
     title: "External Multi-Head Embroidery Jobwork Production Charges",
     vendor_name: "Maruti Jobwork Works Surat",
@@ -148,9 +148,9 @@ const initialExpenses: ExpenseItem[] = [
     notes: "Outsourced Machine Work / Jobwork Production Charges"
   },
   {
-    id: "exp-106",
+    id: "exp-6",
     expense_no: "EXP-2026-086",
-    date: "2026-09-20",
+    date: "20-09-2026",
     category: "Dhaga & Consumables",
     title: "Groz-Beckert Needles (DBxK5) 10 boxes & Shuttle Hooks",
     vendor_name: "Surat Needle Mart",
@@ -162,9 +162,9 @@ const initialExpenses: ExpenseItem[] = [
     bill_image: sampleBillSvg
   },
   {
-    id: "exp-107",
+    id: "exp-7",
     expense_no: "EXP-2026-087",
-    date: "2026-09-18",
+    date: "18-09-2026",
     category: "Dhaga & Consumables",
     title: "Viscose Embroidery Threads (Rani & Rama Shade)",
     vendor_name: "Shree Ram Threads Surat",
@@ -175,9 +175,9 @@ const initialExpenses: ExpenseItem[] = [
     notes: "Viscose Embroidery Threads (Rani & Rama Shade)"
   },
   {
-    id: "exp-108",
+    id: "exp-8",
     expense_no: "EXP-2026-088",
-    date: "2026-09-10",
+    date: "10-09-2026",
     category: "Logistics & Courier",
     title: "Generator Diesel Tank Refill (200L) & Goods Tempo Freight",
     vendor_name: "Nayara Energy & Local Freight",
@@ -191,11 +191,29 @@ const initialExpenses: ExpenseItem[] = [
 
 const formatDateDDMMYYYY = (dateStr: string) => {
   if (!dateStr) return "";
-  const parts = dateStr.split("-");
+  const parts = dateStr.trim().split("-");
   if (parts.length === 3) {
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    if (parts[0].length === 4) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return dateStr;
   }
   return dateStr;
+};
+
+const parseDate = (dateStr: string): Date => {
+  if (!dateStr) return new Date();
+  const parts = dateStr.trim().split("-");
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      // YYYY-MM-DD
+      return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    } else if (parts[2].length === 4) {
+      // DD-MM-YYYY
+      return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+    }
+  }
+  return new Date(dateStr);
 };
 
 export default function ExpensesPage() {
@@ -335,7 +353,7 @@ export default function ExpensesPage() {
   // Filter Expenses by Period Date
   const matchesPeriod = (dateStr: string) => {
     if (periodFilter === "all") return true;
-    const d = new Date(dateStr);
+    const d = parseDate(dateStr);
     const today = new Date();
 
     if (periodFilter === "this_week") {
@@ -350,8 +368,10 @@ export default function ExpensesPage() {
       return d.getFullYear() === today.getFullYear();
     }
     if (periodFilter === "custom_date") {
-      if (startDate && dateStr < startDate) return false;
-      if (endDate && dateStr > endDate) return false;
+      const startD = startDate ? parseDate(startDate) : null;
+      const endD = endDate ? parseDate(endDate) : null;
+      if (startD && d < startD) return false;
+      if (endD && d > endD) return false;
       return true;
     }
     return true;
@@ -464,11 +484,12 @@ export default function ExpensesPage() {
     }
 
     const titleToSave = formData.title.trim() || `${formData.category} Purchase`;
+    const formattedDate = formatDateDDMMYYYY(formData.date || getTodayStr());
 
-    const newEntry: ExpenseItem = {
-      id: `exp-${Date.now()}`,
+    let newEntry: ExpenseItem = {
+      id: `exp-${expenses.length + 1}`,
       expense_no: `EXP-2026-0${expenses.length + 87}`,
-      date: formData.date || getTodayStr(),
+      date: formattedDate,
       category: formData.category,
       title: titleToSave,
       vendor_name: formData.vendor_name.trim() || "General Vendor",
@@ -483,15 +504,11 @@ export default function ExpensesPage() {
     setExpenses([newEntry, ...expenses]);
 
     try {
-      const existing = localStorage.getItem("om_sai_expenses");
-      const list = existing ? JSON.parse(existing) : [];
-      list.unshift(newEntry);
-      localStorage.setItem("om_sai_expenses", JSON.stringify(list));
-      await fetchApi("/expenses", {
+      const savedRes = await fetchApi<ExpenseItem>("/expenses", {
         method: "POST",
         body: JSON.stringify({
           expense_no: newEntry.expense_no,
-          date: newEntry.date,
+          date: formattedDate,
           category: newEntry.category,
           title: newEntry.title,
           vendor_name: newEntry.vendor_name,
@@ -503,6 +520,16 @@ export default function ExpensesPage() {
           bill_image: newEntry.bill_image || undefined
         })
       });
+
+      if (savedRes && savedRes.id) {
+        newEntry.id = savedRes.id;
+        setExpenses((prev) => prev.map((item) => (item.expense_no === newEntry.expense_no ? { ...item, id: savedRes.id } : item)));
+      }
+
+      const existing = localStorage.getItem("om_sai_expenses");
+      const list = existing ? JSON.parse(existing) : [];
+      list.unshift(newEntry);
+      localStorage.setItem("om_sai_expenses", JSON.stringify(list));
     } catch (err) {
       console.warn("Backend sync notice:", err);
     }

@@ -5,6 +5,7 @@ from typing import List, Optional
 from app.core.database import get_db
 from app.models.inventory import InventoryStock
 from app.schemas.inventory import InventoryStockCreate, InventoryStockResponse
+from app.core.formatters import generate_short_id
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
 
@@ -23,7 +24,10 @@ def get_inventory(
 
 @router.post("", response_model=InventoryStockResponse, status_code=status.HTTP_201_CREATED)
 def create_inventory_item(item_in: InventoryStockCreate, db: Session = Depends(get_db)):
-    item = InventoryStock(**item_in.model_dump())
+    data = item_in.model_dump()
+    if not data.get("id") or len(str(data.get("id"))) > 10:
+        data["id"] = generate_short_id(db, InventoryStock, "stk")
+    item = InventoryStock(**data)
     db.add(item)
     db.commit()
     db.refresh(item)

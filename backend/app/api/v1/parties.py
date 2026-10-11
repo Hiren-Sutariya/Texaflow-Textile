@@ -5,6 +5,7 @@ from typing import List, Optional
 from app.core.database import get_db
 from app.models.party import Party
 from app.schemas.party import PartyCreate, PartyResponse
+from app.core.formatters import generate_short_id
 
 router = APIRouter(prefix="/parties", tags=["Parties"])
 
@@ -26,7 +27,10 @@ def create_party(party_in: PartyCreate, db: Session = Depends(get_db)):
     existing = db.query(Party).filter(Party.name == party_in.name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Party with this name already exists")
-    party = Party(**party_in.model_dump())
+    data = party_in.model_dump()
+    if not data.get("id") or len(str(data.get("id"))) > 10:
+        data["id"] = generate_short_id(db, Party, "pty")
+    party = Party(**data)
     db.add(party)
     db.commit()
     db.refresh(party)

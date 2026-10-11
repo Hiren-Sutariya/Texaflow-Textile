@@ -5,6 +5,7 @@ from typing import List, Optional
 from app.core.database import get_db
 from app.models.payment import PaymentVoucher
 from app.schemas.payment import PaymentVoucherCreate, PaymentVoucherResponse
+from app.core.formatters import format_to_dd_mm_yyyy, generate_short_id
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
@@ -21,11 +22,15 @@ def get_payment_vouchers(
         query = query.filter(PaymentVoucher.voucher_type == voucher_type)
     if party_name:
         query = query.filter(PaymentVoucher.party_name == party_name)
-    return query.order_by(PaymentVoucher.date.desc()).offset(skip).limit(limit).all()
+    return query.order_by(PaymentVoucher.created_at.desc(), PaymentVoucher.id.desc()).offset(skip).limit(limit).all()
 
 @router.post("", response_model=PaymentVoucherResponse, status_code=status.HTTP_201_CREATED)
 def create_payment_voucher(voucher_in: PaymentVoucherCreate, db: Session = Depends(get_db)):
     data = voucher_in.model_dump()
+    if data.get("date"):
+        data["date"] = format_to_dd_mm_yyyy(data["date"])
+    if not data.get("id") or len(str(data.get("id"))) > 10:
+        data["id"] = generate_short_id(db, PaymentVoucher, "pay")
     if not data.get("voucher_no"):
         count = db.query(PaymentVoucher).count()
         data["voucher_no"] = f"VCH-2026-{200 + count + 1}"
