@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import {
   Plus,
   Search,
@@ -14,7 +15,16 @@ import {
   FileText,
   FileSpreadsheet,
   Clock,
-  Tag
+  Tag,
+  Package,
+  Layers,
+  Wrench,
+  Zap,
+  Coffee,
+  Truck,
+  Building2,
+  HelpCircle,
+  CreditCard
 } from "lucide-react";
 
 interface ExpenseItem {
@@ -35,16 +45,37 @@ interface ExpenseItem {
 const sampleBillSvg =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='550' viewBox='0 0 400 550' fill='none'><rect width='400' height='550' rx='16' fill='%23FFFFFF'/><rect x='20' y='20' width='360' height='510' rx='12' fill='%23F8FAFC' stroke='%23E2E8F0' stroke-width='2'/><text x='40' y='60' fill='%231E293B' font-family='sans-serif' font-size='18' font-weight='bold'>SURAT INDUSTRIAL TAX &amp; POWER INVOICE</text><text x='40' y='85' fill='%2364748B' font-family='sans-serif' font-size='12'>GSTIN: 24AAACD9912E1Z8 | DATE: 24-SEP-2026</text><line x1='40' y1='100' x2='360' y2='100' stroke='%23CBD5E1' stroke-width='1.5'/><text x='40' y='130' fill='%23334155' font-family='sans-serif' font-size='13' font-weight='bold'>PARTICULARS / DESCRIPTION</text><text x='300' y='130' fill='%23334155' font-family='sans-serif' font-size='13' font-weight='bold'>AMOUNT</text><text x='40' y='165' fill='%23475569' font-family='sans-serif' font-size='13'>1. Industrial Power Tariff (4200 units)</text><text x='300' y='165' fill='%230F172A' font-family='sans-serif' font-size='13' font-weight='bold'>Rs. 38,000</text><text x='40' y='195' fill='%23475569' font-family='sans-serif' font-size='13'>2. Fixed Line Charges</text><text x='300' y='195' fill='%230F172A' font-family='sans-serif' font-size='13' font-weight='bold'>Rs. 4,500</text><line x1='40' y1='230' x2='360' y2='230' stroke='%23CBD5E1' stroke-dasharray='4 4'/><text x='40' y='265' fill='%231E293B' font-family='sans-serif' font-size='15' font-weight='bold'>TOTAL BILL AMOUNT</text><text x='290' y='265' fill='%231D4ED8' font-family='sans-serif' font-size='16' font-weight='black'>Rs. 42,500</text><rect x='40' y='300' width='320' height='120' rx='8' fill='%23EFF6FF' stroke='%23BFDBFE'/><text x='60' y='330' fill='%231E40AF' font-family='sans-serif' font-size='12' font-weight='bold'>PAYMENT STATUS: PAID (HDFC BANK)</text><text x='60' y='355' fill='%231E40AF' font-family='sans-serif' font-size='12'>Txn Ref: HDFC-991204812903</text><text x='60' y='380' fill='%231E40AF' font-family='sans-serif' font-size='12'>Verified stamp: DIGISCALE ERP OFFICIAL</text><text x='40' y='470' fill='%2394A3B8' font-family='sans-serif' font-size='11'>Physical Paper Bill scanned &amp; archived digitally.</text><rect x='280' y='440' width='80' height='60' rx='6' fill='%23E2E8F0'/><text x='295' y='475' fill='%2364748B' font-family='sans-serif' font-size='10'>STAMP</text></svg>";
 
+const getTodayStr = () => new Date().toISOString().split("T")[0];
+const getYesterdayStr = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split("T")[0];
+};
+
+const expenseCategories = [
+  { name: "Packaging Materials", icon: Package },
+  { name: "Dhaga & Consumables", icon: Layers },
+  { name: "Machine Maintenance & Repairs", icon: Wrench },
+  { name: "Electricity & Power", icon: Zap },
+  { name: "Tea & Refreshments", icon: Coffee },
+  { name: "Logistics & Courier", icon: Truck },
+  { name: "Factory / Office Rent", icon: Building2 },
+  { name: "Stationery & Printing", icon: FileText },
+  { name: "Miscellaneous / Other", icon: HelpCircle },
+];
+
 const categoryOptions = [
+  "Packaging Materials",
+  "Dhaga & Consumables",
+  "Machine Maintenance & Repairs",
+  "Electricity & Power",
+  "Tea & Refreshments",
+  "Logistics & Courier",
+  "Factory / Office Rent",
+  "Stationery & Printing",
+  "Miscellaneous / Other",
   "Karigar Salary",
-  "Worker Advance / Upad",
-  "Machine Repair & Maintenance",
-  "Outsourced Machine Work / Jobwork",
-  "Electricity & Power Bill",
-  "Thread & Yarn Purchase",
-  "Needles & Spare Parts",
-  "Diesel & Freight Transport",
-  "Factory Rent & Misc"
+  "Worker Advance / Upad"
 ];
 
 const initialExpenses: ExpenseItem[] = [
@@ -58,19 +89,21 @@ const initialExpenses: ExpenseItem[] = [
     amount: 55000,
     payment_status: "Paid",
     paid_via: "Current Account HDFC",
-    invoice_no: "PAY-2026-09"
+    invoice_no: "SAL-2026-09",
+    notes: "Head Karigar & Night Shift Operators Monthly Salary Settlement"
   },
   {
     id: "exp-102",
     expense_no: "EXP-2026-082",
     date: "2026-09-24",
-    category: "Electricity & Power Bill",
+    category: "Electricity & Power",
     title: "Surat DGVCL Industrial Electricity Bill",
     vendor_name: "DGVCL Power Corp",
     amount: 42500,
     payment_status: "Paid",
     paid_via: "Current Account HDFC",
     invoice_no: "DGVCL-992184",
+    notes: "Surat DGVCL Industrial Electricity Bill (4200 Units)",
     bill_image: sampleBillSvg
   },
   {
@@ -83,69 +116,75 @@ const initialExpenses: ExpenseItem[] = [
     amount: 15000,
     payment_status: "Paid",
     paid_via: "Petty Cash",
-    invoice_no: "UPD-0923"
+    invoice_no: "UPD-0923",
+    notes: "Karigar Ramesh & Suresh Festival Advance"
   },
   {
     id: "exp-104",
     expense_no: "EXP-2026-084",
     date: "2026-09-22",
-    category: "Machine Repair & Maintenance",
+    category: "Machine Maintenance & Repairs",
     title: "Machine 3 Laser & Bearing Service",
     vendor_name: "Ganesh Embroidery Services",
     amount: 8500,
     payment_status: "Paid",
     paid_via: "UPI Cash",
     invoice_no: "GES-412",
+    notes: "Machine 3 Laser & Bearing Service",
     bill_image: sampleBillSvg
   },
   {
     id: "exp-105",
     expense_no: "EXP-2026-085",
     date: "2026-09-21",
-    category: "Outsourced Machine Work / Jobwork",
+    category: "Packaging Materials",
     title: "External Multi-Head Embroidery Jobwork Production Charges",
     vendor_name: "Maruti Jobwork Works Surat",
     amount: 24000,
     payment_status: "Pending",
     paid_via: "Credit (15 days)",
-    invoice_no: "MJW-8812"
+    invoice_no: "MJW-781",
+    notes: "Outsourced Machine Work / Jobwork Production Charges"
   },
   {
     id: "exp-106",
     expense_no: "EXP-2026-086",
     date: "2026-09-20",
-    category: "Needles & Spare Parts",
+    category: "Dhaga & Consumables",
     title: "Groz-Beckert Needles (DBxK5) 10 boxes & Shuttle Hooks",
     vendor_name: "Surat Needle Mart",
     amount: 14200,
     payment_status: "Pending",
     paid_via: "Credit (15 days)",
     invoice_no: "SNM-889",
+    notes: "Groz-Beckert Needles (DBxK5) 10 boxes & Shuttle Hooks",
     bill_image: sampleBillSvg
   },
   {
     id: "exp-107",
     expense_no: "EXP-2026-087",
     date: "2026-09-18",
-    category: "Thread & Yarn Purchase",
+    category: "Dhaga & Consumables",
     title: "Viscose Embroidery Threads (Rani & Rama Shade)",
     vendor_name: "Shree Ram Threads Surat",
     amount: 28400,
     payment_status: "Paid",
     paid_via: "HDFC Cheque",
-    invoice_no: "SRT-5510"
+    invoice_no: "SRT-5510",
+    notes: "Viscose Embroidery Threads (Rani & Rama Shade)"
   },
   {
     id: "exp-108",
     expense_no: "EXP-2026-088",
     date: "2026-09-10",
-    category: "Diesel & Freight Transport",
+    category: "Logistics & Courier",
     title: "Generator Diesel Tank Refill (200L) & Goods Tempo Freight",
     vendor_name: "Nayara Energy & Local Freight",
     amount: 19000,
     payment_status: "Paid",
     paid_via: "UPI Cash",
-    invoice_no: "PET-9912"
+    invoice_no: "PET-9912",
+    notes: "Generator Diesel Tank Refill (200L) & Goods Tempo Freight"
   }
 ];
 
@@ -184,17 +223,19 @@ export default function ExpensesPage() {
 
   // New Expense Form State
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split("T")[0],
-    category: "Karigar Salary",
+    date: getTodayStr(),
+    category: "Packaging Materials",
     title: "",
     vendor_name: "",
-    amount: 5000,
-    payment_status: "Paid" as "Paid" | "Pending",
+    amount: "" as string | number,
+    payment_status: "Pending" as "Paid" | "Pending",
     paid_via: "Current Account HDFC",
     invoice_no: "",
     notes: "",
     bill_image: ""
   });
+  const [showPayeeField, setShowPayeeField] = useState(false);
+  const [showInvoiceField, setShowInvoiceField] = useState(false);
 
   // Input Refs for Enter Key Navigation
   const refDate = useRef<HTMLInputElement>(null);
@@ -205,13 +246,38 @@ export default function ExpensesPage() {
   const refStatus = useRef<HTMLButtonElement>(null);
   const refSubmit = useRef<HTMLButtonElement>(null);
 
+  // Load custom created expenses and categories from localStorage on mount
   useEffect(() => {
-    if (showModal) {
-      setTimeout(() => {
-        refDate.current?.focus();
-      }, 50);
+    try {
+      const saved = localStorage.getItem("om_sai_expenses");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const combined = [
+            ...parsed,
+            ...initialExpenses.filter((i) => !parsed.some((p: any) => p.id === i.id))
+          ];
+          setExpenses(combined);
+        }
+      }
+
+      const savedCats = localStorage.getItem("om_sai_custom_expense_categories");
+      if (savedCats) {
+        const parsedCats = JSON.parse(savedCats);
+        if (Array.isArray(parsedCats) && parsedCats.length > 0) {
+          setFormCategories((prev) => {
+            const combined = [...prev];
+            parsedCats.forEach((c: string) => {
+              if (!combined.includes(c)) combined.push(c);
+            });
+            return combined;
+          });
+        }
+      }
+    } catch (err) {
+      console.error(err);
     }
-  }, [showModal]);
+  }, []);
 
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,11 +317,15 @@ export default function ExpensesPage() {
 
   // Filter Expenses List
   const filteredExpenses = expenses.filter((item) => {
+    const q = search.toLowerCase();
     const matchesSearch =
-      item.title.toLowerCase().includes(search.toLowerCase()) ||
-      item.expense_no.toLowerCase().includes(search.toLowerCase()) ||
-      item.vendor_name.toLowerCase().includes(search.toLowerCase()) ||
-      item.category.toLowerCase().includes(search.toLowerCase());
+      item.title.toLowerCase().includes(q) ||
+      item.expense_no.toLowerCase().includes(q) ||
+      item.vendor_name.toLowerCase().includes(q) ||
+      item.category.toLowerCase().includes(q) ||
+      (item.invoice_no && item.invoice_no.toLowerCase().includes(q)) ||
+      (item.notes && item.notes.toLowerCase().includes(q)) ||
+      (item.paid_via && item.paid_via.toLowerCase().includes(q));
 
     const matchesStatus =
       statusFilter === "All"
@@ -310,18 +380,20 @@ export default function ExpensesPage() {
         : "Custom_Period";
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Expense Ref,Date,Description / Title,Category,Vendor,Payment Method,Status,Amount (INR)\n";
+    csvContent += "Voucher Ref,Date,Category,Vendor / Payee,Bill / Invoice #,Payment Mode,Status,Remarks / Notes,Amount (INR)\n";
 
     recordsToExport.forEach((item) => {
-      const titleClean = `"${item.title.replace(/"/g, '""')}"`;
-      const catClean = `"${item.category.replace(/"/g, '""')}"`;
-      const vendorClean = `"${item.vendor_name.replace(/"/g, '""')}"`;
-      const row = `${item.expense_no},${item.date},${titleClean},${catClean},${vendorClean},${item.paid_via},${item.payment_status},${item.amount}`;
+      const catClean = `"${(item.category || "").replace(/"/g, '""')}"`;
+      const vendorClean = `"${(item.vendor_name || "").replace(/"/g, '""')}"`;
+      const invClean = `"${(item.invoice_no || "").replace(/"/g, '""')}"`;
+      const notesClean = `"${(item.notes || item.title || "").replace(/"/g, '""')}"`;
+      const modeClean = `"${(item.paid_via || "").replace(/"/g, '""')}"`;
+      const row = `${item.expense_no},${item.date},${catClean},${vendorClean},${invClean},${modeClean},${item.payment_status},${notesClean},${item.amount}`;
       csvContent += row + "\n";
     });
 
     const exportTotal = recordsToExport.reduce((sum, item) => sum + item.amount, 0);
-    csvContent += `,,TOTAL EXPENDITURE,,,,${exportTotal}\n`;
+    csvContent += `,,TOTAL EXPENDITURE,,,,,,${exportTotal}\n`;
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -333,48 +405,71 @@ export default function ExpensesPage() {
   };
 
   // Create New Expense
-  const handleCreateExpense = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.title.trim() || formData.amount <= 0) {
-      alert("Please fill in Expense Title and Amount!");
+  const submitExpense = (closeModal: boolean) => {
+    const numericAmount = Number(formData.amount);
+    if (!numericAmount || numericAmount <= 0) {
+      alert("Please enter a valid expense amount!");
       return;
     }
+
+    const titleToSave = formData.title.trim() || `${formData.category} Purchase`;
 
     const newEntry: ExpenseItem = {
       id: `exp-${Date.now()}`,
       expense_no: `EXP-2026-0${expenses.length + 87}`,
-      date: formData.date || new Date().toISOString().split("T")[0],
+      date: formData.date || getTodayStr(),
       category: formData.category,
-      title: formData.title.trim(),
+      title: titleToSave,
       vendor_name: formData.vendor_name.trim() || "General Vendor",
-      amount: Number(formData.amount),
+      amount: numericAmount,
       payment_status: formData.payment_status,
-      paid_via: formData.paid_via,
+      paid_via: formData.paid_via || "Current Account HDFC",
       invoice_no: formData.invoice_no.trim() || `INV-${Date.now().toString().slice(-4)}`,
-      notes: formData.notes.trim(),
+      notes: formData.title.trim(),
       bill_image: formData.bill_image
     };
 
     setExpenses([newEntry, ...expenses]);
-    setShowModal(false);
+
+    if (closeModal) {
+      setShowModal(false);
+    }
+
     setFormData({
-      date: new Date().toISOString().split("T")[0],
-      category: "Karigar Salary",
+      date: getTodayStr(),
+      category: "Packaging Materials",
       title: "",
       vendor_name: "",
-      amount: 5000,
-      payment_status: "Paid",
+      amount: "",
+      payment_status: "Pending",
       paid_via: "Current Account HDFC",
       invoice_no: "",
       notes: "",
       bill_image: ""
     });
+    setShowPayeeField(false);
+    setShowInvoiceField(false);
+  };
+
+  const handleCreateExpense = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitExpense(true);
   };
 
   // Delete Expense
   const handleDeleteExpense = (id: string) => {
     if (confirm("Are you sure you want to delete this expense record?")) {
-      setExpenses(expenses.filter((e) => e.id !== id));
+      const updated = expenses.filter((e) => e.id !== id);
+      setExpenses(updated);
+      try {
+        const saved = localStorage.getItem("om_sai_expenses");
+        if (saved) {
+          const parsed = JSON.parse(saved).filter((e: any) => e.id !== id);
+          localStorage.setItem("om_sai_expenses", JSON.stringify(parsed));
+        }
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -450,10 +545,10 @@ export default function ExpensesPage() {
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by expense #, vendor, category, items..."
+            placeholder="Search by vendor, category, invoice #, remarks..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-medium"
+            className="w-full pl-8 pr-3 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 font-medium"
           />
         </div>
 
@@ -477,7 +572,7 @@ export default function ExpensesPage() {
             ))}
           </div>
 
-          {/* Categories Dropdown (Styled with standalone pill-card options matching Image 2) */}
+          {/* Categories Dropdown */}
           <div className="relative">
             <button
               type="button"
@@ -487,7 +582,7 @@ export default function ExpensesPage() {
               }}
               className={`h-9 px-3.5 bg-white border text-xs font-extrabold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
                 isCategoryDropdownOpen
-                  ? "border-2 border-emerald-500 ring-2 ring-emerald-500/20 text-slate-900"
+                  ? "border-2 border-blue-500 ring-2 ring-blue-500/20 text-slate-900"
                   : "border-slate-300 hover:border-slate-400 text-slate-800"
               }`}
             >
@@ -495,7 +590,7 @@ export default function ExpensesPage() {
               <span className="uppercase tracking-wider">
                 {selectedCategory === "All" ? "ALL CATEGORIES" : selectedCategory}
               </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isCategoryDropdownOpen ? "rotate-180 text-emerald-600" : ""}`} />
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isCategoryDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
             </button>
 
             {isCategoryDropdownOpen && (
@@ -511,12 +606,12 @@ export default function ExpensesPage() {
                     }}
                     className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between gap-3 transition-all cursor-pointer border ${
                       selectedCategory === "All"
-                        ? "bg-emerald-50 text-emerald-950 font-extrabold border-emerald-500 shadow-2xs"
+                        ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                         : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
                     }`}
                   >
                     <span>All Categories</span>
-                    {selectedCategory === "All" && <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[2.5]" />}
+                    {selectedCategory === "All" && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
                   </button>
 
                   {/* List of categories */}
@@ -532,12 +627,12 @@ export default function ExpensesPage() {
                         }}
                         className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between gap-3 transition-all cursor-pointer border ${
                           isSelected
-                            ? "bg-emerald-50 text-emerald-950 font-extrabold border-emerald-500 shadow-2xs"
+                            ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                             : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
                         }`}
                       >
                         <span className="truncate">{cat}</span>
-                        {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[2.5]" />}
+                        {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
                       </button>
                     );
                   })}
@@ -546,7 +641,7 @@ export default function ExpensesPage() {
             )}
           </div>
 
-          {/* Period Filter Dropdown (Styled matching Vendors page CustomSelect) */}
+          {/* Period Filter Dropdown */}
           <div className="relative">
             <button
               type="button"
@@ -556,7 +651,7 @@ export default function ExpensesPage() {
               }}
               className={`h-9 px-3.5 bg-white border text-xs font-extrabold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
                 isPeriodDropdownOpen
-                  ? "border-emerald-500 ring-2 ring-emerald-500/20 text-slate-900"
+                  ? "border-2 border-blue-500 ring-2 ring-blue-500/20 text-slate-900"
                   : "border-slate-300 hover:border-slate-400 text-slate-800"
               }`}
             >
@@ -570,7 +665,7 @@ export default function ExpensesPage() {
                   ? "THIS YEAR"
                   : "CUSTOM DATES"}
               </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isPeriodDropdownOpen ? "rotate-180 text-emerald-600" : ""}`} />
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isPeriodDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
             </button>
 
             {isPeriodDropdownOpen && (
@@ -596,12 +691,12 @@ export default function ExpensesPage() {
                         }}
                         className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between gap-3 transition-all cursor-pointer border ${
                           isSelected
-                            ? "bg-emerald-50 text-emerald-950 font-extrabold border-emerald-500 shadow-2xs"
+                            ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                             : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
                         }`}
                       >
                         <span className="whitespace-nowrap">{p.label}</span>
-                        {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[2.5]" />}
+                        {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
                       </button>
                     );
                   })}
@@ -615,7 +710,7 @@ export default function ExpensesPage() {
                           type="date"
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
-                          className="bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-emerald-500 w-36"
+                          className="bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-500 w-36"
                         />
                       </div>
                       <div className="flex items-center justify-between gap-2">
@@ -624,13 +719,13 @@ export default function ExpensesPage() {
                           type="date"
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
-                          className="bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-emerald-500 w-36"
+                          className="bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-500 w-36"
                         />
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsPeriodDropdownOpen(false)}
-                        className="w-full mt-1 py-2 text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors shadow-2xs cursor-pointer"
+                        className="w-full mt-1 py-2 text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-2xs cursor-pointer"
                       >
                         Apply Date Range
                       </button>
@@ -644,385 +739,23 @@ export default function ExpensesPage() {
           {/* EXCEL EXPORT BUTTON */}
           <button
             onClick={handleExportExcel}
-            className="h-9 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+            className="h-9 px-3.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
             title="Download Excel CSV File"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <FileSpreadsheet className="w-4 h-4 text-blue-600" />
             <span>Export Excel</span>
           </button>
 
-          {/* ADD EXPENSE BUTTON */}
-          <button
-            onClick={() => setShowModal(true)}
+          {/* ADD EXPENSE BUTTON -> NAVIGATES TO /expenses/new */}
+          <Link
+            href="/expenses/new"
             className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-98 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Expense</span>
-          </button>
+          </Link>
         </div>
       </div>
-
-      {/* 3. INLINE ADD EXPENSE FORM CARD */}
-      {showModal && (
-        <div className="bg-white rounded-2xl border border-blue-200 p-4 shadow-2xs space-y-3 animate-in fade-in slide-in-from-top-2 duration-200 font-sans">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
-                <Plus className="w-4 h-4" />
-              </div>
-              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">
-                Add New Expense Voucher (નવો ખર્ચ ઉમેરો)
-              </h3>
-            </div>
-            <button
-              onClick={() => setShowModal(false)}
-              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <form onSubmit={handleCreateExpense} className="space-y-3 text-xs">
-            {/* ROW 1: DATE, TITLE & AMOUNT */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Date *</label>
-                <input
-                  ref={refDate}
-                  type="date"
-                  required
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      refTitle.current?.focus();
-                    }
-                  }}
-                  className="w-full px-3 h-9 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-emerald-500 bg-slate-50/50"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block font-bold text-slate-700 mb-1">Expense Title / Description *</label>
-                <input
-                  ref={refTitle}
-                  type="text"
-                  placeholder="e.g. Embroidery Machine Oil & Laser Servicing, Karigar Salary..."
-                  required
-                  value={formData.title}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    let detectedCat = formData.category;
-                    const valLower = val.toLowerCase();
-                    if (valLower.includes("salary") || valLower.includes("upad") || valLower.includes("karigar")) {
-                      detectedCat = "Karigar Salary";
-                    } else if (valLower.includes("light") || valLower.includes("power") || valLower.includes("dgvcl")) {
-                      detectedCat = "Electricity & Power Bill";
-                    } else if (valLower.includes("diesel") || valLower.includes("freight") || valLower.includes("transport")) {
-                      detectedCat = "Diesel & Freight Transport";
-                    } else if (valLower.includes("oil") || valLower.includes("repair") || valLower.includes("service")) {
-                      detectedCat = "Machine Repair & Maintenance";
-                    } else if (valLower.includes("tea") || valLower.includes("rent")) {
-                      detectedCat = "Factory Rent & Misc";
-                    }
-                    setFormData({ ...formData, title: val, category: detectedCat });
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      refAmount.current?.focus();
-                    }
-                  }}
-                  className="w-full px-3 h-9 border border-slate-200 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 bg-slate-50/50"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Amount (₹) *</label>
-                <input
-                  ref={refAmount}
-                  type="number"
-                  required
-                  min={1}
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      refVendor.current?.focus();
-                    }
-                  }}
-                  className="w-full px-3 h-9 border border-slate-200 rounded-xl font-mono font-black text-slate-900 focus:outline-none focus:border-emerald-500 bg-slate-50/50"
-                />
-              </div>
-            </div>
-
-            {/* ROW 2: VENDOR NAME, CATEGORY, PAYMENT METHOD, STATUS */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Vendor / Payee Name</label>
-                <input
-                  ref={refVendor}
-                  type="text"
-                  placeholder="e.g. Master Karigar Union, DGVCL"
-                  value={formData.vendor_name}
-                  onChange={(e) => setFormData({ ...formData, vendor_name: e.target.value })}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      setIsFormCategoryOpen(true);
-                    }
-                  }}
-                  className="w-full px-3 h-9 border border-slate-200 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 bg-slate-50/50"
-                />
-              </div>
-
-              {/* CUSTOM CATEGORY DROPDOWN FOR FORM */}
-              <div className="relative">
-                <label className="block font-bold text-slate-700 mb-1">Category</label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsFormCategoryOpen(!isFormCategoryOpen);
-                    setIsFormPaidViaOpen(false);
-                    setIsFormStatusOpen(false);
-                  }}
-                  className={`w-full px-3 h-9 bg-white border rounded-xl font-extrabold text-slate-900 text-xs flex items-center justify-between transition-all shadow-2xs outline-none cursor-pointer ${
-                    isFormCategoryOpen ? "border-2 border-emerald-500 ring-2 ring-emerald-500/20" : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <span className="truncate">{formData.category}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isFormCategoryOpen ? "rotate-180 text-emerald-600" : ""}`} />
-                </button>
-
-                {isFormCategoryOpen && (
-                  <>
-                    <div className="fixed inset-0 z-20" onClick={() => setIsFormCategoryOpen(false)} />
-                    <div className="absolute left-0 top-16 z-30 w-full bg-white rounded-3xl border border-slate-200 shadow-2xl p-2.5 space-y-1.5 max-h-60 overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 duration-100 font-sans">
-                      {formCategories.map((cat) => {
-                        const isSelected = formData.category === cat;
-                        return (
-                          <button
-                            key={cat}
-                            type="button"
-                            onClick={() => {
-                              setFormData({ ...formData, category: cat });
-                              setIsFormCategoryOpen(false);
-                              setTimeout(() => refPaidVia.current?.focus(), 50);
-                            }}
-                            className={`w-full text-left px-3.5 py-2 rounded-2xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
-                              isSelected
-                                ? "bg-emerald-50/90 text-emerald-950 font-extrabold border-2 border-emerald-500 shadow-2xs"
-                                : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-extrabold border-slate-200 bg-white"
-                            }`}
-                          >
-                            <span className="truncate">{cat}</span>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[2.5]" />}
-                          </button>
-                        );
-                      })}
-
-                      {/* ADD CUSTOM CATEGORY INLINE IN FORM */}
-                      <div className="pt-1.5 border-t border-slate-100">
-                        {!isAddCatInputVisible ? (
-                          <button
-                            type="button"
-                            onClick={() => setIsAddCatInputVisible(true)}
-                            className="w-full px-3 py-2 text-xs font-extrabold text-emerald-700 hover:bg-emerald-50 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>+ Add New Category</span>
-                          </button>
-                        ) : (
-                          <div className="p-1.5 space-y-2 bg-slate-50 rounded-2xl border border-slate-200">
-                            <input
-                              type="text"
-                              placeholder="New Category Name..."
-                              value={newCategoryName}
-                              onChange={(e) => setNewCategoryName(e.target.value)}
-                              className="w-full px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs font-bold focus:outline-none focus:border-emerald-500 bg-white"
-                              autoFocus
-                            />
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => setIsAddCatInputVisible(false)}
-                                className="px-2.5 py-1 text-[11px] font-bold text-slate-500 hover:bg-slate-200 rounded-lg cursor-pointer"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleAddCategory}
-                                className="px-3 py-1 text-[11px] font-extrabold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 cursor-pointer shadow-2xs"
-                              >
-                                Add
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* CUSTOM PAID VIA DROPDOWN FOR FORM */}
-              <div className="relative">
-                <label className="block font-bold text-slate-700 mb-1">Payment Method</label>
-                <button
-                  ref={refPaidVia}
-                  type="button"
-                  onClick={() => {
-                    setIsFormPaidViaOpen(!isFormPaidViaOpen);
-                    setIsFormCategoryOpen(false);
-                    setIsFormStatusOpen(false);
-                  }}
-                  className={`w-full px-3 h-9 bg-white border rounded-xl font-extrabold text-slate-900 text-xs flex items-center justify-between transition-all shadow-2xs outline-none cursor-pointer ${
-                    isFormPaidViaOpen ? "border-2 border-emerald-500 ring-2 ring-emerald-500/20" : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <span className="truncate">{formData.paid_via}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isFormPaidViaOpen ? "rotate-180 text-emerald-600" : ""}`} />
-                </button>
-
-                {isFormPaidViaOpen && (
-                  <>
-                    <div className="fixed inset-0 z-20" onClick={() => setIsFormPaidViaOpen(false)} />
-                    <div className="absolute left-0 top-16 z-30 w-full bg-white rounded-3xl border border-slate-200 shadow-2xl p-2.5 space-y-1.5 animate-in fade-in zoom-in-95 duration-100 font-sans">
-                      {["Current Account HDFC", "UPI Cash", "Petty Cash", "Cheque Payment", "Credit / Due"].map((pv) => {
-                        const isSelected = formData.paid_via === pv;
-                        return (
-                          <button
-                            key={pv}
-                            type="button"
-                            onClick={() => {
-                              setFormData({ ...formData, paid_via: pv });
-                              setIsFormPaidViaOpen(false);
-                              setTimeout(() => refStatus.current?.focus(), 50);
-                            }}
-                            className={`w-full text-left px-3.5 py-2 rounded-2xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
-                              isSelected
-                                ? "bg-emerald-50/90 text-emerald-950 font-extrabold border-2 border-emerald-500 shadow-2xs"
-                                : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-extrabold border-slate-200 bg-white"
-                            }`}
-                          >
-                            <span className="truncate">{pv}</span>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[2.5]" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* CUSTOM STATUS DROPDOWN FOR FORM */}
-              <div className="relative">
-                <label className="block font-bold text-slate-700 mb-1">Payment Status</label>
-                <button
-                  ref={refStatus}
-                  type="button"
-                  onClick={() => {
-                    setIsFormStatusOpen(!isFormStatusOpen);
-                    setIsFormCategoryOpen(false);
-                    setIsFormPaidViaOpen(false);
-                  }}
-                  className={`w-full px-3 h-9 bg-white border rounded-xl font-extrabold text-slate-900 text-xs flex items-center justify-between transition-all shadow-2xs outline-none cursor-pointer ${
-                    isFormStatusOpen ? "border-2 border-emerald-500 ring-2 ring-emerald-500/20" : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <span>{formData.payment_status}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isFormStatusOpen ? "rotate-180 text-emerald-600" : ""}`} />
-                </button>
-
-                {isFormStatusOpen && (
-                  <>
-                    <div className="fixed inset-0 z-20" onClick={() => setIsFormStatusOpen(false)} />
-                    <div className="absolute left-0 top-16 z-30 w-full bg-white rounded-3xl border border-slate-200 shadow-2xl p-2.5 space-y-1.5 animate-in fade-in zoom-in-95 duration-100 font-sans">
-                      {["Paid", "Pending"].map((st) => {
-                        const isSelected = formData.payment_status === st;
-                        return (
-                          <button
-                            key={st}
-                            type="button"
-                            onClick={() => {
-                              setFormData({ ...formData, payment_status: st as any });
-                              setIsFormStatusOpen(false);
-                              setTimeout(() => refSubmit.current?.focus(), 50);
-                            }}
-                            className={`w-full text-left px-3.5 py-2 rounded-2xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
-                              isSelected
-                                ? "bg-emerald-50/90 text-emerald-950 font-extrabold border-2 border-emerald-500 shadow-2xs"
-                                : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-extrabold border-slate-200 bg-white"
-                            }`}
-                          >
-                            <span>{st}</span>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[2.5]" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* PHYSICAL BILL PHOTO ATTACHMENT FIELD */}
-            <div className="pt-1">
-              <label className="block font-bold text-slate-700 mb-1">
-                Attach Physical Bill Document / Receipt
-              </label>
-              <div className="flex items-center gap-3 flex-wrap">
-                <label className="h-9 px-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 border-dashed rounded-xl font-bold text-slate-700 text-xs flex items-center gap-2 cursor-pointer transition-colors shadow-2xs">
-                  <Upload className="w-3.5 h-3.5 text-blue-600" />
-                  <span>{formData.bill_image ? "Change Bill File" : "Upload Bill (PDF, PNG, JPG)"}</span>
-                  <input
-                    type="file"
-                    accept="image/png, image/jpeg, image/webp, image/svg+xml, .pdf, application/pdf"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setFormData({ ...formData, bill_image: reader.result as string });
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </label>
-                {formData.bill_image && (
-                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    Bill Attached
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* FORM FOOTER ACTIONS */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="px-4 h-9 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                ref={refSubmit}
-                type="submit"
-                className="px-5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-2xs transition-all active:scale-98 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer"
-              >
-                Save Expense
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
 
       {/* 4. EXPENSE REGISTER TABLE & MOBILE CARD VIEW */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden font-sans">
@@ -1039,16 +772,16 @@ export default function ExpensesPage() {
                 key={item.id}
                 className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 space-y-3"
               >
-                {/* Top Row: Date, Expense No, Status */}
+                {/* Top Row: Date, Status, Delete */}
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                  <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
                     {formatDateDDMMYYYY(item.date)}
                   </span>
                   <div className="flex items-center gap-2">
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold border ${
                         item.payment_status === "Paid"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
                           : "bg-amber-50 text-amber-700 border-amber-200"
                       }`}
                     >
@@ -1065,14 +798,16 @@ export default function ExpensesPage() {
                   </div>
                 </div>
 
-                {/* Title & Amount */}
+                {/* Vendor, Bill/Invoice & Amount */}
                 <div className="flex items-start justify-between gap-3 pt-1 border-t border-slate-100">
                   <div className="min-w-0">
                     <h4 className="font-extrabold text-slate-900 text-sm leading-snug">
-                      {item.title}
+                      {item.vendor_name}
                     </h4>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs font-bold text-slate-600">{item.vendor_name}</span>
+                      <span className="text-xs font-mono font-bold text-slate-600">
+                        {item.invoice_no ? `#${item.invoice_no}` : "-"}
+                      </span>
                       {item.bill_image && (
                         <button
                           type="button"
@@ -1093,21 +828,30 @@ export default function ExpensesPage() {
                   </div>
                 </div>
 
-                {/* Category & Payment Method */}
+                {/* Category & Payment Mode */}
                 <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Category</span>
-                    <span className="font-bold text-slate-800 inline-block mt-0.5 truncate">
+                    <span className="font-bold text-blue-900 inline-block mt-0.5 truncate">
                       {item.category}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Paid Via</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Payment Mode</span>
                     <span className="font-bold text-slate-800 inline-block mt-0.5 truncate">
                       {item.paid_via}
                     </span>
                   </div>
                 </div>
+
+                {/* Remarks / Notes */}
+                {(item.notes || item.title) && (
+                  <div className="pt-1 border-t border-slate-100">
+                    <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                      {item.notes || item.title}
+                    </p>
+                  </div>
+                )}
               </div>
             ))
           )}
@@ -1115,65 +859,94 @@ export default function ExpensesPage() {
 
         {/* DESKTOP TABLE VIEW (>= md) */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs min-w-[850px]">
+          <table className="w-full text-left border-collapse text-xs min-w-[950px]">
             <thead>
               <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                <th className="py-3.5 px-5">DATE</th>
-                <th className="py-3.5 px-5">TITLE & DETAILS</th>
-                <th className="py-3.5 px-5">VENDOR NAME</th>
-                <th className="py-3.5 px-5">CATEGORY</th>
-                <th className="py-3.5 px-5">PAYMENT METHOD</th>
-                <th className="py-3.5 px-5">STATUS</th>
-                <th className="py-3.5 px-5 text-right">AMOUNT (₹)</th>
-                <th className="py-3.5 px-5 text-center w-12">ACTION</th>
+                <th className="py-3.5 px-4">DATE</th>
+                <th className="py-3.5 px-4">CATEGORY</th>
+                <th className="py-3.5 px-4">VENDOR / PAYEE</th>
+                <th className="py-3.5 px-4">BILL / INVOICE #</th>
+                <th className="py-3.5 px-4">PAYMENT MODE</th>
+                <th className="py-3.5 px-4">STATUS</th>
+                <th className="py-3.5 px-4">REMARKS / NOTES</th>
+                <th className="py-3.5 px-4 text-right">AMOUNT (₹)</th>
+                <th className="py-3.5 px-4 text-center w-12">ACTION</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
               {filteredExpenses.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-4 px-5 font-mono font-bold text-slate-700 whitespace-nowrap">
+                  {/* 1. DATE */}
+                  <td className="py-3.5 px-4 font-mono font-bold text-slate-700 whitespace-nowrap">
                     {formatDateDDMMYYYY(item.date)}
                   </td>
-                  <td className="py-4 px-5 min-w-[220px] max-w-md">
-                    <div className="font-extrabold text-slate-900 leading-snug break-words">
-                      {item.title}
-                    </div>
-                  </td>
-                  <td className="py-4 px-5 whitespace-nowrap">
-                    <span className="font-bold text-slate-800">{item.vendor_name}</span>
-                    {item.bill_image && (
-                      <button
-                        onClick={() => setSelectedBillImage({ title: item.title, expense_no: item.expense_no, image: item.bill_image! })}
-                        className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] rounded-md border border-blue-200 transition-colors cursor-pointer"
-                        title="View Bill Photo"
-                      >
-                        <FileText className="w-3 h-3 text-blue-600" />
-                        <span>Bill</span>
-                      </button>
-                    )}
-                  </td>
-                  <td className="py-4 px-5 whitespace-nowrap">
-                    <span className="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-lg text-[11px] font-bold border border-slate-200 inline-block">
+
+                  {/* 2. CATEGORY */}
+                  <td className="py-3.5 px-4 whitespace-nowrap">
+                    <span className="px-2.5 py-1 bg-blue-50/70 text-blue-900 border border-blue-200/80 rounded-lg text-[11px] font-bold inline-block">
                       {item.category}
                     </span>
                   </td>
-                  <td className="py-4 px-5 text-slate-700 font-bold whitespace-nowrap">{item.paid_via}</td>
-                  <td className="py-4 px-5 whitespace-nowrap">
+
+                  {/* 3. VENDOR / PAYEE */}
+                  <td className="py-3.5 px-4 whitespace-nowrap">
+                    <span className="font-bold text-slate-900">{item.vendor_name}</span>
+                  </td>
+
+                  {/* 4. BILL / INVOICE # */}
+                  <td className="py-3.5 px-4 whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1.5">
+                      <span className="font-mono text-xs font-bold text-slate-700">
+                        {item.invoice_no || "-"}
+                      </span>
+                      {item.bill_image && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBillImage({ title: item.title, expense_no: item.expense_no, image: item.bill_image! })}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] rounded-md border border-blue-200 transition-colors cursor-pointer"
+                          title="View Bill Photo"
+                        >
+                          <FileText className="w-3 h-3 text-blue-600" />
+                          <span>Bill</span>
+                        </button>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* 5. PAYMENT MODE */}
+                  <td className="py-3.5 px-4 whitespace-nowrap text-slate-700 font-semibold text-xs">
+                    {item.paid_via}
+                  </td>
+
+                  {/* 6. STATUS */}
+                  <td className="py-3.5 px-4 whitespace-nowrap">
                     <span
                       className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-extrabold border ${
                         item.payment_status === "Paid"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
                           : "bg-amber-50 text-amber-700 border-amber-200"
                       }`}
                     >
                       {item.payment_status}
                     </span>
                   </td>
-                  <td className="py-4 px-5 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap">
+
+                  {/* 7. REMARKS / NOTES */}
+                  <td className="py-3.5 px-4 min-w-[200px] max-w-sm">
+                    <p className="text-slate-700 text-xs font-medium leading-relaxed break-words">
+                      {item.notes || item.title || "-"}
+                    </p>
+                  </td>
+
+                  {/* 8. AMOUNT (₹) */}
+                  <td className="py-3.5 px-4 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap">
                     ₹{item.amount.toLocaleString("en-IN")}
                   </td>
-                  <td className="py-4 px-5 text-center whitespace-nowrap">
+
+                  {/* 9. ACTION */}
+                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
                     <button
+                      type="button"
                       onClick={() => handleDeleteExpense(item.id)}
                       className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                       title="Delete Record"
@@ -1186,7 +959,7 @@ export default function ExpensesPage() {
 
               {filteredExpenses.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
                     <Receipt className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                     <p className="font-bold text-xs">No expense records found matching filters.</p>
                   </td>
