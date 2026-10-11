@@ -1,0 +1,2767 @@
+"use client";
+
+import { useState, useEffect, useMemo, useRef } from "react";
+import {
+  Building2,
+  Plus,
+  Search,
+  Check,
+  X,
+  Trash2,
+  Edit3,
+  Eye,
+  EyeOff,
+  Copy,
+  Mail,
+  Phone,
+  CreditCard,
+  User,
+  ShieldCheck,
+  Landmark,
+  FileSpreadsheet,
+  AlertCircle,
+  ChevronDown,
+  ArrowLeft,
+  Settings,
+  Save,
+  MoreHorizontal,
+  ArrowUpDown,
+  Upload,
+  Download,
+  Sliders,
+  RefreshCw,
+  ChevronRight
+} from "lucide-react";
+
+interface CustomSelectOption {
+  value: string;
+  label: string;
+  shortLabel?: string;
+}
+
+const COUNTRY_CODES: CustomSelectOption[] = [
+  { value: "+91", label: "+91 India", shortLabel: "+91" },
+  { value: "+93", label: "+93 Afghanistan", shortLabel: "+93" },
+  { value: "+358", label: "+358 Aland Islands", shortLabel: "+358" },
+  { value: "+355", label: "+355 Albania", shortLabel: "+355" },
+  { value: "+213", label: "+213 Algeria", shortLabel: "+213" },
+  { value: "+376", label: "+376 Andorra", shortLabel: "+376" },
+  { value: "+1", label: "+1 United States", shortLabel: "+1" },
+  { value: "+44", label: "+44 United Kingdom", shortLabel: "+44" },
+  { value: "+971", label: "+971 UAE", shortLabel: "+971" }
+];
+
+interface CustomSelectProps {
+  value: string;
+  onChange: (val: string) => void;
+  options: CustomSelectOption[];
+  placeholder?: string;
+  className?: string;
+  uppercase?: boolean;
+  openUp?: boolean;
+  headerAction?: {
+    label: string;
+    onClick: () => void;
+  };
+}
+
+function CustomSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Select an option",
+  className = "",
+  uppercase = false,
+  openUp,
+  headerAction
+}: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleToggle = () => {
+    if (!isOpen && containerRef.current) {
+      if (typeof openUp === "boolean") {
+        setOpenUpward(openUp);
+      } else {
+        const rect = containerRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        setOpenUpward(spaceBelow < 260);
+      }
+    }
+    setIsOpen(!isOpen);
+  };
+
+  const selectedOption = options.find((opt) => opt.value === value);
+
+  return (
+    <div ref={containerRef} className={`relative inline-block w-full text-xs select-none ${className}`}>
+      <button
+        type="button"
+        onClick={handleToggle}
+        className={`custom-select-trigger w-full h-9 px-3 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-emerald-500 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
+          isOpen ? "border-emerald-500 ring-2 ring-emerald-500/20" : ""
+        } ${uppercase && selectedOption ? "uppercase" : ""}`}
+      >
+        <span className={`truncate ${selectedOption ? "font-bold text-slate-900" : "font-medium text-slate-400"}`}>
+          {selectedOption ? (selectedOption.shortLabel || selectedOption.label) : placeholder}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${
+            isOpen ? "rotate-180 text-emerald-600" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          className={`absolute z-50 left-0 min-w-full bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 ${
+            openUpward ? "bottom-full mb-2" : "top-full mt-[18px]"
+          }`}
+        >
+          {headerAction && (
+            <div className="p-1 bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  headerAction.onClick();
+                }}
+                className="w-full py-1.5 px-3 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+              >
+                <Settings className="w-3.5 h-3.5 text-slate-500" />
+                <span>{headerAction.label}</span>
+              </button>
+            </div>
+          )}
+          <div className="p-1.5 max-h-56 overflow-y-auto no-scrollbar space-y-1 pb-2">
+            {options.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
+                    isSelected
+                      ? "bg-emerald-50 text-emerald-950 font-extrabold border-emerald-500 shadow-2xs"
+                      : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
+                  } ${uppercase ? "uppercase" : ""}`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0 ml-2" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export interface ContactPerson {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  designation: string;
+}
+
+export interface BankDetail {
+  id: string;
+  account_holder: string;
+  bank_name: string;
+  account_number: string;
+  ifsc: string;
+  upi_id: string;
+  qr_setup: "Auto Generate from UPI" | "Upload Custom QR";
+}
+
+export interface Vendor {
+  id: string;
+  srNo: number;
+  account_type: "Supplier / Vendor" | "Customer / Client" | "Trading Partner" | "Internal Firm" | "Job Work";
+  salutation: string;
+  first_name: string;
+  last_name: string;
+  company_name: string;
+  display_name: string;
+  email: string;
+  gstin: string;
+  work_phone: string;
+  mobile: string;
+  vendor_language: string;
+
+  // Other Details
+  pan: string;
+  is_msme: boolean;
+  currency: string;
+  accounts_payable: string;
+  opening_balance: number;
+  payment_terms: string;
+  tds: string;
+  enable_portal: boolean;
+
+  // Address
+  billing_address: {
+    attention: string;
+    country: string;
+    street1: string;
+    street2: string;
+    city: string;
+    state: string;
+    pincode: string;
+    phone: string;
+    fax: string;
+  };
+  shipping_address: {
+    attention: string;
+    country: string;
+    street1: string;
+    street2: string;
+    city: string;
+    state: string;
+    pincode: string;
+    phone: string;
+    fax: string;
+  };
+
+  // Brokerage
+  brokerage: {
+    broker_name: string;
+    work_phone: string;
+    mobile: string;
+    percentage: number;
+    broker_email: string;
+  };
+
+  // Bank Details
+  bank_details: BankDetail[];
+
+  // Contact Persons
+  contact_persons: ContactPerson[];
+
+  // Remarks
+  remarks: string;
+}
+
+const initialVendors: Vendor[] = [
+  {
+    id: "v-101",
+    srNo: 1,
+    account_type: "Supplier / Vendor",
+    salutation: "MR.",
+    first_name: "Ramesh",
+    last_name: "Khatri",
+    company_name: "Shree Ram Yarns & Zari Mills",
+    display_name: "Shree Ram Yarns & Zari Mills",
+    email: "ramesh@shreeramyarns.com",
+    gstin: "24AABCS9876E1Z5",
+    work_phone: "0261 2451122",
+    mobile: "+91 98241 12345",
+    vendor_language: "ENGLISH",
+    pan: "AABCS9876E",
+    is_msme: true,
+    currency: "INR - INDIAN RUPEE",
+    accounts_payable: "Accounts Payable",
+    opening_balance: 0,
+    payment_terms: "Net 30",
+    tds: "TDS 2%",
+    enable_portal: true,
+    billing_address: {
+      attention: "Ramesh Khatri (Accounts)",
+      country: "INDIA",
+      street1: "Plot 108, GIDC Sachin Estate",
+      street2: "Near Water Tank, Road No. 4",
+      city: "Surat",
+      state: "GUJARAT",
+      pincode: "394230",
+      phone: "+91 98241 12345",
+      fax: "-"
+    },
+    shipping_address: {
+      attention: "Dispatch Department",
+      country: "INDIA",
+      street1: "Plot 108, GIDC Sachin Estate",
+      street2: "Near Water Tank, Road No. 4",
+      city: "Surat",
+      state: "GUJARAT",
+      pincode: "394230",
+      phone: "+91 98241 12345",
+      fax: "-"
+    },
+    brokerage: {
+      broker_name: "Pravinbhai Mehta",
+      work_phone: "0261 2541100",
+      mobile: "+91 98981 44556",
+      percentage: 1.5,
+      broker_email: "pravin.broker@surattextile.com"
+    },
+    bank_details: [
+      {
+        id: "b-1",
+        account_holder: "Shree Ram Yarns & Zari Mills",
+        bank_name: "State Bank of India",
+        account_number: "34880192384",
+        ifsc: "SBIN0001824",
+        upi_id: "shreeramyarns@sbi",
+        qr_setup: "Auto Generate from UPI"
+      }
+    ],
+    contact_persons: [
+      {
+        id: "cp-1",
+        name: "Hitesh Khatri",
+        email: "hitesh@shreeramyarns.com",
+        phone: "+91 98241 55667",
+        designation: "Production Manager"
+      }
+    ],
+    remarks: "Primary metallic zari and polyester yarn supplier for high-speed embroidery machines."
+  },
+  {
+    id: "v-102",
+    srNo: 2,
+    account_type: "Job Work",
+    salutation: "MR.",
+    first_name: "Girish",
+    last_name: "Panchal",
+    company_name: "Ambica Embroidery & Cutting Works",
+    display_name: "Ambica Embroidery & Cutting Works",
+    email: "girish@ambicaemb.in",
+    gstin: "24BGHPP4321K1Z9",
+    work_phone: "0261 2890044",
+    mobile: "+91 97129 87654",
+    vendor_language: "ENGLISH",
+    pan: "BGHPP4321K",
+    is_msme: true,
+    currency: "INR - INDIAN RUPEE",
+    accounts_payable: "Accounts Payable",
+    opening_balance: 0,
+    payment_terms: "Due on Receipt",
+    tds: "TDS 1%",
+    enable_portal: false,
+    billing_address: {
+      attention: "Girish Panchal",
+      country: "INDIA",
+      street1: "Shed 4, GIDC Pandesara Industrial Area",
+      street2: "Opp. Primary Health Center",
+      city: "Surat",
+      state: "GUJARAT",
+      pincode: "394221",
+      phone: "+91 97129 87654",
+      fax: "-"
+    },
+    shipping_address: {
+      attention: "Girish Panchal",
+      country: "INDIA",
+      street1: "Shed 4, GIDC Pandesara Industrial Area",
+      street2: "Opp. Primary Health Center",
+      city: "Surat",
+      state: "GUJARAT",
+      pincode: "394221",
+      phone: "+91 97129 87654",
+      fax: "-"
+    },
+    brokerage: {
+      broker_name: "-",
+      work_phone: "-",
+      mobile: "-",
+      percentage: 0,
+      broker_email: "-"
+    },
+    bank_details: [
+      {
+        id: "b-2",
+        account_holder: "Ambica Embroidery & Cutting Works",
+        bank_name: "HDFC Bank Ltd",
+        account_number: "50200049281144",
+        ifsc: "HDFC0000411",
+        upi_id: "ambicaemb@hdfcbank",
+        qr_setup: "Auto Generate from UPI"
+      }
+    ],
+    contact_persons: [
+      {
+        id: "cp-2",
+        name: "Manoj Panchal",
+        email: "manoj@ambicaemb.in",
+        phone: "+91 97129 11223",
+        designation: "Operations Head"
+      }
+    ],
+    remarks: "Outsourced laser cutting and multi-head job work partner."
+  },
+  {
+    id: "v-103",
+    srNo: 3,
+    account_type: "Trading Partner",
+    salutation: "MRS.",
+    first_name: "Sunita",
+    last_name: "Shah",
+    company_name: "Vardhman Textile Machinery & Spares",
+    display_name: "Vardhman Textile Machinery & Spares",
+    email: "sunita@vardhmanspares.com",
+    gstin: "24AAACV7788P1Z3",
+    work_phone: "0261 2556677",
+    mobile: "+91 98795 43210",
+    vendor_language: "ENGLISH",
+    pan: "AAACV7788P",
+    is_msme: false,
+    currency: "INR - INDIAN RUPEE",
+    accounts_payable: "Accounts Payable",
+    opening_balance: 0,
+    payment_terms: "Net 45",
+    tds: "Not Applicable",
+    enable_portal: true,
+    billing_address: {
+      attention: "Sunita Shah",
+      country: "INDIA",
+      street1: "Shop 204, Universal Textile Market",
+      street2: "Kamela Darwaja, Ring Road",
+      city: "Surat",
+      state: "GUJARAT",
+      pincode: "395003",
+      phone: "+91 98795 43210",
+      fax: "-"
+    },
+    shipping_address: {
+      attention: "Store Room",
+      country: "INDIA",
+      street1: "Shop 204, Universal Textile Market",
+      street2: "Kamela Darwaja, Ring Road",
+      city: "Surat",
+      state: "GUJARAT",
+      pincode: "395003",
+      phone: "+91 98795 43210",
+      fax: "-"
+    },
+    brokerage: {
+      broker_name: "Mahendra Shah",
+      work_phone: "0261 2661122",
+      mobile: "+91 98250 99887",
+      percentage: 2.0,
+      broker_email: "mahendra@shahbroker.com"
+    },
+    bank_details: [
+      {
+        id: "b-3",
+        account_holder: "Vardhman Textile Machinery & Spares",
+        bank_name: "Axis Bank Ltd",
+        account_number: "918020048192341",
+        ifsc: "UTIB0000214",
+        upi_id: "vardhman@axisbank",
+        qr_setup: "Auto Generate from UPI"
+      }
+    ],
+    contact_persons: [
+      {
+        id: "cp-3",
+        name: "Rajesh Shah",
+        email: "rajesh@vardhmanspares.com",
+        phone: "+91 98795 99001",
+        designation: "Technical Sales Lead"
+      }
+    ],
+    remarks: "Authorized dealer for embroidery machine needles, hooks, bobbins, and electronic spares."
+  }
+];
+
+export default function VendorsPage() {
+  const [vendors, setVendors] = useState<Vendor[]>(initialVendors);
+  const [search, setSearch] = useState("");
+
+  // Preview Modal State
+  const [previewVendor, setPreviewVendor] = useState<Vendor | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [showPreviewAccNo, setShowPreviewAccNo] = useState(false);
+
+  // Action Menu State (Three Dots Filter & Options matching screenshots)
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const [activeHoverMenu, setActiveHoverMenu] = useState<"sort" | "import" | "export" | "preferences" | "refresh" | null>("sort");
+  const [sortBy, setSortBy] = useState<"name" | "created" | "modified">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
+        setIsActionMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Modal / Drawer State for Add/Edit Vendor
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingVendorId, setEditingVendorId] = useState<string | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<
+    "Other Details" | "Address" | "Brokerage" | "Contact Persons" | "Bank Details" | "Custom Fields" | "Reporting Tags" | "Remarks"
+  >("Other Details");
+
+  // Show/Hide Password for Account Number
+  const [showAccNo, setShowAccNo] = useState(false);
+  const [showReAccNo, setShowReAccNo] = useState(false);
+
+  // Table Filter States
+  const [filterAccountType, setFilterAccountType] = useState<string>("ALL");
+  const [filterMsme, setFilterMsme] = useState<string>("ALL");
+
+  // Form State matching screenshots exactly
+  const [formAccountType, setFormAccountType] = useState<Vendor["account_type"]>("Supplier / Vendor");
+  const [formSalutation, setFormSalutation] = useState<string>("");
+  const [formFirstName, setFormFirstName] = useState("");
+  const [formLastName, setFormLastName] = useState("");
+  const [formCompanyName, setFormCompanyName] = useState("");
+  const [formDisplayName, setFormDisplayName] = useState("");
+  const [formEmail, setFormEmail] = useState("");
+  const [formGstin, setFormGstin] = useState("");
+  const [formWorkPhone, setFormWorkPhone] = useState("");
+  const [formMobile, setFormMobile] = useState("");
+  const [workPhoneCode, setWorkPhoneCode] = useState("+91");
+  const [mobileCode, setMobileCode] = useState("+91");
+  const [formLanguage, setFormLanguage] = useState("ENGLISH");
+
+  // Tab 1: Other Details
+  const [formPan, setFormPan] = useState("");
+  const [formIsMsme, setFormIsMsme] = useState(false);
+  const [formMsmeType, setFormMsmeType] = useState("");
+  const [formMsmeNumber, setFormMsmeNumber] = useState("");
+  const [formCurrency, setFormCurrency] = useState("INR - INDIAN RUPEE");
+  const [formAccountsPayable, setFormAccountsPayable] = useState("SELECT AN ACCOUNT");
+  const [formOpeningBalance, setFormOpeningBalance] = useState<number | "">(0);
+  const [formPaymentTerms, setFormPaymentTerms] = useState("Due on Receipt");
+  const [formTds, setFormTds] = useState("SELECT TAX");
+  const [formEnablePortal, setFormEnablePortal] = useState(false);
+
+  // Payment Terms List & Modal State
+  const [paymentTermsOptions, setPaymentTermsOptions] = useState([
+    { id: "1", name: "Due end of next month", days: "N/A", discount: "0", isDefault: false },
+    { id: "2", name: "Due end of the month", days: "N/A", discount: "0", isDefault: false },
+    { id: "3", name: "Due on Receipt", days: "0", discount: "0", isDefault: true },
+    { id: "4", name: "Net 15", days: "15", discount: "0", isDefault: false },
+    { id: "5", name: "Net 30", days: "30", discount: "0", isDefault: false },
+    { id: "6", name: "Net 45", days: "45", discount: "5", isDefault: false },
+    { id: "7", name: "Net 60", days: "60", discount: "0", isDefault: false }
+  ]);
+  const [isConfigureTermsOpen, setIsConfigureTermsOpen] = useState(false);
+  const [editingTerms, setEditingTerms] = useState(paymentTermsOptions);
+
+  // Tab 2: Address
+  const [billing, setBilling] = useState({
+    attention: "",
+    country: "INDIA",
+    street1: "",
+    street2: "",
+    city: "Surat",
+    state: "GUJARAT",
+    pincode: "",
+    phone: "",
+    fax: ""
+  });
+  const [shipping, setShipping] = useState({
+    attention: "",
+    country: "INDIA",
+    street1: "",
+    street2: "",
+    city: "Surat",
+    state: "GUJARAT",
+    pincode: "",
+    phone: "",
+    fax: ""
+  });
+
+  // Tab 3: Brokerage
+  const [brokerage, setBrokerage] = useState({
+    broker_name: "",
+    work_phone: "",
+    mobile: "",
+    percentage: "" as number | "",
+    broker_email: ""
+  });
+
+  // Tab 4: Bank Details
+  const [bank, setBank] = useState({
+    account_holder: "",
+    bank_name: "",
+    account_number: "",
+    re_account_number: "",
+    ifsc: "",
+    upi_id: "",
+    qr_setup: "Auto Generate from UPI" as "Auto Generate from UPI" | "Upload Custom QR"
+  });
+
+  // Tab 5: Contact Persons
+  const [contactPersons, setContactPersons] = useState<ContactPerson[]>([]);
+  const [newContact, setNewContact] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    designation: ""
+  });
+
+  // Tab 6: Remarks
+  const [remarks, setRemarks] = useState("");
+
+  // Load from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("app_vendors_master");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const hasOldVardhmanThread = parsed.some((v: any) => v.company_name === "Vardhman Thread Mills");
+          if (hasOldVardhmanThread) {
+            saveVendorsList(initialVendors);
+          } else {
+            setVendors(parsed);
+          }
+        } else {
+          saveVendorsList(initialVendors);
+        }
+      } else {
+        saveVendorsList(initialVendors);
+      }
+    } catch (e) {
+      console.error("Error loading app_vendors_master", e);
+    }
+  }, []);
+
+  const saveVendorsList = (newList: Vendor[]) => {
+    setVendors(newList);
+    try {
+      localStorage.setItem("app_vendors_master", JSON.stringify(newList));
+      window.dispatchEvent(new Event("app_data_update"));
+    } catch (e) {
+      console.error("Error saving app_vendors_master", e);
+    }
+  };
+
+  const openPreviewVendor = (v: Vendor) => {
+    setPreviewVendor(v);
+    setShowPreviewAccNo(false);
+    setIsPreviewOpen(true);
+  };
+
+  const openNewVendorForm = () => {
+    setEditingVendorId(null);
+    setFormAccountType("Supplier / Vendor");
+    setFormSalutation("");
+    setFormFirstName("");
+    setFormLastName("");
+    setFormCompanyName("");
+    setFormDisplayName("");
+    setFormEmail("");
+    setFormGstin("");
+    setFormWorkPhone("");
+    setFormMobile("");
+    setWorkPhoneCode("+91");
+    setMobileCode("+91");
+    setFormLanguage("ENGLISH");
+
+    setFormPan("");
+    setFormIsMsme(false);
+    setFormMsmeType("");
+    setFormMsmeNumber("");
+    setFormCurrency("INR - INDIAN RUPEE");
+    setFormAccountsPayable("SELECT AN ACCOUNT");
+    setFormOpeningBalance(0);
+    setFormPaymentTerms("Due on Receipt");
+    setFormTds("SELECT TAX");
+    setFormEnablePortal(false);
+
+    setBilling({
+      attention: "",
+      country: "INDIA",
+      street1: "",
+      street2: "",
+      city: "Surat",
+      state: "GUJARAT",
+      pincode: "",
+      phone: "",
+      fax: ""
+    });
+    setShipping({
+      attention: "",
+      country: "INDIA",
+      street1: "",
+      street2: "",
+      city: "Surat",
+      state: "GUJARAT",
+      pincode: "",
+      phone: "",
+      fax: ""
+    });
+
+    setBrokerage({
+      broker_name: "",
+      work_phone: "",
+      mobile: "",
+      percentage: "",
+      broker_email: ""
+    });
+
+    setBank({
+      account_holder: "",
+      bank_name: "",
+      account_number: "",
+      re_account_number: "",
+      ifsc: "",
+      upi_id: "",
+      qr_setup: "Auto Generate from UPI"
+    });
+
+    setContactPersons([]);
+    setRemarks("");
+    setActiveSubTab("Other Details");
+    setIsFormOpen(true);
+  };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("action") === "new" || params.get("new") === "true") {
+        openNewVendorForm();
+      }
+    }
+  }, []);
+
+  const openEditVendorForm = (v: Vendor) => {
+    setEditingVendorId(v.id);
+    setFormAccountType(v.account_type);
+    setFormSalutation(v.salutation);
+    setFormFirstName(v.first_name);
+    setFormLastName(v.last_name);
+    setFormCompanyName(v.company_name);
+    setFormDisplayName(v.display_name);
+    setFormEmail(v.email);
+    setFormGstin(v.gstin);
+    setFormWorkPhone(v.work_phone);
+    setFormMobile(v.mobile);
+    setFormLanguage(v.vendor_language);
+
+    setFormPan(v.pan);
+    setFormIsMsme(v.is_msme);
+    setFormCurrency(v.currency);
+    setFormAccountsPayable(v.accounts_payable);
+    setFormOpeningBalance(v.opening_balance);
+    setFormPaymentTerms(v.payment_terms);
+    setFormTds(v.tds);
+    setFormEnablePortal(v.enable_portal);
+
+    setBilling(v.billing_address);
+    setShipping(v.shipping_address);
+    setBrokerage({
+      ...v.brokerage,
+      percentage: v.brokerage.percentage || ""
+    });
+
+    if (v.bank_details && v.bank_details.length > 0) {
+      const b = v.bank_details[0];
+      setBank({
+        account_holder: b.account_holder,
+        bank_name: b.bank_name,
+        account_number: b.account_number,
+        re_account_number: b.account_number,
+        ifsc: b.ifsc,
+        upi_id: b.upi_id,
+        qr_setup: b.qr_setup
+      });
+    } else {
+      setBank({
+        account_holder: "",
+        bank_name: "",
+        account_number: "",
+        re_account_number: "",
+        ifsc: "",
+        upi_id: "",
+        qr_setup: "Auto Generate from UPI"
+      });
+    }
+
+    setContactPersons(v.contact_persons || []);
+    setRemarks(v.remarks || "");
+    setActiveSubTab("Other Details");
+    setIsFormOpen(true);
+  };
+
+  const handleCopyBillingToShipping = () => {
+    setShipping({ ...billing });
+  };
+
+  const handleSaveVendor = () => {
+    const finalDispName = formDisplayName.trim() || formCompanyName.trim() || `${formFirstName} ${formLastName}`.trim();
+    if (!finalDispName) {
+      alert("⚠️ Please enter Company Name or Display Name!");
+      return;
+    }
+
+    if (bank.account_number && bank.re_account_number && bank.account_number !== bank.re_account_number) {
+      alert("⚠️ Bank Account Numbers do not match! Please verify.");
+      setActiveSubTab("Bank Details");
+      return;
+    }
+
+    const compiledBank: BankDetail[] = bank.account_number
+      ? [
+          {
+            id: `b-${Date.now()}`,
+            account_holder: bank.account_holder || finalDispName,
+            bank_name: bank.bank_name || "-",
+            account_number: bank.account_number,
+            ifsc: bank.ifsc || "-",
+            upi_id: bank.upi_id || "-",
+            qr_setup: bank.qr_setup
+          }
+        ]
+      : [];
+
+    if (editingVendorId) {
+      const updated = vendors.map((v) => {
+        if (v.id === editingVendorId) {
+          return {
+            ...v,
+            account_type: formAccountType,
+            salutation: formSalutation,
+            first_name: formFirstName.trim(),
+            last_name: formLastName.trim(),
+            company_name: formCompanyName.trim(),
+            display_name: finalDispName,
+            email: formEmail.trim(),
+            gstin: formGstin.trim(),
+            work_phone: formWorkPhone.trim(),
+            mobile: formMobile.trim(),
+            vendor_language: formLanguage,
+            pan: formPan.trim(),
+            is_msme: formIsMsme,
+            currency: formCurrency,
+            accounts_payable: formAccountsPayable,
+            opening_balance: Number(formOpeningBalance) || 0,
+            payment_terms: formPaymentTerms,
+            tds: formTds,
+            enable_portal: formEnablePortal,
+            billing_address: billing,
+            shipping_address: shipping,
+            brokerage: {
+              broker_name: brokerage.broker_name.trim(),
+              work_phone: brokerage.work_phone.trim(),
+              mobile: brokerage.mobile.trim(),
+              percentage: Number(brokerage.percentage) || 0,
+              broker_email: brokerage.broker_email.trim()
+            },
+            bank_details: compiledBank,
+            contact_persons: contactPersons,
+            remarks: remarks.trim()
+          };
+        }
+        return v;
+      });
+      saveVendorsList(updated);
+    } else {
+      const nextSrNo = vendors.length > 0 ? Math.max(...vendors.map((v) => v.srNo)) + 1 : 1;
+      const created: Vendor = {
+        id: `v-${Date.now()}`,
+        srNo: nextSrNo,
+        account_type: formAccountType,
+        salutation: formSalutation,
+        first_name: formFirstName.trim(),
+        last_name: formLastName.trim(),
+        company_name: formCompanyName.trim(),
+        display_name: finalDispName,
+        email: formEmail.trim(),
+        gstin: formGstin.trim(),
+        work_phone: formWorkPhone.trim(),
+        mobile: formMobile.trim(),
+        vendor_language: formLanguage,
+        pan: formPan.trim(),
+        is_msme: formIsMsme,
+        currency: formCurrency,
+        accounts_payable: formAccountsPayable,
+        opening_balance: Number(formOpeningBalance) || 0,
+        payment_terms: formPaymentTerms,
+        tds: formTds,
+        enable_portal: formEnablePortal,
+        billing_address: billing,
+        shipping_address: shipping,
+        brokerage: {
+          broker_name: brokerage.broker_name.trim(),
+          work_phone: brokerage.work_phone.trim(),
+          mobile: brokerage.mobile.trim(),
+          percentage: Number(brokerage.percentage) || 0,
+          broker_email: brokerage.broker_email.trim()
+        },
+        bank_details: compiledBank,
+        contact_persons: contactPersons,
+        remarks: remarks.trim()
+      };
+      saveVendorsList([created, ...vendors]);
+    }
+
+    setIsFormOpen(false);
+  };
+
+  const handleDeleteVendor = (id: string) => {
+    if (confirm("Are you sure you want to delete this Vendor record?")) {
+      saveVendorsList(vendors.filter((v) => v.id !== id));
+    }
+  };
+
+  const handleRefreshList = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setIsRefreshing(false);
+      setIsActionMenuOpen(false);
+    }, 600);
+  };
+
+  const handleExportCSV = () => {
+    const headers = ["SR NO", "VENDOR NAME", "ACCOUNT TYPE", "PRIMARY CONTACT", "MOBILE", "GSTIN", "PAN", "PAYMENT TERMS"];
+    const rows = filteredVendors.map((v) => [
+      v.srNo,
+      `"${v.display_name || v.company_name}"`,
+      `"${v.account_type}"`,
+      `"${v.first_name} ${v.last_name}"`,
+      `"${v.mobile || v.work_phone}"`,
+      `"${v.gstin || ""}"`,
+      `"${v.pan || ""}"`,
+      `"${v.payment_terms}"`
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Vendors_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setIsActionMenuOpen(false);
+  };
+
+  const filteredVendors = useMemo(() => {
+    let result = vendors.filter((v) => {
+      const q = search.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        v.display_name.toLowerCase().includes(q) ||
+        v.company_name.toLowerCase().includes(q) ||
+        v.email.toLowerCase().includes(q) ||
+        v.gstin.toLowerCase().includes(q) ||
+        v.mobile.includes(q) ||
+        v.work_phone.includes(q);
+
+      const matchesType = filterAccountType === "ALL" || (v.account_type || "Supplier / Vendor") === filterAccountType;
+      const matchesMsme = filterMsme === "ALL" || (filterMsme === "MSME" ? v.is_msme : !v.is_msme);
+
+      return matchesSearch && matchesType && matchesMsme;
+    });
+
+    return result.sort((a, b) => {
+      let valA = "";
+      let valB = "";
+      if (sortBy === "name") {
+        valA = (a.display_name || a.company_name).toLowerCase();
+        valB = (b.display_name || b.company_name).toLowerCase();
+      } else if (sortBy === "created") {
+        valA = a.id;
+        valB = b.id;
+      } else {
+        valA = a.srNo.toString();
+        valB = b.srNo.toString();
+      }
+      if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+      if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [vendors, search, filterAccountType, filterMsme, sortBy, sortOrder]);
+
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter") {
+      const target = e.target as HTMLElement;
+
+      if (target.tagName === "TEXTAREA" && e.shiftKey) {
+        return;
+      }
+
+      const container = e.currentTarget;
+      const controls = Array.from(
+        container.querySelectorAll<HTMLElement>(
+          'input:not([type="hidden"]):not([disabled]), button.custom-select-trigger:not([disabled]), textarea:not([disabled])'
+        )
+      );
+
+      const index = controls.indexOf(target);
+      if (index >= 0 && index < controls.length - 1) {
+        e.preventDefault();
+        controls[index + 1].focus();
+      } else if (index === controls.length - 1) {
+        e.preventDefault();
+        handleSaveVendor();
+      }
+    }
+  };
+
+  if (isFormOpen) {
+    return (
+      <div onKeyDown={handleFormKeyDown} className="space-y-3.5 text-xs font-sans animate-in fade-in duration-150">
+        {/* Action Toolbar Header for Full Page Form (Matching Vendor List Toolbar Card Design & Placement) */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-4 py-3 flex items-center justify-between gap-3 text-xs">
+          <h2 className="font-extrabold text-slate-800 text-xs tracking-wide uppercase">
+            {editingVendorId ? "EDIT VENDOR DETAILS" : "NEW VENDOR & SUPPLIER REGISTRATION"}
+          </h2>
+          <button
+            type="button"
+            onClick={() => setIsFormOpen(false)}
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-slate-200"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Vendor List</span>
+          </button>
+        </div>
+
+        {/* Inline Form Container */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 sm:p-5 space-y-4 pb-6 mb-16">
+
+            {/* PRIMARY INFORMATION */}
+            <div className="space-y-4 pb-6 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-emerald-800 font-extrabold text-sm border-b border-slate-200/60 pb-2">
+                <div className="p-1 bg-emerald-200/60 rounded text-emerald-900">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <span>Primary Information</span>
+              </div>
+
+              {/* Account Type Radio Select */}
+              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+                <label className="font-extrabold text-rose-600">Account Type*</label>
+                <div className="flex items-center gap-4 flex-wrap font-bold text-slate-700">
+                  {[
+                    "Supplier / Vendor",
+                    "Customer / Client",
+                    "Trading Partner",
+                    "Internal Firm",
+                    "Job Work"
+                  ].map((type) => (
+                    <label key={type} className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="account_type"
+                        checked={formAccountType === type}
+                        onChange={() => setFormAccountType(type as any)}
+                        className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                      />
+                      <span className={formAccountType === type ? "text-emerald-900 font-extrabold" : ""}>
+                        {type}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Primary Contact */}
+              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+                <label className="font-bold text-slate-600">Primary Contact</label>
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap max-w-xl">
+                  <div className="w-28 sm:w-32 shrink-0">
+                    <CustomSelect
+                      value={formSalutation}
+                      onChange={(val) => setFormSalutation(val)}
+                      options={[
+                        { value: "Mr.", label: "Mr." },
+                        { value: "Mrs.", label: "Mrs." },
+                        { value: "Ms.", label: "Ms." },
+                        { value: "Dr.", label: "Dr." },
+                        { value: "Prof.", label: "Prof." }
+                      ]}
+                      placeholder="Salutation"
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    value={formFirstName}
+                    onChange={(e) => setFormFirstName(e.target.value)}
+                    className="h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs flex-1 min-w-[120px]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    value={formLastName}
+                    onChange={(e) => setFormLastName(e.target.value)}
+                    className="h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs flex-1 min-w-[120px]"
+                  />
+                </div>
+              </div>
+
+              {/* Company Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+                <label className="font-bold text-slate-600">Company Name</label>
+                <div className="max-w-md">
+                  <input
+                    type="text"
+                    placeholder="e.g. Vardhman Thread Mills"
+                    value={formCompanyName}
+                    onChange={(e) => setFormCompanyName(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Display Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+                <label className="font-extrabold text-rose-600">Display Name*</label>
+                <div className="max-w-md">
+                  <input
+                    type="text"
+                    placeholder="Select or type to add"
+                    value={formDisplayName}
+                    onChange={(e) => setFormDisplayName(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">If left blank, Company Name will be used.</p>
+                </div>
+              </div>
+
+              {/* Email Address */}
+              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+                <label className="font-bold text-slate-600">Email Address</label>
+                <div className="max-w-md relative">
+                  <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                  <input
+                    type="email"
+                    placeholder="vendor@example.com"
+                    value={formEmail}
+                    onChange={(e) => setFormEmail(e.target.value)}
+                    className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* GST */}
+              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+                <label className="font-bold text-slate-600">GST</label>
+                <div className="max-w-md">
+                  <input
+                    type="text"
+                    placeholder="e.g. 24AABCU9603R1ZM"
+                    value={formGstin}
+                    onChange={(e) => setFormGstin(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs uppercase"
+                  />
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+                <label className="font-bold text-slate-600">Phone</label>
+                <div className="flex items-center gap-2 max-w-xl">
+                  {/* Work Phone */}
+                  <div className="flex items-center gap-1 flex-1">
+                    <div className="w-20 shrink-0">
+                      <CustomSelect
+                        value={workPhoneCode}
+                        onChange={(val) => setWorkPhoneCode(val)}
+                        options={COUNTRY_CODES}
+                      />
+                    </div>
+                    <div className="relative flex-1">
+                      <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Work Phone"
+                        value={formWorkPhone}
+                        onChange={(e) => setFormWorkPhone(e.target.value)}
+                        className="w-full h-9 pl-8 pr-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Mobile */}
+                  <div className="flex items-center gap-1 flex-1">
+                    <div className="w-20 shrink-0">
+                      <CustomSelect
+                        value={mobileCode}
+                        onChange={(val) => setMobileCode(val)}
+                        options={COUNTRY_CODES}
+                      />
+                    </div>
+                    <div className="relative flex-1">
+                      <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Mobile"
+                        value={formMobile}
+                        onChange={(e) => setFormMobile(e.target.value)}
+                        className="w-full h-9 pl-8 pr-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Vendor Language */}
+              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+                <label className="font-bold text-slate-600">Vendor Language</label>
+                <div className="max-w-md">
+                  <CustomSelect
+                    value={formLanguage}
+                    onChange={(val) => setFormLanguage(val)}
+                    options={[
+                      { value: "ENGLISH", label: "ENGLISH" },
+                      { value: "GUJARATI", label: "GUJARATI" },
+                      { value: "HINDI", label: "HINDI" }
+                    ]}
+                    uppercase
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* TABBED SUB-SECTIONS (Matching User Screenshots 1-4) */}
+            <div className="space-y-4">
+              {/* Tab Selector Navigation Bar */}
+              <div className="flex items-center gap-6 border-b border-slate-200 text-xs font-bold overflow-x-auto">
+                {[
+                  "Other Details",
+                  "Address",
+                  "Brokerage",
+                  "Contact Persons",
+                  "Bank Details",
+                  "Remarks"
+                ].map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveSubTab(tab as any)}
+                    className={`pb-2.5 cursor-pointer transition-all border-b-2 whitespace-nowrap ${
+                      activeSubTab === tab
+                        ? "border-emerald-600 text-emerald-800 font-extrabold"
+                        : "border-transparent text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              {/* TAB CONTENT 1: OTHER DETAILS (Screenshot 1 Bottom Half) */}
+              {activeSubTab === "Other Details" && (
+                <div className="space-y-4 animate-in fade-in duration-100 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 items-start text-xs">
+                    {/* Left Column Stack */}
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                        <label className="font-bold text-slate-600">PAN</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. AAACV1234F"
+                          value={formPan}
+                          onChange={(e) => setFormPan(e.target.value)}
+                          className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs uppercase"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                        <label className="font-bold text-slate-600">Currency</label>
+                        <div>
+                          <CustomSelect
+                            value={formCurrency}
+                            onChange={(val) => setFormCurrency(val)}
+                            options={[
+                              { value: "INR - INDIAN RUPEE", label: "INR - INDIAN RUPEE" },
+                              { value: "USD - US DOLLAR", label: "USD - US DOLLAR" }
+                            ]}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                        <label className="font-bold text-slate-600">Opening Balance</label>
+                        <div className="flex items-center bg-white border border-slate-300 rounded-xl overflow-hidden shadow-2xs">
+                          <span className="px-3 text-xs font-black text-slate-500 bg-slate-50 border-r border-slate-300">INR</span>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={formOpeningBalance}
+                            onChange={(e) => setFormOpeningBalance(e.target.value === "" ? "" : Number(e.target.value))}
+                            className="w-full h-9 px-3 text-xs font-bold text-slate-900 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                        <label className="font-bold text-slate-600">TDS</label>
+                        <div>
+                          <CustomSelect
+                            value={formTds}
+                            onChange={(val) => setFormTds(val)}
+                            placeholder="SELECT TAX"
+                            options={[
+                              { value: "TDS 10%", label: "TDS 10%" },
+                              { value: "TDS 5%", label: "TDS 5%" },
+                              { value: "TDS 2%", label: "TDS 2%" },
+                              { value: "TDS 1%", label: "TDS 1%" },
+                              { value: "Not Applicable", label: "Not Applicable" }
+                            ]}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column Stack */}
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                        <label className="font-bold text-slate-600">Accounts Payable</label>
+                        <div>
+                          <CustomSelect
+                            value={formAccountsPayable}
+                            onChange={(val) => setFormAccountsPayable(val)}
+                            placeholder="SELECT AN ACCOUNT"
+                            options={[
+                              { value: "Trade Payables", label: "Trade Payables" },
+                              { value: "Accounts Payable", label: "Accounts Payable" },
+                              { value: "Sundry Creditors", label: "Sundry Creditors" },
+                              { value: "Vendor Clearing", label: "Vendor Clearing" }
+                            ]}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                        <label className="font-bold text-slate-600">Payment Terms</label>
+                        <div>
+                          <CustomSelect
+                            value={formPaymentTerms}
+                            onChange={(val) => setFormPaymentTerms(val)}
+                            placeholder="SELECT PAYMENT TERMS"
+                            headerAction={{
+                              label: "Manage",
+                              onClick: () => {
+                                setEditingTerms([...paymentTermsOptions]);
+                                setIsConfigureTermsOpen(true);
+                              }
+                            }}
+                            options={paymentTermsOptions.map((t) => ({
+                              value: t.name,
+                              label: t.name
+                            }))}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2.5 pt-0.5">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="msme_check"
+                            checked={formIsMsme}
+                            onChange={(e) => setFormIsMsme(e.target.checked)}
+                            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                          />
+                          <label htmlFor="msme_check" className="font-bold text-slate-800 cursor-pointer select-none">
+                            This vendor is MSME registered
+                          </label>
+                        </div>
+
+                        {formIsMsme && (
+                          <div className="space-y-2.5 pt-1.5 pl-3 border-l-2 border-emerald-500 animate-in fade-in duration-150">
+                            <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                              <label className="font-bold text-slate-600 leading-tight">MSME/Udyam Type</label>
+                              <div>
+                                <CustomSelect
+                                  value={formMsmeType}
+                                  onChange={(val) => setFormMsmeType(val)}
+                                  placeholder="SELECT THE REGISTRATION TYPE"
+                                  options={[
+                                    { value: "Micro", label: "Micro" },
+                                    { value: "Small", label: "Small" },
+                                    { value: "Medium", label: "Medium" }
+                                  ]}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                              <label className="font-bold text-slate-600 leading-tight">MSME Reg Number</label>
+                              <input
+                                type="text"
+                                placeholder="Enter the Registration Number"
+                                value={formMsmeNumber}
+                                onChange={(e) => setFormMsmeNumber(e.target.value)}
+                                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="checkbox"
+                          id="portal_check"
+                          checked={formEnablePortal}
+                          onChange={(e) => setFormEnablePortal(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <label htmlFor="portal_check" className="font-bold text-slate-800 cursor-pointer select-none">
+                          Allow portal access for this vendor
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB CONTENT 2: ADDRESS (Screenshot 2) */}
+              {activeSubTab === "Address" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-100 text-xs">
+                  {/* Billing Address Column */}
+                  <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-200/70">
+                    <h3 className="font-extrabold text-slate-900 text-xs uppercase tracking-wide">Billing Address</h3>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Attention</label>
+                      <input
+                        type="text"
+                        value={billing.attention}
+                        onChange={(e) => setBilling({ ...billing, attention: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Country/Region</label>
+                      <CustomSelect
+                        value={billing.country}
+                        onChange={(val) => setBilling({ ...billing, country: val })}
+                        options={[
+                          { value: "INDIA", label: "INDIA" },
+                          { value: "USA", label: "USA" },
+                          { value: "UAE", label: "UAE" }
+                        ]}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Address</label>
+                      <div className="space-y-1.5">
+                        <input
+                          type="text"
+                          placeholder="Street 1"
+                          value={billing.street1}
+                          onChange={(e) => setBilling({ ...billing, street1: e.target.value })}
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Street 2"
+                          value={billing.street2}
+                          onChange={(e) => setBilling({ ...billing, street2: e.target.value })}
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">City</label>
+                        <input
+                          type="text"
+                          value={billing.city}
+                          onChange={(e) => setBilling({ ...billing, city: e.target.value })}
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">State</label>
+                        <input
+                          type="text"
+                          value={billing.state}
+                          onChange={(e) => setBilling({ ...billing, state: e.target.value })}
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none uppercase"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Pin Code</label>
+                        <input
+                          type="text"
+                          value={billing.pincode}
+                          onChange={(e) => setBilling({ ...billing, pincode: e.target.value })}
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Phone</label>
+                        <input
+                          type="text"
+                          value={billing.phone}
+                          onChange={(e) => setBilling({ ...billing, phone: e.target.value })}
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Shipping Address Column */}
+                  <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-200/70">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-extrabold text-slate-900 text-xs uppercase tracking-wide">Shipping Address</h3>
+                      <button
+                        type="button"
+                        onClick={handleCopyBillingToShipping}
+                        className="text-emerald-700 hover:text-emerald-800 font-extrabold text-[11px] flex items-center gap-1 cursor-pointer"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>↓ Copy billing address</span>
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Attention</label>
+                      <input
+                        type="text"
+                        value={shipping.attention}
+                        onChange={(e) => setShipping({ ...shipping, attention: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Country/Region</label>
+                      <CustomSelect
+                        value={shipping.country}
+                        onChange={(val) => setShipping({ ...shipping, country: val })}
+                        options={[
+                          { value: "INDIA", label: "INDIA" },
+                          { value: "USA", label: "USA" },
+                          { value: "UAE", label: "UAE" }
+                        ]}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Address</label>
+                      <div className="space-y-1.5">
+                        <input
+                          type="text"
+                          placeholder="Street 1"
+                          value={shipping.street1}
+                          onChange={(e) => setShipping({ ...shipping, street1: e.target.value })}
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Street 2"
+                          value={shipping.street2}
+                          onChange={(e) => setShipping({ ...shipping, street2: e.target.value })}
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">City</label>
+                        <input
+                          type="text"
+                          value={shipping.city}
+                          onChange={(e) => setShipping({ ...shipping, city: e.target.value })}
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">State</label>
+                        <input
+                          type="text"
+                          value={shipping.state}
+                          onChange={(e) => setShipping({ ...shipping, state: e.target.value })}
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none uppercase"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Pin Code</label>
+                        <input
+                          type="text"
+                          value={shipping.pincode}
+                          onChange={(e) => setShipping({ ...shipping, pincode: e.target.value })}
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Phone</label>
+                        <input
+                          type="text"
+                          value={shipping.phone}
+                          onChange={(e) => setShipping({ ...shipping, phone: e.target.value })}
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB CONTENT 3: BROKERAGE (Screenshot 3) */}
+              {activeSubTab === "Brokerage" && (
+                <div className="space-y-4 animate-in fade-in duration-100 text-xs">
+                  <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-emerald-900 flex items-start gap-2 text-[11px] font-medium">
+                    <AlertCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span>
+                      Provide details of the broker or agent mediating this relationship. This information applies to Supplier (Purchases), Customer (Sales), or Both.
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <label className="font-bold text-slate-600">Broker Name</label>
+                      <input
+                        type="text"
+                        placeholder="Enter broker name"
+                        value={brokerage.broker_name}
+                        onChange={(e) => setBrokerage({ ...brokerage, broker_name: e.target.value })}
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <label className="font-bold text-slate-600">Work Phone</label>
+                      <div className="sm:col-span-2 relative">
+                        <span className="absolute left-2.5 top-2 text-[10px] font-extrabold text-slate-400">+91</span>
+                        <input
+                          type="text"
+                          placeholder="Enter phone number"
+                          value={brokerage.work_phone}
+                          onChange={(e) => setBrokerage({ ...brokerage, work_phone: e.target.value })}
+                          className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <label className="font-bold text-slate-600">Mobile</label>
+                      <div className="sm:col-span-2 relative">
+                        <span className="absolute left-2.5 top-2 text-[10px] font-extrabold text-slate-400">+91</span>
+                        <input
+                          type="text"
+                          placeholder="Enter mobile number"
+                          value={brokerage.mobile}
+                          onChange={(e) => setBrokerage({ ...brokerage, mobile: e.target.value })}
+                          className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <label className="font-bold text-slate-600">Percentage Brokerage (%)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="e.g. 2.5"
+                        value={brokerage.percentage}
+                        onChange={(e) => setBrokerage({ ...brokerage, percentage: e.target.value === "" ? "" : Number(e.target.value) })}
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <label className="font-bold text-slate-600">Broker Email</label>
+                      <input
+                        type="email"
+                        placeholder="broker@example.com"
+                        value={brokerage.broker_email}
+                        onChange={(e) => setBrokerage({ ...brokerage, broker_email: e.target.value })}
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB CONTENT 4: BANK DETAILS (Screenshot 4) */}
+              {activeSubTab === "Bank Details" && (
+                <div className="space-y-4 animate-in fade-in duration-100 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <label className="font-bold text-slate-600">Account Holder Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Vardhman Thread Mills"
+                        value={bank.account_holder}
+                        onChange={(e) => setBank({ ...bank, account_holder: e.target.value })}
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <label className="font-bold text-slate-600">Bank Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. HDFC Bank"
+                        value={bank.bank_name}
+                        onChange={(e) => setBank({ ...bank, bank_name: e.target.value })}
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <label className="font-extrabold text-rose-600">Account Number*</label>
+                      <div className="sm:col-span-2 relative">
+                        <input
+                          type={showAccNo ? "text" : "password"}
+                          placeholder="Bank Account Number"
+                          value={bank.account_number}
+                          onChange={(e) => setBank({ ...bank, account_number: e.target.value })}
+                          className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowAccNo(!showAccNo)}
+                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                        >
+                          {showAccNo ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <label className="font-extrabold text-rose-600">Re-enter Account Number*</label>
+                      <div className="sm:col-span-2 relative">
+                        <input
+                          type={showReAccNo ? "text" : "password"}
+                          placeholder="Re-enter Account Number"
+                          value={bank.re_account_number}
+                          onChange={(e) => setBank({ ...bank, re_account_number: e.target.value })}
+                          className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowReAccNo(!showReAccNo)}
+                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                        >
+                          {showReAccNo ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <label className="font-extrabold text-rose-600">IFSC*</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. HDFC0000102"
+                        value={bank.ifsc}
+                        onChange={(e) => setBank({ ...bank, ifsc: e.target.value })}
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2 uppercase"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                      <label className="font-bold text-slate-600">UPI ID</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 1234567890@ybl"
+                        value={bank.upi_id}
+                        onChange={(e) => setBank({ ...bank, upi_id: e.target.value })}
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2"
+                      />
+                    </div>
+                  </div>
+
+                  {/* QR Code Setup Radio Options */}
+                  <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-center pt-2">
+                    <label className="font-bold text-slate-600 sm:col-span-1">QR Code Setup</label>
+                    <div className="sm:col-span-5 flex items-center gap-4 font-bold text-slate-700">
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name="qr_setup"
+                          checked={bank.qr_setup === "Auto Generate from UPI"}
+                          onChange={() => setBank({ ...bank, qr_setup: "Auto Generate from UPI" })}
+                          className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <span>Auto Generate from UPI</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name="qr_setup"
+                          checked={bank.qr_setup === "Upload Custom QR"}
+                          onChange={() => setBank({ ...bank, qr_setup: "Upload Custom QR" })}
+                          className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <span>Upload Custom QR</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB CONTENT 5: CONTACT PERSONS */}
+              {activeSubTab === "Contact Persons" && (
+                <div className="space-y-4 animate-in fade-in duration-100 text-xs">
+                  <div className="space-y-2">
+                    {contactPersons.map((cp) => (
+                      <div key={cp.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div>
+                          <div className="font-bold text-slate-900">{cp.name} ({cp.designation})</div>
+                          <div className="text-[11px] text-slate-500">{cp.phone} • {cp.email}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setContactPersons(contactPersons.filter((c) => c.id !== cp.id))}
+                          className="p-1 text-slate-400 hover:text-rose-600"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-3 border border-slate-200 rounded-xl space-y-2 bg-slate-50/50">
+                    <h4 className="font-bold text-slate-800">Add New Contact Person</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        value={newContact.name}
+                        onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                        className="h-8 px-2 bg-white border border-slate-300 rounded-lg text-xs"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Designation"
+                        value={newContact.designation}
+                        onChange={(e) => setNewContact({ ...newContact, designation: e.target.value })}
+                        className="h-8 px-2 bg-white border border-slate-300 rounded-lg text-xs"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Phone"
+                        value={newContact.phone}
+                        onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                        className="h-8 px-2 bg-white border border-slate-300 rounded-lg text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!newContact.name) return;
+                          setContactPersons([
+                            ...contactPersons,
+                            { id: `cp-${Date.now()}`, ...newContact }
+                          ]);
+                          setNewContact({ name: "", email: "", phone: "", designation: "" });
+                        }}
+                        className="h-8 bg-emerald-600 text-white font-bold rounded-lg text-xs hover:bg-emerald-700"
+                      >
+                        + Add Contact
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB CONTENT 6: REMARKS */}
+              {activeSubTab === "Remarks" && (
+                <div className="space-y-3 animate-in fade-in duration-100 text-xs">
+                  <label className="block font-bold text-slate-700">Internal Remarks & Supplier Notes</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Enter any specific notes regarding lead time, yarn quality standards, or payment agreements..."
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    className="w-full p-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                  />
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          {/* Fixed Actions Footer Bar - Perfectly Aligned with Sidebar Bottom Footer (0px space at bottom) */}
+          <div className="fixed bottom-0 left-0 lg:left-[250px] right-0 z-40 h-[57px] bg-white border-t border-slate-200 px-6 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Synced</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsFormOpen(false)}
+                className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-300 text-xs transition-colors cursor-pointer shadow-2xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveVendor}
+                className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save Vendor</span>
+              </button>
+            </div>
+          </div>
+
+          {/* CONFIGURE PAYMENT TERMS MODAL (MATCHING USER SCREENSHOT 5) */}
+          {isConfigureTermsOpen && (
+            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+              <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+                {/* Modal Header */}
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="font-extrabold text-slate-800 text-sm sm:text-base">Configure Payment Terms</h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsConfigureTermsOpen(false)}
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Modal Body / Table */}
+                <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto text-xs">
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-slate-50 text-[11px] font-extrabold text-slate-600 uppercase border-b border-slate-200">
+                        <tr>
+                          <th className="py-2.5 px-4">TERM NAME</th>
+                          <th className="py-2.5 px-4 text-center">NUMBER OF DAYS</th>
+                          <th className="py-2.5 px-4 text-center">LESS (%)</th>
+                          <th className="py-2.5 px-4 text-center">ACTION</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-800 font-medium">
+                        {editingTerms.map((term, idx) => (
+                          <tr key={term.id || idx} className="hover:bg-slate-50/50">
+                            <td className="py-2.5 px-4 font-bold">
+                              <input
+                                type="text"
+                                value={term.name}
+                                onChange={(e) => {
+                                  const next = [...editingTerms];
+                                  next[idx].name = e.target.value;
+                                  setEditingTerms(next);
+                                }}
+                                className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 text-xs font-bold text-slate-900"
+                              />
+                            </td>
+                            <td className="py-2.5 px-4 text-center">
+                              <input
+                                type="text"
+                                value={term.days}
+                                onChange={(e) => {
+                                  const next = [...editingTerms];
+                                  next[idx].days = e.target.value;
+                                  setEditingTerms(next);
+                                }}
+                                className="w-20 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center focus:outline-none focus:border-emerald-500 text-xs font-semibold text-slate-700 mx-auto"
+                              />
+                            </td>
+                            <td className="py-2.5 px-4 text-center">
+                              <div className="inline-flex items-center gap-1 justify-center">
+                                <input
+                                  type="text"
+                                  value={term.discount}
+                                  onChange={(e) => {
+                                    const next = [...editingTerms];
+                                    next[idx].discount = e.target.value;
+                                    setEditingTerms(next);
+                                  }}
+                                  className="w-12 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center focus:outline-none focus:border-emerald-500 text-xs font-bold text-slate-900"
+                                />
+                                <span className="text-slate-400 font-bold">%</span>
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-4 text-center">
+                              {term.isDefault ? (
+                                <span className="px-3 py-1 bg-emerald-600 text-white font-extrabold rounded-lg text-[10px] inline-block shadow-2xs">
+                                  Default
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = editingTerms.map((t, i) => ({
+                                      ...t,
+                                      isDefault: i === idx
+                                    }));
+                                    setEditingTerms(next);
+                                  }}
+                                  className="text-emerald-700 hover:text-emerald-800 font-bold text-xs hover:underline cursor-pointer"
+                                >
+                                  Mark as Default
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Add New Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingTerms([
+                        ...editingTerms,
+                        {
+                          id: `term-${Date.now()}`,
+                          name: "New Term",
+                          days: "30",
+                          discount: "0",
+                          isDefault: false
+                        }
+                      ]);
+                    }}
+                    className="text-emerald-700 hover:text-emerald-800 font-extrabold text-xs flex items-center gap-1 transition-colors cursor-pointer py-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add New</span>
+                  </button>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsConfigureTermsOpen(false)}
+                    className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200 text-xs transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentTermsOptions(editingTerms);
+                      const defaultItem = editingTerms.find((t) => t.isDefault);
+                      if (defaultItem) {
+                        setFormPaymentTerms(defaultItem.name);
+                      }
+                      setIsConfigureTermsOpen(false);
+                    }}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs shadow-md transition-all cursor-pointer active:scale-95"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+  // DEFAULT VIEW: VENDORS TABLE LIST PAGE (MATCHING PARTIES PAGE DESIGN)
+  return (
+    <div className="space-y-4 text-xs font-sans pb-12">
+      {/* SEARCH & ACTIONS TOOLBAR CARD */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+        {/* Left Side: Search Input */}
+        <div className="relative w-full md:w-72">
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+          <input
+            type="text"
+            placeholder="Search Name, GST, Phone..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-9 pl-8 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-medium shadow-2xs hover:border-emerald-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-colors"
+          />
+        </div>
+
+        {/* Right Side: Filters & New Vendor Action */}
+        <div className="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
+          {/* Account Type Filter */}
+          <div className="w-40 sm:w-44">
+            <CustomSelect
+              value={filterAccountType}
+              onChange={(val) => setFilterAccountType(val)}
+              options={[
+                { value: "ALL", label: "All Account Types" },
+                { value: "Supplier / Vendor", label: "Supplier / Vendor" },
+                { value: "Customer / Client", label: "Customer / Client" },
+                { value: "Trading Partner", label: "Trading Partner" },
+                { value: "Internal Firm", label: "Internal Firm" },
+                { value: "Job Work", label: "Job Work" }
+              ]}
+            />
+          </div>
+
+          {/* MSME Status Filter */}
+          <div className="w-36 sm:w-40">
+            <CustomSelect
+              value={filterMsme}
+              onChange={(val) => setFilterMsme(val)}
+              options={[
+                { value: "ALL", label: "All MSME Status" },
+                { value: "MSME", label: "MSME Registered" },
+                { value: "NON_MSME", label: "Non-MSME" }
+              ]}
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={openNewVendorForm}
+            className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Vendor</span>
+          </button>
+
+          {/* Action Menu (Three Dots Button matching screenshots) */}
+          <div ref={actionMenuRef} className="relative inline-block">
+            <button
+              type="button"
+              onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
+              className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer shadow-2xs ${
+                isActionMenuOpen
+                  ? "bg-emerald-50 border-emerald-500 text-emerald-700 ring-2 ring-emerald-500/20"
+                  : "bg-white hover:bg-slate-100 border-slate-300 text-slate-600"
+              }`}
+              title="More Actions & Filters"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+
+            {isActionMenuOpen && (
+              <div className="absolute right-0 top-full mt-[18px] z-50 bg-white rounded-3xl border border-slate-200/90 shadow-2xl p-2.5 flex items-stretch min-w-[360px] divide-x divide-slate-100 animate-in fade-in zoom-in-95 duration-150">
+                {/* Left Sub-Panel: Dynamic options based on hovered menu item */}
+                <div className="w-1/2 pr-2.5 flex flex-col justify-start gap-1">
+                  {(!activeHoverMenu || activeHoverMenu === "sort") && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (sortBy === "name") {
+                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                          } else {
+                            setSortBy("name");
+                            setSortOrder("asc");
+                          }
+                        }}
+                        className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
+                          sortBy === "name"
+                            ? "bg-[#0B4F3F] text-white font-bold shadow-md"
+                            : "text-slate-700 hover:bg-slate-100 font-medium"
+                        }`}
+                      >
+                        <span>Name</span>
+                        <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (sortBy === "created") {
+                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                          } else {
+                            setSortBy("created");
+                            setSortOrder("asc");
+                          }
+                        }}
+                        className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
+                          sortBy === "created"
+                            ? "bg-[#0B4F3F] text-white font-bold shadow-md"
+                            : "text-slate-700 hover:bg-slate-100 font-medium"
+                        }`}
+                      >
+                        <span>Created Time</span>
+                        {sortBy === "created" && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (sortBy === "modified") {
+                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                          } else {
+                            setSortBy("modified");
+                            setSortOrder("asc");
+                          }
+                        }}
+                        className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
+                          sortBy === "modified"
+                            ? "bg-[#0B4F3F] text-white font-bold shadow-md"
+                            : "text-slate-700 hover:bg-slate-100 font-medium"
+                        }`}
+                      >
+                        <span>Last Modified Time</span>
+                        {sortBy === "modified" && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />}
+                      </button>
+                    </>
+                  )}
+
+                  {activeHoverMenu === "import" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsActionMenuOpen(false);
+                          openNewVendorForm();
+                        }}
+                        className="w-full text-left px-3.5 py-2.5 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer"
+                      >
+                        <span>Import CSV File</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsActionMenuOpen(false);
+                          openNewVendorForm();
+                        }}
+                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                      >
+                        <span>Import Excel Sheet</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsActionMenuOpen(false);
+                          alert("Sample CSV Template downloaded");
+                        }}
+                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                      >
+                        <span>Sample Template</span>
+                      </button>
+                    </>
+                  )}
+
+                  {activeHoverMenu === "export" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleExportCSV}
+                        className="w-full text-left px-3.5 py-2.5 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer"
+                      >
+                        <span>Export CSV File</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleExportCSV}
+                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                      >
+                        <span>Export Excel Sheet</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleExportCSV}
+                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                      >
+                        <span>Export Filtered Data</span>
+                      </button>
+                    </>
+                  )}
+
+                  {activeHoverMenu === "preferences" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setIsActionMenuOpen(false)}
+                        className="w-full text-left px-3.5 py-2.5 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer"
+                      >
+                        <span>Column Visibility</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsActionMenuOpen(false)}
+                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                      >
+                        <span>Dense Row Height</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsActionMenuOpen(false)}
+                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                      >
+                        <span>Reset Grid Layout</span>
+                      </button>
+                    </>
+                  )}
+
+                  {activeHoverMenu === "refresh" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleRefreshList}
+                        className="w-full text-left px-3.5 py-2.5 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer"
+                      >
+                        <span>Refresh List</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilterAccountType("ALL");
+                          setFilterMsme("ALL");
+                          setSearch("");
+                          setIsActionMenuOpen(false);
+                        }}
+                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                      >
+                        <span>Reset All Filters</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Right Panel: Main Actions List */}
+                <div className="w-1/2 pl-2.5 flex flex-col gap-1 text-xs text-slate-700 font-semibold">
+                  <div
+                    onMouseEnter={() => setActiveHoverMenu("sort")}
+                    onClick={() => setActiveHoverMenu(activeHoverMenu === "sort" ? null : "sort")}
+                    className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
+                      activeHoverMenu === "sort" || !activeHoverMenu
+                        ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                        : "hover:bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ArrowUpDown className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Sort by</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-emerald-700" />
+                  </div>
+
+                  <button
+                    type="button"
+                    onMouseEnter={() => setActiveHoverMenu("import")}
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      openNewVendorForm();
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
+                      activeHoverMenu === "import"
+                        ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                        : "hover:bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Upload className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Import</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onMouseEnter={() => setActiveHoverMenu("export")}
+                    onClick={handleExportCSV}
+                    className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
+                      activeHoverMenu === "export"
+                        ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                        : "hover:bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Download className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Export</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onMouseEnter={() => setActiveHoverMenu("preferences")}
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
+                      activeHoverMenu === "preferences"
+                        ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                        : "hover:bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sliders className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Preferences</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onMouseEnter={() => setActiveHoverMenu("refresh")}
+                    onClick={handleRefreshList}
+                    className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
+                      activeHoverMenu === "refresh"
+                        ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                        : "hover:bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-emerald-600" : ""}`} />
+                      <span>Refresh List</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* VENDORS TABLE CONTAINER */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+        {/* Vendors List Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse divide-y divide-slate-100">
+            <thead className="bg-slate-50/90 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+              <tr>
+                <th className="py-3.5 px-4 text-center w-14">SR NO.</th>
+                <th className="py-3.5 px-5">VENDOR NAME</th>
+                <th className="py-3.5 px-4 text-center">ACCOUNT TYPE</th>
+                <th className="py-3.5 px-4">PRIMARY CONTACT</th>
+                <th className="py-3.5 px-4 font-mono">MOBILE / PHONE</th>
+                <th className="py-3.5 px-4 font-mono">GSTIN / PAN</th>
+                <th className="py-3.5 px-4 text-center">PAYMENT TERMS</th>
+                <th className="py-3.5 px-4 text-center w-28">ACTION</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-800">
+              {filteredVendors.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
+                    No vendor records found matching your filters. Click &quot;New Vendor&quot; to add a record.
+                  </td>
+                </tr>
+              ) : (
+                filteredVendors.map((v) => (
+                  <tr key={v.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-4 px-4 text-center font-bold text-slate-500">{v.srNo}</td>
+                    <td className="py-4 px-5 font-extrabold text-slate-900 text-xs sm:text-sm">
+                      {v.display_name || v.company_name}
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className="px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg text-[10px] border border-blue-100/80 inline-block">
+                        {v.account_type || "Supplier / Vendor"}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 font-bold text-slate-800 whitespace-nowrap">
+                      {v.salutation ? `${v.salutation} ` : ""}{v.first_name} {v.last_name}
+                    </td>
+                    <td className="py-4 px-4 font-mono whitespace-nowrap">
+                      <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0 inline" />
+                        {v.mobile || v.work_phone || "-"}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 font-mono whitespace-nowrap">
+                      <span className="font-bold text-slate-700">{v.gstin || v.pan || "-"}</span>
+                      {v.is_msme && (
+                        <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 font-extrabold rounded text-[9px] border border-emerald-200 ml-1.5">
+                          MSME
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-extrabold rounded-lg text-[10px] border border-slate-200 inline-block">
+                        {v.payment_terms}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openPreviewVendor(v)}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                          title="Preview Vendor Details"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEditVendorForm(v)}
+                          className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                          title="Edit Vendor Details"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteVendor(v.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          title="Delete Vendor Record"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* VENDOR DETAILS PREVIEW MODAL */}
+      {isPreviewOpen && previewVendor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-extrabold text-base border border-emerald-200 shadow-2xs">
+                  <Building2 className="w-5 h-5 text-emerald-700" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-extrabold text-slate-900">
+                      {previewVendor.display_name || previewVendor.company_name}
+                    </h2>
+                    <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-lg text-[10px] border border-blue-100">
+                      {previewVendor.account_type}
+                    </span>
+                    {previewVendor.is_msme && (
+                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-extrabold rounded-md text-[9px] border border-emerald-200">
+                        MSME REGISTERED
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    Vendor ID: <span className="font-mono text-slate-700">{previewVendor.id}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPreviewOpen(false);
+                    openEditVendorForm(previewVendor);
+                  }}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Edit Record</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="p-6 overflow-y-auto no-scrollbar space-y-6 text-xs text-slate-800">
+              {/* Primary Contact & Tax Overview Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
+                <div>
+                  <div className="text-[11px] font-bold text-slate-400 uppercase">Primary Contact</div>
+                  <div className="font-extrabold text-slate-900 mt-1">
+                    {previewVendor.salutation ? `${previewVendor.salutation} ` : ""}{previewVendor.first_name} {previewVendor.last_name}
+                  </div>
+                  <div className="text-slate-500 text-[11px] mt-0.5">{previewVendor.company_name}</div>
+                </div>
+
+                <div>
+                  <div className="text-[11px] font-bold text-slate-400 uppercase">Mobile & Phone</div>
+                  <div className="font-bold text-slate-900 font-mono mt-1 flex items-center gap-1">
+                    <Phone className="w-3 h-3 text-emerald-600 shrink-0" />
+                    {previewVendor.mobile || "-"}
+                  </div>
+                  <div className="text-slate-500 font-mono text-[11px] mt-0.5">
+                    Work: {previewVendor.work_phone || "-"}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[11px] font-bold text-slate-400 uppercase">GSTIN & PAN</div>
+                  <div className="font-bold font-mono text-slate-900 mt-1">
+                    {previewVendor.gstin || "-"}
+                  </div>
+                  <div className="text-slate-500 font-mono text-[11px] mt-0.5">
+                    PAN: {previewVendor.pan || "-"}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[11px] font-bold text-slate-400 uppercase">Payment & TDS</div>
+                  <div className="font-extrabold text-emerald-700 mt-1">
+                    {previewVendor.payment_terms}
+                  </div>
+                  <div className="text-slate-500 text-[11px] mt-0.5">
+                    TDS: {previewVendor.tds}
+                  </div>
+                </div>
+              </div>
+
+              {/* Addresses Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Billing Address Card */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
+                  <div className="font-extrabold text-slate-900 border-b border-slate-100 pb-2 flex items-center justify-between">
+                    <span>Billing Address</span>
+                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">GST Address</span>
+                  </div>
+                  <div className="space-y-1 text-slate-700 font-medium">
+                    {previewVendor.billing_address.attention && (
+                      <p className="font-bold text-slate-900">Attn: {previewVendor.billing_address.attention}</p>
+                    )}
+                    <p>{previewVendor.billing_address.street1}</p>
+                    {previewVendor.billing_address.street2 && <p>{previewVendor.billing_address.street2}</p>}
+                    <p>
+                      {previewVendor.billing_address.city}, {previewVendor.billing_address.state} - {previewVendor.billing_address.pincode}
+                    </p>
+                    <p className="text-slate-500 font-bold">{previewVendor.billing_address.country}</p>
+                  </div>
+                </div>
+
+                {/* Shipping Address Card */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
+                  <div className="font-extrabold text-slate-900 border-b border-slate-100 pb-2 flex items-center justify-between">
+                    <span>Shipping Address</span>
+                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">Dispatch Location</span>
+                  </div>
+                  <div className="space-y-1 text-slate-700 font-medium">
+                    {previewVendor.shipping_address.attention && (
+                      <p className="font-bold text-slate-900">Attn: {previewVendor.shipping_address.attention}</p>
+                    )}
+                    <p>{previewVendor.shipping_address.street1}</p>
+                    {previewVendor.shipping_address.street2 && <p>{previewVendor.shipping_address.street2}</p>}
+                    <p>
+                      {previewVendor.shipping_address.city}, {previewVendor.shipping_address.state} - {previewVendor.shipping_address.pincode}
+                    </p>
+                    <p className="text-slate-500 font-bold">{previewVendor.shipping_address.country}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Details Section */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3 shadow-2xs">
+                <div className="font-extrabold text-slate-900 border-b border-slate-100 pb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Landmark className="w-4 h-4 text-emerald-600" />
+                    <span>Bank Account Details</span>
+                  </div>
+                </div>
+                {previewVendor.bank_details.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50/70 p-3 rounded-xl border border-slate-200/80">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Bank Name</span>
+                      <p className="font-extrabold text-slate-900 mt-0.5">{previewVendor.bank_details[0].bank_name}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Account Holder</span>
+                      <p className="font-bold text-slate-800 mt-0.5">{previewVendor.bank_details[0].account_holder}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Account Number</span>
+                      <div className="flex items-center gap-1.5 mt-0.5 font-mono font-bold text-slate-900">
+                        <span>
+                          {showPreviewAccNo
+                            ? previewVendor.bank_details[0].account_number
+                            : previewVendor.bank_details[0].account_number.replace(/.(?=.{4})/g, "•")}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowPreviewAccNo(!showPreviewAccNo)}
+                          className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                        >
+                          {showPreviewAccNo ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">IFSC Code & UPI</span>
+                      <p className="font-mono font-bold text-slate-900 mt-0.5">{previewVendor.bank_details[0].ifsc}</p>
+                      <p className="text-[11px] text-slate-500 font-mono mt-0.5">{previewVendor.bank_details[0].upi_id}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-slate-400 text-xs italic">No bank details added for this vendor.</p>
+                )}
+              </div>
+
+              {/* Brokerage & Remarks Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Brokerage Info */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
+                  <div className="font-extrabold text-slate-900 border-b border-slate-100 pb-2">
+                    Brokerage Information
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Broker Name</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{previewVendor.brokerage?.broker_name || "-"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Commission %</span>
+                      <p className="font-extrabold text-emerald-700 mt-0.5">
+                        {previewVendor.brokerage?.percentage ? `${previewVendor.brokerage.percentage}%` : "0%"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Broker Mobile</span>
+                      <p className="font-mono font-bold text-slate-800 mt-0.5">{previewVendor.brokerage?.mobile || "-"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Broker Email</span>
+                      <p className="font-medium text-slate-700 mt-0.5 truncate">{previewVendor.brokerage?.broker_email || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Remarks & Contact Persons */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
+                  <div className="font-extrabold text-slate-900 border-b border-slate-100 pb-2">
+                    Remarks & Notes
+                  </div>
+                  <p className="text-slate-700 font-medium leading-relaxed">
+                    {previewVendor.remarks || "No remarks entered."}
+                  </p>
+                  {previewVendor.contact_persons && previewVendor.contact_persons.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Additional Contact Person</span>
+                      <p className="font-bold text-slate-900 mt-0.5">
+                        {previewVendor.contact_persons[0].name} ({previewVendor.contact_persons[0].designation})
+                      </p>
+                      <p className="font-mono text-slate-500 text-[11px]">{previewVendor.contact_persons[0].phone}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsPreviewOpen(false)}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
