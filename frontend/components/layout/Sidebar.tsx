@@ -40,6 +40,7 @@ interface MenuItem {
   name: string;
   href: string;
   icon: any;
+  isUpcoming?: boolean;
 }
 
 interface SubGroup {
@@ -61,7 +62,7 @@ const menuGroups: MenuGroup[] = [
       { name: "Vendors", href: "/vendors", icon: Building2 },
       { name: "Workers & Karigars", href: "/employees", icon: UserCheck },
       { name: "Design Library", href: "/designs", icon: Palette },
-      { name: "Karigar Issue", href: "/job-works", icon: FileText },
+      { name: "Karigar Issue", href: "/job-works", icon: FileText, isUpcoming: true },
     ]
   },
   {
@@ -69,15 +70,14 @@ const menuGroups: MenuGroup[] = [
     items: [
       { name: "Payments & Vouchers", href: "/payments", icon: CreditCard },
       { name: "Expenses", href: "/expenses", icon: Receipt },
-      { name: "Worker Payout", href: "/worker-payout", icon: Wallet },
-      { name: "OMS Performance", href: "/oms-performance", icon: TrendingUp },
+      { name: "Worker Payout", href: "/worker-payout", icon: Wallet, isUpcoming: true },
+      { name: "OMS Performance", href: "/oms-performance", icon: TrendingUp, isUpcoming: true },
     ]
   },
   {
     groupTitle: "Staff & Settings",
     items: [
-      { name: "Karigars & Staff", href: "/employees", icon: UserCheck },
-      { name: "Reports", href: "/reports", icon: BarChart3 },
+      { name: "Reports", href: "/reports", icon: BarChart3, isUpcoming: true },
       { name: "Settings", href: "/settings", icon: Settings },
     ]
   }
@@ -245,7 +245,12 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                           >
                             <SubIcon className="w-3.5 h-3.5" />
                           </div>
-                          <span className="truncate text-xs">{sub.name}</span>
+                          <span className="truncate text-xs flex-1">{sub.name}</span>
+                          {sub.isUpcoming && (
+                            <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/80 shrink-0">
+                              Upcoming
+                            </span>
+                          )}
                         </Link>
                       );
                     })}

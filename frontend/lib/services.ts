@@ -23,24 +23,45 @@ export type {
 };
 
 // -------------------------------------------------------------
-// 1. PARTIES SERVICE
+// 1. VENDORS SERVICE
 // -------------------------------------------------------------
-export const PartiesService = {
-  async getParties(): Promise<Party[]> {
+export const VendorsService = {
+  async getVendors(): Promise<any[]> {
     try {
-      const data = await fetchApi<Party[]>("/parties");
+      const data = await fetchApi<any[]>("/vendors");
       return data;
     } catch {
-      const saved = localStorage.getItem("app_parties");
+      const saved = localStorage.getItem("app_vendors_master");
       return saved ? JSON.parse(saved) : [];
     }
   },
 
-  async saveParties(parties: Party[]): Promise<void> {
-    localStorage.setItem("app_parties", JSON.stringify(parties));
+  async saveVendors(vendors: any[]): Promise<void> {
+    localStorage.setItem("app_vendors_master", JSON.stringify(vendors));
     window.dispatchEvent(new Event("app_data_update"));
   }
 };
+
+// -------------------------------------------------------------
+// 2. DESIGNS SERVICE
+// -------------------------------------------------------------
+export const DesignsService = {
+  async getDesigns(): Promise<any[]> {
+    try {
+      const data = await fetchApi<any[]>("/designs");
+      return data;
+    } catch {
+      const saved = localStorage.getItem("app_design_folders");
+      return saved ? JSON.parse(saved) : [];
+    }
+  },
+
+  async saveDesigns(designs: any[]): Promise<void> {
+    localStorage.setItem("app_design_folders", JSON.stringify(designs));
+    window.dispatchEvent(new Event("app_data_update"));
+  }
+};
+
 
 // -------------------------------------------------------------
 // 2. JOB ORDERS SERVICE

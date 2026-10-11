@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { fetchApi } from "@/lib/api";
 import {
   Users,
   UserCheck,
@@ -335,6 +336,58 @@ export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>(initialAttendance);
 
+  const loadEmployeesFromApi = async () => {
+    try {
+      const live = await fetchApi<any[]>("/employees");
+      if (Array.isArray(live) && live.length > 0) {
+        const mapped: Employee[] = live.map((e, idx) => {
+          const isKarigar = (e.role || "").toLowerCase().includes("karigar") || (e.role || "").toLowerCase().includes("operator");
+          return {
+            id: e.id || `emp-${idx + 1}`,
+            code: isKarigar ? `KAR-00${idx + 1}` : `STF-00${idx + 1}`,
+            name: e.name,
+            role: e.role || (isKarigar ? "Karigar" : "Staff"),
+            employee_type: isKarigar ? "Karigar" : "Salaried Staff",
+            mobile: e.phone || "-",
+            email: "",
+            assigned_machine: `Machine ${(idx % 5) + 1}`,
+            shift: "Day Shift",
+            monthly_salary: Number(e.monthly_salary) || 0,
+            advance_balance: Number(e.current_advance) || 0,
+            status: (e.status === "Inactive" ? "Inactive" : "Active") as any,
+            photoUrl: `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80`,
+            helpers: [],
+            bank_details: undefined,
+            portal_credentials: [],
+            documents: []
+          };
+        });
+        setEmployees(mapped);
+        localStorage.setItem("app_employees_data", JSON.stringify(mapped));
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend employees load fallback", err);
+    }
+
+    try {
+      const saved = localStorage.getItem("app_employees_data");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setEmployees(parsed);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    loadEmployeesFromApi();
+  }, []);
+
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"All" | "Karigar" | "Salaried Staff">("All");
   const [statusFilter, setStatusFilter] = useState<string>("All");
@@ -342,6 +395,7 @@ export default function EmployeesPage() {
   // Full Page Add / Edit Form State matching Screenshots 1-4
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingWorkerId, setEditingWorkerId] = useState<string | null>(null);
+
   const [activeFormTab, setActiveFormTab] = useState<"Basic Info" | "Bank Details" | "Portal Login" | "Documents">("Basic Info");
 
   // Basic Info Form States
@@ -545,13 +599,24 @@ export default function EmployeesPage() {
     setIsFormOpen(true);
   };
 
-  const handleDeleteWorker = (id: string) => {
+  const handleDeleteWorker = async (id: string) => {
     if (confirm("Are you sure you want to delete this Worker record?")) {
-      setEmployees(employees.filter((e) => e.id !== id));
+      try {
+        await fetchApi(`/employees/${id}`, { method: "DELETE" });
+      } catch (err) {
+        console.warn("Backend employee delete fallback", err);
+      }
+      const updated = employees.filter((e) => e.id !== id);
+      setEmployees(updated);
+      try {
+        localStorage.setItem("app_employees_data", JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
     }
   };
 
-  const handleSaveFullWorker = (e?: React.FormEvent) => {
+  const handleSaveFullWorker = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!formName.trim()) {
       alert("Please enter Worker Name.");
@@ -570,8 +635,23 @@ export default function EmployeesPage() {
     } : undefined;
 
     if (editingWorkerId) {
-      setEmployees((prev) =>
-        prev.map((emp) =>
+      try {
+        await fetchApi(`/employees/${editingWorkerId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            name: formName.trim(),
+            role: isKarigar ? "Karigar" : "Staff",
+            phone: formMobile.trim() || "-",
+            monthly_salary: Number(formSalary) || 0,
+            status: "Active"
+          })
+        });
+      } catch (err) {
+        console.warn("Backend employee update fallback", err);
+      }
+
+      setEmployees((prev) => {
+        const next = prev.map((emp) =>
           emp.id === editingWorkerId
             ? {
                 ...emp,
@@ -590,11 +670,33 @@ export default function EmployeesPage() {
                 documents: documentsList
               }
             : emp
-        )
-      );
+        );
+        try { localStorage.setItem("app_employees_data", JSON.stringify(next)); } catch {}
+        return next;
+      });
     } else {
+      let assignedId = `emp-${Date.now()}`;
+      try {
+        const backendRes = await fetchApi<any>("/employees", {
+          method: "POST",
+          body: JSON.stringify({
+            name: formName.trim(),
+            role: isKarigar ? "Karigar" : "Staff",
+            phone: formMobile.trim() || "-",
+            monthly_salary: Number(formSalary) || 0,
+            current_advance: 0,
+            status: "Active"
+          })
+        });
+        if (backendRes?.id) {
+          assignedId = backendRes.id;
+        }
+      } catch (err) {
+        console.warn("Backend employee create fallback", err);
+      }
+
       const newEmp: Employee = {
-        id: `emp-${Date.now()}`,
+        id: assignedId,
         code: khata,
         name: formName.trim(),
         role: isKarigar ? "Karigar" : "Staff",
@@ -612,12 +714,18 @@ export default function EmployeesPage() {
         portal_credentials: portalCredentials,
         documents: documentsList
       };
-      setEmployees([newEmp, ...employees]);
+
+      setEmployees((prev) => {
+        const next = [newEmp, ...prev];
+        try { localStorage.setItem("app_employees_data", JSON.stringify(next)); } catch {}
+        return next;
+      });
     }
 
     setIsMachineDropdownOpen(false);
     setIsFormOpen(false);
   };
+
 
   const filteredEmployees = useMemo(() => {
     let result = employees.filter((emp) => {

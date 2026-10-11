@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
+import { fetchApi } from "@/lib/api";
 import {
   ArrowUpRight,
   ArrowDownLeft,
@@ -102,22 +103,52 @@ export default function PaymentsAndVouchersPage() {
 
   const advanceFiltersRef = useRef<HTMLDivElement>(null);
 
-  // Load newly saved vouchers from localStorage on mount
+  // Load vouchers from Supabase & localStorage on mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("om_sai_vouchers");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge custom created vouchers with initial ones avoiding duplicate IDs
-          const combined = [...parsed, ...initialVouchers.filter((i) => !parsed.some((p: any) => p.id === i.id))];
-          setVouchers(combined);
+    const loadVouchers = async () => {
+      try {
+        const live = await fetchApi<any[]>("/payments");
+        if (Array.isArray(live) && live.length > 0) {
+          const mapped: PaymentVoucherItem[] = live.map((p) => ({
+            id: p.id,
+            voucher_no: p.voucher_no,
+            date: p.date,
+            party_name: p.party_name,
+            paying_company: "Om Sai Fabrics (Main Account)",
+            type: (p.voucher_type as any) || "Payment Out",
+            linked_source: "Job Work / Purchase" as any,
+            amount: Number(p.amount) || 0,
+            mode: p.payment_mode || "Bank Transfer",
+            ref_no: p.reference_no || "-",
+            bank_details: p.bank_account || "HDFC Bank Main A/c",
+            notes: p.remarks || ""
+          }));
+          setVouchers(mapped);
+          localStorage.setItem("om_sai_vouchers", JSON.stringify(mapped));
+          return;
         }
+      } catch (err) {
+        console.warn("Backend payments load fallback to localStorage", err);
       }
-    } catch (err) {
-      console.error(err);
-    }
+
+      try {
+        const saved = localStorage.getItem("om_sai_vouchers");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const combined = [...parsed, ...initialVouchers.filter((i) => !parsed.some((p: any) => p.id === i.id))];
+            setVouchers(combined);
+            return;
+          }
+        }
+        setVouchers(initialVouchers);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadVouchers();
   }, []);
+
 
   // Close Advance Filters on click outside
   useEffect(() => {
@@ -181,8 +212,13 @@ export default function PaymentsAndVouchersPage() {
     };
   }, [vouchers]);
 
-  const handleDeleteVoucher = (id: string) => {
+  const handleDeleteVoucher = async (id: string) => {
     if (confirm("Are you sure you want to delete this payment voucher?")) {
+      try {
+        await fetchApi(`/payments/${id}`, { method: "DELETE" });
+      } catch (err) {
+        console.warn("Backend payment voucher delete fallback", err);
+      }
       const updated = vouchers.filter((v) => v.id !== id);
       setVouchers(updated);
       try {
@@ -193,6 +229,7 @@ export default function PaymentsAndVouchersPage() {
       if (previewVoucher?.id === id) setPreviewVoucher(null);
     }
   };
+
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto select-none pb-12">

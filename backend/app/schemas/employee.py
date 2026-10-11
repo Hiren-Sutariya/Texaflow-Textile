@@ -11,7 +11,15 @@ class EmployeeBase(BaseModel):
     status: str = "Active"
 
 class EmployeeCreate(EmployeeBase):
-    pass
+    id: Optional[str] = None
+
+class EmployeeUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    phone: Optional[str] = None
+    monthly_salary: Optional[float] = None
+    current_advance: Optional[float] = None
+    status: Optional[str] = None
 
 class EmployeeResponse(EmployeeBase):
     id: str
@@ -20,3 +28,4 @@ class EmployeeResponse(EmployeeBase):
 
     class Config:
         from_attributes = True
+

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { fetchApi } from "@/lib/api";
 import {
   Folder,
   Plus,
@@ -158,25 +159,66 @@ export default function DesignsPage() {
   const [expandedRollMetersColorId, setExpandedRollMetersColorId] = useState<string | null>(null);
   const [colorwayActiveTab, setColorwayActiveTab] = useState<Record<string, "takka" | "threads">>({});
 
-  // Load design folders from localStorage
+  // Load design folders from Supabase & localStorage
   useEffect(() => {
-    const saved = localStorage.getItem("app_design_folders");
-    if (saved) {
+    const loadDesignsFromApi = async () => {
       try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setFolders(parsed);
+        const live = await fetchApi<any[]>("/designs");
+        if (Array.isArray(live) && live.length > 0) {
+          const mapped: DesignFolder[] = live.map((d) => {
+            let parsedItems: DesignItem[] = [];
+            let parsedColorways: ColorTakka[] = [];
+            if (d.items) {
+              try {
+                parsedItems = typeof d.items === "string" ? JSON.parse(d.items) : d.items;
+              } catch {}
+            }
+            if (d.colorways) {
+              try {
+                parsedColorways = typeof d.colorways === "string" ? JSON.parse(d.colorways) : d.colorways;
+              } catch {}
+            }
+            return {
+              id: d.id,
+              folder_code: d.folder_code,
+              title: d.title || "-",
+              party_name: d.party_name || "Direct Party",
+              created_date: d.created_date || "01-10-2026",
+              machine_requirement: d.machine_requirement || "17 Head Multi-Head",
+              takko_length_meters: d.takko_length_meters || 104,
+              cut_length_meters: d.cut_length_meters || 0.93,
+              items: Array.isArray(parsedItems) ? parsedItems : [],
+              colorways: Array.isArray(parsedColorways) ? parsedColorways : []
+            };
+          });
+          setFolders(mapped);
+          localStorage.setItem("app_design_folders", JSON.stringify(mapped));
+          return;
         }
-      } catch (e) {
-        console.error("Failed to load design folders from localStorage", e);
+      } catch (err) {
+        console.warn("Backend designs load fallback", err);
       }
-    }
+
+      const saved = localStorage.getItem("app_design_folders");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setFolders(parsed);
+          }
+        } catch (e) {
+          console.error("Failed to load design folders from localStorage", e);
+        }
+      }
+    };
+    loadDesignsFromApi();
   }, []);
 
   const saveDesignFolders = (newFolders: DesignFolder[]) => {
     setFolders(newFolders);
     localStorage.setItem("app_design_folders", JSON.stringify(newFolders));
   };
+
 
   // Convert Design directly to a Job Order
   const handleCreateOrderFromDesign = (e: React.MouseEvent, folder: DesignFolder) => {
@@ -675,7 +717,7 @@ export default function DesignsPage() {
   };
 
   // Save New Folder Inline with Manual User Fields (3-field clean creation)
-  const handleSaveFolderInline = (e: React.FormEvent) => {
+  const handleSaveFolderInline = async (e: React.FormEvent) => {
     e.preventDefault();
     const partyClean = newFolderParty.trim();
     if (!partyClean) {
@@ -696,12 +738,39 @@ export default function DesignsPage() {
     // Auto register party in software list if not already present
     handleDirectAddParty(partyClean);
 
+    const cleanCode = newFolderCode.trim().startsWith("Design") ? newFolderCode.trim() : `Design ${newFolderCode.trim()}`;
+    const cleanTitle = newFolderTitle.trim() || "-";
+    const dateFormatted = new Date().toLocaleDateString("en-GB").replace(/\//g, "-");
+    let assignedId = `des-${Date.now()}`;
+
+    try {
+      const backendRes = await fetchApi<any>("/designs", {
+        method: "POST",
+        body: JSON.stringify({
+          folder_code: cleanCode,
+          title: cleanTitle,
+          party_name: partyClean,
+          created_date: dateFormatted,
+          machine_requirement: "17 Head Multi-Head",
+          takko_length_meters: 104,
+          cut_length_meters: 0.93,
+          items: JSON.stringify([]),
+          colorways: JSON.stringify([])
+        })
+      });
+      if (backendRes?.id) {
+        assignedId = backendRes.id;
+      }
+    } catch (err) {
+      console.warn("Backend design create fallback", err);
+    }
+
     const created: DesignFolder = {
-      id: `f-${Date.now()}`,
-      folder_code: newFolderCode.trim().startsWith("Design") ? newFolderCode.trim() : `Design ${newFolderCode.trim()}`,
-      title: newFolderTitle.trim() || "-",
-      party_name: newFolderParty.trim(),
-      created_date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      id: assignedId,
+      folder_code: cleanCode,
+      title: cleanTitle,
+      party_name: partyClean,
+      created_date: dateFormatted,
       machine_requirement: "17 Head Multi-Head",
       takko_length_meters: 104,
       cut_length_meters: 0.93,
@@ -709,7 +778,8 @@ export default function DesignsPage() {
       items: []
     };
 
-    setFolders([created, ...folders]);
+    const nextFolders = [created, ...folders];
+    saveDesignFolders(nextFolders);
     setSelectedFolderId(created.id);
     setIsAddingFolderInline(false);
     setNewFolderParty("");
@@ -721,6 +791,7 @@ export default function DesignsPage() {
     setNewFolderRate("");
     setNewFolderParts("");
   };
+
 
   // Save Colorway Inline (Unified Multi-Color Form: Color, Takka & Threads)
   const handleSaveColorwayInline = (e: React.FormEvent) => {
@@ -980,12 +1051,22 @@ export default function DesignsPage() {
   };
 
   // Delete Folder
-  const handleDeleteFolder = (e: React.MouseEvent, folderId: string) => {
+  const handleDeleteFolder = async (e: React.MouseEvent, folderId: string) => {
     e.stopPropagation();
     if (confirm("Are you sure you want to delete this design folder?")) {
-      setFolders((prev) => prev.filter((f) => f.id !== folderId));
+      try {
+        await fetchApi(`/designs/${folderId}`, { method: "DELETE" });
+      } catch (err) {
+        console.warn("Backend design delete fallback", err);
+      }
+      const nextFolders = folders.filter((f) => f.id !== folderId);
+      saveDesignFolders(nextFolders);
+      if (selectedFolderId === folderId) {
+        setSelectedFolderId(null);
+      }
     }
   };
+
 
   // Auto-derive color hex from thread name (No color picker needed)
   const getAutoColorHex = (str: string) => {

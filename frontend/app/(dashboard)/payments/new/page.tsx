@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { fetchApi } from "@/lib/api";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -153,16 +154,43 @@ export default function NewPaymentVoucherPage() {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!payingCompany || !supplierName || !formAmount) {
       alert("Please select Paying Company, Supplier/Vendor Name, and enter Amount.");
       return;
     }
 
+    let assignedId = `pay-${Date.now()}`;
+    let finalVoucherNo = `VOU-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`;
+
+    try {
+      const backendRes = await fetchApi<any>("/payments", {
+        method: "POST",
+        body: JSON.stringify({
+          voucher_no: finalVoucherNo,
+          voucher_type: formType,
+          date: formVoucherDate,
+          party_name: supplierName,
+          amount: parseFloat(formAmount) || 0,
+          payment_mode: formMode,
+          bank_account: bankDetails || "HDFC Bank Main A/c",
+          reference_no: formRefNo || `REF-${Math.floor(Math.random() * 89999 + 10000)}`,
+          status: "Paid",
+          remarks: formNotes || "Payment voucher transaction entry"
+        })
+      });
+      if (backendRes?.id) {
+        assignedId = backendRes.id;
+        if (backendRes.voucher_no) finalVoucherNo = backendRes.voucher_no;
+      }
+    } catch (err) {
+      console.warn("Backend payment voucher sync fallback", err);
+    }
+
     const newVoucher = {
-      id: `v-${Date.now()}`,
-      voucher_no: `VOU-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`,
+      id: assignedId,
+      voucher_no: finalVoucherNo,
       date: formVoucherDate,
       party_name: supplierName,
       paying_company: payingCompany,
@@ -188,6 +216,7 @@ export default function NewPaymentVoucherPage() {
     alert(`Payment Voucher (${newVoucher.voucher_no}) created successfully!`);
     router.push("/payments");
   };
+
 
   return (
     <div className="w-full space-y-3.5 select-none pb-20 animate-in fade-in duration-150 text-xs font-sans">

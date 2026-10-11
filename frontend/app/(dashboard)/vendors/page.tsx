@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { fetchApi } from "@/lib/api";
 import {
   Building2,
   Plus,
@@ -619,28 +620,106 @@ export default function VendorsPage() {
   // Tab 6: Remarks
   const [remarks, setRemarks] = useState("");
 
-  // Load from localStorage
-  useEffect(() => {
+  const loadVendorsFromApi = async () => {
+    try {
+      const live = await fetchApi<any[]>("/vendors");
+      if (Array.isArray(live) && live.length > 0) {
+        const defaultBill = {
+          attention: "",
+          country: "INDIA",
+          street1: "",
+          street2: "",
+          city: "Surat",
+          state: "GUJARAT",
+          pincode: "",
+          phone: "",
+          fax: ""
+        };
+        const defaultShip = { ...defaultBill };
+
+        const mapped: Vendor[] = live.map((v, index) => {
+          let parsedBilling = { ...defaultBill, city: v.city || "Surat" };
+          let parsedShipping = { ...defaultShip, city: v.city || "Surat" };
+          let parsedBank: BankDetail[] = [];
+          let parsedContact: ContactPerson[] = [];
+
+          if (v.billing_address) {
+            try {
+              parsedBilling = typeof v.billing_address === "string" ? JSON.parse(v.billing_address) : v.billing_address;
+            } catch {}
+          }
+          if (v.shipping_address) {
+            try {
+              parsedShipping = typeof v.shipping_address === "string" ? JSON.parse(v.shipping_address) : v.shipping_address;
+            } catch {}
+          }
+          if (v.bank_details) {
+            try {
+              parsedBank = typeof v.bank_details === "string" ? JSON.parse(v.bank_details) : v.bank_details;
+            } catch {}
+          }
+          if (v.contact_persons) {
+            try {
+              parsedContact = typeof v.contact_persons === "string" ? JSON.parse(v.contact_persons) : v.contact_persons;
+            } catch {}
+          }
+
+          return {
+            id: v.id || `ven-${index + 1}`,
+            srNo: v.sr_no || v.srNo || index + 1,
+            account_type: v.account_type || "Supplier / Vendor",
+            salutation: v.salutation || "MR.",
+            first_name: v.first_name || "",
+            last_name: v.last_name || "",
+            company_name: v.company_name,
+            display_name: v.display_name || v.company_name,
+            email: v.email || "",
+            gstin: v.gstin || "",
+            work_phone: v.work_phone || "",
+            mobile: v.mobile,
+            vendor_language: v.vendor_language || "ENGLISH",
+            pan: v.pan || "",
+            is_msme: Boolean(v.is_msme),
+            currency: v.currency || "INR - INDIAN RUPEE",
+            accounts_payable: v.accounts_payable || "Accounts Payable",
+            opening_balance: Number(v.opening_balance) || 0,
+            payment_terms: v.payment_terms || "Net 30",
+            tds: v.tds || "TDS 2%",
+            enable_portal: Boolean(v.enable_portal),
+            billing_address: parsedBilling,
+            shipping_address: parsedShipping,
+            brokerage: v.brokerage || { broker_name: "", work_phone: "", mobile: "", percentage: 0, broker_email: "" },
+            bank_details: Array.isArray(parsedBank) ? parsedBank : [],
+            contact_persons: Array.isArray(parsedContact) ? parsedContact : [],
+            remarks: v.remarks || ""
+          };
+        });
+        setVendors(mapped);
+        localStorage.setItem("app_vendors_master", JSON.stringify(mapped));
+        return;
+      }
+    } catch (e) {
+      console.warn("Backend vendors fetch fallback to local storage", e);
+    }
+
     try {
       const saved = localStorage.getItem("app_vendors_master");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const hasOldVardhmanThread = parsed.some((v: any) => v.company_name === "Vardhman Thread Mills");
-          if (hasOldVardhmanThread) {
-            saveVendorsList(initialVendors);
-          } else {
-            setVendors(parsed);
-          }
-        } else {
-          saveVendorsList(initialVendors);
+          setVendors(parsed);
+          return;
         }
-      } else {
-        saveVendorsList(initialVendors);
       }
+      saveVendorsList(initialVendors);
     } catch (e) {
       console.error("Error loading app_vendors_master", e);
     }
+  };
+
+  // Load on mount
+  useEffect(() => {
+    loadVendorsFromApi();
   }, []);
 
   const saveVendorsList = (newList: Vendor[]) => {
@@ -652,6 +731,7 @@ export default function VendorsPage() {
       console.error("Error saving app_vendors_master", e);
     }
   };
+
 
   const openPreviewVendor = (v: Vendor) => {
     setPreviewVendor(v);
@@ -805,7 +885,7 @@ export default function VendorsPage() {
     setShipping({ ...billing });
   };
 
-  const handleSaveVendor = () => {
+  const handleSaveVendor = async () => {
     const finalDispName = formDisplayName.trim() || formCompanyName.trim() || `${formFirstName} ${formLastName}`.trim();
     if (!finalDispName) {
       alert("⚠️ Please enter Company Name or Display Name!");
@@ -833,6 +913,36 @@ export default function VendorsPage() {
       : [];
 
     if (editingVendorId) {
+      try {
+        await fetchApi(`/vendors/${editingVendorId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            account_type: formAccountType,
+            salutation: formSalutation,
+            first_name: formFirstName.trim(),
+            last_name: formLastName.trim(),
+            company_name: formCompanyName.trim(),
+            display_name: finalDispName,
+            email: formEmail.trim(),
+            gstin: formGstin.trim(),
+            work_phone: formWorkPhone.trim(),
+            mobile: formMobile.trim(),
+            pan: formPan.trim(),
+            is_msme: formIsMsme,
+            payment_terms: formPaymentTerms,
+            opening_balance: Number(formOpeningBalance) || 0,
+            city: billing.city || "Surat",
+            billing_address: JSON.stringify(billing),
+            shipping_address: JSON.stringify(shipping),
+            bank_details: JSON.stringify(compiledBank),
+            contact_persons: JSON.stringify(contactPersons),
+            remarks: remarks.trim()
+          })
+        });
+      } catch (err) {
+        console.warn("Backend vendor update fallback", err);
+      }
+
       const updated = vendors.map((v) => {
         if (v.id === editingVendorId) {
           return {
@@ -874,9 +984,44 @@ export default function VendorsPage() {
       });
       saveVendorsList(updated);
     } else {
-      const nextSrNo = vendors.length > 0 ? Math.max(...vendors.map((v) => v.srNo)) + 1 : 1;
+      let assignedId = `ven-${Date.now()}`;
+      let nextSrNo = vendors.length > 0 ? Math.max(...vendors.map((v) => v.srNo)) + 1 : 1;
+      try {
+        const backendRes = await fetchApi<any>("/vendors", {
+          method: "POST",
+          body: JSON.stringify({
+            account_type: formAccountType,
+            salutation: formSalutation,
+            first_name: formFirstName.trim(),
+            last_name: formLastName.trim(),
+            company_name: formCompanyName.trim(),
+            display_name: finalDispName,
+            email: formEmail.trim(),
+            gstin: formGstin.trim(),
+            work_phone: formWorkPhone.trim(),
+            mobile: formMobile.trim(),
+            pan: formPan.trim(),
+            is_msme: formIsMsme,
+            payment_terms: formPaymentTerms,
+            opening_balance: Number(formOpeningBalance) || 0,
+            city: billing.city || "Surat",
+            billing_address: JSON.stringify(billing),
+            shipping_address: JSON.stringify(shipping),
+            bank_details: JSON.stringify(compiledBank),
+            contact_persons: JSON.stringify(contactPersons),
+            remarks: remarks.trim()
+          })
+        });
+        if (backendRes?.id) {
+          assignedId = backendRes.id;
+          if (backendRes.sr_no) nextSrNo = backendRes.sr_no;
+        }
+      } catch (err) {
+        console.warn("Backend vendor create fallback", err);
+      }
+
       const created: Vendor = {
-        id: `v-${Date.now()}`,
+        id: assignedId,
         srNo: nextSrNo,
         account_type: formAccountType,
         salutation: formSalutation,
@@ -916,19 +1061,24 @@ export default function VendorsPage() {
     setIsFormOpen(false);
   };
 
-  const handleDeleteVendor = (id: string) => {
+  const handleDeleteVendor = async (id: string) => {
     if (confirm("Are you sure you want to delete this Vendor record?")) {
+      try {
+        await fetchApi(`/vendors/${id}`, { method: "DELETE" });
+      } catch (err) {
+        console.warn("Backend delete vendor fallback", err);
+      }
       saveVendorsList(vendors.filter((v) => v.id !== id));
     }
   };
 
-  const handleRefreshList = () => {
+  const handleRefreshList = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      setIsActionMenuOpen(false);
-    }, 600);
+    await loadVendorsFromApi();
+    setIsRefreshing(false);
+    setIsActionMenuOpen(false);
   };
+
 
   const handleExportCSV = () => {
     const headers = ["SR NO", "VENDOR NAME", "ACCOUNT TYPE", "PRIMARY CONTACT", "MOBILE", "GSTIN", "PAN", "PAYMENT TERMS"];
