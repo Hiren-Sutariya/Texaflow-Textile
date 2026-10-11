@@ -105,41 +105,41 @@ export default function OMSPerformancePage() {
       </div>
 
       {/* High-Level Executive KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <span>Fulfillment Velocity</span>
-            <Zap className="w-4 h-4 text-emerald-500" />
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className="truncate mr-1">Fulfillment</span>
+            <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
           </div>
-          <p className="text-xl font-extrabold text-emerald-600">98.4%</p>
-          <p className="text-[11px] text-slate-400 font-medium">On-time client order dispatch</p>
+          <p className="text-base sm:text-xl font-extrabold text-emerald-600">98.4%</p>
+          <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">On-time dispatch</p>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <span>Machine Efficiency</span>
-            <BarChart3 className="w-4 h-4 text-blue-500" />
+        <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className="truncate mr-1">Efficiency</span>
+            <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 shrink-0" />
           </div>
-          <p className="text-xl font-extrabold text-blue-600">89.2%</p>
-          <p className="text-[11px] text-slate-400 font-medium">Average stitch output rate</p>
+          <p className="text-base sm:text-xl font-extrabold text-blue-600">89.2%</p>
+          <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Stitch output rate</p>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <span>Job Cost Profit Margin</span>
-            <Percent className="w-4 h-4 text-purple-500" />
+        <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className="truncate mr-1">Profit Margin</span>
+            <Percent className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500 shrink-0" />
           </div>
-          <p className="text-xl font-extrabold text-purple-600">+34.8%</p>
-          <p className="text-[11px] text-slate-400 font-medium">Thread & labor cost yield</p>
+          <p className="text-base sm:text-xl font-extrabold text-purple-600">+34.8%</p>
+          <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Labor yield</p>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <span>Machine Downtime</span>
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
+        <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className="truncate mr-1">Downtime</span>
+            <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0" />
           </div>
-          <p className="text-xl font-extrabold text-amber-600">1.2 Hrs</p>
-          <p className="text-[11px] text-slate-400 font-medium">1 machine under maintenance</p>
+          <p className="text-base sm:text-xl font-extrabold text-amber-600">1.2 Hrs</p>
+          <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Maintenance</p>
         </div>
       </div>
 

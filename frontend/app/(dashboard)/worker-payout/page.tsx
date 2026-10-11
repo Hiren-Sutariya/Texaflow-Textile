@@ -242,37 +242,37 @@ export default function WorkerPayoutPage() {
           <p className="text-[11px] text-slate-400 font-medium">Awaiting cash/bank disbursal</p>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <span>Paid This Month</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+        <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className="truncate mr-1">Paid This Month</span>
+            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
           </div>
-          <p className="text-xl font-extrabold text-emerald-600">
+          <p className="text-base sm:text-xl font-extrabold text-emerald-600">
             ₹{summaryStats.paid.toLocaleString("en-IN")}
           </p>
-          <p className="text-[11px] text-slate-400 font-medium">Disbursed worker vouchers</p>
+          <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Disbursed vouchers</p>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <span>Advances Deducted</span>
-            <Coins className="w-4 h-4 text-indigo-500" />
+        <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className="truncate mr-1">Advances Deducted</span>
+            <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500 shrink-0" />
           </div>
-          <p className="text-xl font-extrabold text-indigo-600">
+          <p className="text-base sm:text-xl font-extrabold text-indigo-600">
             ₹{summaryStats.totalAdvance.toLocaleString("en-IN")}
           </p>
-          <p className="text-[11px] text-slate-400 font-medium">Recovered from worker khata</p>
+          <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Recovered khata</p>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <span>Active Vouchers</span>
-            <UserCheck className="w-4 h-4 text-blue-500" />
+        <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className="truncate mr-1">Active Vouchers</span>
+            <UserCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 shrink-0" />
           </div>
-          <p className="text-xl font-extrabold text-slate-900">
-            {summaryStats.count} Vouchers
+          <p className="text-base sm:text-xl font-extrabold text-slate-900">
+            {summaryStats.count} <span className="text-[10px] sm:text-xs font-semibold text-slate-400">Vouchers</span>
           </p>
-          <p className="text-[11px] text-slate-400 font-medium">Karigars & Helpers total</p>
+          <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Karigars total</p>
         </div>
       </div>
 

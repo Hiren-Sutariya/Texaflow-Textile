@@ -90,32 +90,32 @@ export default function NewJobWorkPage() {
   return (
     <div className="space-y-4 max-w-5xl mx-auto">
       {/* Action Toolbar */}
-      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
+      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Link href="/job-works" className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <span className="text-xs font-bold text-slate-900">Job Card Creation & Thread Schedule Entry</span>
+          <span className="text-xs font-bold text-slate-900 truncate">Job Card Creation & Thread Schedule</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setActiveTab("form")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            className={`flex-1 sm:flex-none text-center px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               activeTab === "form" ? "bg-blue-600 text-white shadow-2xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
-            Job Card Form Entry
+            Job Card Form
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("preview")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            className={`flex-1 sm:flex-none text-center px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               activeTab === "preview" ? "bg-blue-600 text-white shadow-2xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
-            Digital Paper Slip Preview
+            Digital Paper Slip
           </button>
         </div>
       </div>

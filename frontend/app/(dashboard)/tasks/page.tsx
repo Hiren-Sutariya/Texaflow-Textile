@@ -23,12 +23,12 @@ export default function TasksPage() {
   return (
     <div className="space-y-3.5">
       {/* Top Action Toolbar */}
-      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
+      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-          <CheckSquare className="w-4 h-4 text-blue-600" />
+          <CheckSquare className="w-4 h-4 text-blue-600 shrink-0" />
           <span>Staff Task Tracking & Timestamp Audit Logs</span>
         </div>
-        <button className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all whitespace-nowrap shrink-0">
+        <button className="w-full sm:w-auto justify-center inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all whitespace-nowrap shrink-0">
           <Plus className="w-4 h-4" />
           Create New Task
         </button>

@@ -2091,47 +2091,53 @@ export default function VendorsPage() {
         </div>
 
         {/* Right Side: Filters & New Vendor Action */}
-        <div className="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
-          {/* Account Type Filter */}
-          <div className="w-40 sm:w-44">
-            <CustomSelect
-              value={filterAccountType}
-              onChange={(val) => setFilterAccountType(val)}
-              options={[
-                { value: "ALL", label: "All Account Types" },
-                { value: "Supplier / Vendor", label: "Supplier / Vendor" },
-                { value: "Customer / Client", label: "Customer / Client" },
-                { value: "Trading Partner", label: "Trading Partner" },
-                { value: "Internal Firm", label: "Internal Firm" },
-                { value: "Job Work", label: "Job Work" }
-              ]}
-            />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto justify-end">
+          {/* Filters (2 cols on mobile) */}
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+            {/* Account Type Filter */}
+            <div className="w-full sm:w-44">
+              <CustomSelect
+                value={filterAccountType}
+                onChange={(val) => setFilterAccountType(val)}
+                options={[
+                  { value: "ALL", label: "All Account Types" },
+                  { value: "Supplier / Vendor", label: "Supplier / Vendor" },
+                  { value: "Customer / Client", label: "Customer / Client" },
+                  { value: "Trading Partner", label: "Trading Partner" },
+                  { value: "Internal Firm", label: "Internal Firm" },
+                  { value: "Job Work", label: "Job Work" }
+                ]}
+              />
+            </div>
+
+            {/* MSME Status Filter */}
+            <div className="w-full sm:w-40">
+              <CustomSelect
+                value={filterMsme}
+                onChange={(val) => setFilterMsme(val)}
+                options={[
+                  { value: "ALL", label: "All MSME Status" },
+                  { value: "MSME", label: "MSME Registered" },
+                  { value: "NON_MSME", label: "Non-MSME" }
+                ]}
+              />
+            </div>
           </div>
 
-          {/* MSME Status Filter */}
-          <div className="w-36 sm:w-40">
-            <CustomSelect
-              value={filterMsme}
-              onChange={(val) => setFilterMsme(val)}
-              options={[
-                { value: "ALL", label: "All MSME Status" },
-                { value: "MSME", label: "MSME Registered" },
-                { value: "NON_MSME", label: "Non-MSME" }
-              ]}
-            />
-          </div>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={openNewVendorForm}
+              className="flex-1 sm:flex-none h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Vendor</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={openNewVendorForm}
-            className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>New Vendor</span>
-          </button>
+            {/* Action Menu (Three Dots Button matching screenshots) */}
+            <div ref={actionMenuRef} className="relative inline-block shrink-0">
 
-          {/* Action Menu (Three Dots Button matching screenshots) */}
-          <div ref={actionMenuRef} className="relative inline-block">
             <button
               type="button"
               onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
@@ -2421,6 +2427,7 @@ export default function VendorsPage() {
           </div>
         </div>
       </div>
+    </div>
 
       {/* VENDORS TABLE CONTAINER */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">

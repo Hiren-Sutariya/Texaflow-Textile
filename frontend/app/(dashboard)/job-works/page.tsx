@@ -251,10 +251,10 @@ export default function KarigarIssuesPage() {
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-12">
-      {/* TOP 4 SUMMARY STAT CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* TOP 4 SUMMARY STAT CARDS (2 cols on mobile, 4 on desktop) */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         {/* CARD 1: TOTAL PIECES ISSUED */}
-        <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-emerald-300">
+        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-emerald-300">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Total Pieces Issued
@@ -384,7 +384,7 @@ export default function KarigarIssuesPage() {
         </div>
 
         {/* RIGHT ACTION & FILTER CONTROLS */}
-        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-end">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full xl:w-auto justify-end">
           {/* SEARCH INPUT */}
           <div className="relative w-full sm:w-60">
             <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
@@ -405,9 +405,11 @@ export default function KarigarIssuesPage() {
             )}
           </div>
 
-          {/* ALL KARIGARS DROPDOWN - EXACT VENDORS ALIGNMENT & SIZE (IMAGE 2) */}
-          <div ref={karigarDropdownRef} className="relative shrink-0 select-none">
-            <button
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* ALL KARIGARS DROPDOWN */}
+            <div ref={karigarDropdownRef} className="relative flex-1 sm:flex-none select-none">
+              <button
+
               type="button"
               onClick={() => setIsKarigarFilterOpen(!isKarigarFilterOpen)}
               className={`h-9 px-3 bg-white border rounded-xl text-xs font-bold text-slate-900 flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs focus:outline-none ${
@@ -476,54 +478,55 @@ export default function KarigarIssuesPage() {
             )}
           </div>
 
-          {/* + ADD WORKER ISSUE BUTTON */}
-          <button
-            type="button"
-            onClick={() => setIsAddModalOpen(true)}
-            className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95 shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Worker Issue</span>
-          </button>
-
-          {/* THREE DOTS (...) BUTTON */}
-          <div className="relative shrink-0">
+            {/* + ADD WORKER ISSUE BUTTON */}
             <button
               type="button"
-              onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
-              className="h-9 w-9 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center text-slate-600 transition-all cursor-pointer shadow-2xs"
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex-1 sm:flex-none h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95 shrink-0"
             >
-              <MoreHorizontal className="w-4 h-4" />
+              <Plus className="w-4 h-4" />
+              <span>Add Issue</span>
             </button>
 
-            {isActionsMenuOpen && (
-              <div className="absolute right-0 top-11 z-40 w-44 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 space-y-1 animate-in fade-in duration-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.print();
-                    setIsActionsMenuOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-1.5 hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-700 flex items-center gap-2 cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Print Slips</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setStatusFilter("All");
-                    setSelectedKarigarFilter("All");
-                    setIsActionsMenuOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-1.5 hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-700 flex items-center gap-2 cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Clear Filters</span>
-                </button>
-              </div>
-            )}
+            {/* THREE DOTS (...) BUTTON */}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
+                className="h-9 w-9 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center text-slate-600 transition-all cursor-pointer shadow-2xs"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+
+              {isActionsMenuOpen && (
+                <div className="absolute right-0 top-11 z-40 w-44 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 space-y-1 animate-in fade-in duration-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.print();
+                      setIsActionsMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-700 flex items-center gap-2 cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Print Slips</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setStatusFilter("All");
+                      setSelectedKarigarFilter("All");
+                      setIsActionsMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-700 flex items-center gap-2 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Clear Filters</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

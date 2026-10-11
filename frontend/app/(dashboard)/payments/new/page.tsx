@@ -213,18 +213,18 @@ export default function NewPaymentVoucherPage() {
           {/* ROW 1: VOUCHER TYPE */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
             <label className="font-extrabold text-rose-600">Voucher Type*</label>
-            <div className="flex items-center gap-3 max-w-xl">
+            <div className="flex items-center gap-2 sm:gap-3 max-w-xl w-full">
               <button
                 type="button"
                 onClick={() => setFormType("Payment Out")}
-                className={`px-4 py-2 rounded-xl border text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-initial justify-center px-3 sm:px-4 py-2 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
                   formType === "Payment Out"
                     ? "bg-rose-50 text-rose-600 border-rose-400 ring-2 ring-rose-500/20 shadow-2xs"
                     : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                 }`}
               >
                 <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
-                <span>Payment Out (Paid)</span>
+                <span>Payment Out</span>
                 {formType === "Payment Out" && (
                   <span className="w-2 h-2 rounded-full bg-rose-500 ml-1" />
                 )}
@@ -233,14 +233,14 @@ export default function NewPaymentVoucherPage() {
               <button
                 type="button"
                 onClick={() => setFormType("Receipt In")}
-                className={`px-4 py-2 rounded-xl border text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-initial justify-center px-3 sm:px-4 py-2 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
                   formType === "Receipt In"
                     ? "bg-blue-50 text-blue-700 border-blue-400 ring-2 ring-blue-500/20 shadow-2xs"
                     : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                 }`}
               >
                 <ArrowDownLeft className="w-4 h-4 stroke-[2.5]" />
-                <span>Payment In (Received)</span>
+                <span>Payment In</span>
                 {formType === "Receipt In" && (
                   <span className="w-2 h-2 rounded-full bg-blue-500 ml-1" />
                 )}

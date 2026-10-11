@@ -199,74 +199,74 @@ export default function PaymentsAndVouchersPage() {
       {/* ------------------------------------------------------------- */}
       {/* 1. TOP 4 SUMMARY BOXES (KPI CARDS - EXACT MATCHING KARIGAR)    */}
       {/* ------------------------------------------------------------- */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         {/* BOX 1: TOTAL PAYMENT OUT */}
-        <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-rose-300 transition-all">
+        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-rose-300 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate mr-1">
               TOTAL PAYMENT OUT
             </span>
-            <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
-              <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
+              <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             </div>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl font-black text-rose-600 tracking-tight">
+            <span className="text-base sm:text-xl font-black text-rose-600 tracking-tight">
               ₹{stats.totalOut.toLocaleString("en-IN")}
             </span>
           </div>
         </div>
 
         {/* BOX 2: TOTAL PAYMENT IN */}
-        <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-blue-300 transition-all">
+        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-blue-300 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate mr-1">
               TOTAL PAYMENT IN
             </span>
-            <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-              <ArrowDownLeft className="w-4 h-4 stroke-[2.5]" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+              <ArrowDownLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             </div>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl font-black text-blue-600 tracking-tight">
+            <span className="text-base sm:text-xl font-black text-blue-600 tracking-tight">
               ₹{stats.totalIn.toLocaleString("en-IN")}
             </span>
           </div>
         </div>
 
         {/* BOX 3: ACTIVE PARTIES */}
-        <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-sky-300 transition-all">
+        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-sky-300 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate mr-1">
               ACTIVE PARTIES
             </span>
-            <div className="w-8 h-8 rounded-full bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
-              <Users className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl font-black text-slate-900 tracking-tight">
+            <span className="text-base sm:text-xl font-black text-slate-900 tracking-tight">
               {stats.activeParties}
             </span>
-            <span className="text-xs font-bold text-slate-400">Parties</span>
+            <span className="text-[11px] sm:text-xs font-bold text-slate-400">Parties</span>
           </div>
         </div>
 
         {/* BOX 4: TOTAL VOUCHERS */}
-        <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-purple-300 transition-all">
+        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-purple-300 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate mr-1">
               TOTAL VOUCHERS
             </span>
-            <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
-              <FileText className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl font-black text-slate-900 tracking-tight">
+            <span className="text-base sm:text-xl font-black text-slate-900 tracking-tight">
               {stats.totalVouchers}
             </span>
-            <span className="text-xs font-bold text-slate-400">Vouchers</span>
+            <span className="text-[11px] sm:text-xs font-bold text-slate-400">Vouchers</span>
           </div>
         </div>
       </div>
@@ -274,7 +274,7 @@ export default function PaymentsAndVouchersPage() {
       {/* ------------------------------------------------------------- */}
       {/* 2. UNIFIED BAR WITH SEARCH BAR ON LEFT & ADVANCE FILTERS + CREATE VOUCHER ON RIGHT */}
       {/* ------------------------------------------------------------- */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-2.5 relative">
+      <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-2.5 relative">
         {/* LEFT CONTROL: SEARCH INPUT BOX */}
         <div className="relative w-full sm:w-64">
           <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
@@ -296,14 +296,14 @@ export default function PaymentsAndVouchersPage() {
         </div>
 
         {/* RIGHT CONTROLS: ADVANCE FILTERS + CREATE VOUCHER BUTTON */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           
           {/* ADVANCE FILTERS BUTTON & DROPDOWN POPUP */}
-          <div ref={advanceFiltersRef} className="relative shrink-0">
+          <div ref={advanceFiltersRef} className="relative flex-1 sm:flex-none">
             <button
               type="button"
               onClick={() => setIsAdvanceFiltersOpen(!isAdvanceFiltersOpen)}
-              className={`h-9 px-3.5 bg-white border rounded-xl text-xs font-bold text-slate-900 flex items-center gap-2 transition-all cursor-pointer shadow-2xs focus:outline-none ${
+              className={`w-full sm:w-auto justify-center h-9 px-3.5 bg-white border rounded-xl text-xs font-bold text-slate-900 flex items-center gap-2 transition-all cursor-pointer shadow-2xs focus:outline-none ${
                 isAdvanceFiltersOpen
                   ? "border-blue-500 ring-2 ring-blue-500/20"
                   : "border-slate-200 hover:border-blue-500"
@@ -503,7 +503,7 @@ export default function PaymentsAndVouchersPage() {
           {/* + CREATE VOUCHER BUTTON -> NAVIGATES TO /payments/new PAGE */}
           <Link
             href="/payments/new"
-            className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95 shrink-0"
+            className="flex-1 sm:flex-none h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95 shrink-0"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Create Voucher</span>

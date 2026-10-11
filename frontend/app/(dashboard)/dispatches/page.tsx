@@ -226,29 +226,29 @@ export default function DispatchesPage() {
   return (
     <div className="space-y-4 font-sans text-slate-800 pb-12">
       {/* 4 SUMMARY METRIC CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
         {/* Card 1: Dhaga Cutting */}
         <div
           onClick={() => setActiveTab("Dhaga Cutting")}
-          className={`bg-white p-4 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+          className={`bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all cursor-pointer shadow-2xs ${
             activeTab === "Dhaga Cutting" ? "border-rose-400 ring-2 ring-rose-200" : "border-slate-200 hover:border-rose-200"
           }`}
         >
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-extrabold text-rose-600 uppercase tracking-wider">
+            <div className="overflow-hidden">
+              <p className="text-[9px] sm:text-[10px] font-extrabold text-rose-600 uppercase tracking-wider truncate mr-1">
                 Dhaga Cutting
               </p>
-              <p className="text-xl font-black text-rose-950 mt-0.5">
+              <p className="text-base sm:text-xl font-black text-rose-950 mt-0.5">
                 {dhagaCuttingPcs.toLocaleString("en-IN")}{" "}
-                <span className="text-xs font-bold text-rose-700">Pcs</span>
+                <span className="text-[10px] sm:text-xs font-bold text-rose-700">Pcs</span>
               </p>
-              <span className="text-[11px] font-bold text-rose-600 mt-0.5 block">
-                {dhagaCuttingItems.length} Designs in Finishing
+              <span className="text-[10px] sm:text-[11px] font-bold text-rose-600 mt-0.5 block truncate">
+                {dhagaCuttingItems.length} in Finishing
               </span>
             </div>
-            <div className="p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100">
-              <Scissors className="w-5 h-5" />
+            <div className="p-2 sm:p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 shrink-0">
+              <Scissors className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
         </div>
@@ -256,25 +256,25 @@ export default function DispatchesPage() {
         {/* Card 2: Ready for Dispatch */}
         <div
           onClick={() => setActiveTab("Ready for Dispatch")}
-          className={`bg-white p-4 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+          className={`bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all cursor-pointer shadow-2xs ${
             activeTab === "Ready for Dispatch" ? "border-emerald-400 ring-2 ring-emerald-200" : "border-slate-200 hover:border-emerald-200"
           }`}
         >
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">
-                Ready for Dispatch
+            <div className="overflow-hidden">
+              <p className="text-[9px] sm:text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider truncate mr-1">
+                Ready Dispatch
               </p>
-              <p className="text-xl font-black text-emerald-900 mt-0.5">
+              <p className="text-base sm:text-xl font-black text-emerald-900 mt-0.5">
                 {readyPcs.toLocaleString("en-IN")}{" "}
-                <span className="text-xs font-bold text-emerald-700">Pcs</span>
+                <span className="text-[10px] sm:text-xs font-bold text-emerald-700">Pcs</span>
               </p>
-              <span className="text-[11px] font-bold text-emerald-600 mt-0.5 block">
-                {readyItems.length} Stock Ready in Factory
+              <span className="text-[10px] sm:text-[11px] font-bold text-emerald-600 mt-0.5 block truncate">
+                {readyItems.length} Ready in Factory
               </span>
             </div>
-            <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200">
-              <PackageCheck className="w-5 h-5" />
+            <div className="p-2 sm:p-3 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 shrink-0">
+              <PackageCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
         </div>
@@ -282,25 +282,25 @@ export default function DispatchesPage() {
         {/* Card 3: Dispatched */}
         <div
           onClick={() => setActiveTab("Dispatched")}
-          className={`bg-white p-4 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+          className={`bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all cursor-pointer shadow-2xs ${
             activeTab === "Dispatched" ? "border-blue-400 ring-2 ring-blue-200" : "border-slate-200 hover:border-blue-200"
           }`}
         >
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-extrabold text-blue-700 uppercase tracking-wider">
+            <div className="overflow-hidden">
+              <p className="text-[9px] sm:text-[10px] font-extrabold text-blue-700 uppercase tracking-wider truncate mr-1">
                 Dispatched
               </p>
-              <p className="text-xl font-black text-blue-950 mt-0.5">
+              <p className="text-base sm:text-xl font-black text-blue-950 mt-0.5">
                 {dispatchedPcs.toLocaleString("en-IN")}{" "}
-                <span className="text-xs font-bold text-blue-700">Pcs</span>
+                <span className="text-[10px] sm:text-xs font-bold text-blue-700">Pcs</span>
               </p>
-              <span className="text-[11px] font-bold text-blue-600 mt-0.5 block">
+              <span className="text-[10px] sm:text-[11px] font-bold text-blue-600 mt-0.5 block truncate">
                 {dispatchedItems.length} Sent to Party
               </span>
             </div>
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
-              <Truck className="w-5 h-5" />
+            <div className="p-2 sm:p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0">
+              <Truck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
         </div>
@@ -308,25 +308,25 @@ export default function DispatchesPage() {
         {/* Card 4: Completed */}
         <div
           onClick={() => setActiveTab("Completed")}
-          className={`bg-white p-4 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+          className={`bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all cursor-pointer shadow-2xs ${
             activeTab === "Completed" ? "border-purple-400 ring-2 ring-purple-200" : "border-slate-200 hover:border-purple-200"
           }`}
         >
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-extrabold text-purple-700 uppercase tracking-wider">
+            <div className="overflow-hidden">
+              <p className="text-[9px] sm:text-[10px] font-extrabold text-purple-700 uppercase tracking-wider truncate mr-1">
                 Completed
               </p>
-              <p className="text-xl font-black text-purple-950 mt-0.5">
+              <p className="text-base sm:text-xl font-black text-purple-950 mt-0.5">
                 {completedPcs.toLocaleString("en-IN")}{" "}
-                <span className="text-xs font-bold text-purple-700">Pcs</span>
+                <span className="text-[10px] sm:text-xs font-bold text-purple-700">Pcs</span>
               </p>
-              <span className="text-[11px] font-bold text-purple-600 mt-0.5 block">
-                {completedItems.length} Orders Finished
+              <span className="text-[10px] sm:text-[11px] font-bold text-purple-600 mt-0.5 block truncate">
+                {completedItems.length} Finished
               </span>
             </div>
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl border border-purple-100">
-              <CheckCircle2 className="w-5 h-5" />
+            <div className="p-2 sm:p-3 bg-purple-50 text-purple-600 rounded-xl border border-purple-100 shrink-0">
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
         </div>

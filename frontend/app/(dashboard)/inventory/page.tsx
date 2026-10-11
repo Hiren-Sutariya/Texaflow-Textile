@@ -72,13 +72,13 @@ export default function InventoryPage() {
   return (
     <div className="space-y-3.5">
       {/* Filter Tabs & Stock Totals Toolbar */}
-      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5">
+      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
           {["All", "Company", "Party"].map((tab) => (
             <button
               key={tab}
               onClick={() => setOwnershipFilter(tab)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                 ownershipFilter === tab
                   ? "bg-blue-600 text-white shadow-2xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -89,14 +89,14 @@ export default function InventoryPage() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="px-2.5 py-1 bg-blue-50 border border-blue-200 rounded-md text-[11px] font-bold text-blue-800">
             Company Stock: 27.5 kg
           </div>
           <div className="px-2.5 py-1 bg-purple-50 border border-purple-200 rounded-md text-[11px] font-bold text-purple-800">
             Party Owned: 500.0 m
           </div>
-          <div className="relative w-48 sm:w-56">
+          <div className="relative flex-1 sm:w-56 min-w-[180px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"

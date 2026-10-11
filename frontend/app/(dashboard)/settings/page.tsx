@@ -42,10 +42,10 @@ export default function SettingsPage() {
       )}
 
       {/* Settings Navigation Tabs */}
-      <div className="flex border-b border-slate-200 gap-6 text-sm font-semibold">
+      <div className="flex border-b border-slate-200 gap-4 sm:gap-6 text-xs sm:text-sm font-semibold overflow-x-auto pb-1 sm:pb-0">
         <button
           onClick={() => setActiveTab("company")}
-          className={`pb-3 border-b-2 transition-colors ${
+          className={`pb-2.5 sm:pb-3 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === "company" ? "border-blue-700 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
@@ -53,7 +53,7 @@ export default function SettingsPage() {
         </button>
         <button
           onClick={() => setActiveTab("machines")}
-          className={`pb-3 border-b-2 transition-colors ${
+          className={`pb-2.5 sm:pb-3 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === "machines" ? "border-blue-700 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
@@ -61,7 +61,7 @@ export default function SettingsPage() {
         </button>
         <button
           onClick={() => setActiveTab("warehouses")}
-          className={`pb-3 border-b-2 transition-colors ${
+          className={`pb-2.5 sm:pb-3 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === "warehouses" ? "border-blue-700 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >

@@ -16,33 +16,35 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       {/* Action Bar */}
-      <div className="flex justify-end items-center gap-2">
-          <select
-            value={selectedRange}
-            onChange={(e) => setSelectedRange(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
-          >
-            <option>Today (22 Sept 2026)</option>
-            <option>This Week</option>
-            <option>This Month (Sept 2026)</option>
-            <option>Q3 FY 2026-27</option>
-          </select>
+      <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
+        <select
+          value={selectedRange}
+          onChange={(e) => setSelectedRange(e.target.value)}
+          className="w-full sm:w-auto border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+        >
+          <option>Today (22 Sept 2026)</option>
+          <option>This Week</option>
+          <option>This Month (Sept 2026)</option>
+          <option>Q3 FY 2026-27</option>
+        </select>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={handleShareWhatsApp}
-            className="inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg font-bold text-xs transition-colors shadow-2xs cursor-pointer active:scale-95"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg font-bold text-xs transition-colors shadow-2xs cursor-pointer active:scale-95"
           >
             <MessageSquare className="w-3.5 h-3.5" /> Share via WhatsApp
           </button>
-          <button className="inline-flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-medium text-xs transition-colors shadow-sm cursor-pointer">
+          <button className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-medium text-xs transition-colors shadow-sm cursor-pointer">
             <Download className="w-3.5 h-3.5" /> Export Excel / PDF
           </button>
         </div>
+      </div>
 
       {/* Tabs Bar */}
-      <div className="flex border-b border-slate-200 gap-6 text-sm font-semibold">
+      <div className="flex border-b border-slate-200 gap-4 sm:gap-6 text-xs sm:text-sm font-semibold overflow-x-auto pb-1 sm:pb-0">
         <button
           onClick={() => setActiveTab("production")}
-          className={`pb-3 border-b-2 transition-colors ${
+          className={`pb-2.5 sm:pb-3 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === "production" ? "border-blue-700 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
@@ -50,7 +52,7 @@ export default function ReportsPage() {
         </button>
         <button
           onClick={() => setActiveTab("party")}
-          className={`pb-3 border-b-2 transition-colors ${
+          className={`pb-2.5 sm:pb-3 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === "party" ? "border-blue-700 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
@@ -58,7 +60,7 @@ export default function ReportsPage() {
         </button>
         <button
           onClick={() => setActiveTab("financial")}
-          className={`pb-3 border-b-2 transition-colors ${
+          className={`pb-2.5 sm:pb-3 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === "financial" ? "border-blue-700 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >

@@ -523,48 +523,48 @@ export default function JobOrdersPage() {
   return (
     <div className="space-y-4 font-sans text-slate-800">
       {/* SUMMARY STAT CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
         {/* CARD 1: TOTAL ORDERS */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Job Orders</p>
-            <p className="text-xl font-black text-slate-900 mt-1">{totalOrdersCount} Orders</p>
+        <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate mr-1">Total Orders</p>
+            <p className="text-base sm:text-xl font-black text-slate-900 mt-0.5">{totalOrdersCount} <span className="text-[10px] sm:text-xs font-semibold text-slate-500">Orders</span></p>
           </div>
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
-            <Briefcase className="w-5 h-5" />
+          <div className="p-2 sm:p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0">
+            <Briefcase className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
         {/* CARD 2: IN PRODUCTION */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">In Production</p>
-            <p className="text-xl font-black text-blue-600 mt-1">{runningOrdersCount} Active</p>
+        <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate mr-1">In Production</p>
+            <p className="text-base sm:text-xl font-black text-blue-600 mt-0.5">{runningOrdersCount} <span className="text-[10px] sm:text-xs font-semibold text-blue-500">Active</span></p>
           </div>
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
-            <Clock className="w-5 h-5" />
+          <div className="p-2 sm:p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
         {/* CARD 3: DHAGA CUTTING */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Dhaga Cutting</p>
-            <p className="text-xl font-black text-rose-600 mt-1">{dhagaCuttingOrdersCount} Orders</p>
+        <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate mr-1">Dhaga Cutting</p>
+            <p className="text-base sm:text-xl font-black text-rose-600 mt-0.5">{dhagaCuttingOrdersCount} <span className="text-[10px] sm:text-xs font-semibold text-rose-500">Orders</span></p>
           </div>
-          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100">
-            <Scissors className="w-5 h-5" />
+          <div className="p-2 sm:p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 shrink-0">
+            <Scissors className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
         {/* CARD 4: COMPLETED */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Completed</p>
-            <p className="text-xl font-black text-emerald-600 mt-1">{completedOrdersCount} Done</p>
+        <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate mr-1">Completed</p>
+            <p className="text-base sm:text-xl font-black text-emerald-600 mt-0.5">{completedOrdersCount} <span className="text-[10px] sm:text-xs font-semibold text-emerald-500">Done</span></p>
           </div>
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="p-2 sm:p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 shrink-0">
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
       </div>

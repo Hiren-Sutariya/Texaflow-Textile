@@ -381,64 +381,64 @@ export default function ExpensesPage() {
   return (
     <div className="space-y-4 font-sans text-slate-800 pb-12">
       {/* 1. TOP 4 ERP METRIC SUMMARY CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
         {/* CARD 1: TOTAL EXPENSES */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+        <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate mr-1">
               {periodFilter === "this_week"
-                ? "TOTAL EXPENSES (THIS WEEK)"
+                ? "TOTAL (THIS WEEK)"
                 : periodFilter === "this_month"
-                ? "TOTAL EXPENSES (THIS MONTH)"
+                ? "TOTAL (THIS MONTH)"
                 : periodFilter === "this_year"
-                ? "TOTAL EXPENSES (2026)"
+                ? "TOTAL (2026)"
                 : "TOTAL EXPENSES"}
             </p>
-            <p className="text-xl font-black text-slate-900 mt-0.5">₹{totalExpenseAmount.toLocaleString("en-IN")}</p>
-            <span className="text-[11px] font-semibold text-slate-500 mt-0.5 block">{periodExpenses.length} Expense Records</span>
+            <p className="text-base sm:text-xl font-black text-slate-900 mt-0.5">₹{totalExpenseAmount.toLocaleString("en-IN")}</p>
+            <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 mt-0.5 block truncate">{periodExpenses.length} Records</span>
           </div>
-          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 shrink-0">
-            <Receipt className="w-5 h-5" />
+          <div className="p-2 sm:p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 shrink-0">
+            <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
         {/* CARD 2: TOTAL PAID */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL PAID</p>
-            <p className="text-xl font-black text-blue-700 mt-0.5">₹{totalPaidAmount.toLocaleString("en-IN")}</p>
-            <span className="text-[11px] font-semibold text-blue-600 mt-0.5 block">Bank Account & Cash</span>
+        <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate mr-1">TOTAL PAID</p>
+            <p className="text-base sm:text-xl font-black text-blue-700 mt-0.5">₹{totalPaidAmount.toLocaleString("en-IN")}</p>
+            <span className="text-[10px] sm:text-[11px] font-semibold text-blue-600 mt-0.5 block truncate">Bank & Cash</span>
           </div>
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0">
-            <Check className="w-5 h-5" />
+          <div className="p-2 sm:p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0">
+            <Check className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
         {/* CARD 3: PENDING / UNPAID */}
-        <div className="bg-white p-4 rounded-xl border border-amber-200/90 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">PENDING / UNPAID</p>
-            <p className="text-xl font-black text-amber-700 mt-0.5">₹{unpaidExpensesAmount.toLocaleString("en-IN")}</p>
-            <span className="text-[11px] font-semibold text-amber-600 mt-0.5 block">Vendor Due Settlement</span>
+        <div className="bg-white p-3 sm:p-4 rounded-xl border border-amber-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[9px] sm:text-[10px] font-bold text-amber-600 uppercase tracking-wider truncate mr-1">PENDING / DUE</p>
+            <p className="text-base sm:text-xl font-black text-amber-700 mt-0.5">₹{unpaidExpensesAmount.toLocaleString("en-IN")}</p>
+            <span className="text-[10px] sm:text-[11px] font-semibold text-amber-600 mt-0.5 block truncate">Vendor Due</span>
           </div>
-          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 shrink-0">
-            <Clock className="w-5 h-5" />
+          <div className="p-2 sm:p-3 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 shrink-0">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
         {/* CARD 4: TOP CATEGORY */}
-        <div className="bg-white p-4 rounded-xl border border-purple-200/90 shadow-2xs flex items-center justify-between">
+        <div className="bg-white p-3 sm:p-4 rounded-xl border border-purple-200/90 shadow-2xs flex items-center justify-between">
           <div className="overflow-hidden">
-            <p className="text-[10px] font-bold text-purple-700 uppercase tracking-wider">TOP CATEGORY</p>
-            <p className="text-lg font-black text-purple-900 mt-0.5 truncate max-w-[170px]" title={topCategory}>
+            <p className="text-[9px] sm:text-[10px] font-bold text-purple-700 uppercase tracking-wider truncate mr-1">TOP CATEGORY</p>
+            <p className="text-sm sm:text-lg font-black text-purple-900 mt-0.5 truncate max-w-[170px]" title={topCategory}>
               {topCategory}
             </p>
-            <span className="text-[11px] font-bold text-purple-700 mt-0.5 block">
+            <span className="text-[10px] sm:text-[11px] font-bold text-purple-700 mt-0.5 block truncate">
               ₹{topCategoryAmount.toLocaleString("en-IN")} Spent
             </span>
           </div>
-          <div className="p-3 bg-purple-50 text-purple-600 rounded-xl border border-purple-100 shrink-0">
-            <Tag className="w-5 h-5" />
+          <div className="p-2 sm:p-3 bg-purple-50 text-purple-600 rounded-xl border border-purple-100 shrink-0">
+            <Tag className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
       </div>

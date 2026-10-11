@@ -1511,9 +1511,9 @@ export default function EmployeesPage() {
         </div>
 
         {/* Right Side: Status Filter Dropdown, Add Worker & Action Menu */}
-        <div className="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
-          {/* Custom Select Status Filter (Active / Inactive) */}
-          <div className="w-36 sm:w-40">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto justify-end">
+          {/* Custom Select Status Filter */}
+          <div className="w-full sm:w-40">
             <CustomSelect
               value={statusFilter}
               onChange={(val) => setStatusFilter(val)}
@@ -1525,29 +1525,30 @@ export default function EmployeesPage() {
             />
           </div>
 
-          <button
-            type="button"
-            onClick={openNewWorkerForm}
-            className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Worker</span>
-          </button>
-
-          {/* Action Menu (Three Dots Button matching screenshots) */}
-          <div ref={actionMenuRef} className="relative inline-block">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               type="button"
-              onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
-              className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer shadow-2xs ${
-                isActionMenuOpen
-                  ? "bg-emerald-50 border-emerald-500 text-emerald-700 ring-2 ring-emerald-500/20"
-                  : "bg-white hover:bg-slate-100 border-slate-300 text-slate-600"
-              }`}
-              title="More Actions & Filters"
+              onClick={openNewWorkerForm}
+              className="flex-1 sm:flex-none h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
             >
-              <MoreHorizontal className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Worker</span>
             </button>
+
+            {/* Action Menu (Three Dots Button matching screenshots) */}
+            <div ref={actionMenuRef} className="relative inline-block shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
+                className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer shadow-2xs ${
+                  isActionMenuOpen
+                    ? "bg-emerald-50 border-emerald-500 text-emerald-700 ring-2 ring-emerald-500/20"
+                    : "bg-white hover:bg-slate-100 border-slate-300 text-slate-600"
+                }`}
+                title="More Actions & Filters"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
 
             {isActionMenuOpen && (
               <div
@@ -1685,6 +1686,7 @@ export default function EmployeesPage() {
           </div>
         </div>
       </div>
+    </div>
 
       {/* WORKER DIRECTORY TABLE CARD */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
