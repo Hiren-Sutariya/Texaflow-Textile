@@ -84,36 +84,37 @@ export default function Home() {
 
   // 3. SECOND SCREEN: Once authenticated, show the 8 Module Dashboard Cards Grid!
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-3 sm:p-6 lg:p-8 select-none gap-4 sm:gap-5 font-sans animate-in fade-in duration-200">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-start md:justify-center items-center p-3 sm:p-6 lg:p-8 pt-3 pb-8 select-none gap-3.5 sm:gap-5 font-sans animate-in fade-in duration-200">
       
       {/* TOP USER WELCOME & TERMINAL STATUS BAR */}
-      <div className="w-full max-w-6xl bg-white border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-900 font-bold flex items-center justify-center text-base border border-amber-200 shrink-0">
-            {user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : "👑"}
+      <div className="w-full max-w-6xl bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 shadow-2xs flex items-center justify-between gap-2.5 sm:gap-3 text-xs">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0 tracking-wider">
+            OS
           </div>
-          <div>
-            <div className="font-extrabold text-slate-900 text-xs flex items-center gap-2">
-              <span>{user?.name || "Hiren Sutariya"}</span>
-              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+          <div className="min-w-0 truncate">
+            <div className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5 truncate">
+              <span className="truncate">{user?.firmName || "Om Sai Enterprises"}</span>
+              <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[9px] sm:text-[10px] font-bold shrink-0">
                 {user?.roleTitle || "Owner"}
               </span>
             </div>
-            <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
-              <Building2 className="w-3 h-3 text-slate-400" />
-              <span>{user?.firmName || "Om Sai Enterprises"}</span>
+            <div className="text-[10px] sm:text-[11px] text-blue-600 font-bold flex items-center gap-1 mt-0.5 truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="truncate">TexaFlow Textile • {user?.name || "Hiren Sutariya"}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end shrink-0">
           <button
             type="button"
             onClick={logout}
-            className="w-full sm:w-auto px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl border border-rose-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+            className="px-2.5 sm:px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl border border-rose-200 transition-colors flex items-center gap-1.5 cursor-pointer text-xs shrink-0"
+            title="Lock Terminal"
           >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Lock Terminal</span>
+            <LogOut className="w-3.5 h-3.5 shrink-0" />
+            <span>Lock</span>
           </button>
         </div>
       </div>
