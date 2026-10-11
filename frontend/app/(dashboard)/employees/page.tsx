@@ -180,6 +180,38 @@ export interface AttendanceRecord {
 
 const initialEmployees: Employee[] = [
   {
+    id: "emp-104",
+    code: "STF-002",
+    name: "Ketan J. Solanki",
+    role: "Punching & Design Master",
+    employee_type: "Salaried Staff",
+    mobile: "+91 97230 33211",
+    email: "ketan.solanki@example.com",
+    assigned_machine: "Machine 5",
+    shift: "Day Shift",
+    monthly_salary: 42000,
+    advance_balance: 0,
+    status: "Inactive",
+    photoUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+    helpers: [
+      { id: "h-104", name: "Mahesh Solanki", mobile: "+91 97230 11223" }
+    ],
+    bank_details: {
+      bank_name: "Kotak Mahindra Bank",
+      account_number: "9099222341234",
+      ifsc_code: "KKBK0000811",
+      branch_name: "Varachha Road, Surat",
+      upi_id: "ketan@kotak"
+    },
+    portal_credentials: [
+      { id: "pc-103", email: "ketan.design@omsai.com", password: "Password@123" }
+    ],
+    documents: [
+      { id: "d-104", name: "Design_Master_Certificate.pdf", size: "2.4 MB", date: "2026-09-15", type: "pdf" },
+      { id: "d-105", name: "Aadhaar_Ketan.png", size: "620 KB", date: "2026-09-15", type: "image" }
+    ]
+  },
+  {
     id: "emp-101",
     code: "KAR-001",
     name: "Ramesh Bhai Patel",
@@ -261,38 +293,6 @@ const initialEmployees: Employee[] = [
     bank_details: undefined,
     portal_credentials: [],
     documents: []
-  },
-  {
-    id: "emp-104",
-    code: "STF-002",
-    name: "Ketan J. Solanki",
-    role: "Punching & Design Master",
-    employee_type: "Salaried Staff",
-    mobile: "+91 97230 33211",
-    email: "ketan.solanki@example.com",
-    assigned_machine: "Machine 5",
-    shift: "Day Shift",
-    monthly_salary: 42000,
-    advance_balance: 0,
-    status: "Inactive",
-    photoUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
-    helpers: [
-      { id: "h-104", name: "Mahesh Solanki", mobile: "+91 97230 11223" }
-    ],
-    bank_details: {
-      bank_name: "Kotak Mahindra Bank",
-      account_number: "9099222341234",
-      ifsc_code: "KKBK0000811",
-      branch_name: "Varachha Road, Surat",
-      upi_id: "ketan@kotak"
-    },
-    portal_credentials: [
-      { id: "pc-103", email: "ketan.design@omsai.com", password: "Password@123" }
-    ],
-    documents: [
-      { id: "d-104", name: "Design_Master_Certificate.pdf", size: "2.4 MB", date: "2026-09-15", type: "pdf" },
-      { id: "d-105", name: "Aadhaar_Ketan.png", size: "620 KB", date: "2026-09-15", type: "image" }
-    ]
   }
 ];
 
@@ -341,25 +341,54 @@ export default function EmployeesPage() {
       const live = await fetchApi<any[]>("/employees");
       if (Array.isArray(live) && live.length > 0) {
         const mapped: Employee[] = live.map((e, idx) => {
-          const isKarigar = (e.role || "").toLowerCase().includes("karigar") || (e.role || "").toLowerCase().includes("operator");
+          let parsedHelpers: any[] = [];
+          let parsedBank = undefined;
+          let parsedPortal: any[] = [];
+          let parsedDocs: any[] = [];
+
+          if (e.helpers) {
+            try {
+              parsedHelpers = typeof e.helpers === "string" ? JSON.parse(e.helpers) : e.helpers;
+            } catch {}
+          }
+          if (e.bank_details) {
+            try {
+              parsedBank = typeof e.bank_details === "string" ? JSON.parse(e.bank_details) : e.bank_details;
+            } catch {}
+          }
+          if (e.portal_credentials) {
+            try {
+              parsedPortal = typeof e.portal_credentials === "string" ? JSON.parse(e.portal_credentials) : e.portal_credentials;
+            } catch {}
+          }
+          if (e.documents) {
+            try {
+              parsedDocs = typeof e.documents === "string" ? JSON.parse(e.documents) : e.documents;
+            } catch {}
+          }
+
+          const isKarigar = e.employee_type
+            ? e.employee_type === "Karigar"
+            : ((e.role || "").toLowerCase().includes("karigar") || (e.role || "").toLowerCase().includes("operator"));
+
           return {
             id: e.id || `emp-${idx + 1}`,
-            code: isKarigar ? `KAR-00${idx + 1}` : `STF-00${idx + 1}`,
+            code: e.code || (isKarigar ? `KAR-00${idx + 1}` : `STF-00${idx + 1}`),
             name: e.name,
             role: e.role || (isKarigar ? "Karigar" : "Staff"),
-            employee_type: isKarigar ? "Karigar" : "Salaried Staff",
-            mobile: e.phone || "-",
-            email: "",
-            assigned_machine: `Machine ${(idx % 5) + 1}`,
-            shift: "Day Shift",
+            employee_type: (e.employee_type || (isKarigar ? "Karigar" : "Salaried Staff")) as any,
+            mobile: e.mobile || e.phone || "-",
+            email: e.email || "",
+            assigned_machine: e.assigned_machine || "Machine 1",
+            shift: (e.shift || "Day Shift") as any,
             monthly_salary: Number(e.monthly_salary) || 0,
-            advance_balance: Number(e.current_advance) || 0,
+            advance_balance: Number(e.advance_balance || e.current_advance) || 0,
             status: (e.status === "Inactive" ? "Inactive" : "Active") as any,
-            photoUrl: `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80`,
-            helpers: [],
-            bank_details: undefined,
-            portal_credentials: [],
-            documents: []
+            photoUrl: e.photo_url || e.photoUrl || `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80`,
+            helpers: Array.isArray(parsedHelpers) ? parsedHelpers : [],
+            bank_details: parsedBank,
+            portal_credentials: Array.isArray(parsedPortal) ? parsedPortal : [],
+            documents: Array.isArray(parsedDocs) ? parsedDocs : []
           };
         });
         setEmployees(mapped);
@@ -369,6 +398,7 @@ export default function EmployeesPage() {
     } catch (err) {
       console.warn("Backend employees load fallback", err);
     }
+
 
     try {
       const saved = localStorage.getItem("app_employees_data");
@@ -616,6 +646,24 @@ export default function EmployeesPage() {
     }
   };
 
+  const handleToggleWorkerStatus = async (emp: Employee) => {
+    const nextStatus: "Active" | "Inactive" = emp.status === "Active" ? "Inactive" : "Active";
+    setEmployees((prev) => {
+      const next = prev.map((x) => (x.id === emp.id ? { ...x, status: nextStatus } : x));
+      try { localStorage.setItem("app_employees_data", JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    try {
+      await fetchApi(`/employees/${emp.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: nextStatus })
+      });
+    } catch (err) {
+      console.warn("Backend status update error", err);
+    }
+  };
+
   const handleSaveFullWorker = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!formName.trim()) {
@@ -639,11 +687,21 @@ export default function EmployeesPage() {
         await fetchApi(`/employees/${editingWorkerId}`, {
           method: "PUT",
           body: JSON.stringify({
+            code: khata,
             name: formName.trim(),
             role: isKarigar ? "Karigar" : "Staff",
-            phone: formMobile.trim() || "-",
+            employee_type: formCategory,
+            mobile: formMobile.trim() || "-",
+            email: formEmail.trim(),
+            assigned_machine: formMachineNo.trim() || "Machine 1",
+            shift: formShift,
             monthly_salary: Number(formSalary) || 0,
-            status: "Active"
+            status: "Active",
+            photo_url: formPhotoUrl,
+            helpers: JSON.stringify(helpersList),
+            bank_details: JSON.stringify(compiledBank),
+            portal_credentials: JSON.stringify(portalCredentials),
+            documents: JSON.stringify(documentsList)
           })
         });
       } catch (err) {
@@ -680,12 +738,22 @@ export default function EmployeesPage() {
         const backendRes = await fetchApi<any>("/employees", {
           method: "POST",
           body: JSON.stringify({
+            code: khata,
             name: formName.trim(),
             role: isKarigar ? "Karigar" : "Staff",
-            phone: formMobile.trim() || "-",
+            employee_type: formCategory,
+            mobile: formMobile.trim() || "-",
+            email: formEmail.trim(),
+            assigned_machine: formMachineNo.trim() || "Machine 1",
+            shift: formShift,
             monthly_salary: Number(formSalary) || 0,
-            current_advance: 0,
-            status: "Active"
+            advance_balance: 0,
+            status: "Active",
+            photo_url: formPhotoUrl,
+            helpers: JSON.stringify(helpersList),
+            bank_details: JSON.stringify(compiledBank),
+            portal_credentials: JSON.stringify(portalCredentials),
+            documents: JSON.stringify(documentsList)
           })
         });
         if (backendRes?.id) {
@@ -694,6 +762,7 @@ export default function EmployeesPage() {
       } catch (err) {
         console.warn("Backend employee create fallback", err);
       }
+
 
       const newEmp: Employee = {
         id: assignedId,
@@ -1842,13 +1911,7 @@ export default function EmployeesPage() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setEmployees(
-                      employees.map((x) =>
-                        x.id === emp.id
-                          ? { ...x, status: x.status === "Active" ? "Inactive" : "Active" }
-                          : x
-                      )
-                    );
+                    handleToggleWorkerStatus(emp);
                   }}
                   className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold border transition-all shrink-0 ${
                     emp.status === "Active"
@@ -2020,9 +2083,7 @@ export default function EmployeesPage() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setEmployees(
-                          employees.map((x) => (x.id === emp.id ? { ...x, status: x.status === "Active" ? "Inactive" : "Active" } : x))
-                        );
+                        handleToggleWorkerStatus(emp);
                       }}
                       className={`px-3 py-1 rounded-lg text-[10px] font-extrabold border transition-all cursor-pointer ${
                         emp.status === "Active"
