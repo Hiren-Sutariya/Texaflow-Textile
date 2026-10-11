@@ -29,7 +29,7 @@ export interface WorkerPayoutRecord {
   role: "Karigar (Master)" | "Helper Worker" | "Shift Master" | "Maintenance";
   khata_no: string;
   machine_no: string;
-  unit: "Unit 1 (Amrut)" | "Unit 2 (Kadodara)";
+  unit: "Unit 1" | "Unit 2 (Kadodara)";
   shift_output_pcs: number;
   total_stitches: number;
   gross_earning: number;
@@ -49,7 +49,7 @@ const initialPayoutRecords: WorkerPayoutRecord[] = [
     role: "Karigar (Master)",
     khata_no: "KHT-402",
     machine_no: "M-01 (High Speed)",
-    unit: "Unit 1 (Amrut)",
+    unit: "Unit 1",
     shift_output_pcs: 1850,
     total_stitches: 485000,
     gross_earning: 14550,
@@ -67,7 +67,7 @@ const initialPayoutRecords: WorkerPayoutRecord[] = [
     role: "Helper Worker",
     khata_no: "KHT-405",
     machine_no: "M-02",
-    unit: "Unit 1 (Amrut)",
+    unit: "Unit 1",
     shift_output_pcs: 1400,
     total_stitches: 320000,
     gross_earning: 9600,
@@ -174,7 +174,7 @@ export default function WorkerPayoutPage() {
       role: formRole,
       khata_no: formKhataNo || "KHT-101",
       machine_no: "M-01",
-      unit: "Unit 1 (Amrut)",
+      unit: "Unit 1",
       shift_output_pcs: 1200,
       total_stitches: 350000,
       gross_earning: gross,

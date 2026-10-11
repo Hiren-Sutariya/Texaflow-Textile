@@ -18,13 +18,13 @@ import {
 } from "lucide-react";
 
 export default function OMSPerformancePage() {
-  const [selectedUnit, setSelectedUnit] = useState<"All" | "Unit 1 (Amrut)" | "Unit 2 (Kadodara)">("All");
+  const [selectedUnit, setSelectedUnit] = useState<"All" | "Unit 1" | "Unit 2 (Kadodara)">("All");
 
   const machineStats = [
     {
       id: "M-01",
       name: "Embroidery Machine 01 (High-Speed)",
-      unit: "Unit 1 (Amrut)",
+      unit: "Unit 1",
       status: "Running",
       operator: "Mukeshbhai Karigar",
       speed_rpm: 850,
@@ -36,7 +36,7 @@ export default function OMSPerformancePage() {
     {
       id: "M-02",
       name: "Embroidery Machine 02",
-      unit: "Unit 1 (Amrut)",
+      unit: "Unit 1",
       status: "Running",
       operator: "Rameshbhai Helper",
       speed_rpm: 780,
@@ -145,12 +145,12 @@ export default function OMSPerformancePage() {
 
       {/* Unit Performance Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Unit 1 Amrut */}
+        {/* Unit 1 */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
             <div className="flex items-center gap-2">
               <Factory className="w-4 h-4 text-emerald-600" />
-              <h2 className="text-sm font-bold text-slate-900">Unit 1 (Amrut Unit)</h2>
+              <h2 className="text-sm font-bold text-slate-900">Unit 1 (Main Plant)</h2>
             </div>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
               Optimal (92.5%)
@@ -210,7 +210,7 @@ export default function OMSPerformancePage() {
           </h3>
 
           <div className="flex items-center gap-2">
-            {(["All", "Unit 1 (Amrut)", "Unit 2 (Kadodara)"] as const).map((unit) => (
+            {(["All", "Unit 1", "Unit 2 (Kadodara)"] as const).map((unit) => (
               <button
                 key={unit}
                 onClick={() => setSelectedUnit(unit)}

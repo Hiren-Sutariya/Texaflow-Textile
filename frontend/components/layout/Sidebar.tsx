@@ -31,8 +31,10 @@ import {
   LayoutGrid,
   Wallet,
   TrendingUp,
-  Coins
+  Coins,
+  LogOut
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface MenuItem {
   name: string;
@@ -93,6 +95,7 @@ const quickCreateOptions = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout } = useAuth();
 
   const [showQuickModal, setShowQuickModal] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -143,7 +146,7 @@ export function Sidebar() {
               </h1>
               <p className="text-[9px] font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span>{activeUnit === "Unit 2" ? "Kadodara" : "Amrut"}</span>
+                <span>TexaFlow Textile</span>
               </p>
             </div>
           </Link>
@@ -236,13 +239,26 @@ export function Sidebar() {
         <div className="h-[57px] px-3 border-t border-slate-200 bg-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-extrabold text-xs flex items-center justify-center border border-amber-200 shrink-0">
-              👤
+              {user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : "👤"}
             </div>
             <div className="truncate">
-              <p className="text-xs font-bold text-slate-900 truncate leading-none">Om Sai Embroidery</p>
-              <p className="text-[10px] text-slate-400 font-medium truncate mt-1">Owner Account</p>
+              <p className="text-xs font-bold text-slate-900 truncate leading-none">
+                {user?.name || "Om Sai Embroidery"}
+              </p>
+              <p className="text-[10px] text-slate-400 font-medium truncate mt-1">
+                {user?.roleTitle || "Owner Account"}
+              </p>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={logout}
+            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
+            title="Sign Out / Lock Console"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </aside>
 

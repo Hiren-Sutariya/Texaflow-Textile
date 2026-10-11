@@ -64,7 +64,7 @@ export interface EmbroideryMachine {
   };
 }
 
-// Initial Clean Machines - Unit 1 (Amrut)
+// Initial Clean Machines - Unit 1
 const initialMachinesUnit1: EmbroideryMachine[] = [
   {
     id: "u1-m-1",
@@ -75,7 +75,7 @@ const initialMachinesUnit1: EmbroideryMachine[] = [
     status: "Running",
     current_job: {
       order_id: "ord-amt-101",
-      party_name: "Amrut Silks Surat",
+      party_name: "Om Sai Silks",
       design_code: "AMS-101",
       design_name: "Royal Gold Saree Border",
       target_pcs: 450,

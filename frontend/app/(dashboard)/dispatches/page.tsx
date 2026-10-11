@@ -28,14 +28,14 @@ export interface FinishedDesignItem {
   remaining_pcs?: number;
 }
 
-// Initial Sample Data for Finished Designs & Stock - Unit 1 (Amrut)
+// Initial Sample Data for Finished Designs & Stock - Unit 1
 const initialFinishedDesignsUnit1: FinishedDesignItem[] = [
   {
     id: "fd-amt-101",
     unit_id: "unit_1",
     design_code: "AMS-101",
     design_name: "Royal Gold Saree Border",
-    party_name: "Amrut Silks Surat",
+    party_name: "Om Sai Silks",
     machine_number: "Machine 1",
     total_pcs_produced: 450,
     total_stitches: 1850000,
