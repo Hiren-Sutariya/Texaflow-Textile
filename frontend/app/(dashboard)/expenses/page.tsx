@@ -203,9 +203,9 @@ export default function ExpensesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Paid" | "Pending">("All");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const [periodFilter, setPeriodFilter] = useState<"this_week" | "this_month" | "this_year" | "custom_date">("this_month");
+  const [periodFilter, setPeriodFilter] = useState<"all" | "this_week" | "this_month" | "this_year" | "custom_date">("all");
   const [startDate, setStartDate] = useState("2026-09-01");
-  const [endDate, setEndDate] = useState("2026-09-30");
+  const [endDate, setEndDate] = useState("2026-12-31");
   const [showModal, setShowModal] = useState(false);
 
   // Custom Dropdown Open States
@@ -255,8 +255,23 @@ export default function ExpensesPage() {
       try {
         const live = await fetchApi<ExpenseItem[]>("/expenses");
         if (isMounted && Array.isArray(live) && live.length > 0) {
-          setExpenses(live);
-          localStorage.setItem("om_sai_expenses", JSON.stringify(live));
+          let merged = [...live];
+          try {
+            const saved = localStorage.getItem("om_sai_expenses");
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed)) {
+                const localOnly = parsed.filter(
+                  (p: any) => !live.some((l) => (l.id && l.id === p.id) || (l.expense_no && l.expense_no === p.expense_no))
+                );
+                if (localOnly.length > 0) {
+                  merged = [...localOnly, ...live];
+                }
+              }
+            }
+          } catch {}
+          setExpenses(merged);
+          localStorage.setItem("om_sai_expenses", JSON.stringify(merged));
           return;
         }
       } catch (err) {
@@ -319,19 +334,20 @@ export default function ExpensesPage() {
 
   // Filter Expenses by Period Date
   const matchesPeriod = (dateStr: string) => {
+    if (periodFilter === "all") return true;
     const d = new Date(dateStr);
-    const refDate = new Date("2026-09-26");
+    const today = new Date();
 
     if (periodFilter === "this_week") {
-      const oneWeekAgo = new Date(refDate);
-      oneWeekAgo.setDate(refDate.getDate() - 7);
-      return d >= oneWeekAgo && d <= refDate;
+      const oneWeekAgo = new Date(today);
+      oneWeekAgo.setDate(today.getDate() - 7);
+      return d >= oneWeekAgo && d <= today;
     }
     if (periodFilter === "this_month") {
-      return d.getMonth() === refDate.getMonth() && d.getFullYear() === refDate.getFullYear();
+      return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
     }
     if (periodFilter === "this_year") {
-      return d.getFullYear() === refDate.getFullYear();
+      return d.getFullYear() === today.getFullYear();
     }
     if (periodFilter === "custom_date") {
       if (startDate && dateStr < startDate) return false;
@@ -342,28 +358,35 @@ export default function ExpensesPage() {
   };
 
   // Filter Expenses List
-  const filteredExpenses = expenses.filter((item) => {
-    const q = search.toLowerCase();
-    const matchesSearch =
-      item.title.toLowerCase().includes(q) ||
-      item.expense_no.toLowerCase().includes(q) ||
-      item.vendor_name.toLowerCase().includes(q) ||
-      item.category.toLowerCase().includes(q) ||
-      (item.invoice_no && item.invoice_no.toLowerCase().includes(q)) ||
-      (item.notes && item.notes.toLowerCase().includes(q)) ||
-      (item.paid_via && item.paid_via.toLowerCase().includes(q));
+  const filteredExpenses = expenses
+    .filter((item) => {
+      const q = search.toLowerCase();
+      const matchesSearch =
+        item.title.toLowerCase().includes(q) ||
+        item.expense_no.toLowerCase().includes(q) ||
+        item.vendor_name.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        (item.invoice_no && item.invoice_no.toLowerCase().includes(q)) ||
+        (item.notes && item.notes.toLowerCase().includes(q)) ||
+        (item.paid_via && item.paid_via.toLowerCase().includes(q));
 
-    const matchesStatus =
-      statusFilter === "All"
-        ? true
-        : statusFilter === "Paid"
-        ? item.payment_status === "Paid"
-        : item.payment_status === "Pending" || item.payment_status === "Unpaid";
+      const matchesStatus =
+        statusFilter === "All"
+          ? true
+          : statusFilter === "Paid"
+          ? item.payment_status === "Paid"
+          : item.payment_status === "Pending" || item.payment_status === "Unpaid";
 
-    const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
-    const matchesTime = matchesPeriod(item.date);
-    return matchesSearch && matchesStatus && matchesCategory && matchesTime;
-  });
+      const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
+      const matchesTime = matchesPeriod(item.date);
+      return matchesSearch && matchesStatus && matchesCategory && matchesTime;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      if (dateB !== dateA) return dateB - dateA;
+      return (b.id || "").localeCompare(a.id || "");
+    });
 
   // Analytics Calculations based on Period
   const periodExpenses = expenses.filter((e) => matchesPeriod(e.date));
@@ -397,7 +420,9 @@ export default function ExpensesPage() {
     }
 
     const periodLabel =
-      periodFilter === "this_week"
+      periodFilter === "all"
+        ? "All_Time"
+        : periodFilter === "this_week"
         ? "This_Week"
         : periodFilter === "this_month"
         ? "This_Month"
@@ -431,7 +456,7 @@ export default function ExpensesPage() {
   };
 
   // Create New Expense
-  const submitExpense = (closeModal: boolean) => {
+  const submitExpense = async (closeModal: boolean) => {
     const numericAmount = Number(formData.amount);
     if (!numericAmount || numericAmount <= 0) {
       alert("Please enter a valid expense amount!");
@@ -456,6 +481,31 @@ export default function ExpensesPage() {
     };
 
     setExpenses([newEntry, ...expenses]);
+
+    try {
+      const existing = localStorage.getItem("om_sai_expenses");
+      const list = existing ? JSON.parse(existing) : [];
+      list.unshift(newEntry);
+      localStorage.setItem("om_sai_expenses", JSON.stringify(list));
+      await fetchApi("/expenses", {
+        method: "POST",
+        body: JSON.stringify({
+          expense_no: newEntry.expense_no,
+          date: newEntry.date,
+          category: newEntry.category,
+          title: newEntry.title,
+          vendor_name: newEntry.vendor_name,
+          amount: newEntry.amount,
+          payment_status: newEntry.payment_status,
+          paid_via: newEntry.paid_via,
+          invoice_no: newEntry.invoice_no,
+          notes: newEntry.notes,
+          bill_image: newEntry.bill_image || undefined
+        })
+      });
+    } catch (err) {
+      console.warn("Backend sync notice:", err);
+    }
 
     if (closeModal) {
       setShowModal(false);
@@ -508,7 +558,9 @@ export default function ExpensesPage() {
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
           <div className="overflow-hidden">
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate mr-1">
-              {periodFilter === "this_week"
+              {periodFilter === "all"
+                ? "TOTAL (ALL TIME)"
+                : periodFilter === "this_week"
                 ? "TOTAL (THIS WEEK)"
                 : periodFilter === "this_month"
                 ? "TOTAL (THIS MONTH)"
@@ -684,7 +736,9 @@ export default function ExpensesPage() {
             >
               <Calendar className="w-3.5 h-3.5 text-blue-600" />
               <span className="uppercase tracking-wider">
-                {periodFilter === "this_week"
+                {periodFilter === "all"
+                  ? "ALL TIME"
+                  : periodFilter === "this_week"
                   ? "THIS WEEK"
                   : periodFilter === "this_month"
                   ? "THIS MONTH"
@@ -700,8 +754,9 @@ export default function ExpensesPage() {
                 <div className="fixed inset-0 z-20" onClick={() => setIsPeriodDropdownOpen(false)} />
                 <div className="absolute left-0 top-full mt-[18px] z-50 min-w-full w-max max-w-xs bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100 font-sans">
                   {[
-                    { id: "this_week", label: "This Week" },
+                    { id: "all", label: "All Time (Badha)" },
                     { id: "this_month", label: "This Month" },
+                    { id: "this_week", label: "This Week" },
                     { id: "this_year", label: "This Year" },
                     { id: "custom_date", label: "Custom Date Range" }
                   ].map((p) => {
