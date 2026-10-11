@@ -42,7 +42,7 @@ export default function SettingsPage() {
       )}
 
       {/* Settings Navigation Tabs */}
-      <div className="flex border-b border-slate-200 gap-4 sm:gap-6 text-xs sm:text-sm font-semibold overflow-x-auto pb-1 sm:pb-0">
+      <div className="flex border-b border-slate-200 gap-4 sm:gap-6 text-xs sm:text-sm font-semibold overflow-x-auto no-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-1 sm:pb-0">
         <button
           onClick={() => setActiveTab("company")}
           className={`pb-2.5 sm:pb-3 border-b-2 transition-colors whitespace-nowrap ${

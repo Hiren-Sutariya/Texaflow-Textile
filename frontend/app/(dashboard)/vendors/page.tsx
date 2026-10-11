@@ -1236,7 +1236,7 @@ export default function VendorsPage() {
             {/* TABBED SUB-SECTIONS (Matching User Screenshots 1-4) */}
             <div className="space-y-4">
               {/* Tab Selector Navigation Bar */}
-              <div className="flex items-center gap-6 border-b border-slate-200 text-xs font-bold overflow-x-auto">
+              <div className="flex items-center gap-4 sm:gap-6 border-b border-slate-200 text-xs font-bold overflow-x-auto no-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-0.5">
                 {[
                   "Other Details",
                   "Address",
@@ -2630,82 +2630,93 @@ export default function VendorsPage() {
 
       {/* VENDOR DETAILS PREVIEW MODAL */}
       {isPreviewOpen && previewVendor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2.5 sm:p-5 overflow-y-auto">
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl w-full max-w-4xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             {/* Header */}
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-extrabold text-base border border-emerald-200 shadow-2xs">
-                  <Building2 className="w-5 h-5 text-emerald-700" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-extrabold text-slate-900">
-                      {previewVendor.display_name || previewVendor.company_name}
-                    </h2>
-                    <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-lg text-[10px] border border-blue-100">
-                      {previewVendor.account_type}
-                    </span>
-                    {previewVendor.is_msme && (
-                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-extrabold rounded-md text-[9px] border border-emerald-200">
-                        MSME REGISTERED
-                      </span>
-                    )}
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50 border-b border-slate-200 shrink-0">
+              <div className="flex items-start sm:items-center justify-between gap-2.5">
+                <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-extrabold text-base border border-emerald-200 shadow-2xs shrink-0 mt-0.5 sm:mt-0">
+                    <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700" />
                   </div>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">
-                    Vendor ID: <span className="font-mono text-slate-700">{previewVendor.id}</span>
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <h2 className="text-sm sm:text-base font-extrabold text-slate-900 leading-snug">
+                        {previewVendor.display_name || previewVendor.company_name}
+                      </h2>
+                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-md text-[10px] border border-blue-100 shrink-0">
+                        {previewVendor.account_type}
+                      </span>
+                      {previewVendor.is_msme && (
+                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-extrabold rounded-md text-[9px] border border-emerald-200 shrink-0">
+                          MSME REGISTERED
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
+                      Vendor ID: <span className="font-mono font-bold text-slate-700">{previewVendor.id}</span>
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsPreviewOpen(false);
-                    openEditVendorForm(previewVendor);
-                  }}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Edit Record</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsPreviewOpen(false)}
-                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                {/* Top Actions: Edit (Desktop) and Close (All) */}
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPreviewOpen(false);
+                      openEditVendorForm(previewVendor);
+                    }}
+                    className="hidden sm:inline-flex px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Edit Record</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewOpen(false)}
+                    className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 rounded-xl transition-colors cursor-pointer"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Scrollable Content */}
-            <div className="p-6 overflow-y-auto no-scrollbar space-y-6 text-xs text-slate-800">
+            <div className="p-4 sm:p-6 overflow-y-auto no-scrollbar space-y-4 sm:space-y-6 text-xs text-slate-800">
               {/* Primary Contact & Tax Overview Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 bg-slate-50/80 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80">
                 <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase">Primary Contact</div>
-                  <div className="font-extrabold text-slate-900 mt-1">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Primary Contact</div>
+                  <div className="font-extrabold text-slate-900 mt-1 text-xs sm:text-sm">
                     {previewVendor.salutation ? `${previewVendor.salutation} ` : ""}{previewVendor.first_name} {previewVendor.last_name}
                   </div>
-                  <div className="text-slate-500 text-[11px] mt-0.5">{previewVendor.company_name}</div>
+                  <div className="text-slate-500 text-[11px] mt-0.5 truncate">{previewVendor.company_name}</div>
                 </div>
 
                 <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase">Mobile & Phone</div>
-                  <div className="font-bold text-slate-900 font-mono mt-1 flex items-center gap-1">
-                    <Phone className="w-3 h-3 text-emerald-600 shrink-0" />
-                    {previewVendor.mobile || "-"}
-                  </div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mobile & Phone</div>
+                  {previewVendor.mobile ? (
+                    <a
+                      href={`tel:${previewVendor.mobile.replace(/\s+/g, "")}`}
+                      className="font-bold text-emerald-700 hover:text-emerald-800 hover:underline font-mono mt-1 flex items-center gap-1.5 text-xs sm:text-sm"
+                    >
+                      <Phone className="w-3 h-3 text-emerald-600 shrink-0" />
+                      <span>{previewVendor.mobile}</span>
+                    </a>
+                  ) : (
+                    <div className="text-slate-400 mt-1 font-mono">-</div>
+                  )}
                   <div className="text-slate-500 font-mono text-[11px] mt-0.5">
                     Work: {previewVendor.work_phone || "-"}
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase">GSTIN & PAN</div>
-                  <div className="font-bold font-mono text-slate-900 mt-1">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">GSTIN & PAN</div>
+                  <div className="font-bold font-mono text-slate-900 mt-1 text-xs">
                     {previewVendor.gstin || "-"}
                   </div>
                   <div className="text-slate-500 font-mono text-[11px] mt-0.5">
@@ -2714,8 +2725,8 @@ export default function VendorsPage() {
                 </div>
 
                 <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase">Payment & TDS</div>
-                  <div className="font-extrabold text-emerald-700 mt-1">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payment & TDS</div>
+                  <div className="font-extrabold text-emerald-700 mt-1 text-xs">
                     {previewVendor.payment_terms}
                   </div>
                   <div className="text-slate-500 text-[11px] mt-0.5">
@@ -2725,9 +2736,9 @@ export default function VendorsPage() {
               </div>
 
               {/* Addresses Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {/* Billing Address Card */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
+                <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
                   <div className="font-extrabold text-slate-900 border-b border-slate-100 pb-2 flex items-center justify-between">
                     <span>Billing Address</span>
                     <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">GST Address</span>
@@ -2746,7 +2757,7 @@ export default function VendorsPage() {
                 </div>
 
                 {/* Shipping Address Card */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
+                <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
                   <div className="font-extrabold text-slate-900 border-b border-slate-100 pb-2 flex items-center justify-between">
                     <span>Shipping Address</span>
                     <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">Dispatch Location</span>
@@ -2766,7 +2777,7 @@ export default function VendorsPage() {
               </div>
 
               {/* Bank Details Section */}
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3 shadow-2xs">
+              <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 space-y-3 shadow-2xs">
                 <div className="font-extrabold text-slate-900 border-b border-slate-100 pb-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Landmark className="w-4 h-4 text-emerald-600" />
@@ -2774,7 +2785,7 @@ export default function VendorsPage() {
                   </div>
                 </div>
                 {previewVendor.bank_details.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50/70 p-3 rounded-xl border border-slate-200/80">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 bg-slate-50/70 p-3 rounded-xl border border-slate-200/80">
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase">Bank Name</span>
                       <p className="font-extrabold text-slate-900 mt-0.5">{previewVendor.bank_details[0].bank_name}</p>
@@ -2812,9 +2823,9 @@ export default function VendorsPage() {
               </div>
 
               {/* Brokerage & Remarks Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {/* Brokerage Info */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
+                <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
                   <div className="font-extrabold text-slate-900 border-b border-slate-100 pb-2">
                     Brokerage Information
                   </div>
@@ -2841,7 +2852,7 @@ export default function VendorsPage() {
                 </div>
 
                 {/* Remarks & Contact Persons */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
+                <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
                   <div className="font-extrabold text-slate-900 border-b border-slate-100 pb-2">
                     Remarks & Notes
                   </div>
@@ -2862,11 +2873,22 @@ export default function VendorsPage() {
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end shrink-0">
+            <div className="px-4 sm:px-6 py-3 sm:py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between sm:justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPreviewOpen(false);
+                  openEditVendorForm(previewVendor);
+                }}
+                className="sm:hidden flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit Record</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setIsPreviewOpen(false)}
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                className="flex-1 sm:flex-none px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer text-center"
               >
                 Close Preview
               </button>
