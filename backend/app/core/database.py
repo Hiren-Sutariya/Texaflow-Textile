@@ -38,9 +38,23 @@ def get_db():
         db.close()
 
 def init_db():
-    """Create all database tables based on registered models."""
+    """Create only the 5 active database tables matching sidebar sequence."""
     try:
-        Base.metadata.create_all(bind=engine)
-        print("✅ Database tables verified / initialized successfully.")
+        from app.models.vendor import Vendor
+        from app.models.employee import Employee
+        from app.models.design import Design
+        from app.models.payment import PaymentVoucher
+        from app.models.expense import Expense
+
+        active_tables = [
+            Vendor.__table__,
+            Employee.__table__,
+            Design.__table__,
+            PaymentVoucher.__table__,
+            Expense.__table__,
+        ]
+        Base.metadata.create_all(bind=engine, tables=active_tables)
+        print("✅ Active database tables verified / initialized successfully.")
     except Exception as e:
         print(f"⚠️ Database initialization notice: {e}")
+

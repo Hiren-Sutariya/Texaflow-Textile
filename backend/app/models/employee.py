@@ -4,7 +4,8 @@ from app.models.base import TimestampMixin
 import uuid
 
 class Employee(Base, TimestampMixin):
-    __tablename__ = "employees"
+    __tablename__ = "02_workers_karigars"
+
 
     id = Column(String(64), primary_key=True, default=lambda: f"emp-{uuid.uuid4().hex[:12]}")
     name = Column(String(255), nullable=False, index=True)

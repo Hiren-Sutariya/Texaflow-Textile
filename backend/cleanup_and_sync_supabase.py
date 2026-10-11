@@ -29,17 +29,23 @@ def cleanup_and_sync():
             "inventory_stock",
             "job_orders",
             "machines",
-            "parties"
+            "parties",
+            "vendors",
+            "employees",
+            "designs",
+            "payment_vouchers",
+            "expenses"
         ]
         for tbl in unused_tables:
             db.execute(text(f"DROP TABLE IF EXISTS {tbl} CASCADE;"))
             print(f"  🗑️ Dropped table: {tbl}")
         db.commit()
 
-        # 2. Create tables for active modules
+        # 2. Create tables for active modules in sidebar sequence
         print("🏗️ Creating/Verifying tables for active modules...")
         Base.metadata.create_all(bind=engine)
-        print("  ✅ Tables verified: expenses, payment_vouchers, vendors, employees, designs")
+        print("  ✅ Tables verified: 01_vendors, 02_workers_karigars, 03_design_library, 04_payments_vouchers, 05_expenses")
+
 
         # 3. Seed Vendors if empty
         if db.query(Vendor).count() == 0:
