@@ -23,42 +23,42 @@ import {
 
 const destinationModules = [
   {
-    title: "1. Party Master",
+    title: "Party Master",
     description: "Register Vepari clients, vendors, brokers & party ledgers",
     href: "/parties",
     icon: Users,
     color: "bg-cyan-50 text-cyan-600 border-cyan-100"
   },
   {
-    title: "2. Design Library",
+    title: "Design Library",
     description: "Stitch counts, thread colors & garment specs (Blouse Front/Back)",
     href: "/designs",
     icon: Palette,
     color: "bg-indigo-50 text-indigo-600 border-indigo-100"
   },
   {
-    title: "3. Karigar Issue",
+    title: "Karigar Issue",
     description: "Create order linking Vepari + Design + Fabric receipt",
     href: "/job-works",
     icon: Briefcase,
     color: "bg-blue-50 text-blue-600 border-blue-100"
   },
   {
-    title: "4. Payments & Vouchers",
+    title: "Payments & Vouchers",
     description: "Party payments, receipts & white/black ledger vouchers",
     href: "/payments",
     icon: CreditCard,
     color: "bg-emerald-50 text-emerald-600 border-emerald-100"
   },
   {
-    title: "5. Worker Payout",
+    title: "Worker Payout",
     description: "Manufacturing karigar piece-rate salary & advance payouts",
     href: "/worker-payout",
     icon: Wallet,
     color: "bg-amber-50 text-amber-700 border-amber-100"
   },
   {
-    title: "6. OMS Performance",
+    title: "OMS Performance",
     description: "Order management system analytics, machine RPM & speed",
     href: "/oms-performance",
     icon: TrendingUp,

@@ -16,50 +16,42 @@ import {
 
 const destinationModules = [
   {
-    title: "1. Parties Master",
-    description: "Manage clients, vepari, party ledgers & billing profiles",
+    title: "Parties Master",
     href: "/parties",
     icon: Users
   },
   {
-    title: "2. Design Library",
-    description: "Embroidery designs, stitch counts, colorways & punch files",
+    title: "Design Library",
     href: "/designs",
     icon: Palette
   },
   {
-    title: "3. Karigar Issue",
-    description: "Client order bookings, design allocations & work slips",
+    title: "Karigar Issue",
     href: "/job-works",
     icon: Briefcase
   },
   {
-    title: "4. Payments & Vouchers",
-    description: "Party payments, receipts & white/black ledger vouchers",
+    title: "Payments & Vouchers",
     href: "/payments",
     icon: CreditCard
   },
   {
-    title: "5. Factory Expenses",
-    description: "Overhead factory expenses, dhaga bills & operational costs",
+    title: "Factory Expenses",
     href: "/expenses",
     icon: Receipt
   },
   {
-    title: "6. Worker Payout",
-    description: "Manufacturing karigar piece-rate salary & advance payouts",
+    title: "Worker Payout",
     href: "/worker-payout",
     icon: Wallet
   },
   {
-    title: "7. OMS Performance",
-    description: "Order management system analytics, machine RPM & speed",
+    title: "OMS Performance",
     href: "/oms-performance",
     icon: TrendingUp
   },
   {
-    title: "8. Staff & Karigars",
-    description: "Worker directory, helper profiles & portal credentials",
+    title: "Staff & Karigars",
     href: "/employees",
     icon: UserCheck
   }
@@ -77,19 +69,15 @@ export default function Home() {
               <Link
                 key={item.title}
                 href={item.href}
-                className="group bg-white border border-slate-200/80 rounded-2xl p-5 flex flex-col items-center text-center justify-center min-h-[180px] shadow-2xs hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                className="group bg-white border border-slate-200/80 rounded-2xl p-5 flex flex-col items-center text-center justify-center h-[180px] min-h-[180px] shadow-2xs hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
               >
-                <div className="w-13 h-13 rounded-2xl bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center mb-3 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors shrink-0">
+                <div className="w-13 h-13 rounded-2xl bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center mb-3.5 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors shrink-0">
                   <Icon className="w-6 h-6 stroke-[1.75]" />
                 </div>
 
                 <h2 className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
                   {item.title}
                 </h2>
-
-                <p className="text-xs text-slate-400 mt-1.5 leading-relaxed px-1">
-                  {item.description}
-                </p>
               </Link>
             );
           })}
