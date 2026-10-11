@@ -10,13 +10,18 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
 
   try {
     const res = await fetch(url, { ...options, headers });
-    const json = await res.json();
     
-    if (!res.ok || json.success === false) {
-      throw new Error(json.message || `API Error (${res.status})`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.message || `API Error (${res.status})`);
+    }
+
+    if (res.status === 204) {
+      return null as T;
     }
     
-    return json.data as T;
+    const json = await res.json();
+    return (json.data !== undefined ? json.data : json) as T;
   } catch (err: any) {
     console.error(`Fetch API Error [${endpoint}]:`, err.message);
     throw err;

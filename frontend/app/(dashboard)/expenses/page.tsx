@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { fetchApi } from "@/lib/api";
 import {
   Plus,
   Search,
@@ -246,21 +247,42 @@ export default function ExpensesPage() {
   const refStatus = useRef<HTMLButtonElement>(null);
   const refSubmit = useRef<HTMLButtonElement>(null);
 
-  // Load custom created expenses and categories from localStorage on mount
+  // Load expenses from Supabase Cloud Backend (with local fallback) on mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("om_sai_expenses");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const combined = [
-            ...parsed,
-            ...initialExpenses.filter((i) => !parsed.some((p: any) => p.id === i.id))
-          ];
-          setExpenses(combined);
+    let isMounted = true;
+
+    async function loadLiveExpenses() {
+      try {
+        const live = await fetchApi<ExpenseItem[]>("/expenses");
+        if (isMounted && Array.isArray(live) && live.length > 0) {
+          setExpenses(live);
+          localStorage.setItem("om_sai_expenses", JSON.stringify(live));
+          return;
         }
+      } catch (err) {
+        console.warn("Backend not running or offline, loading local cache:", err);
       }
 
+      // Fallback to local storage if API unreachable or empty
+      try {
+        const saved = localStorage.getItem("om_sai_expenses");
+        if (saved && isMounted) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const combined = [
+              ...parsed,
+              ...initialExpenses.filter((i) => !parsed.some((p: any) => p.id === i.id))
+            ];
+            setExpenses(combined);
+          }
+        }
+      } catch {}
+    }
+
+    loadLiveExpenses();
+
+    // Load custom categories
+    try {
       const savedCats = localStorage.getItem("om_sai_custom_expense_categories");
       if (savedCats) {
         const parsedCats = JSON.parse(savedCats);
@@ -277,6 +299,10 @@ export default function ExpensesPage() {
     } catch (err) {
       console.error(err);
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleAddCategory = (e: React.FormEvent) => {
@@ -457,7 +483,7 @@ export default function ExpensesPage() {
   };
 
   // Delete Expense
-  const handleDeleteExpense = (id: string) => {
+  const handleDeleteExpense = async (id: string) => {
     if (confirm("Are you sure you want to delete this expense record?")) {
       const updated = expenses.filter((e) => e.id !== id);
       setExpenses(updated);
@@ -467,8 +493,9 @@ export default function ExpensesPage() {
           const parsed = JSON.parse(saved).filter((e: any) => e.id !== id);
           localStorage.setItem("om_sai_expenses", JSON.stringify(parsed));
         }
+        await fetchApi(`/expenses/${id}`, { method: "DELETE" });
       } catch (err) {
-        console.error(err);
+        console.error("Delete sync notice:", err);
       }
     }
   };

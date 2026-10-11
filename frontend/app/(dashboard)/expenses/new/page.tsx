@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { fetchApi } from "@/lib/api";
 import {
   ArrowLeft,
   ChevronDown,
@@ -193,7 +194,7 @@ export default function NewExpenseVoucherPage() {
     }
   };
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
     const numericAmount = parseFloat(amount);
@@ -217,6 +218,29 @@ export default function NewExpenseVoucherPage() {
       bill_image: billImage
     };
 
+    // 1. Save directly to Supabase via FastAPI Backend
+    try {
+      await fetchApi("/expenses", {
+        method: "POST",
+        body: JSON.stringify({
+          expense_no: newExpense.expense_no,
+          date: newExpense.date,
+          category: newExpense.category,
+          title: newExpense.title,
+          vendor_name: newExpense.vendor_name,
+          amount: newExpense.amount,
+          payment_status: newExpense.payment_status,
+          paid_via: newExpense.paid_via,
+          invoice_no: newExpense.invoice_no,
+          notes: newExpense.notes,
+          bill_image: newExpense.bill_image || undefined
+        })
+      });
+    } catch (apiErr) {
+      console.warn("Backend API not reachable, saving to local backup:", apiErr);
+    }
+
+    // 2. Keep local cache updated
     try {
       const existing = localStorage.getItem("om_sai_expenses");
       const list = existing ? JSON.parse(existing) : [];
