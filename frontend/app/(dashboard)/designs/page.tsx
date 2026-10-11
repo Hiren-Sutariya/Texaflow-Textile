@@ -170,12 +170,30 @@ export default function DesignsPage() {
             let parsedColorways: ColorTakka[] = [];
             if (d.items) {
               try {
-                parsedItems = typeof d.items === "string" ? JSON.parse(d.items) : d.items;
+                const rawItems = typeof d.items === "string" ? JSON.parse(d.items) : d.items;
+                if (Array.isArray(rawItems)) {
+                  parsedItems = rawItems.map((item: any, idx: number) => ({
+                    ...item,
+                    id: item.id || `item-${d.id}-${idx + 1}`
+                  }));
+                }
               } catch {}
             }
             if (d.colorways) {
               try {
-                parsedColorways = typeof d.colorways === "string" ? JSON.parse(d.colorways) : d.colorways;
+                const rawCws = typeof d.colorways === "string" ? JSON.parse(d.colorways) : d.colorways;
+                if (Array.isArray(rawCws)) {
+                  parsedColorways = rawCws.map((cw: any, idx: number) => ({
+                    ...cw,
+                    id: cw.id || `cw-${d.id}-${idx + 1}`,
+                    threads: Array.isArray(cw.threads)
+                      ? cw.threads.map((th: any, thIdx: number) => ({
+                          ...th,
+                          id: th.id || `th-${d.id}-${idx + 1}-${thIdx + 1}`
+                        }))
+                      : []
+                  }));
+                }
               } catch {}
             }
             return {
@@ -204,7 +222,28 @@ export default function DesignsPage() {
         try {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setFolders(parsed);
+            const sanitized = parsed.map((d: any) => ({
+              ...d,
+              items: Array.isArray(d.items)
+                ? d.items.map((it: any, idx: number) => ({
+                    ...it,
+                    id: it.id || `item-${d.id}-${idx + 1}`
+                  }))
+                : [],
+              colorways: Array.isArray(d.colorways)
+                ? d.colorways.map((cw: any, idx: number) => ({
+                    ...cw,
+                    id: cw.id || `cw-${d.id}-${idx + 1}`,
+                    threads: Array.isArray(cw.threads)
+                      ? cw.threads.map((th: any, thIdx: number) => ({
+                          ...th,
+                          id: th.id || `th-${d.id}-${idx + 1}-${thIdx + 1}`
+                        }))
+                      : []
+                  }))
+                : []
+            }));
+            setFolders(sanitized);
           }
         } catch (e) {
           console.error("Failed to load design folders from localStorage", e);
@@ -1566,9 +1605,9 @@ export default function DesignsPage() {
                   <div className="space-y-2 pt-2 border-t border-slate-100">
                     <div className="flex items-center gap-1 flex-wrap">
                       {f.items.length > 0 ? (
-                        f.items.map((item) => (
+                        f.items.map((item, idx) => (
                           <span
-                            key={item.id}
+                            key={item.id || `item-${f.id}-${idx}`}
                             className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-medium text-[10px] rounded border border-slate-200"
                           >
                             {item.category}
@@ -1800,7 +1839,7 @@ export default function DesignsPage() {
                   {/* CLEAN FULL-WIDTH FABRIC COLORS LIST */}
                   {selectedFolder.colorways.length > 0 ? (
                     <div className="divide-y divide-slate-100 text-xs">
-                      {selectedFolder.colorways.map((cw) => {
+                      {selectedFolder.colorways.map((cw, cwIdx) => {
                         const colorMeters = getColorMeters(cw, 0);
                         const calculatedPcs = calculateColorPcs(cw, selectedFolder);
                         const effectiveCut = getEffectiveCutLength(selectedFolder);
@@ -1815,7 +1854,7 @@ export default function DesignsPage() {
                         };
 
                         return (
-                          <div key={cw.id} className="bg-white hover:bg-slate-50/80 transition-colors">
+                          <div key={cw.id || `cw-${selectedFolder.id}-${cwIdx}`} className="bg-white hover:bg-slate-50/80 transition-colors">
                             {/* CLEAN MINIMAL ROW SUMMARY */}
                             <div className="px-4 py-3 flex items-center justify-between">
                               <div className="flex items-center gap-2.5">
@@ -2083,7 +2122,8 @@ export default function DesignsPage() {
                                     {/* THREAD CARDS GRID */}
                                     {(cw.threads && cw.threads.length > 0) ? (
                                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                                        {cw.threads.map((th) => {
+                                        {cw.threads.map((th, thIdx) => {
+                                          const threadKey = th.id || `th-${cw.id || "c"}-${thIdx}`;
                                           const isEditingThisThread = editingThreadId === th.id;
 
                                           const formattedCode = th.thread_code
@@ -2098,7 +2138,7 @@ export default function DesignsPage() {
 
                                           if (isEditingThisThread) {
                                             return (
-                                              <div key={th.id} className="bg-white p-2.5 rounded-xl border border-indigo-400 shadow-2xs space-y-1.5 text-xs text-left">
+                                              <div key={threadKey} className="bg-white p-2.5 rounded-xl border border-indigo-400 shadow-2xs space-y-1.5 text-xs text-left">
                                                 <div className="flex items-center justify-between gap-1 border-b border-indigo-100 pb-1">
                                                   <input
                                                     type="text"
@@ -2145,7 +2185,7 @@ export default function DesignsPage() {
                                           }
 
                                           return (
-                                            <div key={th.id} className="relative bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs text-center space-y-1.5 flex flex-col justify-between group hover:border-indigo-300 transition-all">
+                                            <div key={threadKey} className="relative bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs text-center space-y-1.5 flex flex-col justify-between group hover:border-indigo-300 transition-all">
                                               <div className="flex items-center justify-between gap-1">
                                                 <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-extrabold rounded border border-indigo-100">
                                                   {needleLabel ? needleLabel : "THREAD"}
@@ -2387,9 +2427,9 @@ export default function DesignsPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                        {selectedFolder.items.map((item) => {
+                        {selectedFolder.items.map((item, itemIdx) => {
                           return (
-                            <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                            <tr key={item.id || `item-${selectedFolder.id}-${itemIdx}`} className="hover:bg-slate-50/60 transition-colors">
                               <td className="py-2.5 px-4">
                                 <div className="flex items-center gap-2">
                                   <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold text-[10px] rounded border border-slate-200">
