@@ -84,10 +84,10 @@ export default function Home() {
 
   // 3. SECOND SCREEN: Once authenticated, show the 8 Module Dashboard Cards Grid!
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 sm:p-8 select-none gap-5 font-sans animate-in fade-in duration-200">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-3 sm:p-6 lg:p-8 select-none gap-4 sm:gap-5 font-sans animate-in fade-in duration-200">
       
       {/* TOP USER WELCOME & TERMINAL STATUS BAR */}
-      <div className="w-full max-w-6xl bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+      <div className="w-full max-w-6xl bg-white border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-900 font-bold flex items-center justify-center text-base border border-amber-200 shrink-0">
             {user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : "👑"}
@@ -106,11 +106,11 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={logout}
-            className="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl border border-rose-200 transition-colors flex items-center gap-1.5 cursor-pointer text-xs"
+            className="w-full sm:w-auto px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl border border-rose-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-xs"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Lock Terminal</span>
@@ -118,22 +118,22 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 8 MODULE CARDS GRID IN SEQUENTIAL ORDER */}
+      {/* 8 MODULE CARDS GRID IN SEQUENTIAL ORDER (2 cols on mobile, 4 cols on desktop) */}
       <div className="w-full max-w-6xl">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 w-full">
           {destinationModules.map((item) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.title}
                 href={item.href}
-                className="group bg-white border border-slate-200/80 rounded-2xl p-5 flex flex-col items-center text-center justify-center h-[180px] min-h-[180px] shadow-2xs hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                className="group bg-white border border-slate-200/80 rounded-2xl p-3.5 sm:p-5 flex flex-col items-center text-center justify-center h-[145px] sm:h-[180px] min-h-[145px] sm:min-h-[180px] shadow-2xs hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
               >
-                <div className="w-13 h-13 rounded-2xl bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center mb-3.5 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors shrink-0">
-                  <Icon className="w-6 h-6 stroke-[1.75]" />
+                <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center mb-2.5 sm:mb-3.5 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors shrink-0">
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 stroke-[1.75]" />
                 </div>
 
-                <h2 className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
+                <h2 className="font-bold text-slate-900 text-xs sm:text-sm group-hover:text-blue-600 transition-colors leading-tight">
                   {item.title}
                 </h2>
               </Link>
@@ -143,9 +143,9 @@ export default function Home() {
       </div>
 
       {/* FOOTER BRANDING */}
-      <footer className="pt-4 border-t border-slate-200/60 w-full max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 font-semibold">
+      <footer className="pt-4 border-t border-slate-200/60 w-full max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 font-semibold text-center sm:text-left">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>TexaFlow Textile ERP • Enterprise Edition</span>
         </div>
         <div>

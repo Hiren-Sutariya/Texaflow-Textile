@@ -328,7 +328,7 @@ export default function PartiesPage() {
 
         {/* PARTY DIRECTORY TABLE */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse divide-y divide-slate-100">
+          <table className="w-full text-left border-collapse divide-y divide-slate-100 min-w-[850px]">
             <thead className="bg-slate-50/90 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
               <tr>
                 <th className="py-3 px-4 text-center w-16">SR NO.</th>

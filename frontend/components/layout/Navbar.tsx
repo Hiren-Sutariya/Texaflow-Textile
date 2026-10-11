@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Search, AlertCircle, RefreshCw, LayoutGrid } from "lucide-react";
+import { Bell, Search, AlertCircle, RefreshCw, LayoutGrid, Menu } from "lucide-react";
 
 const pageTitles: Record<string, string> = {
   "/": "Owner Command Center",
@@ -27,7 +27,11 @@ const pageTitles: Record<string, string> = {
   "/settings": "System & Company Settings"
 };
 
-export function Navbar() {
+interface NavbarProps {
+  onToggleMobileMenu?: () => void;
+}
+
+export function Navbar({ onToggleMobileMenu }: NavbarProps) {
   const pathname = usePathname();
 
   let pageTitle = pageTitles[pathname];
@@ -40,13 +44,22 @@ export function Navbar() {
   }
 
   return (
-    <header className="h-14 border-b border-slate-200/80 bg-white px-5 flex items-center justify-between sticky top-0 z-10 shadow-2xs">
-      {/* Single Authoritative Page Title (Linear / Vercel style) */}
-      <div className="flex items-center gap-3">
-        <h1 className="text-base font-bold text-slate-900 tracking-tight leading-none">
+    <header className="h-14 border-b border-slate-200/80 bg-white px-3 sm:px-5 flex items-center justify-between sticky top-0 z-10 shadow-2xs">
+      {/* Mobile Menu Button + Single Authoritative Page Title */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <button
+          type="button"
+          onClick={onToggleMobileMenu}
+          className="lg:hidden p-1.5 -ml-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer shrink-0"
+          title="Open Menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-none truncate">
           {pageTitle}
         </h1>
       </div>
+
 
       {/* Right Section: Quick Controls */}
       <div className="flex items-center gap-3">

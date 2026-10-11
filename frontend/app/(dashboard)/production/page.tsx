@@ -1592,7 +1592,7 @@ export default function ProductionPage() {
         {filteredLogs.length > 0 ? (
           <div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs divide-y divide-slate-200">
+              <table className="w-full text-left text-xs divide-y divide-slate-200 min-w-[850px]">
                 <thead className="bg-slate-50/90 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3">Date</th>

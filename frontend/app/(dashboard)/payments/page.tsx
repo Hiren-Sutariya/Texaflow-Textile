@@ -516,7 +516,7 @@ export default function PaymentsAndVouchersPage() {
       {/* ------------------------------------------------------------- */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-left text-xs border-collapse min-w-[850px]">
             <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
               <tr>
                 <th className="py-3.5 px-5">Date</th>
