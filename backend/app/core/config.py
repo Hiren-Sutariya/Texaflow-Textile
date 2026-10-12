@@ -8,12 +8,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings(BaseModel):
-    PROJECT_NAME: str = os.getenv("PROJECT_NAME", "Om Sai Textile ERP API")
+    PROJECT_NAME: str = os.getenv("PROJECT_NAME", "TexaFlow Textile ERP API")
     API_V1_STR: str = os.getenv("API_V1_STR", "/api/v1")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./om_sai.db")
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-    ]
+    CORS_ORIGINS: List[str] = (
+        json.loads(os.getenv("CORS_ORIGINS"))
+        if os.getenv("CORS_ORIGINS")
+        else [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "https://localhost:3000",
+        ]
+    )
 
 settings = Settings()
+
