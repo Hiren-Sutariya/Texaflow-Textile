@@ -38,13 +38,14 @@ def get_db():
         db.close()
 
 def init_db():
-    """Create only the 5 active database tables matching sidebar sequence."""
+    """Create active database tables and seed initial admin user if needed."""
     try:
         from app.models.vendor import Vendor
         from app.models.employee import Employee
         from app.models.design import Design
         from app.models.payment import PaymentVoucher
         from app.models.expense import Expense
+        from app.models.user import User
 
         active_tables = [
             Vendor.__table__,
@@ -52,9 +53,38 @@ def init_db():
             Design.__table__,
             PaymentVoucher.__table__,
             Expense.__table__,
+            User.__table__,
         ]
         Base.metadata.create_all(bind=engine, tables=active_tables)
         print("✅ Active database tables verified / initialized successfully.")
+
+        # Ensure default admin user exists
+        db = SessionLocal()
+        try:
+            admin = db.query(User).first()
+            if not admin:
+                import hashlib
+                import secrets
+                salt = secrets.token_hex(16)
+                key = hashlib.pbkdf2_hmac("sha256", "owner123".encode("utf-8"), salt.encode("utf-8"), 100000)
+                pw_hash = f"{salt}:{key.hex()}"
+                
+                default_user = User(
+                    id="usr-owner-01",
+                    username="owner@om-sai.com",
+                    email="owner@om-sai.com",
+                    name="Hiren Sutariya",
+                    password_hash=pw_hash,
+                    role="Owner",
+                    role_title="Proprietor & Director",
+                    firm_name="Om Sai Enterprises"
+                )
+                db.add(default_user)
+                db.commit()
+                print("✅ Default admin user created (owner@om-sai.com / owner123)")
+        finally:
+            db.close()
     except Exception as e:
         print(f"⚠️ Database initialization notice: {e}")
+
 

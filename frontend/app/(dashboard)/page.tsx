@@ -344,7 +344,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                <tr className="hover:bg-slate-50/50">
+                <tr className="hover:bg-blue-50/50 transition-colors">
                   <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                     M-101 (SURAJ 400)
@@ -354,12 +354,12 @@ export default function DashboardPage() {
                   <td className="py-3.5 px-4 text-right font-semibold text-slate-900">1,200 pcs</td>
                   <td className="py-3.5 px-4 text-center">
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      <Play className="w-3 h-3 fill-emerald-600" /> Running
+                      <Play className="w-3  h-3 fill-emerald-600" /> Running
                     </span>
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-50/50">
+                <tr className="hover:bg-blue-50/50 transition-colors">
                   <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                     M-102 (TAJIMA Sequin)
@@ -374,7 +374,7 @@ export default function DashboardPage() {
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-50/50">
+                <tr className="hover:bg-blue-50/50 transition-colors">
                   <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-amber-400"></span>
                     M-103 (BAUYU Cord)
@@ -389,7 +389,7 @@ export default function DashboardPage() {
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-50/50">
+                <tr className="hover:bg-blue-50/50 transition-colors">
                   <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                     M-104 (SURAJ 500)

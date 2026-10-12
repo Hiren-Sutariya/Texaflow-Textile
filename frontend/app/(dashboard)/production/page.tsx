@@ -238,7 +238,20 @@ export default function ProductionPage() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [activeUnit, setActiveUnit] = useState<string>("Unit 1");
-  const [machines, setMachines] = useState<EmbroideryMachine[]>(initialMachinesUnit1);
+  const [machines, setMachines] = useState<EmbroideryMachine[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("app_machines_unit_1");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return initialMachinesUnit1;
+  });
   const [logs, setLogs] = useState<ProductionLog[]>(initialLogs);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");

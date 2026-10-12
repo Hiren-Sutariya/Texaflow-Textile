@@ -5,6 +5,7 @@ from app.api.v1.vendors import router as vendors_router
 from app.api.v1.employees import router as employees_router
 from app.api.v1.designs import router as designs_router
 from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.auth import router as auth_router
 
 api_router = APIRouter()
 
@@ -14,3 +15,5 @@ api_router.include_router(vendors_router)
 api_router.include_router(employees_router)
 api_router.include_router(designs_router)
 api_router.include_router(dashboard_router)
+api_router.include_router(auth_router)
+

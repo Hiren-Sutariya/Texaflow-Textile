@@ -64,6 +64,8 @@ const paymentModeOptions = [
 
 export default function NewPaymentVoucherPage() {
   const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
 
   // Form State (NO PREFILLED DEFAULTS - STARTS EMPTY AS REQUESTED)
   const [formType, setFormType] = useState<"Payment Out" | "Receipt In">("Payment Out");
@@ -156,65 +158,75 @@ export default function NewPaymentVoucherPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSavingRef.current) return;
+
     if (!payingCompany || !supplierName || !formAmount) {
       alert("Please select Paying Company, Supplier/Vendor Name, and enter Amount.");
       return;
     }
 
-    let assignedId = `pay-${Date.now()}`;
-    let finalVoucherNo = `VOU-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`;
+    isSavingRef.current = true;
+    setIsSaving(true);
 
     try {
-      const backendRes = await fetchApi<any>("/payments", {
-        method: "POST",
-        body: JSON.stringify({
-          voucher_no: finalVoucherNo,
-          voucher_type: formType,
-          date: formVoucherDate,
-          party_name: supplierName,
-          amount: parseFloat(formAmount) || 0,
-          payment_mode: formMode,
-          bank_account: bankDetails || "HDFC Bank Main A/c",
-          reference_no: formRefNo || `REF-${Math.floor(Math.random() * 89999 + 10000)}`,
-          status: "Paid",
-          remarks: formNotes || "Payment voucher transaction entry"
-        })
-      });
-      if (backendRes?.id) {
-        assignedId = backendRes.id;
-        if (backendRes.voucher_no) finalVoucherNo = backendRes.voucher_no;
+      let assignedId = `pay-${Date.now()}`;
+      let finalVoucherNo = `VOU-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`;
+
+      try {
+        const backendRes = await fetchApi<any>("/payments", {
+          method: "POST",
+          body: JSON.stringify({
+            voucher_no: finalVoucherNo,
+            voucher_type: formType,
+            date: formVoucherDate,
+            party_name: supplierName,
+            amount: parseFloat(formAmount) || 0,
+            payment_mode: formMode,
+            bank_account: bankDetails || "HDFC Bank Main A/c",
+            reference_no: formRefNo || `REF-${Math.floor(Math.random() * 89999 + 10000)}`,
+            status: "Paid",
+            remarks: formNotes || "Payment voucher transaction entry"
+          })
+        });
+        if (backendRes?.id) {
+          assignedId = backendRes.id;
+          if (backendRes.voucher_no) finalVoucherNo = backendRes.voucher_no;
+        }
+      } catch (err) {
+        console.warn("Backend payment voucher sync fallback", err);
       }
-    } catch (err) {
-      console.warn("Backend payment voucher sync fallback", err);
+
+      const newVoucher = {
+        id: assignedId,
+        voucher_no: finalVoucherNo,
+        date: formVoucherDate,
+        party_name: supplierName,
+        paying_company: payingCompany,
+        type: formType,
+        linked_source: formLinkedSource as any,
+        amount: parseFloat(formAmount) || 0,
+        mode: formMode,
+        ref_no: formRefNo || `REF-${Math.floor(Math.random() * 89999 + 10000)}`,
+        bank_details: bankDetails || "HDFC Bank Main A/c",
+        notes: formNotes || "Payment voucher transaction entry"
+      };
+
+      // Save to localStorage
+      try {
+        const existing = localStorage.getItem("om_sai_vouchers");
+        const list = existing ? JSON.parse(existing) : [];
+        list.unshift(newVoucher);
+        localStorage.setItem("om_sai_vouchers", JSON.stringify(list));
+      } catch (err) {
+        console.error(err);
+      }
+
+      alert(`Payment Voucher (${newVoucher.voucher_no}) created successfully!`);
+      router.push("/payments");
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
-
-    const newVoucher = {
-      id: assignedId,
-      voucher_no: finalVoucherNo,
-      date: formVoucherDate,
-      party_name: supplierName,
-      paying_company: payingCompany,
-      type: formType,
-      linked_source: formLinkedSource as any,
-      amount: parseFloat(formAmount) || 0,
-      mode: formMode,
-      ref_no: formRefNo || `REF-${Math.floor(Math.random() * 89999 + 10000)}`,
-      bank_details: bankDetails || "HDFC Bank Main A/c",
-      notes: formNotes || "Payment voucher transaction entry"
-    };
-
-    // Save to localStorage
-    try {
-      const existing = localStorage.getItem("om_sai_vouchers");
-      const list = existing ? JSON.parse(existing) : [];
-      list.unshift(newVoucher);
-      localStorage.setItem("om_sai_vouchers", JSON.stringify(list));
-    } catch (err) {
-      console.error(err);
-    }
-
-    alert(`Payment Voucher (${newVoucher.voucher_no}) created successfully!`);
-    router.push("/payments");
   };
 
 
@@ -805,11 +817,25 @@ export default function NewPaymentVoucherPage() {
           </Link>
           <button
             type="button"
+            disabled={isSaving}
             onClick={handleSubmit}
-            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+            className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
+              isSaving
+                ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
+                : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
+            }`}
           >
-            <Save className="w-4 h-4" />
-            <span>Save Payment Voucher</span>
+            {isSaving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Saving Voucher...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                <span>Save Payment Voucher</span>
+              </>
+            )}
           </button>
         </div>
       </div>

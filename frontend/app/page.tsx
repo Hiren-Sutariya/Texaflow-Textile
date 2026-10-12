@@ -14,15 +14,24 @@ import {
   TrendingUp, 
   ShieldCheck,
   LogOut,
-  Building2
+  Building2,
+  BarChart3,
+  Settings
 } from "lucide-react";
 
 const destinationModules = [
+  // Row 1: 4 Cards (Workable Core Masters & Accounts)
   {
-    title: "Parties Master",
-    href: "/parties",
-    icon: Users,
-    isUpcoming: true
+    title: "Vendors",
+    href: "/vendors",
+    icon: Building2,
+    isUpcoming: false
+  },
+  {
+    title: "Staff & Karigars",
+    href: "/employees",
+    icon: UserCheck,
+    isUpcoming: false
   },
   {
     title: "Design Library",
@@ -31,17 +40,13 @@ const destinationModules = [
     isUpcoming: false
   },
   {
-    title: "Karigar Issue",
-    href: "/job-works",
-    icon: Briefcase,
-    isUpcoming: true
-  },
-  {
     title: "Payments & Vouchers",
     href: "/payments",
     icon: CreditCard,
     isUpcoming: false
   },
+
+  // Row 2: 4 Cards (Factory Finance & Workable/Upcoming Operations)
   {
     title: "Factory Expenses",
     href: "/expenses",
@@ -49,11 +54,25 @@ const destinationModules = [
     isUpcoming: false
   },
   {
+    title: "Parties Master",
+    href: "/parties",
+    icon: Users,
+    isUpcoming: true
+  },
+  {
+    title: "Karigar Issue",
+    href: "/job-works",
+    icon: Briefcase,
+    isUpcoming: true
+  },
+  {
     title: "Worker Payout",
     href: "/worker-payout",
     icon: Wallet,
     isUpcoming: true
   },
+
+  // Row 3: 4 Cards (Performance, Reporting & Settings in 4-col Grid)
   {
     title: "OMS Performance",
     href: "/oms-performance",
@@ -61,9 +80,15 @@ const destinationModules = [
     isUpcoming: true
   },
   {
-    title: "Staff & Karigars",
-    href: "/employees",
-    icon: UserCheck,
+    title: "Reports",
+    href: "/reports",
+    icon: BarChart3,
+    isUpcoming: true
+  },
+  {
+    title: "Settings",
+    href: "/settings",
+    icon: Settings,
     isUpcoming: false
   }
 ];
@@ -127,7 +152,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 8 MODULE CARDS GRID IN SEQUENTIAL ORDER (2 cols on mobile, 4 cols on desktop) */}
+      {/* 4-COLUMN MODULE CARDS GRID (4 boxes per row on desktop matching original spacious design) */}
       <div className="w-full max-w-6xl">
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 w-full">
           {destinationModules.map((item) => {
@@ -136,6 +161,7 @@ export default function Home() {
               <Link
                 key={item.title}
                 href={item.href}
+                prefetch={true}
                 className="group relative bg-white border border-slate-200/80 rounded-2xl p-3.5 sm:p-5 flex flex-col items-center text-center justify-center h-[145px] sm:h-[180px] min-h-[145px] sm:min-h-[180px] shadow-2xs hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
               >
                 {item.isUpcoming && (

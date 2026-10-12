@@ -76,7 +76,21 @@ const parseColorwaysInput = (inputStr: string): ColorwayQty[] => {
 };
 
 export default function JobOrdersPage() {
-  const [orders, setOrders] = useState<JobOrder[]>(initialOrders);
+  const [hasMounted, setHasMounted] = useState(false);
+  const [orders, setOrders] = useState<JobOrder[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("app_job_orders");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return initialOrders;
+  });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [partyFilter, setPartyFilter] = useState("All");
@@ -99,6 +113,7 @@ export default function JobOrdersPage() {
 
   // Load from localStorage app_job_orders & parties_register_data & app_design_folders & app_machines
   useEffect(() => {
+    setHasMounted(true);
     // Load Machines List
     const loadMachinesList = () => {
       let defaults = ["Machine 1", "Machine 2", "Machine 3", "Machine 4"];
@@ -519,6 +534,8 @@ export default function JobOrdersPage() {
   const runningOrdersCount = orders.filter((o) => o.status === "In Production").length;
   const dhagaCuttingOrdersCount = orders.filter((o) => o.status === "Dhaga Cutting").length;
   const completedOrdersCount = orders.filter((o) => o.status === "Completed").length;
+
+  if (!hasMounted) return null;
 
   return (
     <div className="space-y-4 font-sans text-slate-800">
@@ -1116,7 +1133,7 @@ export default function JobOrdersPage() {
                 return (
                   <tr
                     key={item.id}
-                    className={`h-14 transition-colors ${isPopoverOpen || isMachinePopoverOpen ? "bg-blue-50/40" : "hover:bg-slate-50/70"}`}
+                    className={`h-14 transition-colors ${isPopoverOpen || isMachinePopoverOpen ? "bg-blue-50/60" : "hover:bg-blue-50/50"}`}
                   >
                     {/* 1. ORDER CREATION DATE */}
                     <td className="py-2.5 px-4 font-semibold text-slate-900 whitespace-nowrap align-middle">

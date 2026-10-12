@@ -23,7 +23,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     const json = await res.json();
     return (json.data !== undefined ? json.data : json) as T;
   } catch (err: any) {
-    console.error(`Fetch API Error [${endpoint}]:`, err.message);
+    console.warn(`Fetch API Notice [${endpoint}]:`, err.message);
     throw err;
   }
 }

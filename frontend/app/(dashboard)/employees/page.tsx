@@ -333,7 +333,23 @@ const initialAttendance: AttendanceRecord[] = [
 ];
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  const [hasMounted, setHasMounted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
+  const [employees, setEmployees] = useState<Employee[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("app_employees_data");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return initialEmployees;
+  });
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>(initialAttendance);
 
   const loadEmployeesFromApi = async () => {
@@ -415,6 +431,7 @@ export default function EmployeesPage() {
   };
 
   useEffect(() => {
+    setHasMounted(true);
     loadEmployeesFromApi();
   }, []);
 
@@ -666,10 +683,17 @@ export default function EmployeesPage() {
 
   const handleSaveFullWorker = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isSavingRef.current) return;
+
     if (!formName.trim()) {
       alert("Please enter Worker Name.");
       return;
     }
+
+    isSavingRef.current = true;
+    setIsSaving(true);
+
+    try {
 
     const isKarigar = formCategory === "Karigar";
     const khata = formKhataNo.trim() || (isKarigar ? `KAR-00${employees.length + 1}` : `STF-00${employees.length + 1}`);
@@ -793,6 +817,10 @@ export default function EmployeesPage() {
 
     setIsMachineDropdownOpen(false);
     setIsFormOpen(false);
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
 
@@ -1472,11 +1500,25 @@ export default function EmployeesPage() {
 
           <button
             type="button"
+            disabled={isSaving}
             onClick={() => handleSaveFullWorker()}
-            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs shadow-md transition-all cursor-pointer flex items-center gap-2 active:scale-95"
+            className={`px-6 py-2.5 font-extrabold rounded-xl text-xs shadow-md transition-all flex items-center gap-2 ${
+              isSaving
+                ? "bg-emerald-400 text-white cursor-not-allowed pointer-events-none opacity-80"
+                : "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer active:scale-95"
+            }`}
           >
-            <Check className="w-4 h-4" />
-            <span>Save Worker</span>
+            {isSaving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Saving Worker...</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4" />
+                <span>Save Worker</span>
+              </>
+            )}
           </button>
         </div>
 
@@ -1671,6 +1713,8 @@ export default function EmployeesPage() {
   }
 
   // DEFAULT VIEW: WORKER DIRECTORY TABLE LIST PAGE
+  if (!hasMounted) return null;
+
   return (
     <div className="space-y-4 pb-12">
       {/* SEARCH & ACTIONS TOOLBAR CARD */}
@@ -2003,7 +2047,7 @@ export default function EmployeesPage() {
                 <tr
                   key={emp.id}
                   onClick={() => setPreviewWorker(emp)}
-                  className="hover:bg-emerald-50/40 transition-colors cursor-pointer group"
+                  className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                 >
                   {/* SR NO */}
                   <td className="px-4 py-3.5 text-center font-bold text-slate-400 font-mono text-xs">
@@ -2021,15 +2065,15 @@ export default function EmployeesPage() {
                             e.stopPropagation();
                             setActiveZoomedImage(emp.photoUrl || null);
                           }}
-                          className="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs cursor-zoom-in hover:opacity-90 hover:ring-2 hover:ring-emerald-500 transition-all"
+                          className="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs cursor-zoom-in hover:opacity-90 hover:ring-2 hover:ring-blue-500 transition-all"
                           title="Click to zoom photo"
                         />
                       ) : (
-                        <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-800 font-extrabold text-xs flex items-center justify-center shrink-0 border border-emerald-200">
+                        <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-800 font-extrabold text-xs flex items-center justify-center shrink-0 border border-blue-200">
                           {emp.name.charAt(0)}
                         </div>
                       )}
-                      <span className="font-extrabold text-slate-900 text-xs sm:text-sm group-hover:text-emerald-700 transition-colors">
+                      <span className="font-extrabold text-slate-900 text-xs sm:text-sm group-hover:text-blue-700 transition-colors">
                         {emp.name}
                       </span>
                     </div>

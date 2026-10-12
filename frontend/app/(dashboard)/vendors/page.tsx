@@ -110,8 +110,8 @@ function CustomSelect({
       <button
         type="button"
         onClick={handleToggle}
-        className={`custom-select-trigger w-full h-9 px-3 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-emerald-500 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
-          isOpen ? "border-emerald-500 ring-2 ring-emerald-500/20" : ""
+        className={`custom-select-trigger w-full h-9 px-3 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
         } ${uppercase && selectedOption ? "uppercase" : ""}`}
       >
         <span className={`truncate ${selectedOption ? "font-bold text-slate-900" : "font-medium text-slate-400"}`}>
@@ -119,7 +119,7 @@ function CustomSelect({
         </span>
         <ChevronDown
           className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${
-            isOpen ? "rotate-180 text-emerald-600" : ""
+            isOpen ? "rotate-180 text-blue-600" : ""
           }`}
         />
       </button>
@@ -158,12 +158,12 @@ function CustomSelect({
                   }}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
                     isSelected
-                      ? "bg-emerald-50 text-emerald-950 font-extrabold border-emerald-500 shadow-2xs"
+                      ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                       : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
                   } ${uppercase ? "uppercase" : ""}`}
                 >
                   <span className="truncate">{opt.label}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0 ml-2" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
                 </button>
               );
             })}
@@ -483,8 +483,24 @@ const initialVendors: Vendor[] = [
 ];
 
 export default function VendorsPage() {
-  const [vendors, setVendors] = useState<Vendor[]>(initialVendors);
+  const [hasMounted, setHasMounted] = useState(false);
+  const [vendors, setVendors] = useState<Vendor[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("app_vendors_master");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return initialVendors;
+  });
   const [search, setSearch] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
 
   // Preview Modal State
   const [previewVendor, setPreviewVendor] = useState<Vendor | null>(null);
@@ -719,6 +735,7 @@ export default function VendorsPage() {
 
   // Load on mount
   useEffect(() => {
+    setHasMounted(true);
     loadVendorsFromApi();
   }, []);
 
@@ -886,6 +903,8 @@ export default function VendorsPage() {
   };
 
   const handleSaveVendor = async () => {
+    if (isSavingRef.current) return;
+
     const finalDispName = formDisplayName.trim() || formCompanyName.trim() || `${formFirstName} ${formLastName}`.trim();
     if (!finalDispName) {
       alert("⚠️ Please enter Company Name or Display Name!");
@@ -898,24 +917,28 @@ export default function VendorsPage() {
       return;
     }
 
-    const compiledBank: BankDetail[] = bank.account_number
-      ? [
-          {
-            id: `b-${Date.now()}`,
-            account_holder: bank.account_holder || finalDispName,
-            bank_name: bank.bank_name || "-",
-            account_number: bank.account_number,
-            ifsc: bank.ifsc || "-",
-            upi_id: bank.upi_id || "-",
-            qr_setup: bank.qr_setup
-          }
-        ]
-      : [];
+    isSavingRef.current = true;
+    setIsSaving(true);
 
-    if (editingVendorId) {
-      try {
-        await fetchApi(`/vendors/${editingVendorId}`, {
-          method: "PUT",
+    try {
+      const compiledBank: BankDetail[] = bank.account_number
+        ? [
+            {
+              id: `b-${Date.now()}`,
+              account_holder: bank.account_holder || finalDispName,
+              bank_name: bank.bank_name || "-",
+              account_number: bank.account_number,
+              ifsc: bank.ifsc || "-",
+              upi_id: bank.upi_id || "-",
+              qr_setup: bank.qr_setup
+            }
+          ]
+        : [];
+
+      if (editingVendorId) {
+        try {
+          await fetchApi(`/vendors/${editingVendorId}`, {
+            method: "PUT",
           body: JSON.stringify({
             account_type: formAccountType,
             salutation: formSalutation,
@@ -1059,6 +1082,10 @@ export default function VendorsPage() {
     }
 
     setIsFormOpen(false);
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteVendor = async (id: string) => {
@@ -1190,8 +1217,8 @@ export default function VendorsPage() {
 
             {/* PRIMARY INFORMATION */}
             <div className="space-y-4 pb-6 border-b border-slate-100">
-              <div className="flex items-center gap-2 text-emerald-800 font-extrabold text-sm border-b border-slate-200/60 pb-2">
-                <div className="p-1 bg-emerald-200/60 rounded text-emerald-900">
+              <div className="flex items-center gap-2 text-blue-900 font-extrabold text-sm border-b border-slate-200/60 pb-2">
+                <div className="p-1 bg-blue-100 rounded text-blue-700">
                   <Building2 className="w-4 h-4" />
                 </div>
                 <span>Primary Information</span>
@@ -1214,9 +1241,9 @@ export default function VendorsPage() {
                         name="account_type"
                         checked={formAccountType === type}
                         onChange={() => setFormAccountType(type as any)}
-                        className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                        className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
                       />
-                      <span className={formAccountType === type ? "text-emerald-900 font-extrabold" : ""}>
+                      <span className={formAccountType === type ? "text-blue-900 font-extrabold" : ""}>
                         {type}
                       </span>
                     </label>
@@ -1247,14 +1274,14 @@ export default function VendorsPage() {
                     placeholder="First Name"
                     value={formFirstName}
                     onChange={(e) => setFormFirstName(e.target.value)}
-                    className="h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs flex-1 min-w-[120px]"
+                    className="h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs flex-1 min-w-[120px]"
                   />
                   <input
                     type="text"
                     placeholder="Last Name"
                     value={formLastName}
                     onChange={(e) => setFormLastName(e.target.value)}
-                    className="h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs flex-1 min-w-[120px]"
+                    className="h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs flex-1 min-w-[120px]"
                   />
                 </div>
               </div>
@@ -1268,7 +1295,7 @@ export default function VendorsPage() {
                     placeholder="e.g. Vardhman Thread Mills"
                     value={formCompanyName}
                     onChange={(e) => setFormCompanyName(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
                   />
                 </div>
               </div>
@@ -1282,7 +1309,7 @@ export default function VendorsPage() {
                     placeholder="Select or type to add"
                     value={formDisplayName}
                     onChange={(e) => setFormDisplayName(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
                   />
                   <p className="text-[10px] text-slate-400 mt-0.5">If left blank, Company Name will be used.</p>
                 </div>
@@ -1298,7 +1325,7 @@ export default function VendorsPage() {
                     placeholder="vendor@example.com"
                     value={formEmail}
                     onChange={(e) => setFormEmail(e.target.value)}
-                    className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                    className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
                   />
                 </div>
               </div>
@@ -1312,7 +1339,7 @@ export default function VendorsPage() {
                     placeholder="e.g. 24AABCU9603R1ZM"
                     value={formGstin}
                     onChange={(e) => setFormGstin(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs uppercase"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs uppercase"
                   />
                 </div>
               </div>
@@ -1337,7 +1364,7 @@ export default function VendorsPage() {
                         placeholder="Work Phone"
                         value={formWorkPhone}
                         onChange={(e) => setFormWorkPhone(e.target.value)}
-                        className="w-full h-9 pl-8 pr-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                        className="w-full h-9 pl-8 pr-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
                       />
                     </div>
                   </div>
@@ -1358,7 +1385,7 @@ export default function VendorsPage() {
                         placeholder="Mobile"
                         value={formMobile}
                         onChange={(e) => setFormMobile(e.target.value)}
-                        className="w-full h-9 pl-8 pr-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                        className="w-full h-9 pl-8 pr-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
                       />
                     </div>
                   </div>
@@ -1401,7 +1428,7 @@ export default function VendorsPage() {
                     onClick={() => setActiveSubTab(tab as any)}
                     className={`pb-2.5 cursor-pointer transition-all border-b-2 whitespace-nowrap ${
                       activeSubTab === tab
-                        ? "border-emerald-600 text-emerald-800 font-extrabold"
+                        ? "border-blue-600 text-blue-700 font-extrabold"
                         : "border-transparent text-slate-500 hover:text-slate-800"
                     }`}
                   >
@@ -1423,7 +1450,7 @@ export default function VendorsPage() {
                           placeholder="e.g. AAACV1234F"
                           value={formPan}
                           onChange={(e) => setFormPan(e.target.value)}
-                          className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs uppercase"
+                          className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs uppercase"
                         />
                       </div>
 
@@ -1522,7 +1549,7 @@ export default function VendorsPage() {
                             id="msme_check"
                             checked={formIsMsme}
                             onChange={(e) => setFormIsMsme(e.target.checked)}
-                            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                           />
                           <label htmlFor="msme_check" className="font-bold text-slate-800 cursor-pointer select-none">
                             This vendor is MSME registered
@@ -1530,7 +1557,7 @@ export default function VendorsPage() {
                         </div>
 
                         {formIsMsme && (
-                          <div className="space-y-2.5 pt-1.5 pl-3 border-l-2 border-emerald-500 animate-in fade-in duration-150">
+                          <div className="space-y-2.5 pt-1.5 pl-3 border-l-2 border-blue-500 animate-in fade-in duration-150">
                             <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
                               <label className="font-bold text-slate-600 leading-tight">MSME/Udyam Type</label>
                               <div>
@@ -1554,7 +1581,7 @@ export default function VendorsPage() {
                                 placeholder="Enter the Registration Number"
                                 value={formMsmeNumber}
                                 onChange={(e) => setFormMsmeNumber(e.target.value)}
-                                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
                               />
                             </div>
                           </div>
@@ -1567,7 +1594,7 @@ export default function VendorsPage() {
                           id="portal_check"
                           checked={formEnablePortal}
                           onChange={(e) => setFormEnablePortal(e.target.checked)}
-                          className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                         />
                         <label htmlFor="portal_check" className="font-bold text-slate-800 cursor-pointer select-none">
                           Allow portal access for this vendor
@@ -1591,7 +1618,7 @@ export default function VendorsPage() {
                         type="text"
                         value={billing.attention}
                         onChange={(e) => setBilling({ ...billing, attention: e.target.value })}
-                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
                       />
                     </div>
 
@@ -1616,14 +1643,14 @@ export default function VendorsPage() {
                           placeholder="Street 1"
                           value={billing.street1}
                           onChange={(e) => setBilling({ ...billing, street1: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
                         />
                         <input
                           type="text"
                           placeholder="Street 2"
                           value={billing.street2}
                           onChange={(e) => setBilling({ ...billing, street2: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -1635,7 +1662,7 @@ export default function VendorsPage() {
                           type="text"
                           value={billing.city}
                           onChange={(e) => setBilling({ ...billing, city: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
                         />
                       </div>
                       <div>
@@ -1678,7 +1705,7 @@ export default function VendorsPage() {
                       <button
                         type="button"
                         onClick={handleCopyBillingToShipping}
-                        className="text-emerald-700 hover:text-emerald-800 font-extrabold text-[11px] flex items-center gap-1 cursor-pointer"
+                        className="text-blue-700 hover:text-blue-800 font-extrabold text-[11px] flex items-center gap-1 cursor-pointer"
                       >
                         <Copy className="w-3 h-3" />
                         <span>↓ Copy billing address</span>
@@ -1691,7 +1718,7 @@ export default function VendorsPage() {
                         type="text"
                         value={shipping.attention}
                         onChange={(e) => setShipping({ ...shipping, attention: e.target.value })}
-                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
                       />
                     </div>
 
@@ -1716,14 +1743,14 @@ export default function VendorsPage() {
                           placeholder="Street 1"
                           value={shipping.street1}
                           onChange={(e) => setShipping({ ...shipping, street1: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
                         />
                         <input
                           type="text"
                           placeholder="Street 2"
                           value={shipping.street2}
                           onChange={(e) => setShipping({ ...shipping, street2: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -1735,7 +1762,7 @@ export default function VendorsPage() {
                           type="text"
                           value={shipping.city}
                           onChange={(e) => setShipping({ ...shipping, city: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-emerald-500"
+                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
                         />
                       </div>
                       <div>
@@ -1776,8 +1803,8 @@ export default function VendorsPage() {
               {/* TAB CONTENT 3: BROKERAGE (Screenshot 3) */}
               {activeSubTab === "Brokerage" && (
                 <div className="space-y-4 animate-in fade-in duration-100 text-xs">
-                  <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-emerald-900 flex items-start gap-2 text-[11px] font-medium">
-                    <AlertCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl text-blue-900 flex items-start gap-2 text-[11px] font-medium">
+                    <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                     <span>
                       Provide details of the broker or agent mediating this relationship. This information applies to Supplier (Purchases), Customer (Sales), or Both.
                     </span>
@@ -1791,7 +1818,7 @@ export default function VendorsPage() {
                         placeholder="Enter broker name"
                         value={brokerage.broker_name}
                         onChange={(e) => setBrokerage({ ...brokerage, broker_name: e.target.value })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
                       />
                     </div>
 
@@ -1804,7 +1831,7 @@ export default function VendorsPage() {
                           placeholder="Enter phone number"
                           value={brokerage.work_phone}
                           onChange={(e) => setBrokerage({ ...brokerage, work_phone: e.target.value })}
-                          className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                          className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                         />
                       </div>
                     </div>
@@ -1818,7 +1845,7 @@ export default function VendorsPage() {
                           placeholder="Enter mobile number"
                           value={brokerage.mobile}
                           onChange={(e) => setBrokerage({ ...brokerage, mobile: e.target.value })}
-                          className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                          className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                         />
                       </div>
                     </div>
@@ -1831,7 +1858,7 @@ export default function VendorsPage() {
                         placeholder="e.g. 2.5"
                         value={brokerage.percentage}
                         onChange={(e) => setBrokerage({ ...brokerage, percentage: e.target.value === "" ? "" : Number(e.target.value) })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
                       />
                     </div>
 
@@ -1842,7 +1869,7 @@ export default function VendorsPage() {
                         placeholder="broker@example.com"
                         value={brokerage.broker_email}
                         onChange={(e) => setBrokerage({ ...brokerage, broker_email: e.target.value })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
                       />
                     </div>
                   </div>
@@ -1860,7 +1887,7 @@ export default function VendorsPage() {
                         placeholder="e.g. Vardhman Thread Mills"
                         value={bank.account_holder}
                         onChange={(e) => setBank({ ...bank, account_holder: e.target.value })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
                       />
                     </div>
 
@@ -1871,7 +1898,7 @@ export default function VendorsPage() {
                         placeholder="e.g. HDFC Bank"
                         value={bank.bank_name}
                         onChange={(e) => setBank({ ...bank, bank_name: e.target.value })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
                       />
                     </div>
 
@@ -1883,7 +1910,7 @@ export default function VendorsPage() {
                           placeholder="Bank Account Number"
                           value={bank.account_number}
                           onChange={(e) => setBank({ ...bank, account_number: e.target.value })}
-                          className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                          className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                         />
                         <button
                           type="button"
@@ -1903,7 +1930,7 @@ export default function VendorsPage() {
                           placeholder="Re-enter Account Number"
                           value={bank.re_account_number}
                           onChange={(e) => setBank({ ...bank, re_account_number: e.target.value })}
-                          className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                          className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                         />
                         <button
                           type="button"
@@ -1922,7 +1949,7 @@ export default function VendorsPage() {
                         placeholder="e.g. HDFC0000102"
                         value={bank.ifsc}
                         onChange={(e) => setBank({ ...bank, ifsc: e.target.value })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2 uppercase"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2 uppercase"
                       />
                     </div>
 
@@ -1933,7 +1960,7 @@ export default function VendorsPage() {
                         placeholder="e.g. 1234567890@ybl"
                         value={bank.upi_id}
                         onChange={(e) => setBank({ ...bank, upi_id: e.target.value })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs sm:col-span-2"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
                       />
                     </div>
                   </div>
@@ -1948,7 +1975,7 @@ export default function VendorsPage() {
                           name="qr_setup"
                           checked={bank.qr_setup === "Auto Generate from UPI"}
                           onChange={() => setBank({ ...bank, qr_setup: "Auto Generate from UPI" })}
-                          className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                          className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
                         />
                         <span>Auto Generate from UPI</span>
                       </label>
@@ -1958,7 +1985,7 @@ export default function VendorsPage() {
                           name="qr_setup"
                           checked={bank.qr_setup === "Upload Custom QR"}
                           onChange={() => setBank({ ...bank, qr_setup: "Upload Custom QR" })}
-                          className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                          className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
                         />
                         <span>Upload Custom QR</span>
                       </label>
@@ -2022,7 +2049,7 @@ export default function VendorsPage() {
                           ]);
                           setNewContact({ name: "", email: "", phone: "", designation: "" });
                         }}
-                        className="h-8 bg-emerald-600 text-white font-bold rounded-lg text-xs hover:bg-emerald-700"
+                        className="h-8 bg-blue-600 text-white font-bold rounded-lg text-xs hover:bg-blue-700"
                       >
                         + Add Contact
                       </button>
@@ -2040,7 +2067,7 @@ export default function VendorsPage() {
                     placeholder="Enter any specific notes regarding lead time, yarn quality standards, or payment agreements..."
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
-                    className="w-full p-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-emerald-500 shadow-2xs text-xs"
+                    className="w-full p-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                   />
                 </div>
               )}
@@ -2051,24 +2078,43 @@ export default function VendorsPage() {
           {/* Fixed Actions Footer Bar - Perfectly Aligned with Sidebar Bottom Footer (0px space at bottom) */}
           <div className="fixed bottom-0 left-0 lg:left-[250px] right-0 z-40 h-[57px] bg-white border-t border-slate-200 px-6 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
               <span>Synced</span>
             </div>
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
+                disabled={isSaving}
                 onClick={() => setIsFormOpen(false)}
-                className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-300 text-xs transition-colors cursor-pointer shadow-2xs"
+                className={`px-4 py-2 font-bold rounded-xl border border-slate-300 text-xs transition-colors shadow-2xs ${
+                  isSaving
+                    ? "bg-slate-100 text-slate-400 cursor-not-allowed pointer-events-none"
+                    : "bg-white hover:bg-slate-100 text-slate-700 cursor-pointer"
+                }`}
               >
                 Cancel
               </button>
               <button
                 type="button"
+                disabled={isSaving}
                 onClick={handleSaveVendor}
-                className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+                className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
+                  isSaving
+                    ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
+                    : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
+                }`}
               >
-                <Save className="w-4 h-4" />
-                <span>Save Vendor</span>
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Saving Vendor...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>Save Vendor</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -2113,7 +2159,7 @@ export default function VendorsPage() {
                                   next[idx].name = e.target.value;
                                   setEditingTerms(next);
                                 }}
-                                className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 text-xs font-bold text-slate-900"
+                                className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-xs font-bold text-slate-900"
                               />
                             </td>
                             <td className="py-2.5 px-4 text-center">
@@ -2125,7 +2171,7 @@ export default function VendorsPage() {
                                   next[idx].days = e.target.value;
                                   setEditingTerms(next);
                                 }}
-                                className="w-20 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center focus:outline-none focus:border-emerald-500 text-xs font-semibold text-slate-700 mx-auto"
+                                className="w-20 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center focus:outline-none focus:border-blue-500 text-xs font-semibold text-slate-700 mx-auto"
                               />
                             </td>
                             <td className="py-2.5 px-4 text-center">
@@ -2138,14 +2184,14 @@ export default function VendorsPage() {
                                     next[idx].discount = e.target.value;
                                     setEditingTerms(next);
                                   }}
-                                  className="w-12 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center focus:outline-none focus:border-emerald-500 text-xs font-bold text-slate-900"
+                                  className="w-12 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center focus:outline-none focus:border-blue-500 text-xs font-bold text-slate-900"
                                 />
                                 <span className="text-slate-400 font-bold">%</span>
                               </div>
                             </td>
                             <td className="py-2.5 px-4 text-center">
                               {term.isDefault ? (
-                                <span className="px-3 py-1 bg-emerald-600 text-white font-extrabold rounded-lg text-[10px] inline-block shadow-2xs">
+                                <span className="px-3 py-1 bg-blue-600 text-white font-extrabold rounded-lg text-[10px] inline-block shadow-2xs">
                                   Default
                                 </span>
                               ) : (
@@ -2158,7 +2204,7 @@ export default function VendorsPage() {
                                     }));
                                     setEditingTerms(next);
                                   }}
-                                  className="text-emerald-700 hover:text-emerald-800 font-bold text-xs hover:underline cursor-pointer"
+                                  className="text-blue-700 hover:text-blue-800 font-bold text-xs hover:underline cursor-pointer"
                                 >
                                   Mark as Default
                                 </button>
@@ -2185,7 +2231,7 @@ export default function VendorsPage() {
                         }
                       ]);
                     }}
-                    className="text-emerald-700 hover:text-emerald-800 font-extrabold text-xs flex items-center gap-1 transition-colors cursor-pointer py-1"
+                    className="text-blue-700 hover:text-blue-800 font-extrabold text-xs flex items-center gap-1 transition-colors cursor-pointer py-1"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Add New</span>
@@ -2211,7 +2257,7 @@ export default function VendorsPage() {
                       }
                       setIsConfigureTermsOpen(false);
                     }}
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs shadow-md transition-all cursor-pointer active:scale-95"
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs shadow-md transition-all cursor-pointer active:scale-95"
                   >
                     Save
                   </button>
@@ -2224,6 +2270,8 @@ export default function VendorsPage() {
     }
 
   // DEFAULT VIEW: VENDORS TABLE LIST PAGE (MATCHING PARTIES PAGE DESIGN)
+  if (!hasMounted) return null;
+
   return (
     <div className="space-y-4 text-xs font-sans pb-12">
       {/* SEARCH & ACTIONS TOOLBAR CARD */}
@@ -2236,7 +2284,7 @@ export default function VendorsPage() {
             placeholder="Search Name, GST, Phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-9 pl-8 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-medium shadow-2xs hover:border-emerald-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-colors"
+            className="w-full h-9 pl-8 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-medium shadow-2xs hover:border-blue-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-colors"
           />
         </div>
 
@@ -2279,7 +2327,7 @@ export default function VendorsPage() {
             <button
               type="button"
               onClick={openNewVendorForm}
-              className="flex-1 sm:flex-none h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
+              className="flex-1 sm:flex-none h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New Vendor</span>
@@ -2293,7 +2341,7 @@ export default function VendorsPage() {
               onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
               className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer shadow-2xs ${
                 isActionMenuOpen
-                  ? "bg-emerald-50 border-emerald-500 text-emerald-700 ring-2 ring-emerald-500/20"
+                  ? "bg-blue-50 border-blue-500 text-blue-700 ring-2 ring-blue-500/20"
                   : "bg-white hover:bg-slate-100 border-slate-300 text-slate-600"
               }`}
               title="More Actions & Filters"
@@ -2319,7 +2367,7 @@ export default function VendorsPage() {
                         }}
                         className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
                           sortBy === "name"
-                            ? "bg-[#0B4F3F] text-white font-bold shadow-md"
+                            ? "bg-blue-600 text-white font-bold shadow-md"
                             : "text-slate-700 hover:bg-slate-100 font-medium"
                         }`}
                       >
@@ -2339,7 +2387,7 @@ export default function VendorsPage() {
                         }}
                         className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
                           sortBy === "created"
-                            ? "bg-[#0B4F3F] text-white font-bold shadow-md"
+                            ? "bg-blue-600 text-white font-bold shadow-md"
                             : "text-slate-700 hover:bg-slate-100 font-medium"
                         }`}
                       >
@@ -2359,7 +2407,7 @@ export default function VendorsPage() {
                         }}
                         className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
                           sortBy === "modified"
-                            ? "bg-[#0B4F3F] text-white font-bold shadow-md"
+                            ? "bg-blue-600 text-white font-bold shadow-md"
                             : "text-slate-700 hover:bg-slate-100 font-medium"
                         }`}
                       >
@@ -2377,7 +2425,7 @@ export default function VendorsPage() {
                           setIsActionMenuOpen(false);
                           openNewVendorForm();
                         }}
-                        className="w-full text-left px-3.5 py-2.5 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer"
+                        className="w-full text-left px-3.5 py-2.5 bg-blue-50 text-blue-950 font-bold rounded-2xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs transition-all cursor-pointer"
                       >
                         <span>Import CSV File</span>
                       </button>
@@ -2409,7 +2457,7 @@ export default function VendorsPage() {
                       <button
                         type="button"
                         onClick={handleExportCSV}
-                        className="w-full text-left px-3.5 py-2.5 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer"
+                        className="w-full text-left px-3.5 py-2.5 bg-blue-50 text-blue-950 font-bold rounded-2xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs transition-all cursor-pointer"
                       >
                         <span>Export CSV File</span>
                       </button>
@@ -2435,7 +2483,7 @@ export default function VendorsPage() {
                       <button
                         type="button"
                         onClick={() => setIsActionMenuOpen(false)}
-                        className="w-full text-left px-3.5 py-2.5 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer"
+                        className="w-full text-left px-3.5 py-2.5 bg-blue-50 text-blue-950 font-bold rounded-2xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs transition-all cursor-pointer"
                       >
                         <span>Column Visibility</span>
                       </button>
@@ -2461,7 +2509,7 @@ export default function VendorsPage() {
                       <button
                         type="button"
                         onClick={handleRefreshList}
-                        className="w-full text-left px-3.5 py-2.5 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer"
+                        className="w-full text-left px-3.5 py-2.5 bg-blue-50 text-blue-950 font-bold rounded-2xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs transition-all cursor-pointer"
                       >
                         <span>Refresh List</span>
                       </button>
@@ -2488,15 +2536,15 @@ export default function VendorsPage() {
                     onClick={() => setActiveHoverMenu(activeHoverMenu === "sort" ? null : "sort")}
                     className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
                       activeHoverMenu === "sort" || !activeHoverMenu
-                        ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                        ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
                         : "hover:bg-slate-100 text-slate-700"
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <ArrowUpDown className="w-3.5 h-3.5 text-emerald-700" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-blue-700" />
                       <span>Sort by</span>
                     </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-emerald-700" />
+                    <ChevronRight className="w-3.5 h-3.5 text-blue-700" />
                   </div>
 
                   <button
@@ -2508,7 +2556,7 @@ export default function VendorsPage() {
                     }}
                     className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
                       activeHoverMenu === "import"
-                        ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                        ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
                         : "hover:bg-slate-100 text-slate-700"
                     }`}
                   >
@@ -2525,7 +2573,7 @@ export default function VendorsPage() {
                     onClick={handleExportCSV}
                     className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
                       activeHoverMenu === "export"
-                        ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                        ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
                         : "hover:bg-slate-100 text-slate-700"
                     }`}
                   >
@@ -2544,7 +2592,7 @@ export default function VendorsPage() {
                     }}
                     className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
                       activeHoverMenu === "preferences"
-                        ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                        ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
                         : "hover:bg-slate-100 text-slate-700"
                     }`}
                   >
@@ -2561,12 +2609,12 @@ export default function VendorsPage() {
                     onClick={handleRefreshList}
                     className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
                       activeHoverMenu === "refresh"
-                        ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                        ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
                         : "hover:bg-slate-100 text-slate-700"
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-emerald-600" : ""}`} />
+                      <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-blue-600" : ""}`} />
                       <span>Refresh List</span>
                     </div>
                     <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
@@ -2592,19 +2640,19 @@ export default function VendorsPage() {
               <div
                 key={v.id}
                 onClick={() => openPreviewVendor(v)}
-                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2.5 hover:border-emerald-300 transition-all cursor-pointer"
+                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2.5 hover:border-blue-300 hover:bg-blue-50/20 transition-all cursor-pointer group"
               >
                 {/* Header: Name + Account Type + SR */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-800 font-mono font-black text-xs flex items-center justify-center shrink-0 border border-emerald-100">
+                    <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-800 font-mono font-black text-xs flex items-center justify-center shrink-0 border border-blue-100">
                       {v.srNo}
                     </span>
-                    <h3 className="font-extrabold text-slate-900 text-sm truncate">
+                    <h3 className="font-extrabold text-slate-900 text-sm truncate group-hover:text-blue-700 transition-colors">
                       {v.display_name || v.company_name}
                     </h3>
                   </div>
-                  <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-lg text-[10px] border border-blue-100 shrink-0">
+                  <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs border border-emerald-200 shrink-0">
                     {v.account_type || "Vendor"}
                   </span>
                 </div>
@@ -2629,9 +2677,9 @@ export default function VendorsPage() {
                       {v.gstin || v.pan || "-"}
                     </span>
                   </div>
-                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Terms</span>
-                    <span className="font-bold text-slate-800 text-[11px] truncate block">
+                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 flex flex-col justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Terms</span>
+                    <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-lg text-[10px] border border-emerald-200 inline-block w-fit">
                       {v.payment_terms || "Due on Receipt"}
                     </span>
                   </div>
@@ -2644,7 +2692,7 @@ export default function VendorsPage() {
                       <a
                         href={`tel:${v.mobile || v.work_phone}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 text-xs font-mono font-bold transition-colors"
+                        className="inline-flex items-center gap-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 text-xs font-mono font-bold transition-colors"
                       >
                         <Phone className="w-3.5 h-3.5" />
                         <span>{v.mobile || v.work_phone}</span>
@@ -2666,7 +2714,7 @@ export default function VendorsPage() {
                     <button
                       type="button"
                       onClick={() => openEditVendorForm(v)}
-                      className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                       title="Edit"
                     >
                       <Edit3 className="w-4 h-4" />
@@ -2710,13 +2758,19 @@ export default function VendorsPage() {
                 </tr>
               ) : (
                 filteredVendors.map((v) => (
-                  <tr key={v.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-4 px-4 text-center font-bold text-slate-500">{v.srNo}</td>
-                    <td className="py-4 px-5 font-extrabold text-slate-900 text-xs sm:text-sm">
-                      {v.display_name || v.company_name}
+                  <tr
+                    key={v.id}
+                    onClick={() => openPreviewVendor(v)}
+                    className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
+                  >
+                    <td className="py-4 px-4 text-center font-bold text-slate-500 font-mono text-xs">{v.srNo}</td>
+                    <td className="py-4 px-5">
+                      <span className="font-extrabold text-slate-900 text-xs sm:text-sm group-hover:text-blue-700 transition-colors">
+                        {v.display_name || v.company_name}
+                      </span>
                     </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg text-[10px] border border-blue-100/80 inline-block">
+                    <td className="py-4 px-4 text-center whitespace-nowrap">
+                      <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs border border-emerald-200 inline-block">
                         {v.account_type || "Supplier / Vendor"}
                       </span>
                     </td>
@@ -2737,13 +2791,13 @@ export default function VendorsPage() {
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-extrabold rounded-lg text-[10px] border border-slate-200 inline-block">
-                        {v.payment_terms}
+                    <td className="py-4 px-4 text-center whitespace-nowrap">
+                      <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs border border-emerald-200 inline-block">
+                        {v.payment_terms || "Due on Receipt"}
                       </span>
                     </td>
                     <td className="py-4 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => openPreviewVendor(v)}
@@ -2755,7 +2809,7 @@ export default function VendorsPage() {
                         <button
                           type="button"
                           onClick={() => openEditVendorForm(v)}
-                          className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                           title="Edit Vendor Details"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
@@ -2786,15 +2840,15 @@ export default function VendorsPage() {
             <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50 border-b border-slate-200 shrink-0">
               <div className="flex items-start sm:items-center justify-between gap-2.5">
                 <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-extrabold text-base border border-emerald-200 shadow-2xs shrink-0 mt-0.5 sm:mt-0">
-                    <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700" />
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-blue-100 text-blue-800 flex items-center justify-center font-extrabold text-base border border-blue-200 shadow-2xs shrink-0 mt-0.5 sm:mt-0">
+                    <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-blue-700" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <h2 className="text-sm sm:text-base font-extrabold text-slate-900 leading-snug">
                         {previewVendor.display_name || previewVendor.company_name}
                       </h2>
-                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-md text-[10px] border border-blue-100 shrink-0">
+                      <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2.5 py-0.5 rounded-lg text-[11px] border border-emerald-200 shrink-0">
                         {previewVendor.account_type}
                       </span>
                       {previewVendor.is_msme && (
@@ -2817,7 +2871,7 @@ export default function VendorsPage() {
                       setIsPreviewOpen(false);
                       openEditVendorForm(previewVendor);
                     }}
-                    className="hidden sm:inline-flex px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                    className="hidden sm:inline-flex px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Edit Record</span>
@@ -2848,19 +2902,27 @@ export default function VendorsPage() {
 
                 <div>
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mobile & Phone</div>
-                  {previewVendor.mobile ? (
-                    <a
-                      href={`tel:${previewVendor.mobile.replace(/\s+/g, "")}`}
-                      className="font-bold text-emerald-700 hover:text-emerald-800 hover:underline font-mono mt-1 flex items-center gap-1.5 text-xs sm:text-sm"
-                    >
-                      <Phone className="w-3 h-3 text-emerald-600 shrink-0" />
-                      <span>{previewVendor.mobile}</span>
-                    </a>
-                  ) : (
-                    <div className="text-slate-400 mt-1 font-mono">-</div>
-                  )}
-                  <div className="text-slate-500 font-mono text-[11px] mt-0.5">
-                    Work: {previewVendor.work_phone || "-"}
+                  <div className="mt-1 space-y-1">
+                    {previewVendor.mobile ? (
+                      <a
+                        href={`tel:${previewVendor.mobile.replace(/\s+/g, "")}`}
+                        className="font-bold text-emerald-700 hover:text-emerald-800 hover:underline font-mono flex items-center gap-1.5 text-xs sm:text-sm"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>{previewVendor.mobile}</span>
+                      </a>
+                    ) : (
+                      <div className="text-slate-400 font-mono text-xs sm:text-sm">-</div>
+                    )}
+                    {previewVendor.work_phone && previewVendor.work_phone !== "-" && (
+                      <a
+                        href={`tel:${previewVendor.work_phone.replace(/\s+/g, "")}`}
+                        className="font-bold text-slate-800 hover:text-blue-700 hover:underline font-mono flex items-center gap-1.5 text-xs sm:text-sm"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>Work: {previewVendor.work_phone}</span>
+                      </a>
+                    )}
                   </div>
                 </div>
 
@@ -2876,10 +2938,12 @@ export default function VendorsPage() {
 
                 <div>
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payment & TDS</div>
-                  <div className="font-extrabold text-emerald-700 mt-1 text-xs">
-                    {previewVendor.payment_terms}
+                  <div className="mt-1">
+                    <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-lg text-[11px] border border-emerald-200 inline-block">
+                      {previewVendor.payment_terms}
+                    </span>
                   </div>
-                  <div className="text-slate-500 text-[11px] mt-0.5">
+                  <div className="text-slate-500 text-[11px] mt-1">
                     TDS: {previewVendor.tds}
                   </div>
                 </div>
@@ -3030,7 +3094,7 @@ export default function VendorsPage() {
                   setIsPreviewOpen(false);
                   openEditVendorForm(previewVendor);
                 }}
-                className="sm:hidden flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                className="sm:hidden flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 <span>Edit Record</span>

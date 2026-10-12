@@ -186,6 +186,18 @@ const initialExpenses: ExpenseItem[] = [
     paid_via: "UPI Cash",
     invoice_no: "PET-9912",
     notes: "Generator Diesel Tank Refill (200L) & Goods Tempo Freight"
+  },
+  {
+    id: "exp-9",
+    expense_no: "EXP-2026-109",
+    date: "12-10-2026",
+    category: "Machine Maintenance & Repairs",
+    title: "Emergency Needle Holder Replacement",
+    vendor_name: "Ganesh Laser Tech Surat",
+    amount: 3500,
+    payment_status: "Paid",
+    paid_via: "UPI Cash",
+    notes: "Emergency Needle Holder Replacement"
   }
 ];
 
@@ -217,7 +229,22 @@ const parseDate = (dateStr: string): Date => {
 };
 
 export default function ExpensesPage() {
-  const [expenses, setExpenses] = useState<ExpenseItem[]>(initialExpenses);
+  const [hasMounted, setHasMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("om_sai_expenses");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return initialExpenses;
+  });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Paid" | "Pending">("All");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
@@ -267,29 +294,18 @@ export default function ExpensesPage() {
 
   // Load expenses from Supabase Cloud Backend (with local fallback) on mount
   useEffect(() => {
+    setHasMounted(true);
     let isMounted = true;
 
     async function loadLiveExpenses() {
       try {
         const live = await fetchApi<ExpenseItem[]>("/expenses");
-        if (isMounted && Array.isArray(live) && live.length > 0) {
-          let merged = [...live];
+        if (isMounted && Array.isArray(live)) {
+          setExpenses(live);
           try {
-            const saved = localStorage.getItem("om_sai_expenses");
-            if (saved) {
-              const parsed = JSON.parse(saved);
-              if (Array.isArray(parsed)) {
-                const localOnly = parsed.filter(
-                  (p: any) => !live.some((l) => (l.id && l.id === p.id) || (l.expense_no && l.expense_no === p.expense_no))
-                );
-                if (localOnly.length > 0) {
-                  merged = [...localOnly, ...live];
-                }
-              }
-            }
+            localStorage.setItem("om_sai_expenses", JSON.stringify(live));
           } catch {}
-          setExpenses(merged);
-          localStorage.setItem("om_sai_expenses", JSON.stringify(merged));
+          setIsLoading(false);
           return;
         }
       } catch (err) {
@@ -302,14 +318,19 @@ export default function ExpensesPage() {
         if (saved && isMounted) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const combined = [
-              ...parsed,
-              ...initialExpenses.filter((i) => !parsed.some((p: any) => p.id === i.id))
-            ];
-            setExpenses(combined);
+            setExpenses(parsed);
+            setIsLoading(false);
+            return;
           }
         }
-      } catch {}
+      } catch (err) {
+        console.error("Local storage fallback error:", err);
+      }
+
+      if (isMounted) {
+        setExpenses(initialExpenses);
+        setIsLoading(false);
+      }
     }
 
     loadLiveExpenses();
@@ -577,10 +598,12 @@ export default function ExpensesPage() {
     }
   };
 
+  if (!hasMounted) return null;
+
   return (
-    <div className="space-y-4 font-sans text-slate-800 pb-12">
+    <div suppressHydrationWarning className="space-y-4 font-sans text-slate-800 pb-12">
       {/* 1. TOP 4 ERP METRIC SUMMARY CARDS */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+      <div suppressHydrationWarning className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
         {/* CARD 1: TOTAL EXPENSES */}
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
           <div className="overflow-hidden">
@@ -595,8 +618,8 @@ export default function ExpensesPage() {
                 ? "TOTAL (2026)"
                 : "TOTAL EXPENSES"}
             </p>
-            <p className="text-base sm:text-xl font-black text-slate-900 mt-0.5">₹{totalExpenseAmount.toLocaleString("en-IN")}</p>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 mt-0.5 block truncate">{periodExpenses.length} Records</span>
+            <p suppressHydrationWarning className="text-base sm:text-xl font-black text-slate-900 mt-0.5">₹{totalExpenseAmount.toLocaleString("en-IN")}</p>
+            <span suppressHydrationWarning className="text-[10px] sm:text-[11px] font-semibold text-slate-500 mt-0.5 block truncate">{periodExpenses.length} Records</span>
           </div>
           <div className="p-2 sm:p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 shrink-0">
             <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -607,7 +630,7 @@ export default function ExpensesPage() {
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
           <div className="overflow-hidden">
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate mr-1">TOTAL PAID</p>
-            <p className="text-base sm:text-xl font-black text-blue-700 mt-0.5">₹{totalPaidAmount.toLocaleString("en-IN")}</p>
+            <p suppressHydrationWarning className="text-base sm:text-xl font-black text-blue-700 mt-0.5">₹{totalPaidAmount.toLocaleString("en-IN")}</p>
             <span className="text-[10px] sm:text-[11px] font-semibold text-blue-600 mt-0.5 block truncate">Bank & Cash</span>
           </div>
           <div className="p-2 sm:p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0">
@@ -619,7 +642,7 @@ export default function ExpensesPage() {
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-amber-200/90 shadow-2xs flex items-center justify-between">
           <div className="overflow-hidden">
             <p className="text-[9px] sm:text-[10px] font-bold text-amber-600 uppercase tracking-wider truncate mr-1">PENDING / DUE</p>
-            <p className="text-base sm:text-xl font-black text-amber-700 mt-0.5">₹{unpaidExpensesAmount.toLocaleString("en-IN")}</p>
+            <p suppressHydrationWarning className="text-base sm:text-xl font-black text-amber-700 mt-0.5">₹{unpaidExpensesAmount.toLocaleString("en-IN")}</p>
             <span className="text-[10px] sm:text-[11px] font-semibold text-amber-600 mt-0.5 block truncate">Vendor Due</span>
           </div>
           <div className="p-2 sm:p-3 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 shrink-0">
@@ -631,10 +654,10 @@ export default function ExpensesPage() {
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-purple-200/90 shadow-2xs flex items-center justify-between">
           <div className="overflow-hidden">
             <p className="text-[9px] sm:text-[10px] font-bold text-purple-700 uppercase tracking-wider truncate mr-1">TOP CATEGORY</p>
-            <p className="text-sm sm:text-lg font-black text-purple-900 mt-0.5 truncate max-w-[170px]" title={topCategory}>
+            <p suppressHydrationWarning className="text-sm sm:text-lg font-black text-purple-900 mt-0.5 truncate max-w-[170px]" title={topCategory}>
               {topCategory}
             </p>
-            <span className="text-[10px] sm:text-[11px] font-bold text-purple-700 mt-0.5 block truncate">
+            <span suppressHydrationWarning className="text-[10px] sm:text-[11px] font-bold text-purple-700 mt-0.5 block truncate">
               ₹{topCategoryAmount.toLocaleString("en-IN")} Spent
             </span>
           </div>
@@ -867,10 +890,27 @@ export default function ExpensesPage() {
       </div>
 
       {/* 4. EXPENSE REGISTER TABLE & MOBILE CARD VIEW */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden font-sans">
+      <div suppressHydrationWarning className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden font-sans">
         {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}
-        <div className="block md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50">
-          {filteredExpenses.length === 0 ? (
+        <div suppressHydrationWarning className="block md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50">
+          {isLoading ? (
+            [1, 2, 3].map((n) => (
+              <div
+                key={`exp-m-skel-${n}`}
+                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 space-y-3 animate-pulse"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="h-4 bg-slate-200/80 rounded w-28" />
+                  <div className="h-4 bg-slate-200/80 rounded-lg w-16" />
+                </div>
+                <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                  <div className="h-4 bg-slate-200/80 rounded w-44" />
+                  <div className="h-5 bg-slate-200/80 rounded w-20" />
+                </div>
+                <div className="h-8 bg-slate-100 rounded-xl" />
+              </div>
+            ))
+          ) : filteredExpenses.length === 0 ? (
             <div className="py-12 text-center text-slate-400 bg-white rounded-xl border border-slate-200">
               <Receipt className="w-8 h-8 text-slate-300 mx-auto mb-2" />
               <p className="font-bold text-xs">No expense records found matching filters.</p>
@@ -967,8 +1007,8 @@ export default function ExpensesPage() {
         </div>
 
         {/* DESKTOP TABLE VIEW (>= md) */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs min-w-[950px]">
+        <div suppressHydrationWarning className="hidden md:block overflow-x-auto">
+          <table suppressHydrationWarning className="w-full text-left border-collapse text-xs min-w-[950px]">
             <thead>
               <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                 <th className="py-3.5 px-4">DATE</th>
@@ -982,9 +1022,30 @@ export default function ExpensesPage() {
                 <th className="py-3.5 px-4 text-center w-12">ACTION</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-              {filteredExpenses.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+            <tbody suppressHydrationWarning className="divide-y divide-slate-100 font-medium text-slate-700">
+              {isLoading ? (
+                [1, 2, 3, 4].map((n) => (
+                  <tr key={`exp-skel-${n}`} className="animate-pulse">
+                    <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-20" /></td>
+                    <td className="py-3.5 px-4"><div className="h-5 bg-slate-200/80 rounded-lg w-28" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-40" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-20" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-24" /></td>
+                    <td className="py-3.5 px-4"><div className="h-5 bg-slate-200/80 rounded-lg w-16" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-48" /></td>
+                    <td className="py-3.5 px-4 text-right"><div className="h-4 bg-slate-200/80 rounded w-16 ml-auto" /></td>
+                    <td className="py-3.5 px-4 text-center"><div className="h-6 bg-slate-200/80 rounded w-8 mx-auto" /></td>
+                  </tr>
+                ))
+              ) : filteredExpenses.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-slate-400 font-medium">
+                    No expense records found matching filters.
+                  </td>
+                </tr>
+              ) : (
+                filteredExpenses.map((item) => (
+                  <tr key={item.id} className="hover:bg-blue-50/50 transition-colors animate-in fade-in duration-150">
                   {/* 1. DATE */}
                   <td className="py-3.5 px-4 font-mono font-bold text-slate-700 whitespace-nowrap">
                     {formatDateDDMMYYYY(item.date)}
@@ -1064,17 +1125,9 @@ export default function ExpensesPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
-
-              {filteredExpenses.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400">
-                    <Receipt className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    <p className="font-bold text-xs">No expense records found matching filters.</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
+              ))
+            )}
+          </tbody>
           </table>
         </div>
       </div>

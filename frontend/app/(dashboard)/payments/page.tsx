@@ -26,66 +26,69 @@ export interface PaymentVoucherItem {
   date: string;
   party_name: string;
   type: "Payment Out" | "Receipt In";
-  linked_source: "Job Process Challan" | "Material Inward Bill" | "On-Account / General Payment";
+  linked_source: "Job Process Challan" | "Material Inward Bill" | "On-Account / General Payment" | "Job Work / Purchase" | string;
   amount: number;
   mode: string;
   ref_no: string;
   notes: string;
 }
 
-const initialVouchers: PaymentVoucherItem[] = [
+const SEED_VOUCHERS: PaymentVoucherItem[] = [
   {
-    id: "v-101",
-    voucher_no: "VOU-2026-001",
-    date: "2026-10-09",
-    party_name: "ABC Tex Fabrics",
-    type: "Receipt In",
-    linked_source: "Material Inward Bill",
-    amount: 145000,
-    mode: "Bank Transfer (NEFT/RTGS/IMPS)",
-    ref_no: "NEFT98412034",
-    notes: "Payment received against Inv #104"
-  },
-  {
-    id: "v-102",
-    voucher_no: "VOU-2026-002",
-    date: "2026-10-09",
-    party_name: "Hariom Yarns & Thread Vendor",
+    id: "pay-3",
+    voucher_no: "VOU-2026-103",
+    date: "08-10-2026",
+    party_name: "Vardhman Textile Machinery & Spares",
     type: "Payment Out",
-    linked_source: "Job Process Challan",
-    amount: 68000,
-    mode: "UPI (GPay / PhonePe / Paytm)",
-    ref_no: "UPI/20261009/98",
-    notes: "Raw dhaga yarn purchase bill payment"
+    linked_source: "Job Work / Purchase",
+    amount: 12000,
+    mode: "Cheque",
+    ref_no: "CHQ-449012",
+    notes: "Laser machine spare parts maintenance"
   },
   {
-    id: "v-103",
-    voucher_no: "VOU-2026-003",
-    date: "2026-10-08",
-    party_name: "Radha Dress Creation",
-    type: "Receipt In",
-    linked_source: "On-Account / General Payment",
-    amount: 85000,
-    mode: "Cash",
-    ref_no: "CASH-8812",
-    notes: "Advance cash settlement for sari border job work"
-  },
-  {
-    id: "v-104",
-    voucher_no: "VOU-2026-004",
-    date: "2026-10-07",
-    party_name: "Surat Silk House",
+    id: "pay-2",
+    voucher_no: "VOU-2026-102",
+    date: "05-10-2026",
+    party_name: "Ambica Embroidery & Cutting Works",
     type: "Payment Out",
-    linked_source: "Material Inward Bill",
-    amount: 35000,
-    mode: "Cash",
-    ref_no: "CASH-9912",
-    notes: "Spare parts machine oil & maintenance payment"
+    linked_source: "Job Work / Purchase",
+    amount: 18500,
+    mode: "UPI / Immediate",
+    ref_no: "UPI772183",
+    notes: "Job work cutting payment settlement"
+  },
+  {
+    id: "pay-1",
+    voucher_no: "VOU-2026-101",
+    date: "02-10-2026",
+    party_name: "Shree Ram Yarns & Zari Mills",
+    type: "Payment Out",
+    linked_source: "Job Work / Purchase",
+    amount: 45000,
+    mode: "RTGS / NEFT",
+    ref_no: "HDFC982310",
+    notes: "Advance payment for metallic zari purchase"
   }
 ];
 
 export default function PaymentsAndVouchersPage() {
-  const [vouchers, setVouchers] = useState<PaymentVoucherItem[]>(initialVouchers);
+  const [hasMounted, setHasMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [vouchers, setVouchers] = useState<PaymentVoucherItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("om_sai_vouchers");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return SEED_VOUCHERS;
+  });
   const [searchQuery, setSearchQuery] = useState("");
 
   // Filters State
@@ -105,10 +108,13 @@ export default function PaymentsAndVouchersPage() {
 
   // Load vouchers from Supabase & localStorage on mount
   useEffect(() => {
+    setHasMounted(true);
+    let isMounted = true;
     const loadVouchers = async () => {
       try {
         const live = await fetchApi<any[]>("/payments");
-        if (Array.isArray(live) && live.length > 0) {
+        if (!isMounted) return;
+        if (Array.isArray(live)) {
           const mapped: PaymentVoucherItem[] = live.map((p) => ({
             id: p.id,
             voucher_no: p.voucher_no,
@@ -124,29 +130,37 @@ export default function PaymentsAndVouchersPage() {
             notes: p.remarks || ""
           }));
           setVouchers(mapped);
-          localStorage.setItem("om_sai_vouchers", JSON.stringify(mapped));
+          try {
+            localStorage.setItem("om_sai_vouchers", JSON.stringify(mapped));
+          } catch {}
+          setIsLoading(false);
           return;
         }
       } catch (err) {
         console.warn("Backend payments load fallback to localStorage", err);
       }
 
+      if (!isMounted) return;
       try {
         const saved = localStorage.getItem("om_sai_vouchers");
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const combined = [...parsed, ...initialVouchers.filter((i) => !parsed.some((p: any) => p.id === i.id))];
-            setVouchers(combined);
+          if (Array.isArray(parsed)) {
+            setVouchers(parsed);
+            setIsLoading(false);
             return;
           }
         }
-        setVouchers(initialVouchers);
       } catch (err) {
         console.error(err);
       }
+      setVouchers(SEED_VOUCHERS);
+      setIsLoading(false);
     };
     loadVouchers();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
 
@@ -230,9 +244,10 @@ export default function PaymentsAndVouchersPage() {
     }
   };
 
+  if (!hasMounted) return null;
 
   return (
-    <div className="space-y-4 max-w-[1600px] mx-auto select-none pb-12">
+    <div suppressHydrationWarning className="space-y-4 max-w-[1600px] mx-auto select-none pb-12">
       {/* ------------------------------------------------------------- */}
       {/* 1. TOP 4 SUMMARY BOXES (KPI CARDS - EXACT MATCHING KARIGAR)    */}
       {/* ------------------------------------------------------------- */}
@@ -248,7 +263,7 @@ export default function PaymentsAndVouchersPage() {
             </div>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-base sm:text-xl font-black text-rose-600 tracking-tight">
+            <span suppressHydrationWarning className="text-base sm:text-xl font-black text-rose-600 tracking-tight">
               ₹{stats.totalOut.toLocaleString("en-IN")}
             </span>
           </div>
@@ -265,7 +280,7 @@ export default function PaymentsAndVouchersPage() {
             </div>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-base sm:text-xl font-black text-blue-600 tracking-tight">
+            <span suppressHydrationWarning className="text-base sm:text-xl font-black text-blue-600 tracking-tight">
               ₹{stats.totalIn.toLocaleString("en-IN")}
             </span>
           </div>
@@ -282,7 +297,7 @@ export default function PaymentsAndVouchersPage() {
             </div>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-base sm:text-xl font-black text-slate-900 tracking-tight">
+            <span suppressHydrationWarning className="text-base sm:text-xl font-black text-slate-900 tracking-tight">
               {stats.activeParties}
             </span>
             <span className="text-[11px] sm:text-xs font-bold text-slate-400">Parties</span>
@@ -300,7 +315,7 @@ export default function PaymentsAndVouchersPage() {
             </div>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-base sm:text-xl font-black text-slate-900 tracking-tight">
+            <span suppressHydrationWarning className="text-base sm:text-xl font-black text-slate-900 tracking-tight">
               {stats.totalVouchers}
             </span>
             <span className="text-[11px] sm:text-xs font-bold text-slate-400">Vouchers</span>
@@ -553,7 +568,24 @@ export default function PaymentsAndVouchersPage() {
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
         {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}
         <div className="block md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50">
-          {filteredVouchers.length === 0 ? (
+          {isLoading ? (
+            [1, 2, 3].map((n) => (
+              <div
+                key={`m-skel-${n}`}
+                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 space-y-3 animate-pulse"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="h-4 bg-slate-200/80 rounded w-36" />
+                  <div className="h-4 bg-slate-200/80 rounded-full w-16" />
+                </div>
+                <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                  <div className="h-4 bg-slate-200/80 rounded w-44" />
+                  <div className="h-5 bg-slate-200/80 rounded w-20" />
+                </div>
+                <div className="h-10 bg-slate-100 rounded-xl" />
+              </div>
+            ))
+          ) : filteredVouchers.length === 0 ? (
             <div className="py-10 text-center text-slate-400 font-medium bg-white rounded-xl border border-slate-200">
               No payment vouchers found matching your filter criteria.
             </div>
@@ -667,7 +699,23 @@ export default function PaymentsAndVouchersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-              {filteredVouchers.length === 0 ? (
+              {isLoading ? (
+                [1, 2, 3].map((n) => (
+                  <tr key={`skel-row-${n}`} className="animate-pulse">
+                    <td className="py-4 px-5"><div className="h-4 bg-slate-200/80 rounded w-20" /></td>
+                    <td className="py-4 px-5"><div className="h-4 bg-slate-200/80 rounded w-28" /></td>
+                    <td className="py-4 px-5"><div className="h-5 bg-slate-200/80 rounded-lg w-16" /></td>
+                    <td className="py-4 px-5">
+                      <div className="h-4 bg-slate-200/80 rounded w-48 mb-1.5" />
+                      <div className="h-3 bg-slate-100 rounded w-28" />
+                    </td>
+                    <td className="py-4 px-5"><div className="h-5 bg-slate-200/80 rounded-lg w-28" /></td>
+                    <td className="py-4 px-5"><div className="h-4 bg-slate-200/80 rounded w-24" /></td>
+                    <td className="py-4 px-5 text-right"><div className="h-4 bg-slate-200/80 rounded w-16 ml-auto" /></td>
+                    <td className="py-4 px-5 text-center"><div className="h-6 bg-slate-200/80 rounded-md w-14 mx-auto" /></td>
+                  </tr>
+                ))
+              ) : filteredVouchers.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-10 text-center text-slate-400 font-medium">
                     No payment vouchers found matching your filter criteria.
@@ -675,7 +723,7 @@ export default function PaymentsAndVouchersPage() {
                 </tr>
               ) : (
                 filteredVouchers.map((v) => (
-                  <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
+                  <tr key={v.id} className="hover:bg-blue-50/50 transition-colors animate-in fade-in duration-150">
                     <td className="py-4 px-5 text-slate-600 font-bold whitespace-nowrap">
                       {v.date}
                     </td>

@@ -78,6 +78,8 @@ const getYesterdayStr = () => {
 
 export default function NewExpenseVoucherPage() {
   const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
 
   // 1. Amount
   const [amount, setAmount] = useState("");
@@ -196,6 +198,7 @@ export default function NewExpenseVoucherPage() {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isSavingRef.current) return;
 
     const numericAmount = parseFloat(amount);
     if (!numericAmount || numericAmount <= 0) {
@@ -203,67 +206,75 @@ export default function NewExpenseVoucherPage() {
       return;
     }
 
-    const formattedDate = (() => {
-      const d = voucherDate || getTodayStr();
-      const parts = d.trim().split("-");
-      if (parts.length === 3 && parts[0].length === 4) {
-        return `${parts[2]}-${parts[1]}-${parts[0]}`;
-      }
-      return d;
-    })();
+    isSavingRef.current = true;
+    setIsSaving(true);
 
-    const newExpense = {
-      id: `exp-${Date.now()}`,
-      expense_no: `EXP-2026-${Math.floor(100 + Math.random() * 900)}`,
-      date: formattedDate,
-      category: category,
-      title: remarks.trim() || `${category} Expense Voucher`,
-      vendor_name: vendorName.trim() || "General Vendor",
-      amount: numericAmount,
-      payment_status: paymentStatus,
-      paid_via: paymentMode,
-      invoice_no: billNo.trim() || `EXP-${Date.now().toString().slice(-4)}`,
-      notes: remarks.trim(),
-      bill_image: billImage
-    };
-
-    // 1. Save directly to Supabase via FastAPI Backend
-    let createdItem: any = null;
     try {
-      createdItem = await fetchApi("/expenses", {
-        method: "POST",
-        body: JSON.stringify({
-          expense_no: newExpense.expense_no,
-          date: formattedDate,
-          category: newExpense.category,
-          title: newExpense.title,
-          vendor_name: newExpense.vendor_name,
-          amount: newExpense.amount,
-          payment_status: newExpense.payment_status,
-          paid_via: newExpense.paid_via,
-          invoice_no: newExpense.invoice_no,
-          notes: newExpense.notes,
-          bill_image: newExpense.bill_image || undefined
-        })
-      });
-      if (createdItem && createdItem.id) {
-        newExpense.id = createdItem.id;
+      const formattedDate = (() => {
+        const d = voucherDate || getTodayStr();
+        const parts = d.trim().split("-");
+        if (parts.length === 3 && parts[0].length === 4) {
+          return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        return d;
+      })();
+
+      const newExpense = {
+        id: `exp-${Date.now()}`,
+        expense_no: `EXP-2026-${Math.floor(100 + Math.random() * 900)}`,
+        date: formattedDate,
+        category: category,
+        title: remarks.trim() || `${category} Expense Voucher`,
+        vendor_name: vendorName.trim() || "General Vendor",
+        amount: numericAmount,
+        payment_status: paymentStatus,
+        paid_via: paymentMode,
+        invoice_no: billNo.trim() || `EXP-${Date.now().toString().slice(-4)}`,
+        notes: remarks.trim(),
+        bill_image: billImage
+      };
+
+      // 1. Save directly to Supabase via FastAPI Backend
+      let createdItem: any = null;
+      try {
+        createdItem = await fetchApi("/expenses", {
+          method: "POST",
+          body: JSON.stringify({
+            expense_no: newExpense.expense_no,
+            date: formattedDate,
+            category: newExpense.category,
+            title: newExpense.title,
+            vendor_name: newExpense.vendor_name,
+            amount: newExpense.amount,
+            payment_status: newExpense.payment_status,
+            paid_via: newExpense.paid_via,
+            invoice_no: newExpense.invoice_no,
+            notes: newExpense.notes,
+            bill_image: newExpense.bill_image || undefined
+          })
+        });
+        if (createdItem && createdItem.id) {
+          newExpense.id = createdItem.id;
+        }
+      } catch (apiErr) {
+        console.warn("Backend API not reachable, saving to local backup:", apiErr);
       }
-    } catch (apiErr) {
-      console.warn("Backend API not reachable, saving to local backup:", apiErr);
-    }
 
-    // 2. Keep local cache updated
-    try {
-      const existing = localStorage.getItem("om_sai_expenses");
-      const list = existing ? JSON.parse(existing) : [];
-      list.unshift(newExpense);
-      localStorage.setItem("om_sai_expenses", JSON.stringify(list));
-    } catch (err) {
-      console.error(err);
-    }
+      // 2. Keep local cache updated
+      try {
+        const existing = localStorage.getItem("om_sai_expenses");
+        const list = existing ? JSON.parse(existing) : [];
+        list.unshift(newExpense);
+        localStorage.setItem("om_sai_expenses", JSON.stringify(list));
+      } catch (err) {
+        console.error(err);
+      }
 
-    router.push("/expenses");
+      router.push("/expenses");
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -1014,11 +1025,25 @@ export default function NewExpenseVoucherPage() {
           </Link>
           <button
             type="button"
+            disabled={isSaving}
             onClick={handleSubmit}
-            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+            className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
+              isSaving
+                ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
+                : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
+            }`}
           >
-            <Save className="w-4 h-4" />
-            <span>Save Expense Voucher</span>
+            {isSaving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Saving Expense...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                <span>Save Expense Voucher</span>
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -201,7 +201,7 @@ export default function InventoryPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
               {filteredStock.map((s) => (
-                <tr key={s.id} className="hover:bg-slate-50/60 transition-colors">
+                <tr key={s.id} className="hover:bg-blue-50/50 transition-colors">
                   <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{s.material_code}</td>
                   <td className="py-3.5 px-4 font-bold text-slate-900">
                     {s.material_name}

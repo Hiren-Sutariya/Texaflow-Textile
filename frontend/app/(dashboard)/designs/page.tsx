@@ -153,7 +153,21 @@ const initialFolders: DesignFolder[] = [
 
 export default function DesignsPage() {
   const router = useRouter();
-  const [folders, setFolders] = useState<DesignFolder[]>(initialFolders);
+  const [isMounted, setIsMounted] = useState(false);
+  const [folders, setFolders] = useState<DesignFolder[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("app_design_folders") || localStorage.getItem("om_sai_designs_library");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return initialFolders;
+  });
   const [search, setSearch] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [expandedRollMetersColorId, setExpandedRollMetersColorId] = useState<string | null>(null);
@@ -161,6 +175,7 @@ export default function DesignsPage() {
 
   // Load design folders from Supabase & localStorage
   useEffect(() => {
+    setIsMounted(true);
     const loadDesignsFromApi = async () => {
       try {
         const live = await fetchApi<any[]>("/designs");
@@ -211,6 +226,7 @@ export default function DesignsPage() {
           });
           setFolders(mapped);
           localStorage.setItem("app_design_folders", JSON.stringify(mapped));
+          localStorage.setItem("om_sai_designs_library", JSON.stringify(mapped));
           return;
         }
       } catch (err) {
@@ -1253,6 +1269,8 @@ export default function DesignsPage() {
       );
     }
   };
+
+  if (!isMounted) return null;
 
   return (
     <div className="space-y-4 font-sans text-slate-800">
@@ -2429,7 +2447,7 @@ export default function DesignsPage() {
                       <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                         {selectedFolder.items.map((item, itemIdx) => {
                           return (
-                            <tr key={item.id || `item-${selectedFolder.id}-${itemIdx}`} className="hover:bg-slate-50/60 transition-colors">
+                            <tr key={item.id || `item-${selectedFolder.id}-${itemIdx}`} className="hover:bg-blue-50/50 transition-colors">
                               <td className="py-2.5 px-4">
                                 <div className="flex items-center gap-2">
                                   <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold text-[10px] rounded border border-slate-200">
