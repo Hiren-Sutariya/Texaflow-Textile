@@ -158,9 +158,10 @@ export default function DesignsPage() {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("app_design_folders") || localStorage.getItem("om_sai_designs_library");
-        if (saved) {
+        if (saved !== null) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
+            if (parsed.length === 0) return [];
             return parsed;
           }
         }
@@ -179,7 +180,13 @@ export default function DesignsPage() {
     const loadDesignsFromApi = async () => {
       try {
         const live = await fetchApi<any[]>("/designs");
-        if (Array.isArray(live) && live.length > 0) {
+        if (Array.isArray(live)) {
+          if (live.length === 0) {
+            setFolders([]);
+            localStorage.setItem("app_design_folders", "[]");
+            localStorage.setItem("om_sai_designs_library", "[]");
+            return;
+          }
           const mapped: DesignFolder[] = live.map((d) => {
             let parsedItems: DesignItem[] = [];
             let parsedColorways: ColorTakka[] = [];
@@ -234,10 +241,14 @@ export default function DesignsPage() {
       }
 
       const saved = localStorage.getItem("app_design_folders");
-      if (saved) {
+      if (saved !== null) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
+            if (parsed.length === 0) {
+              setFolders([]);
+              return;
+            }
             const sanitized = parsed.map((d: any) => ({
               ...d,
               items: Array.isArray(d.items)

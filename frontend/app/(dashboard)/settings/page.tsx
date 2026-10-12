@@ -20,9 +20,11 @@ import {
   Database,
   HardDrive,
   AlertTriangle,
-  ShieldAlert
+  ShieldAlert,
+  FileSpreadsheet,
+  Download
 } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetchApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 const PAYMENT_TERMS_OPTIONS = [
@@ -66,7 +68,8 @@ export default function SettingsPage() {
   const [isEraseModalOpen, setIsEraseModalOpen] = useState(false);
   const [eraseConfirmInput, setEraseConfirmInput] = useState("");
   const [isErasing, setIsErasing] = useState(false);
-  const [storageInfo, setStorageInfo] = useState({ totalKb: "0.0", itemsCount: 0 });
+  const [eraseStatusText, setEraseStatusText] = useState("");
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   // Custom Dropdowns
   const [isTermsOpen, setIsTermsOpen] = useState(false);
@@ -219,57 +222,59 @@ export default function SettingsPage() {
     setTimeout(() => setSaveSuccessMsg(""), 3000);
   };
 
-  // Storage Info Calculator
-  const updateStorageInfo = () => {
-    if (typeof window === "undefined") return;
-    try {
-      let totalBytes = 0;
-      const count = localStorage.length;
-      for (let i = 0; i < count; i++) {
-        const key = localStorage.key(i);
-        if (key) {
-          const val = localStorage.getItem(key) || "";
-          totalBytes += (key.length + val.length) * 2;
-        }
-      }
-      setStorageInfo({
-        totalKb: (totalBytes / 1024).toFixed(1),
-        itemsCount: count
-      });
-    } catch (e) {
-      console.error("Storage calculation error:", e);
-    }
-  };
-
-  useEffect(() => {
-    if (hasMounted) {
-      updateStorageInfo();
-    }
-  }, [hasMounted, activeTab]);
-
   // Handle Clear Cache
   const handleClearCache = async () => {
     setIsClearingCache(true);
     try {
+      // 1. Unregister all service workers
+      if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const reg of registrations) {
+            await reg.unregister();
+          }
+        } catch (swErr) {
+          console.warn("ServiceWorker unregister notice:", swErr);
+        }
+      }
+
+      // 2. Clear browser cache storage
       if (typeof window !== "undefined" && "caches" in window) {
-        const cacheKeys = await window.caches.keys();
-        await Promise.all(cacheKeys.map((key) => window.caches.delete(key)));
+        try {
+          const cacheKeys = await window.caches.keys();
+          await Promise.all(cacheKeys.map((key) => window.caches.delete(key)));
+        } catch (cacheErr) {
+          console.warn("Caches delete notice:", cacheErr);
+        }
       }
 
+      // 3. Keep user auth session safe while purging temporary session storage
       if (typeof window !== "undefined") {
-        window.sessionStorage.clear();
+        const authSession = sessionStorage.getItem("texaflow_auth_session");
+        sessionStorage.clear();
+        if (authSession) {
+          sessionStorage.setItem("texaflow_auth_session", authSession);
+        }
       }
 
-      const tempKeys = ["next_cache", "temp_query_cache", "cached_filters"];
+      // 4. Remove temporary frontend query/filter caches from localStorage
+      const tempKeys = [
+        "next_cache",
+        "temp_query_cache",
+        "cached_filters",
+        "temp_design_cache",
+        "temp_order_filter",
+        "temp_nav_state"
+      ];
       tempKeys.forEach((k) => localStorage.removeItem(k));
 
-      updateStorageInfo();
-      setSaveSuccessMsg("Cache cleared successfully! Software is optimized.");
-      setTimeout(() => setSaveSuccessMsg(""), 3500);
+      setSaveSuccessMsg("System cache & service workers successfully purged! Reloading...");
+      setTimeout(() => {
+        window.location.reload();
+      }, 900);
     } catch (err) {
       console.error("Cache clear failed:", err);
-      alert("Failed to clear some cache entries.");
-    } finally {
+      alert("Failed to clear cache: " + (err instanceof Error ? err.message : String(err)));
       setIsClearingCache(false);
     }
   };
@@ -277,29 +282,436 @@ export default function SettingsPage() {
   // Handle Erase All Software Data (Factory Reset)
   const handleEraseAllData = async () => {
     if (eraseConfirmInput.trim().toUpperCase() !== "DELETE") {
-      alert("Please type DELETE to confirm data erasure.");
+      alert("Please type DELETE in uppercase to confirm data erasure.");
       return;
     }
 
     setIsErasing(true);
+    setEraseStatusText("Initializing factory reset...");
+
     try {
-      if (typeof window !== "undefined") {
-        window.localStorage.clear();
-        window.sessionStorage.clear();
-        if ("caches" in window) {
-          const cacheKeys = await window.caches.keys();
-          await Promise.all(cacheKeys.map((key) => window.caches.delete(key)));
+      // 1. Attempt server bulk wipe endpoint
+      let serverWiped = false;
+      try {
+        setEraseStatusText("Attempting direct cloud database reset...");
+        await fetchApi("/system/purge-all-data", { method: "DELETE" });
+        serverWiped = true;
+      } catch (bulkErr) {
+        console.warn("Bulk purge endpoint not available, falling back to individual item purge:", bulkErr);
+      }
+
+      // 2. If bulk endpoint wasn't available, delete items via individual REST endpoints
+      if (!serverWiped) {
+        // A. Workers / Employees
+        try {
+          setEraseStatusText("Erasing workers & karigars from cloud database...");
+          const emps = await fetchApi<any[]>("/employees").catch(() => []);
+          if (Array.isArray(emps) && emps.length > 0) {
+            await Promise.allSettled(
+              emps.map((e) => fetchApi(`/employees/${e.id || e.emp_id}`, { method: "DELETE" }))
+            );
+          }
+        } catch (e) {
+          console.warn("Employee erase warning:", e);
+        }
+
+        // B. Vendors & Suppliers
+        try {
+          setEraseStatusText("Erasing vendors & suppliers from cloud database...");
+          const vends = await fetchApi<any[]>("/vendors").catch(() => []);
+          if (Array.isArray(vends) && vends.length > 0) {
+            await Promise.allSettled(
+              vends.map((v) => fetchApi(`/vendors/${v.id || v.vendor_id}`, { method: "DELETE" }))
+            );
+          }
+        } catch (e) {
+          console.warn("Vendor erase warning:", e);
+        }
+
+        // C. Designs Library
+        try {
+          setEraseStatusText("Erasing design library from cloud database...");
+          const des = await fetchApi<any[]>("/designs").catch(() => []);
+          if (Array.isArray(des) && des.length > 0) {
+            await Promise.allSettled(
+              des.map((d) => fetchApi(`/designs/${d.id || d.design_id}`, { method: "DELETE" }))
+            );
+          }
+        } catch (e) {
+          console.warn("Design erase warning:", e);
+        }
+
+        // D. Expenses
+        try {
+          setEraseStatusText("Erasing expense records from cloud database...");
+          const exps = await fetchApi<any[]>("/expenses").catch(() => []);
+          if (Array.isArray(exps) && exps.length > 0) {
+            await Promise.allSettled(
+              exps.map((x) => fetchApi(`/expenses/${x.id || x.expense_id}`, { method: "DELETE" }))
+            );
+          }
+        } catch (e) {
+          console.warn("Expense erase warning:", e);
+        }
+
+        // E. Payments
+        try {
+          setEraseStatusText("Erasing payment vouchers from cloud database...");
+          const pays = await fetchApi<any[]>("/payments").catch(() => []);
+          if (Array.isArray(pays) && pays.length > 0) {
+            await Promise.allSettled(
+              pays.map((p) => fetchApi(`/payments/${p.id || p.voucher_id}`, { method: "DELETE" }))
+            );
+          }
+        } catch (e) {
+          console.warn("Payment erase warning:", e);
         }
       }
 
-      setSaveSuccessMsg("All software data has been erased. Redirecting...");
+      // 3. Clear local storage records and set explicit empty markers
+      setEraseStatusText("Clearing local storage and browser caches...");
+      if (typeof window !== "undefined") {
+        // Preserve active auth session
+        const authSession = sessionStorage.getItem("texaflow_auth_session");
+
+        window.localStorage.clear();
+
+        // Set explicit empty markers so all pages know records were reset to 0
+        window.localStorage.setItem("app_employees_data", "[]");
+        window.localStorage.setItem("app_vendors_master", "[]");
+        window.localStorage.setItem("om_sai_vendors", "[]");
+        window.localStorage.setItem("app_design_folders", "[]");
+        window.localStorage.setItem("om_sai_designs_library", "[]");
+        window.localStorage.setItem("app_finished_designs", "[]");
+        window.localStorage.setItem("app_job_orders", "[]");
+        window.localStorage.setItem("om_sai_expenses", "[]");
+        window.localStorage.setItem("om_sai_vouchers", "[]");
+        window.localStorage.setItem("om_sai_payments", "[]");
+        window.localStorage.setItem("app_machines", "[]");
+        window.localStorage.setItem("app_machines_unit_1", "[]");
+        window.localStorage.setItem("app_machines_unit_2", "[]");
+        window.localStorage.setItem("app_production_logs", "[]");
+        window.localStorage.setItem("app_dispatches", "[]");
+        window.localStorage.setItem("app_worker_payouts", "[]");
+        window.localStorage.setItem("app_inventory", "[]");
+        window.localStorage.setItem("app_documents", "[]");
+        window.localStorage.setItem("app_tasks", "[]");
+        window.localStorage.setItem("app_party_master", "[]");
+        window.localStorage.setItem("om_sai_custom_expense_categories", "[]");
+
+        // Clear sessionStorage and restore auth session
+        window.sessionStorage.clear();
+        if (authSession) {
+          window.sessionStorage.setItem("texaflow_auth_session", authSession);
+        }
+
+        // Unregister service workers and clear browser caches
+        if ("serviceWorker" in navigator) {
+          try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const reg of registrations) {
+              await reg.unregister();
+            }
+          } catch {}
+        }
+        if ("caches" in window) {
+          try {
+            const cacheKeys = await window.caches.keys();
+            await Promise.all(cacheKeys.map((key) => window.caches.delete(key)));
+          } catch {}
+        }
+
+        // Notify app components of updated data
+        window.dispatchEvent(new Event("app_data_update"));
+      }
+
+      setEraseStatusText("All software data erased successfully! Redirecting...");
+      setSaveSuccessMsg("All cloud records and local data have been permanently erased! Redirecting...");
+
       setTimeout(() => {
+        setIsEraseModalOpen(false);
         window.location.href = "/";
       }, 1500);
     } catch (err) {
       console.error("Data erase failed:", err);
-      alert("Failed to erase all data. Please check browser permissions.");
+      alert("Failed to erase all data: " + (err instanceof Error ? err.message : String(err)));
       setIsErasing(false);
+      setEraseStatusText("");
+    }
+  };
+
+  // Export Complete Backup to Structured Multi-Sheet Excel (.xlsx)
+  const handleExportExcelBackup = async () => {
+    setIsExportingExcel(true);
+    try {
+      const XLSX = await import("xlsx");
+      const wb = XLSX.utils.book_new();
+
+      const getArray = (key: string): any[] => {
+        if (typeof window === "undefined") return [];
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          return [];
+        }
+      };
+
+      const createAutoWidthSheet = (data: any[]) => {
+        const ws = XLSX.utils.json_to_sheet(data);
+        if (data.length > 0) {
+          const keys = Object.keys(data[0]);
+          ws["!cols"] = keys.map((key) => {
+            let maxLen = key.length;
+            data.forEach((row) => {
+              const val = row[key];
+              const str = val !== null && val !== undefined ? String(val) : "";
+              if (str.length > maxLen) {
+                maxLen = Math.min(str.length, 50);
+              }
+            });
+            return { wch: Math.max(maxLen + 4, 12) };
+          });
+        }
+        return ws;
+      };
+
+      // 1. WORKERS & KARIGARS (Active Module: /employees)
+      let employeesData: any[] = [];
+      try {
+        const live = await fetchApi<any[]>("/employees");
+        if (Array.isArray(live) && live.length > 0) employeesData = live;
+      } catch {}
+      if (employeesData.length === 0) employeesData = getArray("app_employees_data");
+
+      if (employeesData.length > 0) {
+        const formattedEmployees = employeesData.map((e, idx) => ({
+          "No.": idx + 1,
+          "Worker ID": e.id || e.emp_id || `EMP-${idx + 1}`,
+          "Worker Name": e.name || "N/A",
+          "Designation / Role": e.role || e.designation || "Karigar",
+          "Contact Phone": e.phone || "N/A",
+          "Salary / Rate (₹)": e.rate || e.salary || 0,
+          "Payment Type": e.payment_type || e.salary_type || "Daily",
+          "Work Status": e.status || "Active",
+          "Shift": e.shift || "Day",
+          "Joining Date": e.join_date || e.created_at || "N/A",
+          "Address / Hometown": e.address || "N/A"
+        }));
+        const wsEmp = createAutoWidthSheet(formattedEmployees);
+        XLSX.utils.book_append_sheet(wb, wsEmp, "Workers & Karigars");
+      }
+
+      // 2. VENDORS & SUPPLIERS (Active Module: /vendors)
+      let vendorsData: any[] = [];
+      try {
+        const live = await fetchApi<any[]>("/vendors");
+        if (Array.isArray(live) && live.length > 0) vendorsData = live;
+      } catch {}
+      if (vendorsData.length === 0) vendorsData = getArray("app_vendors_master");
+
+      if (vendorsData.length > 0) {
+        const formattedVendors = vendorsData.map((v, idx) => ({
+          "No.": idx + 1,
+          "Vendor ID": v.id || v.vendor_id || `VEN-${idx + 1}`,
+          "Company / Firm Name": v.company_name || v.name || "N/A",
+          "Contact Person": v.contact_person || "N/A",
+          "Phone Number": v.phone || "N/A",
+          "City": v.city || "Surat",
+          "GSTIN": v.gstin || "N/A",
+          "PAN": v.pan || "N/A",
+          "Balance Due (₹)": v.balance || 0,
+          "Credit Terms": v.credit_terms || "Due on Receipt",
+          "Full Address": v.address || "N/A"
+        }));
+        const wsVen = createAutoWidthSheet(formattedVendors);
+        XLSX.utils.book_append_sheet(wb, wsVen, "Vendors & Suppliers");
+      }
+
+      // 3. JOB ORDERS (Active Module: /orders & /job-works)
+      const ordersData = getArray("app_job_orders");
+      if (ordersData.length > 0) {
+        const formattedOrders = ordersData.map((o, idx) => ({
+          "No.": idx + 1,
+          "Job Order #": o.order_no || o.id || `ORD-${idx + 1}`,
+          "Order Date": o.date || o.order_date || o.created_at || "N/A",
+          "Party / Client Name": o.party_name || o.vendor || "N/A",
+          "Main Merchant": o.main_merchant || "N/A",
+          "Design Description": o.design_name || "N/A",
+          "Design Code": o.design_code || o.design_no || "N/A",
+          "Fabric Quality": o.fabric_quality || "N/A",
+          "Stitches": o.stitches || o.total_stitches || 0,
+          "Order Qty (Pcs)": o.total_quantity || o.quantity || 0,
+          "Rate (₹)": o.rate || o.rate_per_1k || 0,
+          "Assigned Machine": o.assigned_machine || "N/A",
+          "Target Date": o.target_date || "N/A",
+          "Status": o.status || "Pending",
+          "Special Notes": o.notes || ""
+        }));
+        const wsOrders = createAutoWidthSheet(formattedOrders);
+        XLSX.utils.book_append_sheet(wb, wsOrders, "Job Orders");
+      }
+
+      // 4. DESIGN LIBRARY (Active Module: /designs)
+      let designsData: any[] = [];
+      try {
+        const live = await fetchApi<any[]>("/designs");
+        if (Array.isArray(live) && live.length > 0) designsData = live;
+      } catch {}
+      if (designsData.length === 0) designsData = getArray("app_design_folders");
+
+      if (designsData.length > 0) {
+        const formattedDesigns = designsData.map((d, idx) => ({
+          "No.": idx + 1,
+          "Design # / ID": d.id || d.design_no || `DES-${idx + 1}`,
+          "Design Title": d.name || d.design_name || "N/A",
+          "Category": d.category || "Embroidery",
+          "Total Stitches": d.stitches || d.total_stitches || 0,
+          "Standard Rate (₹)": d.rate || d.average_rate || 0,
+          "Fabric Type": d.fabric || d.fabric_type || "N/A",
+          "Needles / Colors": d.needles || d.colors || "N/A",
+          "Machine Type": d.machine_type || "Multi-Head",
+          "Created Date": d.created_at || d.date || "N/A"
+        }));
+        const wsDesigns = createAutoWidthSheet(formattedDesigns);
+        XLSX.utils.book_append_sheet(wb, wsDesigns, "Design Library");
+      }
+
+      // 5. FACTORY EXPENSES (Active Module: /expenses)
+      let expensesData: any[] = [];
+      try {
+        const live = await fetchApi<any[]>("/expenses");
+        if (Array.isArray(live) && live.length > 0) expensesData = live;
+      } catch {}
+      if (expensesData.length === 0) expensesData = getArray("app_expenses");
+
+      if (expensesData.length > 0) {
+        const formattedExpenses = expensesData.map((x, idx) => ({
+          "No.": idx + 1,
+          "Expense #": x.id || `EXP-${idx + 1}`,
+          "Expense Date": x.date || x.expense_date || "N/A",
+          "Category": x.category || "Factory Expense",
+          "Amount (₹)": x.amount || 0,
+          "Payment Mode": x.payment_mode || "Cash",
+          "Paid To": x.paid_to || "N/A",
+          "Bill / Ref #": x.bill_no || x.invoice_no || "N/A",
+          "Remarks": x.notes || x.description || ""
+        }));
+        const wsExpenses = createAutoWidthSheet(formattedExpenses);
+        XLSX.utils.book_append_sheet(wb, wsExpenses, "Expenses");
+      }
+
+      // 6. PAYMENTS & VOUCHERS (Active Module: /payments)
+      let paymentsData: any[] = [];
+      try {
+        const live = await fetchApi<any[]>("/payments");
+        if (Array.isArray(live) && live.length > 0) paymentsData = live;
+      } catch {}
+      if (paymentsData.length === 0) paymentsData = getArray("app_payments").concat(getArray("om_sai_vouchers"));
+
+      if (paymentsData.length > 0) {
+        const formattedPayments = paymentsData.map((p, idx) => ({
+          "No.": idx + 1,
+          "Voucher #": p.voucher_no || p.id || `VCH-${idx + 1}`,
+          "Voucher Date": p.date || p.payment_date || "N/A",
+          "Paid To / Received From": p.party_name || p.paid_to || "N/A",
+          "Transaction Type": p.payment_type || p.type || "Payment",
+          "Amount (₹)": p.amount || 0,
+          "Payment Mode": p.payment_mode || "Bank Transfer",
+          "Bank / Transaction Ref": p.ref_no || p.cheque_no || "N/A",
+          "Narration / Notes": p.notes || p.narration || ""
+        }));
+        const wsPayments = createAutoWidthSheet(formattedPayments);
+        XLSX.utils.book_append_sheet(wb, wsPayments, "Payment Vouchers");
+      }
+
+      // 7. PRODUCTION MACHINES (Active Module: /production)
+      const machinesData = getArray("app_machines")
+        .concat(getArray("app_machines_unit_1"))
+        .concat(getArray("app_machines_unit_2"));
+
+      if (machinesData.length > 0) {
+        const formattedMachines = machinesData.map((m, idx) => ({
+          "No.": idx + 1,
+          "Machine #": m.id || m.machine_id || `M-${idx + 1}`,
+          "Machine Name": m.name || m.machine_name || `Embroidery Machine ${idx + 1}`,
+          "Factory Unit": m.unit || "Unit 1",
+          "Heads Count": m.heads || m.total_heads || 12,
+          "Operating Status": m.status || "Idle",
+          "Current Job": m.current_job || m.job_order || "N/A",
+          "Running RPM": m.rpm || m.speed || 850,
+          "Shift Operator": m.operator || m.operator_name || "N/A"
+        }));
+        const wsMachines = createAutoWidthSheet(formattedMachines);
+        XLSX.utils.book_append_sheet(wb, wsMachines, "Production Machines");
+      }
+
+      // 8. DELIVERY CHALLANS & DISPATCHES (Active Module: /dispatches)
+      const dispatchesData = getArray("app_finished_designs").concat(getArray("app_dispatches"));
+      if (dispatchesData.length > 0) {
+        const formattedDispatches = dispatchesData.map((d, idx) => ({
+          "No.": idx + 1,
+          "Challan / Dispatch #": d.challan_no || d.id || `DC-${idx + 1}`,
+          "Dispatch Date": d.date || d.dispatch_date || "N/A",
+          "Party Name": d.party_name || d.party || "N/A",
+          "Design Description": d.design_name || d.design_code || "N/A",
+          "Dispatched Qty (Pcs)": d.quantity || d.pcs || 0,
+          "Takka / Roll Count": d.takka || d.rolls || 1,
+          "Transport / Vehicle": d.transport || d.vehicle_no || "Local Delivery",
+          "Status": d.status || "Delivered"
+        }));
+        const wsDispatches = createAutoWidthSheet(formattedDispatches);
+        XLSX.utils.book_append_sheet(wb, wsDispatches, "Delivery Challans");
+      }
+
+      // 9. COMPANY PROFILE & SETTINGS (Clean 2-Column Vertical Table - Easily Readable in Excel!)
+      const companyRows = [
+        { "Setting / Parameter": "Company Legal Name", "Configured Value": formData.company_name || "Om Sai Enterprise" },
+        { "Setting / Parameter": "Brand / Trade Name", "Configured Value": formData.brand_name || "OM SAI" },
+        { "Setting / Parameter": "Business Tagline", "Configured Value": formData.tagline || "" },
+        { "Setting / Parameter": "Primary Phone", "Configured Value": formData.phone || "" },
+        { "Setting / Parameter": "Alternate Phone", "Configured Value": formData.alt_phone || "N/A" },
+        { "Setting / Parameter": "Email Address", "Configured Value": formData.email || "" },
+        { "Setting / Parameter": "Factory Address", "Configured Value": formData.address || "" },
+        { "Setting / Parameter": "City & State", "Configured Value": formData.city_state || "" },
+        { "Setting / Parameter": "Pincode", "Configured Value": formData.pincode || "" },
+        { "Setting / Parameter": "MSME Udyam Reg. No.", "Configured Value": formData.msme_no || "N/A" },
+        { "Setting / Parameter": "GSTIN Number", "Configured Value": formData.gstin || "" },
+        { "Setting / Parameter": "PAN Number", "Configured Value": formData.pan || "" },
+        { "Setting / Parameter": "Bank Name", "Configured Value": formData.bank_name || "" },
+        { "Setting / Parameter": "Account Holder Name", "Configured Value": formData.account_holder || "" },
+        { "Setting / Parameter": "Account Number", "Configured Value": formData.account_no || "" },
+        { "Setting / Parameter": "Account Type", "Configured Value": formData.account_type || "" },
+        { "Setting / Parameter": "IFSC Code", "Configured Value": formData.ifsc || "" },
+        { "Setting / Parameter": "Bank Branch", "Configured Value": formData.branch_name || "" },
+        { "Setting / Parameter": "UPI ID", "Configured Value": formData.upi_id || "" },
+        { "Setting / Parameter": "Invoice Heading Title", "Configured Value": formData.invoice_title || "" },
+        { "Setting / Parameter": "Challan Heading Title", "Configured Value": formData.challan_title || "" },
+        { "Setting / Parameter": "Invoice Prefix", "Configured Value": formData.invoice_prefix || "" },
+        { "Setting / Parameter": "Next Invoice Number", "Configured Value": formData.next_invoice_no || "" },
+        { "Setting / Parameter": "Challan Prefix", "Configured Value": formData.challan_prefix || "" },
+        { "Setting / Parameter": "Next Challan Number", "Configured Value": formData.next_challan_no || "" },
+        { "Setting / Parameter": "Default HSN / SAC Code", "Configured Value": formData.hsn_sac_code || "" },
+        { "Setting / Parameter": "Default GST Rate", "Configured Value": formData.gst_rate || "" },
+        { "Setting / Parameter": "Payment Credit Terms", "Configured Value": formData.payment_terms || "" },
+        { "Setting / Parameter": "Authorized Signatory Text", "Configured Value": formData.signatory_label || "" },
+      ];
+      const wsCompany = XLSX.utils.json_to_sheet(companyRows);
+      wsCompany["!cols"] = [{ wch: 32 }, { wch: 60 }];
+      XLSX.utils.book_append_sheet(wb, wsCompany, "Company Settings");
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Om_Sai_ERP_Full_Backup_${dateStr}.xlsx`);
+
+      setSaveSuccessMsg("Full Excel backup generated with all active modules!");
+      setTimeout(() => setSaveSuccessMsg(""), 3500);
+    } catch (err) {
+      console.error("Excel backup error:", err);
+      alert("Failed to export Excel backup file.");
+    } finally {
+      setIsExportingExcel(false);
     }
   };
 
@@ -1190,100 +1602,85 @@ export default function SettingsPage() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 5: DATA & STORAGE MAINTENANCE */}
+          {/* TAB 5: DATA & STORAGE MAINTENANCE (Simple & Clean) */}
           {/* ========================================================================= */}
           {activeTab === "Data & Storage" && (
-            <div className="space-y-6 animate-in fade-in duration-100">
-              {/* Storage Overview Bar */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                    <HardDrive className="w-5 h-5" />
+            <div className="space-y-4 animate-in fade-in duration-100">
+              {/* 1. Excel Backup Card */}
+              <div className="border border-slate-200 rounded-2xl p-5 bg-white shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
+                    <FileSpreadsheet className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-extrabold text-slate-800">Local Browser Storage</h4>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      Estimated storage consumed by cached offline records & application assets
+                    <h4 className="text-xs font-black text-slate-900">Export All Data to Excel (.xlsx)</h4>
+                    <p className="text-xs text-slate-500 mt-0.5 max-w-xl">
+                      Download a full backup of all factory records (Workers, Job Orders, Vendors, Expenses, and Payments) in an Excel spreadsheet.
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right">
-                    <span className="text-xs font-black text-blue-600">{storageInfo.totalKb} KB</span>
-                    <span className="text-[10px] text-slate-400 block font-bold">{storageInfo.itemsCount} Key Records</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={updateStorageInfo}
-                    title="Refresh Storage Info"
-                    className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 rounded-lg transition-all cursor-pointer"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+
+                <button
+                  type="button"
+                  disabled={isExportingExcel}
+                  onClick={handleExportExcelBackup}
+                  className="shrink-0 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-xs active:scale-95 disabled:opacity-60"
+                >
+                  <Download className={`w-3.5 h-3.5 ${isExportingExcel ? "animate-bounce" : ""}`} />
+                  <span>{isExportingExcel ? "Exporting Excel..." : "Download Excel Backup"}</span>
+                </button>
               </div>
 
-              {/* 1. Clear Application Cache Card */}
-              <div className="border border-slate-200 rounded-xl p-5 bg-white space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4 text-blue-600" />
-                      <h4 className="text-xs font-bold text-slate-900">Clear Application Cache & Temp Storage</h4>
-                    </div>
-                    <p className="text-xs text-slate-500 leading-relaxed max-w-xl">
-                      ક્યારેક કેશ વધી જાય અથવા સોફ્ટવેર સ્લો ચાલવા લાગે તો અહીંથી અસ્થાયી (Temporary) કેશ અને સેશન મેમરી સાફ કરી શકાય છે. આનાથી તમારા જોબ ઓર્ડર, કારીગર હિસાબ કે વાઉચર્સનો કોઈ પણ બિઝનેસ ડેટા ડિલીટ થશે નહીં.
+              {/* 2. Clear Temporary Cache Card */}
+              <div className="border border-slate-200 rounded-2xl p-5 bg-white shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                    <RefreshCw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900">Clear Temporary Cache</h4>
+                    <p className="text-xs text-slate-500 mt-0.5 max-w-xl">
+                      Clear temporary browser cache and session memory to optimize system performance. Your business data will not be deleted.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    disabled={isClearingCache}
-                    onClick={handleClearCache}
-                    className="shrink-0 px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {isClearingCache ? (
-                      <>
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>Cleaning...</span>
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        <span>Clear Cache Now</span>
-                      </>
-                    )}
-                  </button>
                 </div>
+
+                <button
+                  type="button"
+                  disabled={isClearingCache}
+                  onClick={handleClearCache}
+                  className="shrink-0 px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isClearingCache ? "animate-spin" : ""}`} />
+                  <span>{isClearingCache ? "Cleaning..." : "Clear Cache Now"}</span>
+                </button>
               </div>
 
-              {/* 2. Danger Zone - Erase All Software Data Card */}
-              <div className="border border-red-200 bg-red-50/30 rounded-xl p-5 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                      <AlertTriangle className="w-5 h-5" />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-xs font-black text-red-700 flex items-center gap-2">
-                        <span>Danger Zone: Erase All Software Data (Factory Reset)</span>
-                      </h4>
-                      <p className="text-xs text-red-600/90 leading-relaxed max-w-xl">
-                        સોફ્ટવેરનો તમામ ડેટા (જોબ ઓર્ડર્સ, કારીગરો, વેપારીઓ, ડિઝાઇન લાઇબ્રેરી, વાઉચર્સ, ખર્ચ અને સેટિંગ્સ) કાયમ માટે સાફ કરવા માટે આ ઓપ્શન છે. એકવાર ડેટા ભૂંસી નાખ્યા પછી પાછો મેળવી શકાશે નહીં.
-                      </p>
-                    </div>
+              {/* 3. Erase All Data (Factory Reset) Card */}
+              <div className="border border-red-200 bg-red-50/20 rounded-2xl p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100">
+                    <AlertTriangle className="w-5 h-5" />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEraseConfirmInput("");
-                      setIsEraseModalOpen(true);
-                    }}
-                    className="shrink-0 px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-extrabold text-xs rounded-xl transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Erase All Data</span>
-                  </button>
+                  <div>
+                    <h4 className="text-xs font-black text-red-700">Factory Reset / Erase All Data</h4>
+                    <p className="text-xs text-red-600/80 mt-0.5 max-w-xl">
+                      Permanently delete all records from this software (Orders, Karigars, Expenses, Payments, and Settings).
+                    </p>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEraseConfirmInput("");
+                    setIsEraseModalOpen(true);
+                  }}
+                  className="shrink-0 px-4 py-2.5 bg-red-600 text-white hover:bg-red-700 font-extrabold text-xs rounded-xl transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Erase All Data</span>
+                </button>
               </div>
             </div>
           )}
@@ -1304,22 +1701,30 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 space-y-1 font-medium">
-              <p>⚠️ તમારા તમામ ઓર્ડર્સ, વાઉચર્સ, કારીગર હિસાબ, ખર્ચ અને સેટિંગ્સ હંમેશ માટે ડિલીટ થઈ જશે.</p>
-              <p>ખાતરી કરવા માટે નીચે આપેલા બોક્સમાં મોટા અક્ષરોમાં <strong className="font-black text-red-800">DELETE</strong> લખો:</p>
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 space-y-1.5 font-medium">
+              <p>⚠️ All Job Orders, Vouchers, Worker Records, Expenses, and Settings will be permanently erased.</p>
+              <p>To confirm, please type <strong className="font-black text-red-800">DELETE</strong> in uppercase below:</p>
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700">Confirmation Word *</label>
               <input
                 type="text"
+                disabled={isErasing}
                 value={eraseConfirmInput}
                 onChange={(e) => setEraseConfirmInput(e.target.value)}
                 placeholder="Type DELETE to confirm"
-                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-red-500 shadow-2xs text-xs tracking-wider"
+                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-red-500 shadow-2xs text-xs tracking-wider disabled:bg-slate-100 disabled:opacity-60"
                 autoFocus
               />
             </div>
+
+            {isErasing && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 font-bold flex items-center gap-2.5 animate-pulse">
+                <RefreshCw className="w-4 h-4 animate-spin text-red-600 shrink-0" />
+                <span className="truncate">{eraseStatusText || "Erasing software records..."}</span>
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
@@ -1328,8 +1733,9 @@ export default function SettingsPage() {
                 onClick={() => {
                   setIsEraseModalOpen(false);
                   setEraseConfirmInput("");
+                  setEraseStatusText("");
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
@@ -1369,11 +1775,12 @@ export default function SettingsPage() {
           {activeTab === "Data & Storage" ? (
             <button
               type="button"
-              onClick={updateStorageInfo}
-              className="px-4 py-2 font-bold rounded-xl text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-2 cursor-pointer transition-all"
+              disabled={isExportingExcel}
+              onClick={handleExportExcelBackup}
+              className="px-4 py-2 font-extrabold rounded-xl text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 cursor-pointer transition-all shadow-xs"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Refresh Storage Status</span>
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>{isExportingExcel ? "Exporting Excel..." : "Download Excel Backup"}</span>
             </button>
           ) : (
             <button

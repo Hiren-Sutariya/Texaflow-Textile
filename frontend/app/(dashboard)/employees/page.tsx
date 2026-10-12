@@ -340,9 +340,10 @@ export default function EmployeesPage() {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("app_employees_data");
-        if (saved) {
+        if (saved !== null) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
+            if (parsed.length === 0) return [];
             return parsed.map((emp: any) => ({
               ...emp,
               photoUrl:
@@ -363,7 +364,12 @@ export default function EmployeesPage() {
   const loadEmployeesFromApi = async () => {
     try {
       const live = await fetchApi<any[]>("/employees");
-      if (Array.isArray(live) && live.length > 0) {
+      if (Array.isArray(live)) {
+        if (live.length === 0) {
+          setEmployees([]);
+          localStorage.setItem("app_employees_data", "[]");
+          return;
+        }
         const mapped: Employee[] = live.map((e, idx) => {
           let parsedHelpers: any[] = [];
           let parsedBank = undefined;
@@ -434,9 +440,13 @@ export default function EmployeesPage() {
 
     try {
       const saved = localStorage.getItem("app_employees_data");
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
+          if (parsed.length === 0) {
+            setEmployees([]);
+            return;
+          }
           const cleaned = parsed.map((emp: any) => ({
             ...emp,
             photoUrl:

@@ -81,9 +81,9 @@ export default function JobOrdersPage() {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("app_job_orders");
-        if (saved) {
+        if (saved !== null) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             return parsed;
           }
         }
@@ -179,10 +179,14 @@ export default function JobOrdersPage() {
     }
 
     const saved = localStorage.getItem("app_job_orders");
-    if (saved) {
+    if (saved !== null) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
+          if (parsed.length === 0) {
+            setOrders([]);
+            return;
+          }
           const activeAssignedSet = new Set<string>();
 
           // Clean & sanitize job orders (Synchronize colorways directly with Design Library)

@@ -488,9 +488,10 @@ export default function VendorsPage() {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("app_vendors_master");
-        if (saved) {
+        if (saved !== null) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
+            if (parsed.length === 0) return [];
             return parsed;
           }
         }
@@ -639,7 +640,12 @@ export default function VendorsPage() {
   const loadVendorsFromApi = async () => {
     try {
       const live = await fetchApi<any[]>("/vendors");
-      if (Array.isArray(live) && live.length > 0) {
+      if (Array.isArray(live)) {
+        if (live.length === 0) {
+          setVendors([]);
+          localStorage.setItem("app_vendors_master", "[]");
+          return;
+        }
         const defaultBill = {
           attention: "",
           country: "INDIA",
@@ -720,9 +726,9 @@ export default function VendorsPage() {
 
     try {
       const saved = localStorage.getItem("app_vendors_master");
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           setVendors(parsed);
           return;
         }
