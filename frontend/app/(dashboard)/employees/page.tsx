@@ -76,8 +76,8 @@ function CustomSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`custom-select-trigger w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-emerald-500 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
-          isOpen ? "border-emerald-500 ring-2 ring-emerald-500/20" : ""
+        className={`custom-select-trigger w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
         } ${uppercase && selectedOption ? "uppercase" : ""}`}
       >
         <span className={`truncate ${selectedOption ? "font-bold text-slate-900" : "font-medium text-slate-400"}`}>
@@ -85,7 +85,7 @@ function CustomSelect({
         </span>
         <ChevronDown
           className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${
-            isOpen ? "rotate-180 text-emerald-600" : ""
+            isOpen ? "rotate-180 text-blue-600" : ""
           }`}
         />
       </button>
@@ -104,12 +104,12 @@ function CustomSelect({
                 }}
                 className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
                   isSelected
-                    ? "bg-emerald-50 text-emerald-950 font-extrabold border-emerald-500 shadow-2xs"
+                    ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                     : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
                 } ${uppercase ? "uppercase" : ""}`}
               >
                 <span className="truncate">{opt.label}</span>
-                {isSelected && <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0 ml-2" />}
+                {isSelected && <Check className="w-3.5 h-3.5 text-blue-700 shrink-0 ml-2" />}
               </button>
             );
           })}
@@ -343,7 +343,15 @@ export default function EmployeesPage() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed;
+            return parsed.map((emp: any) => ({
+              ...emp,
+              photoUrl:
+                emp.photoUrl &&
+                emp.photoUrl.includes("photo-1507003211169-0a1dd7228f2d") &&
+                emp.name !== "Ramesh Bhai Patel"
+                  ? undefined
+                  : (emp.photoUrl && emp.photoUrl.trim() ? emp.photoUrl : undefined)
+            }));
           }
         }
       } catch {}
@@ -387,6 +395,15 @@ export default function EmployeesPage() {
             ? e.employee_type === "Karigar"
             : ((e.role || "").toLowerCase().includes("karigar") || (e.role || "").toLowerCase().includes("operator"));
 
+          const cleanWorkerPhoto = (url?: string, name?: string) => {
+            if (!url || !url.trim() || url === "undefined" || url === "null") return undefined;
+            // Never force the default Unsplash photo onto new workers
+            if (url.includes("photo-1507003211169-0a1dd7228f2d") && name !== "Ramesh Bhai Patel") {
+              return undefined;
+            }
+            return url;
+          };
+
           return {
             id: e.id || `emp-${idx + 1}`,
             code: e.code || (isKarigar ? `KAR-00${idx + 1}` : `STF-00${idx + 1}`),
@@ -400,7 +417,7 @@ export default function EmployeesPage() {
             monthly_salary: Number(e.monthly_salary) || 0,
             advance_balance: Number(e.advance_balance || e.current_advance) || 0,
             status: (e.status === "Inactive" ? "Inactive" : "Active") as any,
-            photoUrl: e.photo_url || e.photoUrl || `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80`,
+            photoUrl: cleanWorkerPhoto(e.photo_url || e.photoUrl, e.name),
             helpers: Array.isArray(parsedHelpers) ? parsedHelpers : [],
             bank_details: parsedBank,
             portal_credentials: Array.isArray(parsedPortal) ? parsedPortal : [],
@@ -415,13 +432,22 @@ export default function EmployeesPage() {
       console.warn("Backend employees load fallback", err);
     }
 
-
     try {
       const saved = localStorage.getItem("app_employees_data");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setEmployees(parsed);
+          const cleaned = parsed.map((emp: any) => ({
+            ...emp,
+            photoUrl:
+              emp.photoUrl &&
+              emp.photoUrl.includes("photo-1507003211169-0a1dd7228f2d") &&
+              emp.name !== "Ramesh Bhai Patel"
+                ? undefined
+                : (emp.photoUrl && emp.photoUrl.trim() ? emp.photoUrl : undefined)
+          }));
+          setEmployees(cleaned);
+          localStorage.setItem("app_employees_data", JSON.stringify(cleaned));
           return;
         }
       }
@@ -706,6 +732,8 @@ export default function EmployeesPage() {
       upi_id: upiId.trim()
     } : undefined;
 
+    const cleanFormPhoto = formPhotoUrl && formPhotoUrl.trim() ? formPhotoUrl.trim() : "";
+
     if (editingWorkerId) {
       try {
         await fetchApi(`/employees/${editingWorkerId}`, {
@@ -721,7 +749,7 @@ export default function EmployeesPage() {
             shift: formShift,
             monthly_salary: Number(formSalary) || 0,
             status: "Active",
-            photo_url: formPhotoUrl,
+            photo_url: cleanFormPhoto,
             helpers: JSON.stringify(helpersList),
             bank_details: JSON.stringify(compiledBank),
             portal_credentials: JSON.stringify(portalCredentials),
@@ -745,7 +773,7 @@ export default function EmployeesPage() {
                 employee_type: formCategory,
                 shift: formShift,
                 monthly_salary: Number(formSalary) || 0,
-                photoUrl: formPhotoUrl,
+                photoUrl: cleanFormPhoto ? cleanFormPhoto : undefined,
                 helpers: helpersList,
                 bank_details: compiledBank,
                 portal_credentials: portalCredentials,
@@ -773,7 +801,7 @@ export default function EmployeesPage() {
             monthly_salary: Number(formSalary) || 0,
             advance_balance: 0,
             status: "Active",
-            photo_url: formPhotoUrl,
+            photo_url: cleanFormPhoto,
             helpers: JSON.stringify(helpersList),
             bank_details: JSON.stringify(compiledBank),
             portal_credentials: JSON.stringify(portalCredentials),
@@ -801,7 +829,7 @@ export default function EmployeesPage() {
         monthly_salary: Number(formSalary) || 0,
         advance_balance: 0,
         status: "Active",
-        photoUrl: formPhotoUrl,
+        photoUrl: cleanFormPhoto ? cleanFormPhoto : undefined,
         helpers: helpersList,
         bank_details: compiledBank,
         portal_credentials: portalCredentials,
@@ -927,7 +955,7 @@ export default function EmployeesPage() {
               onClick={() => setActiveFormTab("Basic Info")}
               className={`py-2 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
                 activeFormTab === "Basic Info"
-                  ? "border-emerald-600 text-emerald-800 font-extrabold"
+                  ? "border-blue-600 text-blue-800 font-extrabold"
                   : "border-transparent text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -939,7 +967,7 @@ export default function EmployeesPage() {
               onClick={() => setActiveFormTab("Bank Details")}
               className={`py-2 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
                 activeFormTab === "Bank Details"
-                  ? "border-emerald-600 text-emerald-800 font-extrabold"
+                  ? "border-blue-600 text-blue-800 font-extrabold"
                   : "border-transparent text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -951,7 +979,7 @@ export default function EmployeesPage() {
               onClick={() => setActiveFormTab("Portal Login")}
               className={`py-2 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
                 activeFormTab === "Portal Login"
-                  ? "border-emerald-600 text-emerald-800 font-extrabold"
+                  ? "border-blue-600 text-blue-800 font-extrabold"
                   : "border-transparent text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -963,7 +991,7 @@ export default function EmployeesPage() {
               onClick={() => setActiveFormTab("Documents")}
               className={`py-2 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
                 activeFormTab === "Documents"
-                  ? "border-emerald-600 text-emerald-800 font-extrabold"
+                  ? "border-blue-600 text-blue-800 font-extrabold"
                   : "border-transparent text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -979,42 +1007,96 @@ export default function EmployeesPage() {
               {/* Photo & Core Fields Grid */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Worker Photo</label>
-                  <label
-                    htmlFor="worker-photo-file-input"
-                    className="w-32 h-28 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50/70 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 hover:border-emerald-500 transition-colors relative overflow-hidden group"
-                  >
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Worker Photo (Optional)</label>
+                  <div className="flex items-start gap-3">
+                    <label
+                      htmlFor="worker-photo-file-input"
+                      className="w-32 h-28 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50/70 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 hover:border-blue-500 transition-colors relative overflow-hidden group shrink-0"
+                    >
+                      {formPhotoUrl ? (
+                        <>
+                          <img src={formPhotoUrl} alt="Worker Photo" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1">
+                            <Edit3 className="w-4 h-4" />
+                            <span>Change</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <ImageIcon className="w-6 h-6 text-slate-400" />
+                          <span className="text-[11px] font-bold text-slate-700 mt-1">Upload Photo</span>
+                          <span className="text-[9px] text-blue-600 font-semibold">JPG / PNG</span>
+                        </>
+                      )}
+                    </label>
+
                     {formPhotoUrl ? (
-                      <>
-                        <img src={formPhotoUrl} alt="Worker Photo" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1">
-                          <Edit3 className="w-4 h-4" />
-                          <span>Change Photo</span>
+                      <div className="pt-2 space-y-1.5">
+                        <label
+                          htmlFor="worker-photo-file-input"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl text-xs transition-colors cursor-pointer border border-blue-200/80"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Change Image</span>
+                        </label>
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => setFormPhotoUrl("")}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 cursor-pointer px-1 py-0.5"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Remove Photo</span>
+                          </button>
                         </div>
-                      </>
+                      </div>
                     ) : (
-                      <>
-                        <ImageIcon className="w-6 h-6 text-slate-400" />
-                        <span className="text-[11px] font-bold text-slate-700 mt-1">Upload Image</span>
-                        <span className="text-[9px] text-emerald-600 font-semibold">Auto Resize</span>
-                      </>
+                      <div className="pt-2 text-[11px] text-slate-400 font-medium leading-relaxed max-w-[200px]">
+                        Select a profile photo from device. Photo will be resized automatically.
+                      </div>
                     )}
-                  </label>
+                  </div>
+
                   <input
                     id="worker-photo-file-input"
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/webp,image/jpg"
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
                         const file = e.target.files[0];
                         const reader = new FileReader();
                         reader.onload = (event) => {
-                          if (event.target?.result) {
-                            setFormPhotoUrl(event.target.result as string);
-                          }
+                          const result = event.target?.result as string;
+                          if (!result) return;
+                          const img = new Image();
+                          img.onload = () => {
+                            const canvas = document.createElement("canvas");
+                            const maxDim = 320;
+                            let width = img.width;
+                            let height = img.height;
+                            if (width > height) {
+                              if (width > maxDim) {
+                                height = Math.round((height * maxDim) / width);
+                                width = maxDim;
+                              }
+                            } else {
+                              if (height > maxDim) {
+                                width = Math.round((width * maxDim) / height);
+                                height = maxDim;
+                              }
+                            }
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext("2d");
+                            ctx?.drawImage(img, 0, 0, width, height);
+                            const compressed = canvas.toDataURL("image/jpeg", 0.85);
+                            setFormPhotoUrl(compressed);
+                          };
+                          img.src = result;
                         };
                         reader.readAsDataURL(file);
+                        e.target.value = "";
                       }
                     }}
                   />
@@ -1029,7 +1111,7 @@ export default function EmployeesPage() {
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                       onKeyDown={handleInputKeyDown}
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500"
                       required
                     />
                   </div>
@@ -1042,7 +1124,7 @@ export default function EmployeesPage() {
                       value={formKhataNo}
                       onChange={(e) => setFormKhataNo(e.target.value)}
                       onKeyDown={handleInputKeyDown}
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500"
                     />
                   </div>
 
@@ -1060,7 +1142,7 @@ export default function EmployeesPage() {
                           }}
                           onFocus={() => setIsMachineDropdownOpen(true)}
                           onKeyDown={handleInputKeyDown}
-                          className="w-full h-9 pl-3 pr-14 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 uppercase cursor-pointer"
+                          className="w-full h-9 pl-3 pr-14 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 uppercase cursor-pointer"
                         />
                         <div className="absolute right-2.5 top-2 flex items-center gap-1">
                           {formMachineNo && (
@@ -1085,13 +1167,13 @@ export default function EmployeesPage() {
                             className="text-slate-400 hover:text-slate-700 cursor-pointer p-0.5"
                             title="Toggle machine dropdown"
                           >
-                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isMachineDropdownOpen ? "rotate-180 text-emerald-600" : ""}`} />
+                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isMachineDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
                           </button>
                         </div>
 
                         {/* DROPDOWN MENU MATCHING SCREENSHOT 2 */}
                         {isMachineDropdownOpen && (
-                          <div className="absolute left-0 right-0 top-11 z-50 bg-white border-2 border-emerald-500 rounded-2xl shadow-xl p-2 space-y-2 animate-in fade-in duration-100">
+                          <div className="absolute left-0 right-0 top-11 z-50 bg-white border-2 border-blue-500 rounded-2xl shadow-xl p-2 space-y-2 animate-in fade-in duration-100">
                             <div className="max-h-48 overflow-y-auto space-y-1 no-scrollbar">
                               {configuredMachines.length === 0 ? (
                                 <div className="p-3 text-center text-slate-400 text-xs font-medium">
@@ -1108,7 +1190,7 @@ export default function EmployeesPage() {
                                     }}
                                     className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-colors cursor-pointer ${
                                       formMachineNo === m
-                                        ? "bg-emerald-600 text-white font-extrabold"
+                                        ? "bg-blue-600 text-white font-extrabold"
                                         : "hover:bg-slate-100 text-slate-800"
                                     }`}
                                   >
@@ -1153,7 +1235,7 @@ export default function EmployeesPage() {
                       value={formMobile}
                       onChange={(e) => setFormMobile(e.target.value)}
                       onKeyDown={handleInputKeyDown}
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500"
                     />
                   </div>
 
@@ -1165,7 +1247,7 @@ export default function EmployeesPage() {
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
                       onKeyDown={handleInputKeyDown}
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -1176,7 +1258,7 @@ export default function EmployeesPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <h4 className="font-extrabold text-slate-900 text-xs flex items-center gap-2">
-                      <Users className="w-4 h-4 text-emerald-600" />
+                      <Users className="w-4 h-4 text-blue-600" />
                       <span>Helpers / Child Workers</span>
                     </h4>
                     <p className="text-[11px] text-slate-500 font-medium mt-0.5">
@@ -1186,7 +1268,7 @@ export default function EmployeesPage() {
                   <button
                     type="button"
                     onClick={() => setIsAddHelperOpen(!isAddHelperOpen)}
-                    className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200/80 rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 self-start sm:self-auto"
+                    className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold border border-blue-200/80 rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 self-start sm:self-auto"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Add Helper</span>
@@ -1221,7 +1303,7 @@ export default function EmployeesPage() {
                           setIsAddHelperOpen(false);
                         }
                       }}
-                      className="h-8 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-lg text-xs transition-colors shrink-0 cursor-pointer"
+                      className="h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-lg text-xs transition-colors shrink-0 cursor-pointer"
                     >
                       Add
                     </button>
@@ -1272,7 +1354,7 @@ export default function EmployeesPage() {
                     value={bankName}
                     onChange={(e) => setBankName(e.target.value)}
                     onKeyDown={handleInputKeyDown}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -1285,7 +1367,7 @@ export default function EmployeesPage() {
                       value={accountNumber}
                       onChange={(e) => setAccountNumber(e.target.value)}
                       onKeyDown={handleInputKeyDown}
-                      className="w-full h-9 pl-3 pr-8 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                      className="w-full h-9 pl-3 pr-8 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500"
                     />
                     <button
                       type="button"
@@ -1305,7 +1387,7 @@ export default function EmployeesPage() {
                     value={reAccountNumber}
                     onChange={(e) => setReAccountNumber(e.target.value)}
                     onKeyDown={handleInputKeyDown}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -1317,7 +1399,7 @@ export default function EmployeesPage() {
                     value={ifscCode}
                     onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
                     onKeyDown={handleInputKeyDown}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 uppercase"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 uppercase"
                   />
                 </div>
 
@@ -1329,7 +1411,7 @@ export default function EmployeesPage() {
                     value={branchName}
                     onChange={(e) => setBranchName(e.target.value)}
                     onKeyDown={handleInputKeyDown}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -1341,7 +1423,7 @@ export default function EmployeesPage() {
                     value={upiId}
                     onChange={(e) => setUpiId(e.target.value)}
                     onKeyDown={handleInputKeyDown}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -1351,8 +1433,8 @@ export default function EmployeesPage() {
           {/* TAB 3: PORTAL LOGIN */}
           {activeFormTab === "Portal Login" && (
             <div className="space-y-5 pt-1">
-              <div className="bg-emerald-50/80 border border-emerald-200 text-emerald-900 rounded-xl p-3 flex items-center gap-2.5 text-xs font-semibold">
-                <Key className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="bg-blue-50/80 border border-blue-200 text-blue-900 rounded-xl p-3 flex items-center gap-2.5 text-xs font-semibold">
+                <Key className="w-4 h-4 text-blue-600 shrink-0" />
                 <span>Add multiple portal login credentials for this worker. Each credential is a separate Email + Password pair.</span>
               </div>
 
@@ -1394,7 +1476,7 @@ export default function EmployeesPage() {
                       setPortalPasswordInput("");
                     }
                   }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Credential</span>
@@ -1426,7 +1508,7 @@ export default function EmployeesPage() {
               <div>
                 <label
                   htmlFor="worker-document-upload-input"
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-2 cursor-pointer shadow-2xs inline-flex transition-all active:scale-95"
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-2 cursor-pointer shadow-2xs inline-flex transition-all active:scale-95"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Upload Documents</span>
@@ -1504,8 +1586,8 @@ export default function EmployeesPage() {
             onClick={() => handleSaveFullWorker()}
             className={`px-6 py-2.5 font-extrabold rounded-xl text-xs shadow-md transition-all flex items-center gap-2 ${
               isSaving
-                ? "bg-emerald-400 text-white cursor-not-allowed pointer-events-none opacity-80"
-                : "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer active:scale-95"
+                ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
+                : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
             }`}
           >
             {isSaving ? (
@@ -1545,15 +1627,15 @@ export default function EmployeesPage() {
               <div className="p-5 space-y-4">
                 {/* SUCCESS NOTIFICATION TOAST */}
                 {machineSuccessMsg && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-950 font-extrabold text-xs rounded-xl flex items-center justify-between animate-in fade-in duration-100">
+                  <div className="p-3 bg-blue-50 border border-blue-200 text-blue-950 font-extrabold text-xs rounded-xl flex items-center justify-between animate-in fade-in duration-100">
                     <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-700 shrink-0" />
+                      <Check className="w-4 h-4 text-blue-700 shrink-0" />
                       <span>{machineSuccessMsg}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setMachineSuccessMsg(null)}
-                      className="text-emerald-700 hover:text-emerald-900 p-0.5"
+                      className="text-blue-700 hover:text-blue-900 p-0.5"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -1567,7 +1649,7 @@ export default function EmployeesPage() {
                     placeholder="Enter machine number(s) (comma separated)"
                     value={manageMachineInput}
                     onChange={(e) => setManageMachineInput(e.target.value)}
-                    className="flex-1 h-10 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 text-xs focus:outline-none focus:border-emerald-500"
+                    className="flex-1 h-10 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 text-xs focus:outline-none focus:border-blue-500"
                   />
                   <button
                     type="button"
@@ -1585,7 +1667,7 @@ export default function EmployeesPage() {
                         setManageMachineInput("");
                       }
                     }}
-                    className="px-4 h-10 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold rounded-xl text-xs transition-colors cursor-pointer shrink-0"
+                    className="px-4 h-10 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition-colors cursor-pointer shrink-0"
                   >
                     Add
                   </button>
@@ -1596,7 +1678,7 @@ export default function EmployeesPage() {
                   <button
                     type="button"
                     onClick={() => setIsShowAutoRange(!isShowAutoRange)}
-                    className="font-bold text-emerald-700 text-xs flex items-center gap-1.5 cursor-pointer hover:underline"
+                    className="font-bold text-blue-700 text-xs flex items-center gap-1.5 cursor-pointer hover:underline"
                   >
                     <span>Show Auto-Range Generator (e.g. 1 to 50)</span>
                     <ChevronDown className={`w-4 h-4 transition-transform ${isShowAutoRange ? "rotate-180" : ""}`} />
@@ -1651,7 +1733,7 @@ export default function EmployeesPage() {
                             setTimeout(() => setMachineSuccessMsg(null), 3000);
                           }
                         }}
-                        className="w-full py-2 bg-emerald-600 text-white font-extrabold rounded-xl text-xs cursor-pointer hover:bg-emerald-700 transition-colors"
+                        className="w-full py-2 bg-blue-600 text-white font-extrabold rounded-xl text-xs cursor-pointer hover:bg-blue-700 transition-colors"
                       >
                         Generate Machines ({autoRangePrefix}{autoRangeStart} to {autoRangePrefix}{autoRangeEnd})
                       </button>
@@ -1727,7 +1809,7 @@ export default function EmployeesPage() {
             placeholder="Search Karigar Name, Code..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-9 pl-8 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-medium shadow-2xs hover:border-emerald-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-colors"
+            className="w-full h-9 pl-8 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-medium shadow-2xs hover:border-blue-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-colors"
           />
         </div>
 
@@ -1750,7 +1832,7 @@ export default function EmployeesPage() {
             <button
               type="button"
               onClick={openNewWorkerForm}
-              className="flex-1 sm:flex-none h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
+              className="flex-1 sm:flex-none h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Worker</span>
@@ -1763,7 +1845,7 @@ export default function EmployeesPage() {
                 onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
                 className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer shadow-2xs ${
                   isActionMenuOpen
-                    ? "bg-emerald-50 border-emerald-500 text-emerald-700 ring-2 ring-emerald-500/20"
+                    ? "bg-blue-50 border-blue-500 text-blue-700 ring-2 ring-blue-500/20"
                     : "bg-white hover:bg-slate-100 border-slate-300 text-slate-600"
                 }`}
                 title="More Actions & Filters"
@@ -1801,7 +1883,7 @@ export default function EmployeesPage() {
                           }}
                           className={`w-full text-left px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-between text-xs ${
                             sortBy === item.id
-                              ? "bg-[#0B4F3F] text-white font-bold shadow-2xs"
+                              ? "bg-blue-600 text-white font-bold shadow-2xs"
                               : "text-slate-700 hover:bg-slate-100 font-medium"
                           }`}
                         >
@@ -1819,13 +1901,13 @@ export default function EmployeesPage() {
                         handleRefreshList();
                         setIsActionMenuOpen(false);
                       }}
-                      className="w-full text-left px-3 py-2 bg-emerald-50 text-emerald-950 font-bold rounded-xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs flex items-center justify-between transition-all cursor-pointer"
+                      className="w-full text-left px-3 py-2 bg-blue-50 text-blue-950 font-bold rounded-xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs flex items-center justify-between transition-all cursor-pointer"
                     >
                       <div className="flex items-center gap-2">
-                        <RefreshCw className={`w-3.5 h-3.5 text-emerald-700 ${isRefreshing ? "animate-spin" : ""}`} />
+                        <RefreshCw className={`w-3.5 h-3.5 text-blue-700 ${isRefreshing ? "animate-spin" : ""}`} />
                         <span>Refresh List</span>
                       </div>
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <Check className="w-3.5 h-3.5 text-blue-600" />
                     </button>
 
                     <button
@@ -1859,12 +1941,11 @@ export default function EmployeesPage() {
                               setSortOrder(sortOrder === "asc" ? "desc" : "asc");
                             } else {
                               setSortBy("name");
-                              setSortOrder("asc");
                             }
                           }}
                           className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
                             sortBy === "name"
-                              ? "bg-[#0B4F3F] text-white font-bold shadow-md"
+                              ? "bg-blue-600 text-white font-bold shadow-md"
                               : "text-slate-700 hover:bg-slate-100 font-medium"
                           }`}
                         >
@@ -1884,7 +1965,7 @@ export default function EmployeesPage() {
                           }}
                           className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
                             sortBy === "created"
-                              ? "bg-[#0B4F3F] text-white font-bold shadow-md"
+                              ? "bg-blue-600 text-white font-bold shadow-md"
                               : "text-slate-700 hover:bg-slate-100 font-medium"
                           }`}
                         >
@@ -1904,7 +1985,7 @@ export default function EmployeesPage() {
                           }}
                           className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
                             sortBy === "modified"
-                              ? "bg-[#0B4F3F] text-white font-bold shadow-md"
+                              ? "bg-blue-600 text-white font-bold shadow-md"
                               : "text-slate-700 hover:bg-slate-100 font-medium"
                           }`}
                         >
@@ -1919,7 +2000,7 @@ export default function EmployeesPage() {
                         <button
                           type="button"
                           onClick={handleRefreshList}
-                          className="w-full text-left px-3.5 py-2 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer"
+                          className="w-full text-left px-3.5 py-2 bg-blue-50 text-blue-950 font-bold rounded-2xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs transition-all cursor-pointer"
                         >
                           <span>Refresh List</span>
                         </button>
@@ -1946,15 +2027,15 @@ export default function EmployeesPage() {
                       onClick={() => setActiveHoverMenu(activeHoverMenu === "sort" ? null : "sort")}
                       className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
                         activeHoverMenu === "sort" || !activeHoverMenu
-                          ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                          ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
                           : "hover:bg-slate-100 text-slate-700"
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <ArrowUpDown className="w-3.5 h-3.5 text-emerald-700" />
+                        <ArrowUpDown className="w-3.5 h-3.5 text-blue-700" />
                         <span>Sort by</span>
                       </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-emerald-700" />
+                      <ChevronRight className="w-3.5 h-3.5 text-blue-700" />
                     </div>
 
                     <button
@@ -1963,12 +2044,12 @@ export default function EmployeesPage() {
                       onClick={handleRefreshList}
                       className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
                         activeHoverMenu === "refresh"
-                          ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                          ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
                           : "hover:bg-slate-100 text-slate-700"
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-emerald-600" : ""}`} />
+                        <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-blue-600" : ""}`} />
                         <span>Refresh List</span>
                       </div>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
@@ -1993,7 +2074,7 @@ export default function EmployeesPage() {
             <div
               key={emp.id}
               onClick={() => setPreviewWorker(emp)}
-              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2.5 hover:border-emerald-300 transition-all cursor-pointer active:scale-[0.99]"
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2.5 hover:border-blue-300 transition-all cursor-pointer active:scale-[0.99]"
             >
               {/* Card Header: Avatar + Name + Status Pill + SR */}
               <div className="flex items-center justify-between gap-2.5">
@@ -2009,7 +2090,7 @@ export default function EmployeesPage() {
                       className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 font-extrabold text-sm flex items-center justify-center shrink-0 border border-emerald-200">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-800 font-extrabold text-sm flex items-center justify-center shrink-0 border border-blue-200">
                       {emp.name.charAt(0)}
                     </div>
                   )}
@@ -2256,7 +2337,7 @@ export default function EmployeesPage() {
                         src={previewWorker.photoUrl}
                         alt={previewWorker.name}
                         onClick={() => setActiveZoomedImage(previewWorker.photoUrl || null)}
-                        className="w-13 h-13 rounded-2xl object-cover border-2 border-slate-200/90 shadow-2xs cursor-zoom-in hover:border-emerald-500 transition-all"
+                        className="w-13 h-13 rounded-2xl object-cover border-2 border-slate-200/90 shadow-2xs cursor-zoom-in hover:border-blue-500 transition-all"
                         title="Click to view full photo"
                       />
                       <div className="absolute inset-0 bg-slate-900/30 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
@@ -2264,7 +2345,7 @@ export default function EmployeesPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="w-13 h-13 rounded-2xl bg-emerald-50 text-emerald-800 font-black text-lg flex items-center justify-center border-2 border-emerald-200/80 shrink-0">
+                    <div className="w-13 h-13 rounded-2xl bg-blue-50 text-blue-800 font-black text-lg flex items-center justify-center border-2 border-blue-200/80 shrink-0">
                       {previewWorker.name.charAt(0)}
                     </div>
                   )}
@@ -2282,7 +2363,7 @@ export default function EmployeesPage() {
                     </div>
 
                     <div className="flex items-center gap-2 font-mono text-xs flex-wrap">
-                      <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-950 border border-emerald-200/80 rounded-md font-extrabold text-[11px]">
+                      <span className="px-2.5 py-0.5 bg-blue-50 text-blue-950 border border-blue-200/80 rounded-md font-extrabold text-[11px]">
                         Khata: {previewWorker.code || "-"}
                       </span>
                       <span className="px-2.5 py-0.5 bg-slate-100 text-slate-800 border border-slate-200 rounded-md font-bold text-[11px]">
@@ -2300,7 +2381,7 @@ export default function EmployeesPage() {
                       setPreviewWorker(null);
                       openEditWorkerForm(w);
                     }}
-                    className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-extrabold border border-emerald-200/90 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs active:scale-95"
+                    className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-900 font-extrabold border border-blue-200/90 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs active:scale-95"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Edit Worker</span>
@@ -2575,7 +2656,7 @@ export default function EmployeesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-2xs cursor-pointer"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-2xs cursor-pointer"
                 >
                   Save Log
                 </button>
@@ -2611,7 +2692,7 @@ export default function EmployeesPage() {
                   placeholder="e.g. 1000"
                   value={advanceAmount}
                   onChange={(e) => setAdvanceAmount(Number(e.target.value))}
-                  className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-emerald-500"
+                  className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-blue-500"
                   required
                   autoFocus
                 />
