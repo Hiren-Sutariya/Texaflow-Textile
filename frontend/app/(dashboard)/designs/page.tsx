@@ -169,6 +169,18 @@ export default function DesignsPage() {
     }
     return [];
   });
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("app_design_folders") || localStorage.getItem("om_sai_designs_library");
+        if (saved !== null) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return false;
+        }
+      } catch {}
+    }
+    return true;
+  });
   const [search, setSearch] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [expandedRollMetersColorId, setExpandedRollMetersColorId] = useState<string | null>(null);
@@ -276,6 +288,7 @@ export default function DesignsPage() {
           console.error("Failed to load design folders from localStorage", e);
         }
       }
+      setIsLoading(false);
     };
     loadDesignsFromApi();
   }, []);
@@ -1574,105 +1587,105 @@ export default function DesignsPage() {
       {/* CLEAN ENTERPRISE DESIGN FOLDER CARDS GRID */}
       {!selectedFolder && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-          {filteredFolders.map((f) => {
-            const totalPcs = getTotalPcsForFolder(f);
-            const totalTakka = f.colorways.reduce((s, c) => s + c.takka_count, 0);
-
-            return (
-              <div
-                key={f.id}
-                onClick={() => setSelectedFolderId(f.id)}
-                className="group bg-white rounded-xl border border-slate-200 shadow-2xs hover:shadow-md hover:border-blue-500 transition-all p-3.5 cursor-pointer flex flex-col justify-between space-y-3"
-              >
-                {/* Header Preview Box */}
-                <div className="bg-slate-50/90 p-3 rounded-lg border border-slate-200/80 space-y-2 relative">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 bg-white border border-slate-200 text-blue-700 rounded text-[10px] font-bold shadow-2xs">
-                      {f.party_name}
-                    </span>
-                    <button
-                      onClick={(e) => handleDeleteFolder(e, f.id)}
-                      className="p-1 text-slate-400 hover:text-red-600 hover:bg-white rounded transition-colors"
-                      title="Delete Design Folder"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-start gap-2 pt-0.5">
-                    <div className="p-1.5 bg-blue-600 text-white rounded-md shrink-0 mt-0.5">
-                      <Folder className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-mono font-bold text-slate-900 text-xs group-hover:text-blue-600 transition-colors truncate">
-                        {f.folder_code}
-                      </h3>
-                      {f.title && f.title !== "-" && (
-                        <p className="text-[11px] font-medium text-slate-600 truncate mt-0.5" title={f.title}>
-                          {f.title}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card Details Body */}
-                <div className="space-y-2 text-xs">
-                  {/* Metric Pills */}
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div className="bg-amber-50/80 border border-amber-200/70 p-1.5 rounded-md text-center">
-                      <span className="text-amber-800 block text-[9px] font-semibold uppercase tracking-wider">Fabric Roll</span>
-                      <strong className="text-slate-900 font-bold">{totalTakka} Takka</strong>
-                    </div>
-                    <div className="bg-emerald-50/80 border border-emerald-200/70 p-1.5 rounded-md text-center">
-                      <span className="text-emerald-800 block text-[9px] font-semibold uppercase tracking-wider">Production</span>
-                      <strong className="text-slate-900 font-bold">{totalPcs.toLocaleString()} Pcs</strong>
-                    </div>
-                  </div>
-
-                  {/* Included Parts Badges & Create Order Action */}
-                  <div className="space-y-2 pt-2 border-t border-slate-100">
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {f.items.length > 0 ? (
-                        f.items.map((item, idx) => (
-                          <span
-                            key={item.id || `item-${f.id}-${idx}`}
-                            className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-medium text-[10px] rounded border border-slate-200"
-                          >
-                            {item.category}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-[10px] text-slate-400 italic">No parts added</span>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={(e) => handleCreateOrderFromDesign(e, f)}
-                      className="w-full py-1.5 px-3 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200/80 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-98"
-                    >
-                      <Briefcase className="w-3.5 h-3.5" />
-                      <span>Create Job Order</span>
-                    </button>
-                  </div>
-                </div>
+          {isLoading && folders.length === 0 ? (
+            [1, 2, 3, 4].map((n) => (
+              <div key={`d-skel-${n}`} className="bg-white rounded-xl border border-slate-200 p-4 animate-pulse space-y-3">
+                <div className="h-5 bg-slate-100 rounded w-24" />
+                <div className="h-4 bg-slate-100 rounded w-40" />
+                <div className="h-3 bg-slate-100 rounded w-20" />
               </div>
-            );
-          })}
-
-          {filteredFolders.length === 0 && (
-            <div className="col-span-full py-12 text-center bg-white rounded-xl border border-slate-200">
-              <Folder className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <h3 className="text-xs font-bold text-slate-800">No Design Folders Found</h3>
-              <p className="text-[11px] text-slate-500 mt-0.5 mb-3">No design folders match "{search}".</p>
-              <button
-                onClick={() => setSearch("")}
-                className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-md"
-              >
-                Clear Search
-              </button>
+            ))
+          ) : filteredFolders.length === 0 ? (
+            <div className="col-span-full py-8 text-center text-slate-400 font-medium bg-white rounded-xl border border-slate-200">
+              No design folders found matching your filters. Click &quot;+ New Design&quot; to add a record.
             </div>
+          ) : (
+            filteredFolders.map((f) => {
+              const totalPcs = getTotalPcsForFolder(f);
+              const totalTakka = f.colorways.reduce((s, c) => s + c.takka_count, 0);
+
+              return (
+                <div
+                  key={f.id}
+                  onClick={() => setSelectedFolderId(f.id)}
+                  className="group bg-white rounded-xl border border-slate-200 shadow-2xs hover:shadow-md hover:border-blue-500 transition-all p-3.5 cursor-pointer flex flex-col justify-between space-y-3"
+                >
+                  {/* Header Preview Box */}
+                  <div className="bg-slate-50/90 p-3 rounded-lg border border-slate-200/80 space-y-2 relative">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 bg-white border border-slate-200 text-blue-700 rounded text-[10px] font-bold shadow-2xs">
+                        {f.party_name}
+                      </span>
+                      <button
+                        onClick={(e) => handleDeleteFolder(e, f.id)}
+                        className="p-1 text-slate-400 hover:text-red-600 hover:bg-white rounded transition-colors"
+                        title="Delete Design Folder"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-start gap-2 pt-0.5">
+                      <div className="p-1.5 bg-blue-600 text-white rounded-md shrink-0 mt-0.5">
+                        <Folder className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-mono font-bold text-slate-900 text-xs group-hover:text-blue-600 transition-colors truncate">
+                          {f.folder_code}
+                        </h3>
+                        {f.title && f.title !== "-" && (
+                          <p className="text-[11px] font-medium text-slate-600 truncate mt-0.5" title={f.title}>
+                            {f.title}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Details Body */}
+                  <div className="space-y-2 text-xs">
+                    {/* Metric Pills */}
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="bg-amber-50/80 border border-amber-200/70 p-1.5 rounded-md text-center">
+                        <span className="text-amber-800 block text-[9px] font-semibold uppercase tracking-wider">Fabric Roll</span>
+                        <strong className="text-slate-900 font-bold">{totalTakka} Takka</strong>
+                      </div>
+                      <div className="bg-emerald-50/80 border border-emerald-200/70 p-1.5 rounded-md text-center">
+                        <span className="text-emerald-800 block text-[9px] font-semibold uppercase tracking-wider">Production</span>
+                        <strong className="text-slate-900 font-bold">{totalPcs.toLocaleString()} Pcs</strong>
+                      </div>
+                    </div>
+
+                    {/* Included Parts Badges & Create Order Action */}
+                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {f.items.length > 0 ? (
+                          f.items.map((item, idx) => (
+                            <span
+                              key={item.id || `item-${f.id}-${idx}`}
+                              className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-medium text-[10px] rounded border border-slate-200"
+                            >
+                              {item.category}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic">No parts added</span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => handleCreateOrderFromDesign(e, f)}
+                        className="w-full py-1.5 px-3 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200/80 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-98"
+                      >
+                        <Briefcase className="w-3.5 h-3.5" />
+                        <span>Create Job Order</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       )}

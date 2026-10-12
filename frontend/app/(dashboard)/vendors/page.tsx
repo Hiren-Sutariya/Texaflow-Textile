@@ -499,6 +499,18 @@ export default function VendorsPage() {
     }
     return [];
   });
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("app_vendors_master");
+        if (saved !== null) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return false;
+        }
+      } catch {}
+    }
+    return true;
+  });
   const [search, setSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
@@ -736,6 +748,8 @@ export default function VendorsPage() {
       setVendors([]);
     } catch (e) {
       console.error("Error loading app_vendors_master", e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -2711,9 +2725,16 @@ export default function VendorsPage() {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         {/* 1. MOBILE RESPONSIVE CARD VIEW (NO HORIZONTAL SCROLLING REQUIRED) */}
         <div className="block md:hidden p-3 space-y-3">
-          {filteredVendors.length === 0 ? (
+          {isLoading && vendors.length === 0 ? (
+            [1, 2, 3].map((n) => (
+              <div key={`v-mskel-${n}`} className="bg-white rounded-2xl border border-slate-200 p-4 animate-pulse space-y-3">
+                <div className="h-4 bg-slate-100 rounded w-32" />
+                <div className="h-3 bg-slate-100 rounded w-24" />
+              </div>
+            ))
+          ) : filteredVendors.length === 0 ? (
             <div className="p-8 text-center text-slate-400 font-medium">
-              No vendor records found.
+              No vendor records found matching your filters. Click &quot;New Vendor&quot; to add a record.
             </div>
           ) : (
             filteredVendors.map((v) => (
@@ -2830,7 +2851,20 @@ export default function VendorsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-800">
-              {filteredVendors.length === 0 ? (
+              {isLoading && vendors.length === 0 ? (
+                [1, 2, 3, 4].map((n) => (
+                  <tr key={`v-skel-${n}`} className="animate-pulse">
+                    <td className="py-4 px-4 text-center"><div className="h-4 bg-slate-100 rounded w-6 mx-auto" /></td>
+                    <td className="py-4 px-5"><div className="h-5 bg-slate-100 rounded-lg w-40" /></td>
+                    <td className="py-4 px-4 text-center"><div className="h-5 bg-slate-100 rounded w-24 mx-auto" /></td>
+                    <td className="py-4 px-4"><div className="h-4 bg-slate-100 rounded w-32" /></td>
+                    <td className="py-4 px-4"><div className="h-4 bg-slate-100 rounded w-28" /></td>
+                    <td className="py-4 px-4"><div className="h-4 bg-slate-100 rounded w-28" /></td>
+                    <td className="py-4 px-4 text-center"><div className="h-4 bg-slate-100 rounded w-16 mx-auto" /></td>
+                    <td className="py-4 px-4 text-center"><div className="h-5 bg-slate-100 rounded w-12 mx-auto" /></td>
+                  </tr>
+                ))
+              ) : filteredVendors.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
                     No vendor records found matching your filters. Click &quot;New Vendor&quot; to add a record.

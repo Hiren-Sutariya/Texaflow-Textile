@@ -1707,8 +1707,8 @@ export default function ProductionPage() {
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                   {paginatedLogs.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
-                        No production logs found.
+                      <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
+                        No production logs found matching your filters. Click &quot;Daily Shift Entry&quot; to record output.
                       </td>
                     </tr>
                   ) : (

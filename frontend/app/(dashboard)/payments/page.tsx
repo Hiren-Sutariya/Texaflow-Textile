@@ -586,7 +586,7 @@ export default function PaymentsAndVouchersPage() {
               </div>
             ))
           ) : filteredVouchers.length === 0 ? (
-            <div className="py-10 text-center text-slate-400 font-medium bg-white rounded-xl border border-slate-200">
+            <div className="py-8 text-center text-slate-400 font-medium">
               No payment vouchers found matching your filter criteria.
             </div>
           ) : (
@@ -717,7 +717,7 @@ export default function PaymentsAndVouchersPage() {
                 ))
               ) : filteredVouchers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-slate-400 font-medium">
+                  <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
                     No payment vouchers found matching your filter criteria.
                   </td>
                 </tr>

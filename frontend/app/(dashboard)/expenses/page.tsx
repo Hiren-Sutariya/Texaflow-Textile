@@ -911,9 +911,8 @@ export default function ExpensesPage() {
               </div>
             ))
           ) : filteredExpenses.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 bg-white rounded-xl border border-slate-200">
-              <Receipt className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-              <p className="font-bold text-xs">No expense records found matching filters.</p>
+            <div className="py-8 text-center text-slate-400 font-medium">
+              No expense records found matching your filters. Click &quot;+ Add Expense&quot; to add a record.
             </div>
           ) : (
             filteredExpenses.map((item) => (
@@ -1039,8 +1038,8 @@ export default function ExpensesPage() {
                 ))
               ) : filteredExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400 font-medium">
-                    No expense records found matching filters.
+                  <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
+                    No expense records found matching your filters. Click &quot;+ Add Expense&quot; to add a record.
                   </td>
                 </tr>
               ) : (

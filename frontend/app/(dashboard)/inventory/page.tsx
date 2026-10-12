@@ -200,7 +200,14 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-              {filteredStock.map((s) => (
+              {filteredStock.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-400 font-medium">
+                    No inventory records found matching your filters.
+                  </td>
+                </tr>
+              ) : (
+                filteredStock.map((s) => (
                 <tr key={s.id} className="hover:bg-blue-50/50 transition-colors">
                   <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{s.material_code}</td>
                   <td className="py-3.5 px-4 font-bold text-slate-900">
@@ -237,7 +244,8 @@ export default function InventoryPage() {
                     )}
                   </td>
                 </tr>
-              ))}
+              ))
+            )}
             </tbody>
           </table>
         </div>

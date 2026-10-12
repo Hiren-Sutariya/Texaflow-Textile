@@ -981,8 +981,8 @@ export default function JobOrdersPage() {
         {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}
         <div className="block md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50">
           {filteredOrders.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 font-bold bg-white rounded-xl border border-slate-200">
-              No orders found matching your search.
+            <div className="py-8 text-center text-slate-400 font-medium">
+              No order records found matching your filters. Click &quot;+ New Order&quot; to add a record.
             </div>
           ) : (
             filteredOrders.map((item) => {
@@ -1129,7 +1129,14 @@ export default function JobOrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-              {filteredOrders.map((item) => {
+              {filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
+                    No order records found matching your filters. Click &quot;+ New Order&quot; to add a record.
+                  </td>
+                </tr>
+              ) : (
+                filteredOrders.map((item) => {
                 const cleanCode = (item.design_code || "").replace(/#/g, "").trim();
                 const isPopoverOpen = statusPopoverPos?.orderId === item.id;
                 const isMachinePopoverOpen = machinePopoverPos?.orderId === item.id;
@@ -1255,16 +1262,8 @@ export default function JobOrdersPage() {
                     </td>
                   </tr>
                 );
-              })}
-
-              {filteredOrders.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-500">
-                    <Briefcase className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    <p className="font-bold text-xs">No job orders found matching filters.</p>
-                  </td>
-                </tr>
-              )}
+              })
+            )}
             </tbody>
           </table>
         </div>
