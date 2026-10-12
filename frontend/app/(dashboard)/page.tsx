@@ -27,42 +27,48 @@ const destinationModules = [
     description: "Register Vepari clients, vendors, brokers & party ledgers",
     href: "/parties",
     icon: Users,
-    color: "bg-cyan-50 text-cyan-600 border-cyan-100"
+    color: "bg-cyan-50 text-cyan-600 border-cyan-100",
+    isUpcoming: true
   },
   {
     title: "Design Library",
     description: "Stitch counts, thread colors & garment specs (Blouse Front/Back)",
     href: "/designs",
     icon: Palette,
-    color: "bg-indigo-50 text-indigo-600 border-indigo-100"
+    color: "bg-indigo-50 text-indigo-600 border-indigo-100",
+    isUpcoming: false
   },
   {
     title: "Karigar Issue",
     description: "Create order linking Vepari + Design + Fabric receipt",
     href: "/job-works",
     icon: Briefcase,
-    color: "bg-blue-50 text-blue-600 border-blue-100"
+    color: "bg-blue-50 text-blue-600 border-blue-100",
+    isUpcoming: true
   },
   {
     title: "Payments & Vouchers",
     description: "Party payments, receipts & white/black ledger vouchers",
     href: "/payments",
     icon: CreditCard,
-    color: "bg-emerald-50 text-emerald-600 border-emerald-100"
+    color: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    isUpcoming: false
   },
   {
     title: "Worker Payout",
     description: "Manufacturing karigar piece-rate salary & advance payouts",
     href: "/worker-payout",
     icon: Wallet,
-    color: "bg-amber-50 text-amber-700 border-amber-100"
+    color: "bg-amber-50 text-amber-700 border-amber-100",
+    isUpcoming: true
   },
   {
     title: "OMS Performance",
     description: "Order management system analytics, machine RPM & speed",
     href: "/oms-performance",
     icon: TrendingUp,
-    color: "bg-purple-50 text-purple-600 border-purple-100"
+    color: "bg-purple-50 text-purple-600 border-purple-100",
+    isUpcoming: true
   }
 ];
 
@@ -113,8 +119,13 @@ export default function DashboardPage() {
               <Link
                 key={item.title}
                 href={item.href}
-                className="group bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:shadow-md hover:border-blue-500 hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-center text-center justify-between"
+                className="group relative bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:shadow-md hover:border-blue-500 hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-center text-center justify-between overflow-hidden"
               >
+                {item.isUpcoming && (
+                  <span className="absolute top-2 right-2 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/90 shadow-2xs">
+                    Upcoming
+                  </span>
+                )}
                 <div className="flex flex-col items-center w-full">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${item.color} mb-2 group-hover:scale-105 transition-transform duration-200 shrink-0`}>
                     <Icon className="w-5 h-5" />
