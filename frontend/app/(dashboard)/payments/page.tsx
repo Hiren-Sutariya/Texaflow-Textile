@@ -372,7 +372,7 @@ export default function PaymentsAndVouchersPage() {
 
             {/* POPUP PANEL FOR FILTERS */}
             {isAdvanceFiltersOpen && (
-              <div className="absolute right-0 top-[calc(100%+14px)] z-50 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl p-4 space-y-3.5 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-50 w-[280px] sm:w-72 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-2xl shadow-2xl p-4 space-y-3.5 animate-in fade-in zoom-in-95 duration-100">
                 {/* SECTION 1: VOUCHER TYPE SWITCHER */}
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">

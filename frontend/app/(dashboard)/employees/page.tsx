@@ -1773,134 +1773,207 @@ export default function EmployeesPage() {
 
             {isActionMenuOpen && (
               <div
-                className="absolute right-0 top-full mt-[18px] z-50 bg-white rounded-3xl border border-slate-200/90 shadow-2xl p-2.5 flex items-stretch min-w-[340px] divide-x divide-slate-100 animate-in fade-in zoom-in-95 duration-150"
-                onMouseLeave={() => setActiveHoverMenu(null)}
+                className="absolute right-0 top-full mt-2 z-50 bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-2 sm:p-2.5 w-[260px] sm:w-[340px] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150 font-sans"
               >
-                {/* Left Sub-Panel */}
-                <div className="w-1/2 pr-2.5 flex flex-col justify-start gap-1">
-                  {(!activeHoverMenu || activeHoverMenu === "sort") && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (sortBy === "name") {
-                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                          } else {
-                            setSortBy("name");
-                            setSortOrder("asc");
-                          }
-                        }}
-                        className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
-                          sortBy === "name"
-                            ? "bg-[#0B4F3F] text-white font-bold shadow-md"
-                            : "text-slate-700 hover:bg-slate-100 font-medium"
-                        }`}
-                      >
-                        <span>Name</span>
-                        <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (sortBy === "created") {
-                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                          } else {
-                            setSortBy("created");
-                            setSortOrder("asc");
-                          }
-                        }}
-                        className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
-                          sortBy === "created"
-                            ? "bg-[#0B4F3F] text-white font-bold shadow-md"
-                            : "text-slate-700 hover:bg-slate-100 font-medium"
-                        }`}
-                      >
-                        <span>Created Time</span>
-                        {sortBy === "created" && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (sortBy === "modified") {
-                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                          } else {
-                            setSortBy("modified");
-                            setSortOrder("asc");
-                          }
-                        }}
-                        className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
-                          sortBy === "modified"
-                            ? "bg-[#0B4F3F] text-white font-bold shadow-md"
-                            : "text-slate-700 hover:bg-slate-100 font-medium"
-                        }`}
-                      >
-                        <span>Last Modified</span>
-                        {sortBy === "modified" && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />}
-                      </button>
-                    </>
-                  )}
-
-                  {activeHoverMenu === "refresh" && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleRefreshList}
-                        className="w-full text-left px-3.5 py-2 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer"
-                      >
-                        <span>Refresh List</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTypeFilter("All");
-                          setStatusFilter("All");
-                          setSearch("");
-                          setIsActionMenuOpen(false);
-                        }}
-                        className="w-full text-left px-3.5 py-2 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
-                      >
-                        <span>Reset All Filters</span>
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                {/* Right Panel: Main Actions List */}
-                <div className="w-1/2 pl-2.5 flex flex-col gap-1 text-xs text-slate-700 font-semibold">
-                  <div
-                    onMouseEnter={() => setActiveHoverMenu("sort")}
-                    onClick={() => setActiveHoverMenu(activeHoverMenu === "sort" ? null : "sort")}
-                    className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
-                      activeHoverMenu === "sort" || !activeHoverMenu
-                        ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
-                        : "hover:bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <ArrowUpDown className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>Sort by</span>
+                {/* Mobile Single-Column Touch Menu (< sm) */}
+                <div className="block sm:hidden space-y-2 text-xs">
+                  <div>
+                    <div className="px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                      Sort Workers
                     </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-emerald-700" />
+                    <div className="space-y-1 mt-0.5">
+                      {[
+                        { id: "name", label: "Name" },
+                        { id: "created", label: "Created Time" },
+                        { id: "modified", label: "Last Modified" }
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            if (sortBy === item.id) {
+                              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                            } else {
+                              setSortBy(item.id as any);
+                              setSortOrder("asc");
+                            }
+                            setIsActionMenuOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-between text-xs ${
+                            sortBy === item.id
+                              ? "bg-[#0B4F3F] text-white font-bold shadow-2xs"
+                              : "text-slate-700 hover:bg-slate-100 font-medium"
+                          }`}
+                        >
+                          <span>{item.label}</span>
+                          {sortBy === item.id && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onMouseEnter={() => setActiveHoverMenu("refresh")}
-                    onClick={handleRefreshList}
-                    className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
-                      activeHoverMenu === "refresh"
-                        ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
-                        : "hover:bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-emerald-600" : ""}`} />
-                      <span>Refresh List</span>
+                  <div className="border-t border-slate-100 pt-1.5 space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleRefreshList();
+                        setIsActionMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 bg-emerald-50 text-emerald-950 font-bold rounded-xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs flex items-center justify-between transition-all cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className={`w-3.5 h-3.5 text-emerald-700 ${isRefreshing ? "animate-spin" : ""}`} />
+                        <span>Refresh List</span>
+                      </div>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTypeFilter("All");
+                        setStatusFilter("All");
+                        setSearch("");
+                        setIsActionMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-slate-600 hover:bg-slate-100 font-medium rounded-xl text-xs transition-all cursor-pointer"
+                    >
+                      Reset All Filters
+                    </button>
+                  </div>
+                </div>
+
+                {/* Desktop Split-Panel Menu (sm and above) */}
+                <div
+                  className="hidden sm:flex items-stretch divide-x divide-slate-100"
+                  onMouseLeave={() => setActiveHoverMenu(null)}
+                >
+                  {/* Left Sub-Panel */}
+                  <div className="w-1/2 pr-2.5 flex flex-col justify-start gap-1">
+                    {(!activeHoverMenu || activeHoverMenu === "sort") && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (sortBy === "name") {
+                              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                            } else {
+                              setSortBy("name");
+                              setSortOrder("asc");
+                            }
+                          }}
+                          className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
+                            sortBy === "name"
+                              ? "bg-[#0B4F3F] text-white font-bold shadow-md"
+                              : "text-slate-700 hover:bg-slate-100 font-medium"
+                          }`}
+                        >
+                          <span>Name</span>
+                          <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (sortBy === "created") {
+                              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                            } else {
+                              setSortBy("created");
+                              setSortOrder("asc");
+                            }
+                          }}
+                          className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
+                            sortBy === "created"
+                              ? "bg-[#0B4F3F] text-white font-bold shadow-md"
+                              : "text-slate-700 hover:bg-slate-100 font-medium"
+                          }`}
+                        >
+                          <span>Created Time</span>
+                          {sortBy === "created" && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (sortBy === "modified") {
+                              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                            } else {
+                              setSortBy("modified");
+                              setSortOrder("asc");
+                            }
+                          }}
+                          className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
+                            sortBy === "modified"
+                              ? "bg-[#0B4F3F] text-white font-bold shadow-md"
+                              : "text-slate-700 hover:bg-slate-100 font-medium"
+                          }`}
+                        >
+                          <span>Last Modified</span>
+                          {sortBy === "modified" && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />}
+                        </button>
+                      </>
+                    )}
+
+                    {activeHoverMenu === "refresh" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleRefreshList}
+                          className="w-full text-left px-3.5 py-2 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer"
+                        >
+                          <span>Refresh List</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTypeFilter("All");
+                            setStatusFilter("All");
+                            setSearch("");
+                            setIsActionMenuOpen(false);
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                        >
+                          <span>Reset All Filters</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Right Panel: Main Actions List */}
+                  <div className="w-1/2 pl-2.5 flex flex-col gap-1 text-xs text-slate-700 font-semibold">
+                    <div
+                      onMouseEnter={() => setActiveHoverMenu("sort")}
+                      onClick={() => setActiveHoverMenu(activeHoverMenu === "sort" ? null : "sort")}
+                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
+                        activeHoverMenu === "sort" || !activeHoverMenu
+                          ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                          : "hover:bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <ArrowUpDown className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Sort by</span>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-emerald-700" />
                     </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                  </button>
+
+                    <button
+                      type="button"
+                      onMouseEnter={() => setActiveHoverMenu("refresh")}
+                      onClick={handleRefreshList}
+                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
+                        activeHoverMenu === "refresh"
+                          ? "bg-emerald-50 text-emerald-950 font-extrabold border border-emerald-200/80 shadow-2xs"
+                          : "hover:bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-emerald-600" : ""}`} />
+                        <span>Refresh List</span>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

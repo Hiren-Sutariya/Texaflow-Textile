@@ -2350,30 +2350,103 @@ export default function VendorsPage() {
             </button>
 
             {isActionMenuOpen && (
-              <div className="absolute right-0 top-full mt-[18px] z-50 bg-white rounded-3xl border border-slate-200/90 shadow-2xl p-2.5 flex items-stretch min-w-[360px] divide-x divide-slate-100 animate-in fade-in zoom-in-95 duration-150">
-                {/* Left Sub-Panel: Dynamic options based on hovered menu item */}
-                <div className="w-1/2 pr-2.5 flex flex-col justify-start gap-1">
-                  {(!activeHoverMenu || activeHoverMenu === "sort") && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (sortBy === "name") {
-                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                          } else {
-                            setSortBy("name");
-                            setSortOrder("asc");
-                          }
-                        }}
-                        className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
-                          sortBy === "name"
-                            ? "bg-blue-600 text-white font-bold shadow-md"
-                            : "text-slate-700 hover:bg-slate-100 font-medium"
-                        }`}
-                      >
-                        <span>Name</span>
-                        <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />
-                      </button>
+              <div
+                className="absolute right-0 top-full mt-2 z-50 bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-2 sm:p-2.5 w-[260px] sm:w-[360px] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150 font-sans"
+              >
+                {/* Mobile Single Column (< sm) */}
+                <div className="block sm:hidden space-y-2 text-xs">
+                  <div>
+                    <div className="px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                      Sort Vendors
+                    </div>
+                    <div className="space-y-1 mt-0.5">
+                      {[
+                        { id: "name", label: "Name" },
+                        { id: "created", label: "Created Time" },
+                        { id: "modified", label: "Last Modified" }
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            if (sortBy === item.id) {
+                              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                            } else {
+                              setSortBy(item.id as any);
+                              setSortOrder("asc");
+                            }
+                            setIsActionMenuOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-between text-xs ${
+                            sortBy === item.id
+                              ? "bg-blue-600 text-white font-bold shadow-2xs"
+                              : "text-slate-700 hover:bg-slate-100 font-medium"
+                          }`}
+                        >
+                          <span>{item.label}</span>
+                          {sortBy === item.id && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-1.5 space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleExportCSV();
+                        setIsActionMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-slate-700 hover:bg-slate-100 font-semibold rounded-xl text-xs flex items-center gap-2 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Export CSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleRefreshList();
+                        setIsActionMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 bg-blue-50 text-blue-950 font-bold rounded-xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs flex items-center justify-between transition-all cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className={`w-3.5 h-3.5 text-blue-700 ${isRefreshing ? "animate-spin" : ""}`} />
+                        <span>Refresh List</span>
+                      </div>
+                      <Check className="w-3.5 h-3.5 text-blue-600" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Desktop Split-Panel Menu (sm and above) */}
+                <div
+                  className="hidden sm:flex items-stretch divide-x divide-slate-100"
+                  onMouseLeave={() => setActiveHoverMenu(null)}
+                >
+                  {/* Left Sub-Panel: Dynamic options based on hovered menu item */}
+                  <div className="w-1/2 pr-2.5 flex flex-col justify-start gap-1">
+                    {(!activeHoverMenu || activeHoverMenu === "sort") && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (sortBy === "name") {
+                              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                            } else {
+                              setSortBy("name");
+                              setSortOrder("asc");
+                            }
+                          }}
+                          className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
+                            sortBy === "name"
+                              ? "bg-blue-600 text-white font-bold shadow-md"
+                              : "text-slate-700 hover:bg-slate-100 font-medium"
+                          }`}
+                        >
+                          <span>Name</span>
+                          <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />
+                        </button>
 
                       <button
                         type="button"
@@ -2621,6 +2694,7 @@ export default function VendorsPage() {
                   </button>
                 </div>
               </div>
+            </div>
             )}
           </div>
         </div>

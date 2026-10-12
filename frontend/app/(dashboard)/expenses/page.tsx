@@ -682,9 +682,9 @@ export default function ExpensesPage() {
         </div>
 
         {/* Action Controls: Status Pill, Categories, Period, Export Excel, Add Expense */}
-        <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-end text-xs">
+        <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-start sm:justify-end text-xs">
           {/* Status Toggle Pill Group: All | Paid | Pending */}
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/90 text-xs">
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/90 text-xs shrink-0">
             {(["All", "Paid", "Pending"] as const).map((st) => (
               <button
                 key={st}
@@ -725,7 +725,7 @@ export default function ExpensesPage() {
             {isCategoryDropdownOpen && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setIsCategoryDropdownOpen(false)} />
-                <div className="absolute left-0 top-full mt-[18px] z-50 min-w-full w-max max-w-xs bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 max-h-80 overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 duration-100 font-sans">
+                <div className="absolute right-0 sm:left-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 max-h-80 overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 duration-100 font-sans">
                   {/* Option: All Categories */}
                   <button
                     type="button"
@@ -802,7 +802,7 @@ export default function ExpensesPage() {
             {isPeriodDropdownOpen && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setIsPeriodDropdownOpen(false)} />
-                <div className="absolute left-0 top-full mt-[18px] z-50 min-w-full w-max max-w-xs bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100 font-sans">
+                <div className="absolute right-0 sm:left-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100 font-sans">
                   {[
                     { id: "all", label: "All Time (Badha)" },
                     { id: "this_month", label: "This Month" },
