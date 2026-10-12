@@ -16,7 +16,11 @@ import {
   QrCode,
   Trash2,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  Database,
+  HardDrive,
+  AlertTriangle,
+  ShieldAlert
 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -48,7 +52,7 @@ export default function SettingsPage() {
 
   // Active Subtab
   const [activeTab, setActiveTab] = useState<
-    "Company & Address" | "Bank & GST" | "Invoice & Bill" | "Login & Password"
+    "Company & Address" | "Bank & GST" | "Invoice & Bill" | "Login & Password" | "Data & Storage"
   >("Company & Address");
 
   // Save states
@@ -56,6 +60,13 @@ export default function SettingsPage() {
   const isSavingRef = useRef(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState("");
   const [authErrorMsg, setAuthErrorMsg] = useState("");
+
+  // Data & Storage Maintenance states
+  const [isClearingCache, setIsClearingCache] = useState(false);
+  const [isEraseModalOpen, setIsEraseModalOpen] = useState(false);
+  const [eraseConfirmInput, setEraseConfirmInput] = useState("");
+  const [isErasing, setIsErasing] = useState(false);
+  const [storageInfo, setStorageInfo] = useState({ totalKb: "0.0", itemsCount: 0 });
 
   // Custom Dropdowns
   const [isTermsOpen, setIsTermsOpen] = useState(false);
@@ -206,6 +217,90 @@ export default function SettingsPage() {
     setFormData((prev) => ({ ...prev, qr_code_image: qrUrl }));
     setSaveSuccessMsg("QR Code generated from UPI ID!");
     setTimeout(() => setSaveSuccessMsg(""), 3000);
+  };
+
+  // Storage Info Calculator
+  const updateStorageInfo = () => {
+    if (typeof window === "undefined") return;
+    try {
+      let totalBytes = 0;
+      const count = localStorage.length;
+      for (let i = 0; i < count; i++) {
+        const key = localStorage.key(i);
+        if (key) {
+          const val = localStorage.getItem(key) || "";
+          totalBytes += (key.length + val.length) * 2;
+        }
+      }
+      setStorageInfo({
+        totalKb: (totalBytes / 1024).toFixed(1),
+        itemsCount: count
+      });
+    } catch (e) {
+      console.error("Storage calculation error:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (hasMounted) {
+      updateStorageInfo();
+    }
+  }, [hasMounted, activeTab]);
+
+  // Handle Clear Cache
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      if (typeof window !== "undefined" && "caches" in window) {
+        const cacheKeys = await window.caches.keys();
+        await Promise.all(cacheKeys.map((key) => window.caches.delete(key)));
+      }
+
+      if (typeof window !== "undefined") {
+        window.sessionStorage.clear();
+      }
+
+      const tempKeys = ["next_cache", "temp_query_cache", "cached_filters"];
+      tempKeys.forEach((k) => localStorage.removeItem(k));
+
+      updateStorageInfo();
+      setSaveSuccessMsg("Cache cleared successfully! Software is optimized.");
+      setTimeout(() => setSaveSuccessMsg(""), 3500);
+    } catch (err) {
+      console.error("Cache clear failed:", err);
+      alert("Failed to clear some cache entries.");
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
+
+  // Handle Erase All Software Data (Factory Reset)
+  const handleEraseAllData = async () => {
+    if (eraseConfirmInput.trim().toUpperCase() !== "DELETE") {
+      alert("Please type DELETE to confirm data erasure.");
+      return;
+    }
+
+    setIsErasing(true);
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.clear();
+        window.sessionStorage.clear();
+        if ("caches" in window) {
+          const cacheKeys = await window.caches.keys();
+          await Promise.all(cacheKeys.map((key) => window.caches.delete(key)));
+        }
+      }
+
+      setSaveSuccessMsg("All software data has been erased. Redirecting...");
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1500);
+    } catch (err) {
+      console.error("Data erase failed:", err);
+      alert("Failed to erase all data. Please check browser permissions.");
+      setIsErasing(false);
+    }
   };
 
   // Main Save Handler (Triggered from Static Bottom Bar)
@@ -374,6 +469,22 @@ export default function SettingsPage() {
           >
             <KeyRound className="w-3.5 h-3.5" />
             <span>Login & Password</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("Data & Storage");
+              setAuthErrorMsg("");
+            }}
+            className={`pb-3 px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+              activeTab === "Data & Storage"
+                ? "border-blue-600 text-blue-600 font-extrabold"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            <Database className="w-3.5 h-3.5" />
+            <span>Data & Storage</span>
           </button>
         </div>
 
@@ -1077,8 +1188,173 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+
+          {/* ========================================================================= */}
+          {/* TAB 5: DATA & STORAGE MAINTENANCE */}
+          {/* ========================================================================= */}
+          {activeTab === "Data & Storage" && (
+            <div className="space-y-6 animate-in fade-in duration-100">
+              {/* Storage Overview Bar */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                    <HardDrive className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-extrabold text-slate-800">Local Browser Storage</h4>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Estimated storage consumed by cached offline records & application assets
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right">
+                    <span className="text-xs font-black text-blue-600">{storageInfo.totalKb} KB</span>
+                    <span className="text-[10px] text-slate-400 block font-bold">{storageInfo.itemsCount} Key Records</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={updateStorageInfo}
+                    title="Refresh Storage Info"
+                    className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 rounded-lg transition-all cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 1. Clear Application Cache Card */}
+              <div className="border border-slate-200 rounded-xl p-5 bg-white space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 text-blue-600" />
+                      <h4 className="text-xs font-bold text-slate-900">Clear Application Cache & Temp Storage</h4>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed max-w-xl">
+                      ક્યારેક કેશ વધી જાય અથવા સોફ્ટવેર સ્લો ચાલવા લાગે તો અહીંથી અસ્થાયી (Temporary) કેશ અને સેશન મેમરી સાફ કરી શકાય છે. આનાથી તમારા જોબ ઓર્ડર, કારીગર હિસાબ કે વાઉચર્સનો કોઈ પણ બિઝનેસ ડેટા ડિલીટ થશે નહીં.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isClearingCache}
+                    onClick={handleClearCache}
+                    className="shrink-0 px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isClearingCache ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Cleaning...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Clear Cache Now</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Danger Zone - Erase All Software Data Card */}
+              <div className="border border-red-200 bg-red-50/30 rounded-xl p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-black text-red-700 flex items-center gap-2">
+                        <span>Danger Zone: Erase All Software Data (Factory Reset)</span>
+                      </h4>
+                      <p className="text-xs text-red-600/90 leading-relaxed max-w-xl">
+                        સોફ્ટવેરનો તમામ ડેટા (જોબ ઓર્ડર્સ, કારીગરો, વેપારીઓ, ડિઝાઇન લાઇબ્રેરી, વાઉચર્સ, ખર્ચ અને સેટિંગ્સ) કાયમ માટે સાફ કરવા માટે આ ઓપ્શન છે. એકવાર ડેટા ભૂંસી નાખ્યા પછી પાછો મેળવી શકાશે નહીં.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEraseConfirmInput("");
+                      setIsEraseModalOpen(true);
+                    }}
+                    className="shrink-0 px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-extrabold text-xs rounded-xl transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Erase All Data</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Confirmation Modal for All Data Erase */}
+      {isEraseModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-red-100 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900">Confirm All Data Erase</h3>
+                <p className="text-xs text-red-600 font-semibold">This action cannot be undone!</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 space-y-1 font-medium">
+              <p>⚠️ તમારા તમામ ઓર્ડર્સ, વાઉચર્સ, કારીગર હિસાબ, ખર્ચ અને સેટિંગ્સ હંમેશ માટે ડિલીટ થઈ જશે.</p>
+              <p>ખાતરી કરવા માટે નીચે આપેલા બોક્સમાં મોટા અક્ષરોમાં <strong className="font-black text-red-800">DELETE</strong> લખો:</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">Confirmation Word *</label>
+              <input
+                type="text"
+                value={eraseConfirmInput}
+                onChange={(e) => setEraseConfirmInput(e.target.value)}
+                placeholder="Type DELETE to confirm"
+                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-red-500 shadow-2xs text-xs tracking-wider"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={isErasing}
+                onClick={() => {
+                  setIsEraseModalOpen(false);
+                  setEraseConfirmInput("");
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={eraseConfirmInput.trim().toUpperCase() !== "DELETE" || isErasing}
+                onClick={handleEraseAllData}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-extrabold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+              >
+                {isErasing ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Erasing Data...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Permanently Erase All Data</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* STATIC / FIXED BOTTOM ACTIONS BAR (Identical to Image 1 & Vendors Form) */}
@@ -1090,33 +1366,44 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            disabled={isSaving}
-            onClick={handleSaveAll}
-            className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all cursor-pointer ${
-              isSaving
-                ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
-                : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
-            }`}
-          >
-            {isSaving ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          {activeTab === "Data & Storage" ? (
+            <button
+              type="button"
+              onClick={updateStorageInfo}
+              className="px-4 py-2 font-bold rounded-xl text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-2 cursor-pointer transition-all"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Refresh Storage Status</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={handleSaveAll}
+              className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all cursor-pointer ${
+                isSaving
+                  ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
+                  : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
+              }`}
+            >
+              {isSaving ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>
+                    {activeTab === "Login & Password"
+                      ? "Updating Credentials..."
+                      : "Saving Settings..."}
+                  </span>
+                </>
+              ) : (
                 <span>
                   {activeTab === "Login & Password"
-                    ? "Updating Credentials..."
-                    : "Saving Settings..."}
+                    ? "Update Login Credentials"
+                    : "Save Settings"}
                 </span>
-              </>
-            ) : (
-              <span>
-                {activeTab === "Login & Password"
-                  ? "Update Login Credentials"
-                  : "Save Settings"}
-              </span>
-            )}
-          </button>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
