@@ -13,6 +13,7 @@ export interface UserSession {
   firmName: string;
   avatar?: string;
   lastLogin: string;
+  expiresAt?: number;
 }
 
 interface AuthContextType {
@@ -24,21 +25,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
 }
 
-const DEFAULT_USERS: Record<string, UserSession> = {
-  owner: {
-    id: "usr-owner-01",
-    name: "Hiren Sutariya",
-    email: "owner@om-sai.com",
-    role: "Owner",
-    roleTitle: "Proprietor & Director",
-    firmName: "Om Sai Enterprises",
-    lastLogin: "10:30 AM"
-  }
-};
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = "texaflow_auth_session";
+const SESSION_STORAGE_KEY = "texaflow_auth_session";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserSession | null>(null);
@@ -47,15 +36,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      // 1. Purge legacy persistent localStorage sessions to prevent infinite logins
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem("texaflow_auth_session");
+
+      // 2. Only read from sessionStorage (strictly cleared when browser/tab closes)
+      const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && (parsed.email || parsed.username || parsed.id)) {
-          setUser(parsed);
+          // Check expiration (4 hours limit)
+          if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+            sessionStorage.removeItem(SESSION_STORAGE_KEY);
+            setUser(null);
+          } else {
+            setUser(parsed);
+          }
+        } else {
+          setUser(null);
         }
+      } else {
+        setUser(null);
       }
     } catch (e) {
       console.error("Failed to parse auth session", e);
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -84,10 +89,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: data.user.role || "Owner",
           roleTitle: data.user.roleTitle || "Proprietor & Director",
           firmName: data.user.firmName || "Om Sai Enterprises",
-          lastLogin: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+          lastLogin: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+          expiresAt: Date.now() + 4 * 60 * 60 * 1000 // Valid for 4 hours
         };
         setUser(session);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+        // Save ONLY in sessionStorage - completely wiped when browser closes!
+        sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+        localStorage.removeItem("texaflow_auth_session");
         return { success: true };
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -100,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Backend login network error:", networkErr);
       return {
         success: false,
-        error: "Cannot connect to server. Please verify backend is running on port 8000."
+        error: "Cannot connect to server. Please verify your internet connection."
       };
     }
   };
@@ -110,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!prev) return null;
       const updated = { ...prev, ...data };
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -119,7 +128,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setUser(null);
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem("texaflow_auth_session");
     } catch (e) {
       console.error(e);
     }

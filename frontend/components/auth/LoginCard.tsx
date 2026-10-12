@@ -24,10 +24,9 @@ export function LoginCard({ onSuccess }: LoginCardProps) {
   const router = useRouter();
   const { login } = useAuth();
 
-  const [email, setEmail] = useState("owner@om-sai.com");
-  const [password, setPassword] = useState("owner123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [selectedRole, setSelectedRole] = useState<"owner" | "manager" | "accounts">("owner");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -36,16 +35,6 @@ export function LoginCard({ onSuccess }: LoginCardProps) {
   const handleRoleSelect = (role: "owner" | "manager" | "accounts") => {
     setSelectedRole(role);
     setErrorMsg("");
-    if (role === "owner") {
-      setEmail("owner@om-sai.com");
-      setPassword("owner123");
-    } else if (role === "manager") {
-      setEmail("manager@om-sai.com");
-      setPassword("manager123");
-    } else {
-      setEmail("accounts@om-sai.com");
-      setPassword("accounts123");
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -183,18 +172,12 @@ export function LoginCard({ onSuccess }: LoginCardProps) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-0.5">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-            />
-            <span className="text-xs text-slate-600 font-medium">Remember terminal</span>
-          </label>
-
-          <span className="text-[11px] text-slate-400 font-medium">Plant #1</span>
+        <div className="flex items-center justify-between pt-0.5 text-[11px] text-slate-400 font-medium">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Single-Session Security
+          </span>
+          <span>Plant #1</span>
         </div>
 
         <button

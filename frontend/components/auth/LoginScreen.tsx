@@ -24,10 +24,9 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
   const { login } = useAuth();
 
   const [mode, setMode] = useState<"login" | "forgot">("login");
-  const [email, setEmail] = useState("owner@om-sai.com");
-  const [password, setPassword] = useState("owner123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -58,46 +57,6 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
       }
     } catch (err: any) {
       setErrorMsg("Network error. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setErrorMsg("");
-    setSuccessMsg("Authenticating via Google...");
-    setIsSubmitting(true);
-    try {
-      const res = await login("owner@om-sai.com", "owner123");
-      if (res.success) {
-        setSuccessMsg("Signed in with Google successfully!");
-        setTimeout(() => {
-          if (onSuccess) onSuccess();
-          else router.push("/");
-        }, 200);
-      }
-    } catch {
-      setErrorMsg("Google authentication failed.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAppleLogin = async () => {
-    setErrorMsg("");
-    setSuccessMsg("Authenticating via Apple ID...");
-    setIsSubmitting(true);
-    try {
-      const res = await login("owner@om-sai.com", "owner123");
-      if (res.success) {
-        setSuccessMsg("Signed in with Apple successfully!");
-        setTimeout(() => {
-          if (onSuccess) onSuccess();
-          else router.push("/");
-        }, 200);
-      }
-    } catch {
-      setErrorMsg("Apple authentication failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -259,42 +218,11 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                 </p>
               </div>
 
-              {/* Social Quick Login Options (Google & Official Apple) */}
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  disabled={isSubmitting}
-                  className="h-11 px-4 flex items-center justify-center gap-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold transition-all hover:border-slate-300 shadow-2xs active:scale-[0.99] cursor-pointer disabled:opacity-60"
-                >
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
-                  <span>Google</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleAppleLogin}
-                  disabled={isSubmitting}
-                  className="h-11 px-4 flex items-center justify-center gap-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold transition-all hover:border-slate-300 shadow-2xs active:scale-[0.99] cursor-pointer disabled:opacity-60"
-                >
-                  {/* Official FontAwesome Apple Logo SVG */}
-                  <svg className="w-4 h-4 shrink-0 fill-current text-slate-900" viewBox="0 0 384 512">
-                    <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6 0 90.4-82.5 102.6-119.3-65.2-30.7-63.3-90-63.3-90zM256.8 72.1c10.3-12.6 17.2-30.1 15.3-47.5-14.8.6-32.8 9.9-43.5 22.8-9.4 11-17.5 28.5-15.3 45.7 16.5 1.3 33.2-5.7 43.5-21z" />
-                  </svg>
-                  <span>Apple</span>
-                </button>
-              </div>
-
-              {/* Divider */}
-              <div className="relative flex items-center justify-center">
-                <div className="border-t border-slate-200 w-full" />
-                <span className="bg-white px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
-                  or continue with email
+              {/* Secure Session Notice */}
+              <div className="flex items-center gap-2.5 p-3 rounded-xl bg-blue-50/80 border border-blue-200/70 text-slate-700 text-xs">
+                <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="text-[11px] leading-snug text-slate-600 font-medium">
+                  <strong className="text-slate-900 font-bold">Auto-Lock Active:</strong> સુરક્ષા માટે બ્રાઉઝર બંધ કરતાં જ સેશન આપમેળે લોગઆઉટ થઈ જશે.
                 </span>
               </div>
 
@@ -314,7 +242,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
               )}
 
               {/* Extended Form Fields */}
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1.5">
                     Email / Username
@@ -325,8 +253,9 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                       type="text"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="owner@om-sai.com"
+                      placeholder="Enter registered email or ID"
                       required
+                      autoComplete="username"
                       className="w-full h-12 pl-11 pr-4 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition-colors shadow-2xs"
                     />
                   </div>
@@ -357,8 +286,9 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
+                      placeholder="Enter account password"
                       required
+                      autoComplete="current-password"
                       className="w-full h-12 pl-11 pr-11 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition-colors shadow-2xs font-mono"
                     />
                     <button
@@ -371,17 +301,12 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span className="text-xs text-slate-600 font-medium">Remember terminal</span>
-                  </label>
-                  <span className="text-xs text-slate-400 font-medium">Plant #1</span>
+                <div className="flex items-center justify-between pt-0.5 text-xs text-slate-400 font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Live Cloud Security
+                  </span>
+                  <span>Unit #1 (Om Sai)</span>
                 </div>
 
                 <button
