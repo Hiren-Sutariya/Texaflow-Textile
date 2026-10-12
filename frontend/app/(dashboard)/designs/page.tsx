@@ -167,7 +167,7 @@ export default function DesignsPage() {
         }
       } catch {}
     }
-    return initialFolders;
+    return [];
   });
   const [search, setSearch] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);

@@ -357,9 +357,9 @@ export default function EmployeesPage() {
         }
       } catch {}
     }
-    return initialEmployees;
+    return [];
   });
-  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>(initialAttendance);
+  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>([]);
 
   const loadEmployeesFromApi = async () => {
     try {
@@ -2207,7 +2207,17 @@ export default function EmployeesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-xs">
-              {filteredEmployees.map((emp, index) => (
+              {filteredEmployees.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-20 text-center">
+                    <div className="flex flex-col items-center justify-center gap-1.5">
+                      <span className="text-sm font-bold text-slate-600">No data found</span>
+                      <span className="text-xs text-slate-400">No worker or karigar records available.</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredEmployees.map((emp, index) => (
                 <tr
                   key={emp.id}
                   onClick={() => setPreviewWorker(emp)}
@@ -2327,7 +2337,8 @@ export default function EmployeesPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              ))
+            )}
             </tbody>
           </table>
         </div>

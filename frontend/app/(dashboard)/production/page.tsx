@@ -1705,7 +1705,14 @@ export default function ProductionPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                  {paginatedLogs.map((log) => (
+                  {paginatedLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
+                        No production logs found.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedLogs.map((log) => (
                     <tr key={log.id} className="hover:bg-blue-50/40 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap font-mono text-slate-600">{log.date}</td>
                       <td className="px-4 py-3 whitespace-nowrap font-bold text-slate-900">{log.machine_name.replace(/#/g, "").trim()}</td>
@@ -1750,7 +1757,8 @@ export default function ProductionPage() {
                         {log.notes || "-"}
                       </td>
                     </tr>
-                  ))}
+                  ))
+                )}
                 </tbody>
               </table>
             </div>

@@ -87,7 +87,7 @@ export default function PaymentsAndVouchersPage() {
         }
       } catch {}
     }
-    return SEED_VOUCHERS;
+    return [];
   });
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -154,7 +154,7 @@ export default function PaymentsAndVouchersPage() {
       } catch (err) {
         console.error(err);
       }
-      setVouchers(SEED_VOUCHERS);
+      setVouchers([]);
       setIsLoading(false);
     };
     loadVouchers();

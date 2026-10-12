@@ -235,15 +235,15 @@ export default function ExpensesPage() {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("om_sai_expenses");
-        if (saved) {
+        if (saved !== null) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             return parsed;
           }
         }
       } catch {}
     }
-    return initialExpenses;
+    return [];
   });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Paid" | "Pending">("All");
@@ -328,7 +328,7 @@ export default function ExpensesPage() {
       }
 
       if (isMounted) {
-        setExpenses(initialExpenses);
+        setExpenses([]);
         setIsLoading(false);
       }
     }

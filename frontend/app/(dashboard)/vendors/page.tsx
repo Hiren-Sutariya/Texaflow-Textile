@@ -497,7 +497,7 @@ export default function VendorsPage() {
         }
       } catch {}
     }
-    return initialVendors;
+    return [];
   });
   const [search, setSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -733,7 +733,7 @@ export default function VendorsPage() {
           return;
         }
       }
-      saveVendorsList(initialVendors);
+      setVendors([]);
     } catch (e) {
       console.error("Error loading app_vendors_master", e);
     }
