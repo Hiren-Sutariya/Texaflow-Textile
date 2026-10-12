@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Sparkles
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 const PAYMENT_TERMS_OPTIONS = [
@@ -150,7 +151,7 @@ export default function SettingsPage() {
 
     const fetchCredentials = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/v1/auth/credentials");
+        const res = await fetch(`${API_BASE_URL}/auth/credentials`);
         if (res.ok) {
           const data = await res.json();
           if (data.username) {
@@ -239,7 +240,7 @@ export default function SettingsPage() {
       setIsSaving(true);
 
       try {
-        const res = await fetch("http://localhost:8000/api/v1/auth/change-credentials", {
+        const res = await fetch(`${API_BASE_URL}/auth/change-credentials`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
