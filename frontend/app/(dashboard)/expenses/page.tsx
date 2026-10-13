@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { fetchApi } from "@/lib/api";
+import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import {
   Plus,
   Search,
@@ -263,7 +264,7 @@ export const normalizeAndRenumberExpenses = (list: ExpenseItem[]): ExpenseItem[]
   });
 
   try {
-    localStorage.setItem("om_sai_expenses", JSON.stringify(updated));
+    setTenantItem("texaflow_expenses", updated, "om_sai_expenses");
   } catch {}
 
   return updated;
@@ -290,12 +291,14 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem("om_sai_expenses");
-        if (saved !== null) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            return normalizeAndRenumberExpenses(parsed);
-          }
+        const currentCid = getStoredCompanyId();
+        const saved = getTenantItem<ExpenseItem[]>(
+          "texaflow_expenses",
+          currentCid === "comp-001" ? "om_sai_expenses" : undefined
+        );
+        if (Array.isArray(saved) && saved.length > 0) {
+          const scoped = saved.filter((item: any) => (item.company_id || "comp-001") === currentCid);
+          return normalizeAndRenumberExpenses(scoped);
         }
       } catch {}
     }
@@ -350,13 +353,19 @@ export default function ExpensesPage() {
     let isMounted = true;
 
     async function loadLiveExpenses() {
+      const currentCid = getStoredCompanyId();
       try {
         const live = await fetchApi<ExpenseItem[]>("/expenses");
         if (isMounted && Array.isArray(live)) {
-          const cleanList = normalizeAndRenumberExpenses(live);
+          // Strict multi-tenant guard: only show expenses belonging to this company!
+          const scoped = live.filter((item: any) => {
+            const itemCid = item.company_id || "comp-001";
+            return itemCid === currentCid;
+          });
+          const cleanList = normalizeAndRenumberExpenses(scoped);
           setExpenses(cleanList);
           try {
-            localStorage.setItem("om_sai_expenses", JSON.stringify(cleanList));
+            setTenantItem("texaflow_expenses", cleanList, currentCid === "comp-001" ? "om_sai_expenses" : undefined);
           } catch {}
           setIsLoading(false);
           return;
@@ -367,15 +376,16 @@ export default function ExpensesPage() {
 
       // Fallback to local storage if API unreachable or empty
       try {
-        const saved = localStorage.getItem("om_sai_expenses");
-        if (saved && isMounted) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const cleanList = normalizeAndRenumberExpenses(parsed);
-            setExpenses(cleanList);
-            setIsLoading(false);
-            return;
-          }
+        const saved = getTenantItem<ExpenseItem[]>(
+          "texaflow_expenses",
+          currentCid === "comp-001" ? "om_sai_expenses" : undefined
+        );
+        if (saved && isMounted && Array.isArray(saved) && saved.length > 0) {
+          const scoped = saved.filter((item: any) => (item.company_id || "comp-001") === currentCid);
+          const cleanList = normalizeAndRenumberExpenses(scoped);
+          setExpenses(cleanList);
+          setIsLoading(false);
+          return;
         }
       } catch (err) {
         console.error("Local storage fallback error:", err);
@@ -391,18 +401,15 @@ export default function ExpensesPage() {
 
     // Load custom categories
     try {
-      const savedCats = localStorage.getItem("om_sai_custom_expense_categories");
-      if (savedCats) {
-        const parsedCats = JSON.parse(savedCats);
-        if (Array.isArray(parsedCats) && parsedCats.length > 0) {
-          setFormCategories((prev) => {
-            const combined = [...prev];
-            parsedCats.forEach((c: string) => {
-              if (!combined.includes(c)) combined.push(c);
-            });
-            return combined;
+      const savedCats = getTenantItem<string[]>("texaflow_custom_expense_categories", "om_sai_custom_expense_categories");
+      if (savedCats && Array.isArray(savedCats) && savedCats.length > 0) {
+        setFormCategories((prev) => {
+          const combined = [...prev];
+          savedCats.forEach((c: string) => {
+            if (!combined.includes(c)) combined.push(c);
           });
-        }
+          return combined;
+        });
       }
     } catch (err) {
       console.error(err);
@@ -613,10 +620,10 @@ export default function ExpensesPage() {
         setExpenses((prev) => prev.map((item) => (item.expense_no === newEntry.expense_no ? { ...item, id: savedRes.id } : item)));
       }
 
-      const existing = localStorage.getItem("om_sai_expenses");
-      const list = existing ? JSON.parse(existing) : [];
+      const existing = getTenantItem<ExpenseItem[]>("texaflow_expenses", "om_sai_expenses") || [];
+      const list = [...existing];
       list.unshift(newEntry);
-      localStorage.setItem("om_sai_expenses", JSON.stringify(list));
+      setTenantItem("texaflow_expenses", list, "om_sai_expenses");
     } catch (err) {
       console.warn("Backend sync notice:", err);
     }
@@ -649,10 +656,10 @@ export default function ExpensesPage() {
       const updated = expenses.filter((e) => e.id !== id);
       setExpenses(updated);
       try {
-        const saved = localStorage.getItem("om_sai_expenses");
-        if (saved) {
-          const parsed = JSON.parse(saved).filter((e: any) => e.id !== id);
-          localStorage.setItem("om_sai_expenses", JSON.stringify(parsed));
+        const saved = getTenantItem<ExpenseItem[]>("texaflow_expenses", "om_sai_expenses");
+        if (saved && Array.isArray(saved)) {
+          const parsed = saved.filter((e: any) => e.id !== id);
+          setTenantItem("texaflow_expenses", parsed, "om_sai_expenses");
         }
         await fetchApi(`/expenses/${id}`, { method: "DELETE" });
       } catch (err) {

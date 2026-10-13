@@ -13,6 +13,7 @@ class PaymentVoucherBase(BaseModel):
     reference_no: Optional[str] = None
     status: str = Field(default="Paid")
     remarks: Optional[str] = None
+    company_id: Optional[str] = "comp-001"
 
 class PaymentVoucherCreate(PaymentVoucherBase):
     pass

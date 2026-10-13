@@ -13,3 +13,4 @@ class User(Base, TimestampMixin):
     role = Column(String(64), default="Owner")
     role_title = Column(String(128), default="Proprietor & Director")
     firm_name = Column(String(255), default="Om Sai Enterprises")
+    company_id = Column(String(64), nullable=False, default="comp-001", index=True)

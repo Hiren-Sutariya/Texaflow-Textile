@@ -13,6 +13,7 @@ class ExpenseBase(BaseModel):
     notes: Optional[str] = None
     amount: float = Field(..., gt=0, description="Amount in INR")
     bill_image: Optional[str] = None
+    company_id: Optional[str] = "comp-001"
 
 class ExpenseCreate(ExpenseBase):
     pass

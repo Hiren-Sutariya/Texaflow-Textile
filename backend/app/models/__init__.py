@@ -5,9 +5,11 @@ from app.models.vendor import Vendor
 from app.models.employee import Employee
 from app.models.design import Design
 from app.models.user import User
+from app.models.company import Company
 
 __all__ = [
     "Base",
+    "Company",
     "Expense",
     "PaymentVoucher",
     "Vendor",

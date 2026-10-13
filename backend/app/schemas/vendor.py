@@ -25,6 +25,7 @@ class VendorBase(BaseModel):
     bank_details: Optional[str] = None
     contact_persons: Optional[str] = None
     remarks: Optional[str] = None
+    company_id: Optional[str] = "comp-001"
 
 class VendorCreate(VendorBase):
     pass

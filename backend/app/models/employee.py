@@ -22,4 +22,5 @@ class Employee(Base, TimestampMixin):
     bank_details = Column(Text, nullable=True) # JSON bank details
     portal_credentials = Column(Text, nullable=True) # JSON login creds
     documents = Column(Text, nullable=True) # JSON list of documents
+    company_id = Column(String(64), nullable=False, default="comp-001", index=True)
 

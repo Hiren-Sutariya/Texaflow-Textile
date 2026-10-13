@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { fetchApi } from "@/lib/api";
+import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import {
   ArrowLeft,
   ChevronDown,
@@ -100,8 +101,8 @@ function NewExpenseVoucherForm() {
   const [customCategories, setCustomCategories] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem("om_sai_custom_expense_categories");
-        if (saved) return JSON.parse(saved);
+        const saved = getTenantItem<string[]>("texaflow_custom_expense_categories", "om_sai_custom_expense_categories");
+        if (saved && Array.isArray(saved)) return saved;
       } catch {}
     }
     return [];
@@ -136,16 +137,13 @@ function NewExpenseVoucherForm() {
   // Load registered vendors from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("om_sai_vendors");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const names = parsed
-            .map((v: any) => v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim())
-            .filter(Boolean);
-          if (names.length > 0) {
-            setRegisteredVendorsList(Array.from(new Set([...names, ...defaultRegisteredVendors])));
-          }
+      const saved = getTenantItem<any[]>("texaflow_vendors", "om_sai_vendors");
+      if (saved && Array.isArray(saved) && saved.length > 0) {
+        const names = saved
+          .map((v: any) => v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim())
+          .filter(Boolean);
+        if (names.length > 0) {
+          setRegisteredVendorsList(Array.from(new Set([...names, ...defaultRegisteredVendors])));
         }
       }
     } catch {}
@@ -210,7 +208,7 @@ function NewExpenseVoucherForm() {
             if (!prev.some((p) => p.trim().toLowerCase() === exp.category.trim().toLowerCase())) {
               const updated = [...prev, exp.category.trim()];
               try {
-                localStorage.setItem("om_sai_custom_expense_categories", JSON.stringify(updated));
+                setTenantItem("texaflow_custom_expense_categories", updated, "om_sai_custom_expense_categories");
               } catch {}
               return updated;
             }
@@ -247,11 +245,15 @@ function NewExpenseVoucherForm() {
     };
 
     // 1. Immediate retrieval from localStorage
+    const currentCid = getStoredCompanyId();
     try {
-      const saved = localStorage.getItem("om_sai_expenses");
-      if (saved) {
-        const list = JSON.parse(saved);
-        const found = list.find((item: any) => String(item.id) === String(editId) || item.expense_no === editId);
+      const list = getTenantItem<any[]>(
+        "texaflow_expenses",
+        currentCid === "comp-001" ? "om_sai_expenses" : undefined
+      );
+      if (list && Array.isArray(list)) {
+        const scoped = list.filter((item: any) => (item.company_id || "comp-001") === currentCid);
+        const found = scoped.find((item: any) => String(item.id) === String(editId) || item.expense_no === editId);
         if (found) {
           populateExpenseData(found);
         }
@@ -309,7 +311,7 @@ function NewExpenseVoucherForm() {
       const updated = [...customCategories, trimmed];
       setCustomCategories(updated);
       try {
-        localStorage.setItem("om_sai_custom_expense_categories", JSON.stringify(updated));
+        setTenantItem("texaflow_custom_expense_categories", updated, "om_sai_custom_expense_categories");
       } catch {}
     }
     setCategory(trimmed);
@@ -322,7 +324,7 @@ function NewExpenseVoucherForm() {
     const updated = customCategories.filter((c) => c !== nameToRemove);
     setCustomCategories(updated);
     try {
-      localStorage.setItem("om_sai_custom_expense_categories", JSON.stringify(updated));
+      setTenantItem("texaflow_custom_expense_categories", updated, "om_sai_custom_expense_categories");
     } catch (err) {
       console.error(err);
     }
@@ -394,14 +396,11 @@ function NewExpenseVoucherForm() {
 
         // 2. Update localStorage
         try {
-          const existing = localStorage.getItem("om_sai_expenses");
-          if (existing) {
-            const list = JSON.parse(existing);
-            const updatedList = list.map((item: any) =>
-              String(item.id) === String(editId) || item.expense_no === editId ? updatedExpense : item
-            );
-            localStorage.setItem("om_sai_expenses", JSON.stringify(updatedList));
-          }
+          const list = getTenantItem<any[]>("texaflow_expenses", "om_sai_expenses") || [];
+          const updatedList = list.map((item: any) =>
+            String(item.id) === String(editId) || item.expense_no === editId ? updatedExpense : item
+          );
+          setTenantItem("texaflow_expenses", updatedList, "om_sai_expenses");
           window.dispatchEvent(new Event("app_data_update"));
           window.dispatchEvent(new Event("storage"));
         } catch (err) {
@@ -413,10 +412,16 @@ function NewExpenseVoucherForm() {
       }
 
       // CREATE NEW EXPENSE WITH CONTINUOUS SEQUENTIAL NUMBERING
+      const currentCid = getStoredCompanyId();
       let existingList: any[] = [];
       try {
-        const saved = localStorage.getItem("om_sai_expenses");
-        if (saved) existingList = JSON.parse(saved);
+        const saved = getTenantItem<any[]>(
+          "texaflow_expenses",
+          currentCid === "comp-001" ? "om_sai_expenses" : undefined
+        );
+        if (saved && Array.isArray(saved)) {
+          existingList = saved.filter((item: any) => (item.company_id || "comp-001") === currentCid);
+        }
       } catch {}
 
       let maxSeq = 0;
@@ -439,7 +444,7 @@ function NewExpenseVoucherForm() {
       const nextSeqNo = `EB-${pad}`;
 
       const newExpense = {
-        id: `exp-${pad}`,
+        id: currentCid === "comp-001" ? `exp-${pad}` : `${currentCid}-exp-${pad}`,
         expense_no: nextSeqNo,
         date: formattedDate,
         category: category,
@@ -448,7 +453,8 @@ function NewExpenseVoucherForm() {
         payment_status: paymentStatus,
         paid_via: paymentMode,
         notes: remarks.trim(),
-        bill_image: billImage
+        bill_image: billImage,
+        company_id: currentCid
       };
 
       // 1. Save directly to Supabase via FastAPI Backend
@@ -465,7 +471,8 @@ function NewExpenseVoucherForm() {
             payment_status: newExpense.payment_status,
             paid_via: newExpense.paid_via,
             notes: newExpense.notes,
-            bill_image: newExpense.bill_image || undefined
+            bill_image: newExpense.bill_image || undefined,
+            company_id: currentCid
           })
         });
         if (createdItem && createdItem.id) {
@@ -477,10 +484,18 @@ function NewExpenseVoucherForm() {
 
       // 2. Keep local cache updated
       try {
-        const existing = localStorage.getItem("om_sai_expenses");
-        const list = existing ? JSON.parse(existing) : [];
+        const existing = getTenantItem<any[]>(
+          "texaflow_expenses",
+          currentCid === "comp-001" ? "om_sai_expenses" : undefined
+        ) || [];
+        const scoped = existing.filter((item: any) => (item.company_id || "comp-001") === currentCid);
+        const list = [...scoped];
         list.unshift(newExpense);
-        localStorage.setItem("om_sai_expenses", JSON.stringify(list));
+        setTenantItem(
+          "texaflow_expenses",
+          list,
+          currentCid === "comp-001" ? "om_sai_expenses" : undefined
+        );
         window.dispatchEvent(new Event("app_data_update"));
         window.dispatchEvent(new Event("storage"));
       } catch (err) {

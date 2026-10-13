@@ -16,3 +16,4 @@ class Design(Base, TimestampMixin):
     cut_length_meters = Column(Float, default=0.93)
     items = Column(Text, nullable=True)
     colorways = Column(Text, nullable=True)
+    company_id = Column(String(64), nullable=False, default="comp-001", index=True)

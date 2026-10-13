@@ -11,6 +11,7 @@ export interface UserSession {
   role: "Owner" | "Manager" | "Accounts";
   roleTitle: string;
   firmName: string;
+  companyId?: string;
   avatar?: string;
   lastLogin: string;
   expiresAt?: number;
@@ -82,6 +83,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (res.ok) {
         const data = await res.json();
+        let resolvedCompanyId = data.user.companyId;
+        if (!resolvedCompanyId) {
+          if (data.user.id && data.user.id.includes("comp-")) {
+            const m = data.user.id.match(/(comp-\d+)/);
+            if (m) resolvedCompanyId = m[1];
+          } else if (data.user.firmName && !data.user.firmName.toLowerCase().includes("om sai")) {
+            resolvedCompanyId = `comp-${data.user.firmName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8)}`;
+          } else {
+            resolvedCompanyId = "comp-001";
+          }
+        }
+
         const session: UserSession = {
           id: data.user.id,
           name: data.user.name,
@@ -89,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: data.user.role || "Owner",
           roleTitle: data.user.roleTitle || "Proprietor & Director",
           firmName: data.user.firmName || "Om Sai Enterprises",
+          companyId: resolvedCompanyId,
           lastLogin: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
           expiresAt: Date.now() + 4 * 60 * 60 * 1000 // Valid for 4 hours
         };

@@ -19,6 +19,7 @@ class EmployeeBase(BaseModel):
     bank_details: Optional[str] = None
     portal_credentials: Optional[str] = None
     documents: Optional[str] = None
+    company_id: Optional[str] = "comp-001"
 
 class EmployeeCreate(EmployeeBase):
     id: Optional[str] = None

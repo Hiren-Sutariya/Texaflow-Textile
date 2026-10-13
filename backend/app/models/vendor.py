@@ -28,3 +28,4 @@ class Vendor(Base, TimestampMixin):
     bank_details = Column(Text, nullable=True)
     contact_persons = Column(Text, nullable=True)
     remarks = Column(Text, nullable=True)
+    company_id = Column(String(64), nullable=False, default="comp-001", index=True)

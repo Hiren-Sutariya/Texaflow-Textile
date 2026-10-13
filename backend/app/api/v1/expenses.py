@@ -6,12 +6,13 @@ from datetime import datetime
 from app.core.database import get_db
 from app.models.expense import Expense
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseResponse
-from app.core.formatters import format_to_dd_mm_yyyy, generate_short_id
+from app.core.formatters import format_to_dd_mm_yyyy
+from app.core.tenant import get_tenant_company_id
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
-def renumber_all_expenses(db: Session):
-    expenses = db.query(Expense).all()
+def renumber_all_expenses(db: Session, company_id: str):
+    expenses = db.query(Expense).filter(Expense.company_id == company_id).all()
     if not expenses:
         return
 
@@ -29,7 +30,7 @@ def renumber_all_expenses(db: Session):
         expenses,
         key=lambda x: (
             parse_d(x.date),
-            int(x.id.replace("exp-", "")) if x.id and x.id.replace("exp-", "").isdigit() else 0
+            int(x.id.split("-")[-1]) if x.id and x.id.split("-")[-1].isdigit() else 0
         )
     )
 
@@ -59,10 +60,11 @@ def get_expenses(
     end_date: Optional[str] = None,
     skip: int = 0,
     limit: int = 200,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    company_id: str = Depends(get_tenant_company_id)
 ):
-    renumber_all_expenses(db)
-    query = db.query(Expense)
+    renumber_all_expenses(db, company_id)
+    query = db.query(Expense).filter(Expense.company_id == company_id)
 
     if category and category != "All":
         query = query.filter(Expense.category == category)
@@ -84,29 +86,40 @@ def get_expenses(
     return query.order_by(Expense.expense_no.desc(), Expense.id.desc()).offset(skip).limit(limit).all()
 
 @router.post("", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
-def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
-    renumber_all_expenses(db)
+def create_expense(
+    expense_in: ExpenseCreate, 
+    db: Session = Depends(get_db),
+    company_id: str = Depends(get_tenant_company_id)
+):
+    renumber_all_expenses(db, company_id)
     expense_data = expense_in.model_dump()
+    expense_data["company_id"] = company_id
 
     # 1. Format date to DD-MM-YYYY (e.g., 12-10-2026)
     if expense_data.get("date"):
         expense_data["date"] = format_to_dd_mm_yyyy(expense_data["date"])
 
-    # 2. Synchronized 3-digit zero-padded ID and expense_no (e.g., exp-023 and EB-023)
-    existing_records = db.query(Expense.expense_no, Expense.id).all()
+    # 2. Synchronized 3-digit zero-padded ID and expense_no scoped to company_id
+    existing_records = db.query(Expense.expense_no, Expense.id).filter(Expense.company_id == company_id).all()
     max_num = 0
     for (eno, eid) in existing_records:
         if eno and eno.startswith("EB-"):
             m = eno.replace("EB-", "")
             if m.isdigit():
                 max_num = max(max_num, int(m))
-        if eid and eid.startswith("exp-"):
-            m = eid.replace("exp-", "")
-            if m.isdigit():
-                max_num = max(max_num, int(m))
 
     next_num = (max_num + 1) if max_num > 0 else (len(existing_records) + 1)
-    expense_data["id"] = f"exp-{next_num:03d}"
+
+    # Globally unique primary key id
+    if company_id == "comp-001":
+        candidate_id = f"exp-{next_num:03d}"
+        if db.query(Expense.id).filter(Expense.id == candidate_id).first():
+            total_all = db.query(Expense.id).count()
+            candidate_id = f"exp-{total_all + 1:03d}"
+    else:
+        candidate_id = f"{company_id}-exp-{next_num:03d}"
+
+    expense_data["id"] = candidate_id
     expense_data["expense_no"] = f"EB-{next_num:03d}"
 
     # 3. Clean General Vendor
@@ -121,15 +134,24 @@ def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
     return expense
 
 @router.get("/{expense_id}", response_model=ExpenseResponse)
-def get_expense(expense_id: str, db: Session = Depends(get_db)):
-    expense = db.query(Expense).filter(Expense.id == expense_id).first()
+def get_expense(
+    expense_id: str, 
+    db: Session = Depends(get_db),
+    company_id: str = Depends(get_tenant_company_id)
+):
+    expense = db.query(Expense).filter(Expense.id == expense_id, Expense.company_id == company_id).first()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
     return expense
 
 @router.put("/{expense_id}", response_model=ExpenseResponse)
-def update_expense(expense_id: str, expense_in: ExpenseUpdate, db: Session = Depends(get_db)):
-    expense = db.query(Expense).filter(Expense.id == expense_id).first()
+def update_expense(
+    expense_id: str, 
+    expense_in: ExpenseUpdate, 
+    db: Session = Depends(get_db),
+    company_id: str = Depends(get_tenant_company_id)
+):
+    expense = db.query(Expense).filter(Expense.id == expense_id, Expense.company_id == company_id).first()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
@@ -147,8 +169,12 @@ def update_expense(expense_id: str, expense_in: ExpenseUpdate, db: Session = Dep
     return expense
 
 @router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_expense(expense_id: str, db: Session = Depends(get_db)):
-    expense = db.query(Expense).filter(Expense.id == expense_id).first()
+def delete_expense(
+    expense_id: str, 
+    db: Session = Depends(get_db),
+    company_id: str = Depends(get_tenant_company_id)
+):
+    expense = db.query(Expense).filter(Expense.id == expense_id, Expense.company_id == company_id).first()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 

@@ -146,12 +146,12 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           className="flex items-center gap-2.5 overflow-hidden p-1.5 rounded-xl hover:bg-slate-50 transition-colors w-full group outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
           title="Return to Main Dashboard"
         >
-          <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform">
-            OS
+          <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform uppercase">
+            {user?.firmName ? user.firmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "OS"}
           </div>
           <div className="truncate">
-            <h1 className="font-extrabold text-slate-900 text-xs tracking-tight leading-tight truncate">
-              OM SAI ENTERPRISES
+            <h1 className="font-extrabold text-slate-900 text-xs tracking-tight leading-tight truncate uppercase">
+              {user?.firmName || "OM SAI ENTERPRISES"}
             </h1>
             <p className="text-[9px] font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />

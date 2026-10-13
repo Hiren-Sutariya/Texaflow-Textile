@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.user import User
+from app.models.company import Company
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -85,6 +86,9 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
             detail="Incorrect password. Please try again."
         )
 
+    company = db.query(Company).filter(Company.id == user.company_id).first()
+    firm_name = company.name if company else (user.firm_name or "Om Sai Enterprises")
+
     return {
         "success": True,
         "message": "Login successful",
@@ -95,7 +99,8 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
             "username": user.username,
             "role": user.role,
             "roleTitle": user.role_title,
-            "firmName": user.firm_name
+            "firmName": firm_name,
+            "companyId": user.company_id or "comp-001"
         }
     }
 
@@ -191,3 +196,109 @@ def change_credentials(req: ChangeCredentialsRequest, db: Session = Depends(get_
             "name": user.name
         }
     }
+
+class RegisterCompanyRequest(BaseModel):
+    company_name: str
+    owner_name: str
+    username_or_email: str
+    password: str
+    phone: Optional[str] = None
+    gstin: Optional[str] = None
+    address: Optional[str] = None
+
+@router.post("/register-company", status_code=status.HTTP_201_CREATED)
+def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db)):
+    """Registers a new tenant company and creates their primary Owner login."""
+    clean_user = req.username_or_email.strip()
+    if not clean_user:
+        raise HTTPException(status_code=400, detail="Username / Email is required")
+    if not req.password or len(req.password.strip()) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+
+    # Check if user already exists
+    existing_user = db.query(User).filter(
+        (User.username.ilike(clean_user)) | (User.email.ilike(clean_user))
+    ).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail=f"User with username/email '{clean_user}' already exists."
+        )
+
+    # Generate sequential company_id (comp-002, comp-003, ...)
+    all_companies = db.query(Company.id).all()
+    max_comp_num = 0
+    for (cid,) in all_companies:
+        if cid and cid.startswith("comp-"):
+            suffix = cid.replace("comp-", "")
+            if suffix.isdigit():
+                max_comp_num = max(max_comp_num, int(suffix))
+
+    next_comp_id = f"comp-{max_comp_num + 1:03d}"
+    clean_code = req.company_name.strip().upper().replace(" ", "")[:8]
+
+    # Create Company
+    new_company = Company(
+        id=next_comp_id,
+        name=req.company_name.strip(),
+        code=f"{clean_code}-{max_comp_num + 1:03d}",
+        owner_name=req.owner_name.strip(),
+        phone=req.phone.strip() if req.phone else None,
+        email=clean_user if "@" in clean_user else None,
+        address=req.address.strip() if req.address else None,
+        gstin=req.gstin.strip() if req.gstin else None,
+        status="active"
+    )
+    db.add(new_company)
+
+    # Create Owner User
+    pw_hash = hash_password(req.password.strip())
+    new_user = User(
+        id=f"usr-{next_comp_id}-owner",
+        username=clean_user,
+        email=clean_user if "@" in clean_user else None,
+        name=req.owner_name.strip(),
+        password_hash=pw_hash,
+        role="Owner",
+        role_title="Proprietor & Director",
+        firm_name=req.company_name.strip(),
+        company_id=next_comp_id
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_company)
+    db.refresh(new_user)
+
+    return {
+        "success": True,
+        "message": f"Company '{new_company.name}' registered successfully with ID {next_comp_id}!",
+        "company": {
+            "id": new_company.id,
+            "name": new_company.name,
+            "code": new_company.code,
+            "ownerName": new_company.owner_name
+        },
+        "user": {
+            "id": new_user.id,
+            "username": new_user.username,
+            "role": new_user.role,
+            "companyId": new_user.company_id
+        }
+    }
+
+@router.get("/companies")
+def list_companies(db: Session = Depends(get_db)):
+    """Lists all registered tenant companies."""
+    companies = db.query(Company).order_by(Company.id.asc()).all()
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "code": c.code,
+            "ownerName": c.owner_name,
+            "email": c.email,
+            "phone": c.phone,
+            "status": c.status
+        }
+        for c in companies
+    ]

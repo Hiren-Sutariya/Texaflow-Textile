@@ -18,3 +18,4 @@ class PaymentVoucher(Base, TimestampMixin):
     reference_no = Column(String(128), nullable=True)
     status = Column(String(32), nullable=False, default="Paid", index=True)
     remarks = Column(Text, nullable=True)
+    company_id = Column(String(64), nullable=False, default="comp-001", index=True)

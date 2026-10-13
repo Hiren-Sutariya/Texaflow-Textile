@@ -104,7 +104,7 @@ export default function Home() {
           🧵
         </div>
         <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mb-2" />
-        <p className="text-xs text-slate-500 font-medium">Checking Om Sai Security Session...</p>
+        <p className="text-xs text-slate-500 font-medium">Checking Security Session...</p>
       </div>
     );
   }
@@ -122,8 +122,8 @@ export default function Home() {
       {/* TOP USER WELCOME & TERMINAL STATUS BAR */}
       <div className="w-full max-w-6xl bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 shadow-2xs flex items-center justify-between gap-2.5 sm:gap-3 text-xs">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0 tracking-wider">
-            OS
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0 tracking-wider uppercase">
+            {user?.firmName ? user.firmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "TF"}
           </div>
           <div className="min-w-0 truncate">
             <div className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5 truncate">
@@ -134,7 +134,7 @@ export default function Home() {
             </div>
             <div className="text-[10px] sm:text-[11px] text-blue-600 font-bold flex items-center gap-1 mt-0.5 truncate">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span className="truncate">TexaFlow Textile • {user?.name || "Hiren Sutariya"}</span>
+              <span className="truncate">TexaFlow Textile • {user?.name || "Factory Admin"}</span>
             </div>
           </div>
         </div>

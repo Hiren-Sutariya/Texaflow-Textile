@@ -13,6 +13,7 @@ class DesignBase(BaseModel):
     cut_length_meters: float = 0.93
     items: Optional[str] = None
     colorways: Optional[str] = None
+    company_id: Optional[str] = "comp-001"
 
 class DesignCreate(DesignBase):
     pass

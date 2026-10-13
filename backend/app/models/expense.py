@@ -16,3 +16,4 @@ class Expense(Base, TimestampMixin):
     notes = Column(Text, nullable=True)
     amount = Column(Float, nullable=False, default=0.0)
     bill_image = Column(Text, nullable=True)
+    company_id = Column(String(64), nullable=False, default="comp-001", index=True)
