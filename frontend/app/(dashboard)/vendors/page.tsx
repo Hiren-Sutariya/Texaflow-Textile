@@ -2724,280 +2724,157 @@ export default function VendorsPage() {
       </div>
     </div>
 
-      {/* VENDORS TABLE / CARDS CONTAINER */}
+      {/* VENDORS TABLE CONTAINER */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        {isLoading && vendors.length === 0 ? (
-          <div className="p-4 sm:p-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-              {[1, 2, 3, 4].map((n) => (
-                <div key={`v-skel-${n}`} className="bg-white rounded-2xl border border-slate-200 p-4 animate-pulse space-y-3">
-                  <div className="h-5 bg-slate-100 rounded w-24" />
-                  <div className="h-4 bg-slate-100 rounded w-40" />
-                  <div className="h-3 bg-slate-100 rounded w-20" />
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : filteredVendors.length === 0 ? (
-          search.trim() || filterAccountType !== "ALL" || filterMsme !== "ALL" ? (
-            <div className="py-12 px-4 text-center space-y-2">
-              <p className="text-sm font-bold text-slate-700">No vendors found matching your filters</p>
-              <p className="text-xs text-slate-400">Try adjusting your search terms or filters.</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch("");
-                  setFilterAccountType("ALL");
-                  setFilterMsme("ALL");
-                }}
-                className="mt-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
-              >
-                Reset Filters
-              </button>
+        {/* 1. MOBILE RESPONSIVE CARD VIEW (NO HORIZONTAL SCROLLING REQUIRED) */}
+        <div className="block md:hidden p-3 space-y-3">
+          {isLoading && vendors.length === 0 ? (
+            [1, 2, 3].map((n) => (
+              <div key={`v-mskel-${n}`} className="bg-white rounded-2xl border border-slate-200 p-4 animate-pulse space-y-3">
+                <div className="h-4 bg-slate-100 rounded w-32" />
+                <div className="h-3 bg-slate-100 rounded w-24" />
+              </div>
+            ))
+          ) : filteredVendors.length === 0 ? (
+            <div className="py-8 px-4 text-center text-slate-400 font-medium text-xs">
+              No vendor records found matching your filters. Click &quot;+ New Vendor&quot; to add a record.
             </div>
           ) : (
-            <div className="p-4 sm:p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                {/* Card 1: Add New Vendor (Primary Action Card) */}
-                <div
-                  onClick={openNewVendorForm}
-                  className="group bg-blue-50/40 hover:bg-blue-50 border-2 border-dashed border-blue-300 hover:border-blue-500 rounded-2xl p-5 flex flex-col justify-between items-start space-y-4 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md"
-                >
-                  <div className="space-y-2.5">
-                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/30 group-hover:scale-105 transition-transform">
-                      <Plus className="w-5 h-5 stroke-[2.5]" />
-                    </div>
-                    <div>
-                      <h4 className="font-extrabold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">
-                        + Add New Vendor
-                      </h4>
-                      <p className="text-[11px] font-medium text-slate-500 leading-relaxed mt-0.5">
-                        Register your first fabric, yarn, or jobwork supplier to track purchase vouchers and payments.
-                      </p>
-                    </div>
+            filteredVendors.map((v) => (
+              <div
+                key={v.id}
+                onClick={() => openPreviewVendor(v)}
+                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2.5 hover:border-blue-300 hover:bg-blue-50/20 transition-all cursor-pointer group"
+              >
+                {/* Header: Name + Account Type + SR */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-800 font-mono font-black text-xs flex items-center justify-center shrink-0 border border-blue-100">
+                      {v.srNo}
+                    </span>
+                    <h3 className="font-extrabold text-slate-900 text-sm truncate group-hover:text-blue-700 transition-colors">
+                      {v.display_name || v.company_name}
+                    </h3>
                   </div>
-                  <button
-                    type="button"
-                    className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Create Vendor</span>
-                  </button>
+                  <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs border border-emerald-200 shrink-0">
+                    {v.account_type || "Vendor"}
+                  </span>
                 </div>
 
-                {/* Card 2: Fabric & Yarn Mill (Category Template) */}
-                <div
-                  onClick={() => {
-                    openNewVendorForm();
-                    setFormAccountType("Supplier / Vendor");
-                    setFormCompanyName("Yarn / Grey Fabric Supplier");
-                  }}
-                  className="group bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-2xl p-5 flex flex-col justify-between items-start space-y-4 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md"
-                >
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between w-full">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center border border-emerald-200">
-                        <Building2 className="w-5 h-5" />
-                      </div>
-                      <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        Yarn & Fabric
-                      </span>
-                    </div>
-                    <div>
-                      <h4 className="font-extrabold text-slate-900 text-sm">Fabric / Yarn Mill</h4>
-                      <p className="text-[11px] font-medium text-slate-500 leading-relaxed mt-0.5">
-                        Cotton, Viscose, Nylon yarn suppliers, Grey fabrics, Loom units & Textile mills.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="w-full pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 group-hover:text-blue-600 font-bold transition-colors">
-                    <span>Quick Add</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </div>
+                {/* Primary Contact & MSME */}
+                <div className="flex items-center justify-between text-xs text-slate-600">
+                  <span className="font-bold text-slate-800 truncate">
+                    {v.salutation ? `${v.salutation} ` : ""}{v.first_name} {v.last_name}
+                  </span>
+                  {v.is_msme && (
+                    <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 font-extrabold rounded text-[9px] border border-emerald-200 shrink-0">
+                      MSME
+                    </span>
+                  )}
                 </div>
 
-                {/* Card 3: Job Work & Karigar Unit (Category Template) */}
-                <div
-                  onClick={() => {
-                    openNewVendorForm();
-                    setFormAccountType("Job Work");
-                    setFormCompanyName("Embroidery Jobwork Unit");
-                  }}
-                  className="group bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-2xl p-5 flex flex-col justify-between items-start space-y-4 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md"
-                >
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between w-full">
-                      <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-800 flex items-center justify-center border border-violet-200">
-                        <User className="w-5 h-5" />
-                      </div>
-                      <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-200">
-                        Job Worker
-                      </span>
-                    </div>
-                    <div>
-                      <h4 className="font-extrabold text-slate-900 text-sm">Embroidery Jobwork</h4>
-                      <p className="text-[11px] font-medium text-slate-500 leading-relaxed mt-0.5">
-                        Multi-head machine job workers, Takka processing units, Handwork & Cutting specialists.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="w-full pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 group-hover:text-blue-600 font-bold transition-colors">
-                    <span>Quick Add</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </div>
-                </div>
-
-                {/* Card 4: Zari, Thread & Material (Category Template) */}
-                <div
-                  onClick={() => {
-                    openNewVendorForm();
-                    setFormAccountType("Supplier / Vendor");
-                    setFormCompanyName("Zari & Thread Supplier");
-                  }}
-                  className="group bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-2xl p-5 flex flex-col justify-between items-start space-y-4 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md"
-                >
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between w-full">
-                      <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center border border-amber-200">
-                        <CreditCard className="w-5 h-5" />
-                      </div>
-                      <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
-                        Accessories
-                      </span>
-                    </div>
-                    <div>
-                      <h4 className="font-extrabold text-slate-900 text-sm">Zari & Accessories</h4>
-                      <p className="text-[11px] font-medium text-slate-500 leading-relaxed mt-0.5">
-                        Metallic Zari spools, Polyester 120D thread, Needles, Oil, Machine spare parts & Packing.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="w-full pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 group-hover:text-blue-600 font-bold transition-colors">
-                    <span>Quick Add</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        ) : (
-          <>
-            {/* 1. MOBILE RESPONSIVE CARD VIEW (NO HORIZONTAL SCROLLING REQUIRED) */}
-            <div className="block md:hidden p-3 space-y-3">
-              {filteredVendors.map((v) => (
-                <div
-                  key={v.id}
-                  onClick={() => openPreviewVendor(v)}
-                  className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2.5 hover:border-blue-300 hover:bg-blue-50/20 transition-all cursor-pointer group"
-                >
-                  {/* Header: Name + Account Type + SR */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-800 font-mono font-black text-xs flex items-center justify-center shrink-0 border border-blue-100">
-                        {v.srNo}
-                      </span>
-                      <h3 className="font-extrabold text-slate-900 text-sm truncate group-hover:text-blue-700 transition-colors">
-                        {v.display_name || v.company_name}
-                      </h3>
-                    </div>
-                    <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs border border-emerald-200 shrink-0">
-                      {v.account_type || "Vendor"}
+                {/* Meta Badges: GSTIN & Payment Terms */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">GSTIN / PAN</span>
+                    <span className="font-mono font-bold text-slate-700 text-[11px] truncate block">
+                      {v.gstin || v.pan || "-"}
                     </span>
                   </div>
-
-                  {/* Primary Contact & MSME */}
-                  <div className="flex items-center justify-between text-xs text-slate-600">
-                    <span className="font-bold text-slate-800 truncate">
-                      {v.salutation ? `${v.salutation} ` : ""}{v.first_name} {v.last_name}
+                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 flex flex-col justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Terms</span>
+                    <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-lg text-[10px] border border-emerald-200 inline-block w-fit">
+                      {v.payment_terms || "Due on Receipt"}
                     </span>
-                    {v.is_msme && (
-                      <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 font-extrabold rounded text-[9px] border border-emerald-200 shrink-0">
-                        MSME
-                      </span>
+                  </div>
+                </div>
+
+                {/* Contact & Actions Row */}
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                  <div>
+                    {v.mobile || v.work_phone ? (
+                      <a
+                        href={`tel:${v.mobile || v.work_phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 text-xs font-mono font-bold transition-colors"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>{v.mobile || v.work_phone}</span>
+                      </a>
+                    ) : (
+                      <span className="text-slate-400 text-xs">No Phone</span>
                     )}
                   </div>
 
-                  {/* Meta Badges: GSTIN & Payment Terms */}
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">GSTIN / PAN</span>
-                      <span className="font-mono font-bold text-slate-700 text-[11px] truncate block">
-                        {v.gstin || v.pan || "-"}
-                      </span>
-                    </div>
-                    <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 flex flex-col justify-between">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Terms</span>
-                      <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-lg text-[10px] border border-emerald-200 inline-block w-fit">
-                        {v.payment_terms || "Due on Receipt"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Contact & Actions Row */}
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-                    <div>
-                      {v.mobile || v.work_phone ? (
-                        <a
-                          href={`tel:${v.mobile || v.work_phone}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 text-xs font-mono font-bold transition-colors"
-                        >
-                          <Phone className="w-3.5 h-3.5" />
-                          <span>{v.mobile || v.work_phone}</span>
-                        </a>
-                      ) : (
-                        <span className="text-slate-400 text-xs">No Phone</span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => openPreviewVendor(v)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                        title="Preview"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openEditVendorForm(v)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                        title="Edit"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteVendor(v.id)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => openPreviewVendor(v)}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                      title="Preview"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEditVendorForm(v)}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                      title="Edit"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteVendor(v.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))
+          )}
+        </div>
 
-            {/* 2. DESKTOP / TABLET DATA TABLE (VISIBLE ON md: AND ABOVE) */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left border-collapse divide-y divide-slate-100 min-w-[850px]">
-                <thead className="bg-slate-50/90 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                  <tr>
-                    <th className="py-3.5 px-4 text-center w-14">SR NO.</th>
-                    <th className="py-3.5 px-5">VENDOR NAME</th>
-                    <th className="py-3.5 px-4 text-center">ACCOUNT TYPE</th>
-                    <th className="py-3.5 px-4">PRIMARY CONTACT</th>
-                    <th className="py-3.5 px-4 font-mono">MOBILE / PHONE</th>
-                    <th className="py-3.5 px-4 font-mono">GSTIN / PAN</th>
-                    <th className="py-3.5 px-4 text-center">PAYMENT TERMS</th>
-                    <th className="py-3.5 px-4 text-center w-28">ACTION</th>
+        {/* 2. DESKTOP / TABLET DATA TABLE (VISIBLE ON md: AND ABOVE) */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left border-collapse divide-y divide-slate-100 min-w-[850px]">
+            <thead className="bg-slate-50/90 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+              <tr>
+                <th className="py-3.5 px-4 text-center w-14">SR NO.</th>
+                <th className="py-3.5 px-5">VENDOR NAME</th>
+                <th className="py-3.5 px-4 text-center">ACCOUNT TYPE</th>
+                <th className="py-3.5 px-4">PRIMARY CONTACT</th>
+                <th className="py-3.5 px-4 font-mono">MOBILE / PHONE</th>
+                <th className="py-3.5 px-4 font-mono">GSTIN / PAN</th>
+                <th className="py-3.5 px-4 text-center">PAYMENT TERMS</th>
+                <th className="py-3.5 px-4 text-center w-28">ACTION</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-800">
+              {isLoading && vendors.length === 0 ? (
+                [1, 2, 3, 4].map((n) => (
+                  <tr key={`v-skel-${n}`} className="animate-pulse">
+                    <td className="py-4 px-4 text-center"><div className="h-4 bg-slate-100 rounded w-6 mx-auto" /></td>
+                    <td className="py-4 px-5"><div className="h-5 bg-slate-100 rounded-lg w-40" /></td>
+                    <td className="py-4 px-4 text-center"><div className="h-5 bg-slate-100 rounded w-24 mx-auto" /></td>
+                    <td className="py-4 px-4"><div className="h-4 bg-slate-100 rounded w-32" /></td>
+                    <td className="py-4 px-4"><div className="h-4 bg-slate-100 rounded w-28" /></td>
+                    <td className="py-4 px-4"><div className="h-4 bg-slate-100 rounded w-28" /></td>
+                    <td className="py-4 px-4 text-center"><div className="h-4 bg-slate-100 rounded w-16 mx-auto" /></td>
+                    <td className="py-4 px-4 text-center"><div className="h-5 bg-slate-100 rounded w-12 mx-auto" /></td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-800">
-                  {filteredVendors.map((v) => (
+                ))
+              ) : filteredVendors.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-slate-400 font-medium text-xs">
+                    No vendor records found matching your filters. Click &quot;+ New Vendor&quot; to add a record.
+                  </td>
+                </tr>
+              ) : (
+                filteredVendors.map((v) => (
                   <tr
                     key={v.id}
                     onClick={() => openPreviewVendor(v)}
@@ -3065,13 +2942,12 @@ export default function VendorsPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </div>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* VENDOR DETAILS PREVIEW MODAL */}
       {isPreviewOpen && previewVendor && (
