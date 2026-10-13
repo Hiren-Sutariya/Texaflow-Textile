@@ -10,6 +10,46 @@ from app.core.formatters import format_to_dd_mm_yyyy, generate_short_id
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
+def renumber_all_expenses(db: Session):
+    expenses = db.query(Expense).all()
+    if not expenses:
+        return
+
+    def parse_d(d_str):
+        if not d_str:
+            return datetime(2026, 1, 1)
+        parts = d_str.strip().split("-")
+        if len(parts) == 3:
+            if len(parts[0]) == 4:
+                return datetime.strptime(d_str, "%Y-%m-%d")
+            return datetime.strptime(d_str, "%d-%m-%Y")
+        return datetime(2026, 1, 1)
+
+    sorted_exp = sorted(
+        expenses,
+        key=lambda x: (
+            parse_d(x.date),
+            int(x.id.replace("exp-", "")) if x.id and x.id.replace("exp-", "").isdigit() else 0
+        )
+    )
+
+    needs_renumber = False
+    for idx, exp in enumerate(sorted_exp, start=1):
+        expected_no = f"EB-{idx:03d}"
+        if exp.expense_no != expected_no:
+            needs_renumber = True
+            break
+        if exp.vendor_name in ("General Vendor", "general vendor", "General vendor"):
+            needs_renumber = True
+            break
+
+    if needs_renumber:
+        for idx, exp in enumerate(sorted_exp, start=1):
+            exp.expense_no = f"EB-{idx:03d}"
+            if exp.vendor_name in ("General Vendor", "general vendor", "General vendor"):
+                exp.vendor_name = None
+        db.commit()
+
 @router.get("", response_model=List[ExpenseResponse])
 def get_expenses(
     category: Optional[str] = None,
@@ -21,6 +61,7 @@ def get_expenses(
     limit: int = 200,
     db: Session = Depends(get_db)
 ):
+    renumber_all_expenses(db)
     query = db.query(Expense)
 
     if category and category != "All":
@@ -36,32 +77,42 @@ def get_expenses(
         query = query.filter(
             (Expense.vendor_name.ilike(search_pattern)) |
             (Expense.category.ilike(search_pattern)) |
-            (Expense.invoice_no.ilike(search_pattern)) |
             (Expense.notes.ilike(search_pattern)) |
-            (Expense.title.ilike(search_pattern))
+            (Expense.expense_no.ilike(search_pattern))
         )
 
-    return query.order_by(Expense.created_at.desc(), Expense.id.desc()).offset(skip).limit(limit).all()
+    return query.order_by(Expense.expense_no.desc(), Expense.id.desc()).offset(skip).limit(limit).all()
 
 @router.post("", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
 def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
+    renumber_all_expenses(db)
     expense_data = expense_in.model_dump()
 
     # 1. Format date to DD-MM-YYYY (e.g., 12-10-2026)
     if expense_data.get("date"):
         expense_data["date"] = format_to_dd_mm_yyyy(expense_data["date"])
 
-    # 2. Simple Short ID Generation (e.g., exp-1, exp-2, exp-9)
-    if not expense_data.get("id") or len(str(expense_data.get("id"))) > 10:
-        expense_data["id"] = generate_short_id(db, Expense, "exp")
+    # 2. Synchronized 3-digit zero-padded ID and expense_no (e.g., exp-023 and EB-023)
+    existing_records = db.query(Expense.expense_no, Expense.id).all()
+    max_num = 0
+    for (eno, eid) in existing_records:
+        if eno and eno.startswith("EB-"):
+            m = eno.replace("EB-", "")
+            if m.isdigit():
+                max_num = max(max_num, int(m))
+        if eid and eid.startswith("exp-"):
+            m = eid.replace("exp-", "")
+            if m.isdigit():
+                max_num = max(max_num, int(m))
 
-    # 3. Auto-generate expense_no if not provided
-    if not expense_data.get("expense_no"):
-        count = db.query(Expense).count()
-        expense_data["expense_no"] = f"EXP-2026-{100 + count + 1}"
+    next_num = (max_num + 1) if max_num > 0 else (len(existing_records) + 1)
+    expense_data["id"] = f"exp-{next_num:03d}"
+    expense_data["expense_no"] = f"EB-{next_num:03d}"
 
-    if not expense_data.get("title"):
-        expense_data["title"] = expense_data.get("notes") or f"{expense_data['category']} Expense"
+    # 3. Clean General Vendor
+    vname = expense_data.get("vendor_name")
+    if vname in ("General Vendor", "general vendor", "General vendor", ""):
+        expense_data["vendor_name"] = None
 
     expense = Expense(**expense_data)
     db.add(expense)
@@ -83,6 +134,8 @@ def update_expense(expense_id: str, expense_in: ExpenseUpdate, db: Session = Dep
         raise HTTPException(status_code=404, detail="Expense not found")
 
     update_data = expense_in.model_dump(exclude_unset=True)
+    if "vendor_name" in update_data and update_data["vendor_name"] in ("General Vendor", "general vendor", "General vendor", ""):
+        update_data["vendor_name"] = None
     if update_data.get("date"):
         update_data["date"] = format_to_dd_mm_yyyy(update_data["date"])
 

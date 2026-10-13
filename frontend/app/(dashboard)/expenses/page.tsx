@@ -25,7 +25,8 @@ import {
   Truck,
   Building2,
   HelpCircle,
-  CreditCard
+  CreditCard,
+  Edit3
 } from "lucide-react";
 
 interface ExpenseItem {
@@ -33,12 +34,10 @@ interface ExpenseItem {
   expense_no: string;
   date: string;
   category: string;
-  title: string;
   vendor_name: string;
   amount: number;
   payment_status: "Paid" | "Pending" | "Unpaid";
   paid_via: string;
-  invoice_no?: string;
   notes?: string;
   bill_image?: string;
 }
@@ -66,6 +65,7 @@ const expenseCategories = [
 ];
 
 const categoryOptions = [
+  "Worker Expenses",
   "Packaging Materials",
   "Dhaga & Consumables",
   "Machine Maintenance & Repairs",
@@ -79,120 +79,112 @@ const categoryOptions = [
   "Worker Advance / Upad"
 ];
 
+const paymentModeOptions = [
+  "BANK TRANSFER (NEFT/RTGS/IMPS)",
+  "UPI (GPay / PhonePe / Paytm)",
+  "Cash",
+  "Cheque",
+  "Credit (15 days)",
+  "Current Account HDFC"
+];
+
 const initialExpenses: ExpenseItem[] = [
   {
-    id: "exp-1",
-    expense_no: "EXP-2026-081",
+    id: "exp-001",
+    expense_no: "EB-001",
     date: "26-09-2026",
     category: "Karigar Salary",
-    title: "Head Karigar & Night Shift Operators Monthly Salary Settlement",
     vendor_name: "Master Karigar Union",
     amount: 55000,
     payment_status: "Paid",
     paid_via: "Current Account HDFC",
-    invoice_no: "SAL-2026-09",
     notes: "Head Karigar & Night Shift Operators Monthly Salary Settlement"
   },
   {
-    id: "exp-2",
-    expense_no: "EXP-2026-082",
+    id: "exp-002",
+    expense_no: "EB-002",
     date: "24-09-2026",
     category: "Electricity & Power",
-    title: "Surat DGVCL Industrial Electricity Bill",
     vendor_name: "DGVCL Power Corp",
     amount: 42500,
     payment_status: "Paid",
     paid_via: "Current Account HDFC",
-    invoice_no: "DGVCL-992184",
     notes: "Surat DGVCL Industrial Electricity Bill (4200 Units)",
     bill_image: sampleBillSvg
   },
   {
-    id: "exp-3",
-    expense_no: "EXP-2026-083",
+    id: "exp-003",
+    expense_no: "EB-003",
     date: "23-09-2026",
     category: "Worker Advance / Upad",
-    title: "Karigar Ramesh & Suresh Festival Advance",
     vendor_name: "Karigar Ramesh (Shift B)",
     amount: 15000,
     payment_status: "Paid",
     paid_via: "Petty Cash",
-    invoice_no: "UPD-0923",
     notes: "Karigar Ramesh & Suresh Festival Advance"
   },
   {
-    id: "exp-4",
-    expense_no: "EXP-2026-084",
+    id: "exp-004",
+    expense_no: "EB-004",
     date: "22-09-2026",
     category: "Machine Maintenance & Repairs",
-    title: "Machine 3 Laser & Bearing Service",
     vendor_name: "Ganesh Embroidery Services",
     amount: 8500,
     payment_status: "Paid",
     paid_via: "UPI Cash",
-    invoice_no: "GES-412",
     notes: "Machine 3 Laser & Bearing Service",
     bill_image: sampleBillSvg
   },
   {
-    id: "exp-5",
-    expense_no: "EXP-2026-085",
+    id: "exp-005",
+    expense_no: "EB-005",
     date: "21-09-2026",
     category: "Packaging Materials",
-    title: "External Multi-Head Embroidery Jobwork Production Charges",
     vendor_name: "Maruti Jobwork Works Surat",
     amount: 24000,
     payment_status: "Pending",
     paid_via: "Credit (15 days)",
-    invoice_no: "MJW-781",
     notes: "Outsourced Machine Work / Jobwork Production Charges"
   },
   {
-    id: "exp-6",
-    expense_no: "EXP-2026-086",
+    id: "exp-006",
+    expense_no: "EB-006",
     date: "20-09-2026",
     category: "Dhaga & Consumables",
-    title: "Groz-Beckert Needles (DBxK5) 10 boxes & Shuttle Hooks",
     vendor_name: "Surat Needle Mart",
     amount: 14200,
     payment_status: "Pending",
     paid_via: "Credit (15 days)",
-    invoice_no: "SNM-889",
     notes: "Groz-Beckert Needles (DBxK5) 10 boxes & Shuttle Hooks",
     bill_image: sampleBillSvg
   },
   {
-    id: "exp-7",
-    expense_no: "EXP-2026-087",
+    id: "exp-007",
+    expense_no: "EB-007",
     date: "18-09-2026",
     category: "Dhaga & Consumables",
-    title: "Viscose Embroidery Threads (Rani & Rama Shade)",
     vendor_name: "Shree Ram Threads Surat",
     amount: 28400,
     payment_status: "Paid",
     paid_via: "HDFC Cheque",
-    invoice_no: "SRT-5510",
     notes: "Viscose Embroidery Threads (Rani & Rama Shade)"
   },
   {
-    id: "exp-8",
-    expense_no: "EXP-2026-088",
+    id: "exp-008",
+    expense_no: "EB-008",
     date: "10-09-2026",
     category: "Logistics & Courier",
-    title: "Generator Diesel Tank Refill (200L) & Goods Tempo Freight",
     vendor_name: "Nayara Energy & Local Freight",
     amount: 19000,
     payment_status: "Paid",
     paid_via: "UPI Cash",
-    invoice_no: "PET-9912",
     notes: "Generator Diesel Tank Refill (200L) & Goods Tempo Freight"
   },
   {
-    id: "exp-9",
-    expense_no: "EXP-2026-109",
+    id: "exp-009",
+    expense_no: "EB-009",
     date: "12-10-2026",
     category: "Machine Maintenance & Repairs",
-    title: "Emergency Needle Holder Replacement",
     vendor_name: "Ganesh Laser Tech Surat",
     amount: 3500,
     payment_status: "Paid",
@@ -228,6 +220,70 @@ const parseDate = (dateStr: string): Date => {
   return new Date(dateStr);
 };
 
+export const normalizeAndRenumberExpenses = (list: ExpenseItem[]): ExpenseItem[] => {
+  if (!Array.isArray(list) || list.length === 0) return list;
+
+  const needsRenumber = list.some((item) => {
+    if (!item.expense_no) return true;
+    const match = item.expense_no.match(/^EB-(\d{3})$/);
+    if (!match) return true;
+    const num = parseInt(match[1], 10);
+    if (num > list.length + 10 || num > 500) return true;
+    if (item.vendor_name === "General Vendor") return true;
+    return false;
+  });
+
+  if (!needsRenumber) return list;
+
+  const sorted = [...list].sort((a, b) => {
+    const timeA = parseDate(a.date).getTime();
+    const timeB = parseDate(b.date).getTime();
+    if (timeA !== timeB) return timeA - timeB;
+    const numA = parseInt((a.id || "").replace(/\D/g, ""), 10) || 0;
+    const numB = parseInt((b.id || "").replace(/\D/g, ""), 10) || 0;
+    return numA - numB;
+  });
+
+  const idToNewNo: Record<string, string> = {};
+  const idToNewId: Record<string, string> = {};
+  sorted.forEach((item, idx) => {
+    const pad = String(idx + 1).padStart(3, "0");
+    idToNewNo[item.id] = `EB-${pad}`;
+    idToNewId[item.id] = `exp-${pad}`;
+  });
+
+  const updated = list.map((item) => {
+    const cleanVendor = item.vendor_name === "General Vendor" ? "" : item.vendor_name || "";
+    return {
+      ...item,
+      id: idToNewId[item.id] || item.id,
+      expense_no: idToNewNo[item.id] || item.expense_no,
+      vendor_name: cleanVendor
+    };
+  });
+
+  try {
+    localStorage.setItem("om_sai_expenses", JSON.stringify(updated));
+  } catch {}
+
+  return updated;
+};
+
+const toInputDate = (dateStr: string) => {
+  if (!dateStr) return "";
+  const parts = dateStr.trim().split("-");
+  if (parts.length === 3) {
+    if (parts[2].length === 4) {
+      // DD-MM-YYYY -> YYYY-MM-DD
+      return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+    }
+    if (parts[0].length === 4) {
+      return dateStr;
+    }
+  }
+  return dateStr;
+};
+
 export default function ExpensesPage() {
   const [hasMounted, setHasMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -237,8 +293,8 @@ export default function ExpensesPage() {
         const saved = localStorage.getItem("om_sai_expenses");
         if (saved !== null) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return normalizeAndRenumberExpenses(parsed);
           }
         }
       } catch {}
@@ -265,27 +321,23 @@ export default function ExpensesPage() {
   const [formCategories, setFormCategories] = useState<string[]>(categoryOptions);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [isAddCatInputVisible, setIsAddCatInputVisible] = useState(false);
-  const [selectedBillImage, setSelectedBillImage] = useState<{ title: string; expense_no: string; image: string } | null>(null);
+  const [selectedBillImage, setSelectedBillImage] = useState<{ notes?: string; expense_no: string; image: string } | null>(null);
 
   // New Expense Form State
   const [formData, setFormData] = useState({
     date: getTodayStr(),
     category: "Packaging Materials",
-    title: "",
     vendor_name: "",
     amount: "" as string | number,
     payment_status: "Pending" as "Paid" | "Pending",
     paid_via: "Current Account HDFC",
-    invoice_no: "",
     notes: "",
     bill_image: ""
   });
   const [showPayeeField, setShowPayeeField] = useState(false);
-  const [showInvoiceField, setShowInvoiceField] = useState(false);
 
   // Input Refs for Enter Key Navigation
   const refDate = useRef<HTMLInputElement>(null);
-  const refTitle = useRef<HTMLInputElement>(null);
   const refAmount = useRef<HTMLInputElement>(null);
   const refVendor = useRef<HTMLInputElement>(null);
   const refPaidVia = useRef<HTMLButtonElement>(null);
@@ -301,9 +353,10 @@ export default function ExpensesPage() {
       try {
         const live = await fetchApi<ExpenseItem[]>("/expenses");
         if (isMounted && Array.isArray(live)) {
-          setExpenses(live);
+          const cleanList = normalizeAndRenumberExpenses(live);
+          setExpenses(cleanList);
           try {
-            localStorage.setItem("om_sai_expenses", JSON.stringify(live));
+            localStorage.setItem("om_sai_expenses", JSON.stringify(cleanList));
           } catch {}
           setIsLoading(false);
           return;
@@ -318,7 +371,8 @@ export default function ExpensesPage() {
         if (saved && isMounted) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setExpenses(parsed);
+            const cleanList = normalizeAndRenumberExpenses(parsed);
+            setExpenses(cleanList);
             setIsLoading(false);
             return;
           }
@@ -403,11 +457,9 @@ export default function ExpensesPage() {
     .filter((item) => {
       const q = search.toLowerCase();
       const matchesSearch =
-        item.title.toLowerCase().includes(q) ||
         item.expense_no.toLowerCase().includes(q) ||
         item.vendor_name.toLowerCase().includes(q) ||
         item.category.toLowerCase().includes(q) ||
-        (item.invoice_no && item.invoice_no.toLowerCase().includes(q)) ||
         (item.notes && item.notes.toLowerCase().includes(q)) ||
         (item.paid_via && item.paid_via.toLowerCase().includes(q));
 
@@ -423,10 +475,13 @@ export default function ExpensesPage() {
       return matchesSearch && matchesStatus && matchesCategory && matchesTime;
     })
     .sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      if (dateB !== dateA) return dateB - dateA;
-      return (b.id || "").localeCompare(a.id || "");
+      // Latest at top: newest date first, then highest expense_no
+      const timeA = parseDate(a.date).getTime();
+      const timeB = parseDate(b.date).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      const numA = parseInt((a.expense_no || "").replace(/\D/g, ""), 10) || 0;
+      const numB = parseInt((b.expense_no || "").replace(/\D/g, ""), 10) || 0;
+      return numB - numA;
     });
 
   // Analytics Calculations based on Period
@@ -472,15 +527,14 @@ export default function ExpensesPage() {
         : "Custom_Period";
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Voucher Ref,Date,Category,Vendor / Payee,Bill / Invoice #,Payment Mode,Status,Remarks / Notes,Amount (INR)\n";
+    csvContent += "Date,Expense / Bill,Category,Vendor / Payee,Payment Mode,Status,Remarks / Notes,Amount (INR)\n";
 
     recordsToExport.forEach((item) => {
       const catClean = `"${(item.category || "").replace(/"/g, '""')}"`;
       const vendorClean = `"${(item.vendor_name || "").replace(/"/g, '""')}"`;
-      const invClean = `"${(item.invoice_no || "").replace(/"/g, '""')}"`;
-      const notesClean = `"${(item.notes || item.title || "").replace(/"/g, '""')}"`;
+      const notesClean = `"${(item.notes || "").replace(/"/g, '""')}"`;
       const modeClean = `"${(item.paid_via || "").replace(/"/g, '""')}"`;
-      const row = `${item.expense_no},${item.date},${catClean},${vendorClean},${invClean},${modeClean},${item.payment_status},${notesClean},${item.amount}`;
+      const row = `${item.date},${item.expense_no},${catClean},${vendorClean},${modeClean},${item.payment_status},${notesClean},${item.amount}`;
       csvContent += row + "\n";
     });
 
@@ -504,21 +558,35 @@ export default function ExpensesPage() {
       return;
     }
 
-    const titleToSave = formData.title.trim() || `${formData.category} Purchase`;
     const formattedDate = formatDateDDMMYYYY(formData.date || getTodayStr());
 
+    let maxSeq = 0;
+    expenses.forEach((item) => {
+      if (item.expense_no) {
+        const m = item.expense_no.match(/EXP-(?:\d{4}-)?(\d+)/i);
+        if (m) {
+          const num = parseInt(m[1], 10);
+          if (!isNaN(num) && num < 500 && num > maxSeq) {
+            maxSeq = num;
+          }
+        }
+      }
+    });
+    if (maxSeq === 0 && expenses.length > 0) {
+      maxSeq = expenses.length;
+    }
+    const nextSeqNo = `EB-${String(maxSeq + 1).padStart(3, "0")}`;
+
     let newEntry: ExpenseItem = {
-      id: `exp-${expenses.length + 1}`,
-      expense_no: `EXP-2026-0${expenses.length + 87}`,
+      id: `exp-${Date.now()}`,
+      expense_no: nextSeqNo,
       date: formattedDate,
       category: formData.category,
-      title: titleToSave,
-      vendor_name: formData.vendor_name.trim() || "General Vendor",
+      vendor_name: formData.vendor_name.trim() || "",
       amount: numericAmount,
       payment_status: formData.payment_status,
       paid_via: formData.paid_via || "Current Account HDFC",
-      invoice_no: formData.invoice_no.trim() || `INV-${Date.now().toString().slice(-4)}`,
-      notes: formData.title.trim(),
+      notes: formData.notes.trim(),
       bill_image: formData.bill_image
     };
 
@@ -531,12 +599,10 @@ export default function ExpensesPage() {
           expense_no: newEntry.expense_no,
           date: formattedDate,
           category: newEntry.category,
-          title: newEntry.title,
           vendor_name: newEntry.vendor_name,
           amount: newEntry.amount,
           payment_status: newEntry.payment_status,
           paid_via: newEntry.paid_via,
-          invoice_no: newEntry.invoice_no,
           notes: newEntry.notes,
           bill_image: newEntry.bill_image || undefined
         })
@@ -562,17 +628,14 @@ export default function ExpensesPage() {
     setFormData({
       date: getTodayStr(),
       category: "Packaging Materials",
-      title: "",
       vendor_name: "",
       amount: "",
       payment_status: "Pending",
       paid_via: "Current Account HDFC",
-      invoice_no: "",
       notes: "",
       bill_image: ""
     });
     setShowPayeeField(false);
-    setShowInvoiceField(false);
   };
 
   const handleCreateExpense = (e: React.FormEvent) => {
@@ -597,6 +660,8 @@ export default function ExpensesPage() {
       }
     }
   };
+
+
 
   if (!hasMounted) return null;
 
@@ -935,14 +1000,23 @@ export default function ExpensesPage() {
                     >
                       {item.payment_status}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteExpense(item.id)}
-                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                      title="Delete Record"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <Link
+                        href={`/expenses/new?edit=${item.id}`}
+                        className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                        title="Edit Expense"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteExpense(item.id)}
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        title="Delete Record"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -950,16 +1024,16 @@ export default function ExpensesPage() {
                 <div className="flex items-start justify-between gap-3 pt-1 border-t border-slate-100">
                   <div className="min-w-0">
                     <h4 className="font-extrabold text-slate-900 text-sm leading-snug">
-                      {item.vendor_name}
+                      {item.vendor_name || "-"}
                     </h4>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs font-mono font-bold text-slate-600">
-                        {item.invoice_no ? `#${item.invoice_no}` : "-"}
+                      <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                        {item.expense_no || "-"}
                       </span>
                       {item.bill_image && (
                         <button
                           type="button"
-                          onClick={() => setSelectedBillImage({ title: item.title, expense_no: item.expense_no, image: item.bill_image! })}
+                          onClick={() => setSelectedBillImage({ notes: item.notes, expense_no: item.expense_no, image: item.bill_image! })}
                           className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] rounded-md border border-blue-200 transition-colors cursor-pointer"
                           title="View Bill Photo"
                         >
@@ -993,10 +1067,10 @@ export default function ExpensesPage() {
                 </div>
 
                 {/* Remarks / Notes */}
-                {(item.notes || item.title) && (
+                {item.notes && (
                   <div className="pt-1 border-t border-slate-100">
                     <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                      {item.notes || item.title}
+                      {item.notes}
                     </p>
                   </div>
                 )}
@@ -1011,14 +1085,14 @@ export default function ExpensesPage() {
             <thead>
               <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                 <th className="py-3.5 px-4">DATE</th>
+                <th className="py-3.5 px-4">EXPENSE / BILL</th>
                 <th className="py-3.5 px-4">CATEGORY</th>
                 <th className="py-3.5 px-4">VENDOR / PAYEE</th>
-                <th className="py-3.5 px-4">BILL / INVOICE #</th>
                 <th className="py-3.5 px-4">PAYMENT MODE</th>
                 <th className="py-3.5 px-4">STATUS</th>
                 <th className="py-3.5 px-4">REMARKS / NOTES</th>
                 <th className="py-3.5 px-4 text-right">AMOUNT (₹)</th>
-                <th className="py-3.5 px-4 text-center w-12">ACTION</th>
+                <th className="py-3.5 px-4 text-center w-20">ACTION</th>
               </tr>
             </thead>
             <tbody suppressHydrationWarning className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -1026,9 +1100,9 @@ export default function ExpensesPage() {
                 [1, 2, 3, 4].map((n) => (
                   <tr key={`exp-skel-${n}`} className="animate-pulse">
                     <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-20" /></td>
+                    <td className="py-3.5 px-4"><div className="h-5 bg-slate-200/80 rounded-lg w-20" /></td>
                     <td className="py-3.5 px-4"><div className="h-5 bg-slate-200/80 rounded-lg w-28" /></td>
                     <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-40" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-20" /></td>
                     <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-24" /></td>
                     <td className="py-3.5 px-4"><div className="h-5 bg-slate-200/80 rounded-lg w-16" /></td>
                     <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-48" /></td>
@@ -1050,28 +1124,16 @@ export default function ExpensesPage() {
                     {formatDateDDMMYYYY(item.date)}
                   </td>
 
-                  {/* 2. CATEGORY */}
-                  <td className="py-3.5 px-4 whitespace-nowrap">
-                    <span className="px-2.5 py-1 bg-blue-50/70 text-blue-900 border border-blue-200/80 rounded-lg text-[11px] font-bold inline-block">
-                      {item.category}
-                    </span>
-                  </td>
-
-                  {/* 3. VENDOR / PAYEE */}
-                  <td className="py-3.5 px-4 whitespace-nowrap">
-                    <span className="font-bold text-slate-900">{item.vendor_name}</span>
-                  </td>
-
-                  {/* 4. BILL / INVOICE # */}
+                  {/* 2. EXPENSE / BILL */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     <div className="inline-flex items-center gap-1.5">
-                      <span className="font-mono text-xs font-bold text-slate-700">
-                        {item.invoice_no || "-"}
+                      <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                        {item.expense_no || "-"}
                       </span>
                       {item.bill_image && (
                         <button
                           type="button"
-                          onClick={() => setSelectedBillImage({ title: item.title, expense_no: item.expense_no, image: item.bill_image! })}
+                          onClick={() => setSelectedBillImage({ notes: item.notes, expense_no: item.expense_no, image: item.bill_image! })}
                           className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] rounded-md border border-blue-200 transition-colors cursor-pointer"
                           title="View Bill Photo"
                         >
@@ -1080,6 +1142,18 @@ export default function ExpensesPage() {
                         </button>
                       )}
                     </div>
+                  </td>
+
+                  {/* 3. CATEGORY */}
+                  <td className="py-3.5 px-4 whitespace-nowrap">
+                    <span className="px-2.5 py-1 bg-blue-50/70 text-blue-900 border border-blue-200/80 rounded-lg text-[11px] font-bold inline-block">
+                      {item.category}
+                    </span>
+                  </td>
+
+                  {/* 4. VENDOR / PAYEE */}
+                  <td className="py-3.5 px-4 whitespace-nowrap">
+                    <span className="font-bold text-slate-900">{item.vendor_name || "-"}</span>
                   </td>
 
                   {/* 5. PAYMENT MODE */}
@@ -1103,7 +1177,7 @@ export default function ExpensesPage() {
                   {/* 7. REMARKS / NOTES */}
                   <td className="py-3.5 px-4 min-w-[200px] max-w-sm">
                     <p className="text-slate-700 text-xs font-medium leading-relaxed break-words">
-                      {item.notes || item.title || "-"}
+                      {item.notes || "-"}
                     </p>
                   </td>
 
@@ -1114,14 +1188,23 @@ export default function ExpensesPage() {
 
                   {/* 9. ACTION */}
                   <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteExpense(item.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                      title="Delete Record"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <Link
+                        href={`/expenses/new?edit=${item.id}`}
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                        title="Edit Expense"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteExpense(item.id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        title="Delete Record"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -1137,7 +1220,7 @@ export default function ExpensesPage() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-2xl w-full p-4 space-y-3 animate-in zoom-in-95 duration-100 font-sans">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <div>
-                <h3 className="font-extrabold text-slate-900 text-sm">{selectedBillImage.title}</h3>
+                <h3 className="font-extrabold text-slate-900 text-sm">{selectedBillImage.notes || selectedBillImage.expense_no}</h3>
                 <p className="text-[10px] text-slate-400 font-mono font-bold">{selectedBillImage.expense_no}</p>
               </div>
               <button

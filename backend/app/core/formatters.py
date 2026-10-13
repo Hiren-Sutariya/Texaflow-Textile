@@ -57,6 +57,6 @@ def generate_short_id(db: Session, model, prefix: str) -> str:
     # If no sequential IDs found, check total count of records as starting point
     if max_num == 0:
         total_count = db.query(model).count()
-        return f"{prefix}-{total_count + 1}"
+        return f"{prefix}-{total_count + 1:03d}"
     
-    return f"{prefix}-{max_num + 1}"
+    return f"{prefix}-{max_num + 1:03d}"

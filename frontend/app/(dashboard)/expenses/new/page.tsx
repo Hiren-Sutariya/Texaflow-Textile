@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { fetchApi } from "@/lib/api";
 import {
@@ -76,10 +76,17 @@ const getYesterdayStr = () => {
   return d.toISOString().split("T")[0];
 };
 
-export default function NewExpenseVoucherPage() {
+function NewExpenseVoucherForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit") || searchParams.get("id");
+  const isEditMode = Boolean(editId);
+
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
+  const [editingExpenseNo, setEditingExpenseNo] = useState("");
+  const [nextVoucherNo, setNextVoucherNo] = useState("");
+  const [isLoadingExpense, setIsLoadingExpense] = useState(false);
 
   // 1. Amount
   const [amount, setAmount] = useState("");
@@ -102,16 +109,14 @@ export default function NewExpenseVoucherPage() {
   const [newCatName, setNewCatName] = useState("");
   const [isAddInputOpen, setIsAddInputOpen] = useState(false);
 
-  // 4. Vendor / Payee & Bill / Invoice (Optional Toggleable Fields - Images 1, 2, 3, 4)
+  // 4. Vendor / Payee (Optional Toggleable Field)
   const [showVendorField, setShowVendorField] = useState(false);
-  const [showBillField, setShowBillField] = useState(false);
   const [isRegisteredVendorMode, setIsRegisteredVendorMode] = useState(false);
   const [isVendorSelectOpen, setIsVendorSelectOpen] = useState(false);
   const [registeredVendorsList, setRegisteredVendorsList] = useState<string[]>(defaultRegisteredVendors);
   const vendorDropdownRef = useRef<HTMLDivElement>(null);
 
   const [vendorName, setVendorName] = useState("");
-  const [billNo, setBillNo] = useState("");
   const [paymentMode, setPaymentMode] = useState("BANK TRANSFER (NEFT/RTGS/IMPS)");
   const [paymentStatus, setPaymentStatus] = useState<"Paid" | "Pending">("Paid");
   const [remarks, setRemarks] = useState("");
@@ -162,6 +167,140 @@ export default function NewExpenseVoucherPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Load expense details when editing
+  useEffect(() => {
+    if (!editId) return;
+
+    const populateExpenseData = (exp: any) => {
+      if (!exp) return;
+
+      if (exp.expense_no) {
+        setEditingExpenseNo(exp.expense_no);
+      }
+      if (exp.amount !== undefined && exp.amount !== null) {
+        setAmount(String(exp.amount));
+      }
+
+      if (exp.date) {
+        let dStr = String(exp.date).trim();
+        if (dStr.includes("-")) {
+          const parts = dStr.split("-");
+          if (parts[0].length === 4) {
+            setVoucherDate(dStr);
+          } else if (parts[2] && parts[2].length === 4) {
+            setVoucherDate(`${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`);
+          }
+        } else if (dStr.includes("/")) {
+          const parts = dStr.split("/");
+          if (parts[2] && parts[2].length === 4) {
+            setVoucherDate(`${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`);
+          }
+        }
+      }
+
+      if (exp.category) {
+        setCategory(exp.category);
+        const isStandard = defaultCategories.some(
+          (c) => c.name.trim().toLowerCase() === exp.category.trim().toLowerCase()
+        );
+        if (!isStandard) {
+          setCategoryPage(1);
+          setCustomCategories((prev) => {
+            if (!prev.some((p) => p.trim().toLowerCase() === exp.category.trim().toLowerCase())) {
+              const updated = [...prev, exp.category.trim()];
+              try {
+                localStorage.setItem("om_sai_custom_expense_categories", JSON.stringify(updated));
+              } catch {}
+              return updated;
+            }
+            return prev;
+          });
+        } else {
+          setCategoryPage(0);
+        }
+      }
+
+      if (exp.vendor_name) {
+        setVendorName(exp.vendor_name);
+        setShowVendorField(true);
+      }
+
+
+
+      if (exp.paid_via) {
+        setPaymentMode(exp.paid_via);
+      }
+
+      if (exp.payment_status) {
+        setPaymentStatus(exp.payment_status === "Pending" || exp.payment_status === "Unpaid" ? "Pending" : "Paid");
+      }
+
+      const noteText = exp.notes || exp.title || "";
+      if (noteText) {
+        setRemarks(noteText);
+      }
+
+      if (exp.bill_image) {
+        setBillImage(exp.bill_image);
+      }
+    };
+
+    // 1. Immediate retrieval from localStorage
+    try {
+      const saved = localStorage.getItem("om_sai_expenses");
+      if (saved) {
+        const list = JSON.parse(saved);
+        const found = list.find((item: any) => String(item.id) === String(editId) || item.expense_no === editId);
+        if (found) {
+          populateExpenseData(found);
+        }
+      }
+    } catch (err) {
+      console.error("Local storage lookup failed:", err);
+    }
+
+    // 2. Fetch from backend API
+    setIsLoadingExpense(true);
+    fetchApi<any>(`/expenses/${editId}`)
+      .then((data) => {
+        if (data) {
+          populateExpenseData(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("Backend API expense fetch error:", err);
+      })
+      .finally(() => {
+        setIsLoadingExpense(false);
+      });
+  }, [editId]);
+
+  // Compute next sequential voucher number for new expenses
+  useEffect(() => {
+    if (!isEditMode) {
+      try {
+        const saved = localStorage.getItem("om_sai_expenses");
+        const list = saved ? JSON.parse(saved) : [];
+        let maxSeq = 0;
+        list.forEach((item: any) => {
+          if (item.expense_no) {
+            const m = item.expense_no.match(/(?:EB|EXP)-(?:\d{4}-)?(\d+)/i);
+            if (m) {
+              const num = parseInt(m[1], 10);
+              if (!isNaN(num) && num < 500 && num > maxSeq) {
+                maxSeq = num;
+              }
+            }
+          }
+        });
+        if (maxSeq === 0 && list.length > 0) {
+          maxSeq = list.length;
+        }
+        setNextVoucherNo(`EB-${String(maxSeq + 1).padStart(3, "0")}`);
+      } catch {}
+    }
+  }, [isEditMode]);
 
   const handleAddCategory = () => {
     const trimmed = newCatName.trim();
@@ -219,17 +358,95 @@ export default function NewExpenseVoucherPage() {
         return d;
       })();
 
+      if (isEditMode && editId) {
+        // UPDATE EXISTING EXPENSE
+        const updatedExpense = {
+          id: editId,
+          expense_no: editingExpenseNo || "EB-001",
+          date: formattedDate,
+          category: category,
+          vendor_name: vendorName.trim() || "",
+          amount: numericAmount,
+          payment_status: paymentStatus,
+          paid_via: paymentMode,
+          notes: remarks.trim(),
+          bill_image: billImage
+        };
+
+        // 1. Update Supabase via FastAPI Backend
+        try {
+          await fetchApi(`/expenses/${editId}`, {
+            method: "PUT",
+            body: JSON.stringify({
+              date: formattedDate,
+              category: updatedExpense.category,
+              vendor_name: updatedExpense.vendor_name,
+              amount: updatedExpense.amount,
+              payment_status: updatedExpense.payment_status,
+              paid_via: updatedExpense.paid_via,
+              notes: updatedExpense.notes,
+              bill_image: updatedExpense.bill_image || undefined
+            })
+          });
+        } catch (apiErr) {
+          console.warn("Backend API update error:", apiErr);
+        }
+
+        // 2. Update localStorage
+        try {
+          const existing = localStorage.getItem("om_sai_expenses");
+          if (existing) {
+            const list = JSON.parse(existing);
+            const updatedList = list.map((item: any) =>
+              String(item.id) === String(editId) || item.expense_no === editId ? updatedExpense : item
+            );
+            localStorage.setItem("om_sai_expenses", JSON.stringify(updatedList));
+          }
+          window.dispatchEvent(new Event("app_data_update"));
+          window.dispatchEvent(new Event("storage"));
+        } catch (err) {
+          console.error(err);
+        }
+
+        router.push("/expenses");
+        return;
+      }
+
+      // CREATE NEW EXPENSE WITH CONTINUOUS SEQUENTIAL NUMBERING
+      let existingList: any[] = [];
+      try {
+        const saved = localStorage.getItem("om_sai_expenses");
+        if (saved) existingList = JSON.parse(saved);
+      } catch {}
+
+      let maxSeq = 0;
+      existingList.forEach((item) => {
+        if (item.expense_no) {
+          const m = item.expense_no.match(/(?:EB|EXP)-(?:\d{4}-)?(\d+)/i);
+          if (m) {
+            const num = parseInt(m[1], 10);
+            if (!isNaN(num) && num < 500 && num > maxSeq) {
+              maxSeq = num;
+            }
+          }
+        }
+      });
+      if (maxSeq === 0 && existingList.length > 0) {
+        maxSeq = existingList.length;
+      }
+      const nextNum = maxSeq + 1;
+      const pad = String(nextNum).padStart(3, "0");
+      const nextSeqNo = `EB-${pad}`;
+
       const newExpense = {
-        id: `exp-${Date.now()}`,
-        expense_no: `EXP-2026-${Math.floor(100 + Math.random() * 900)}`,
+        id: `exp-${pad}`,
+        expense_no: nextSeqNo,
         date: formattedDate,
         category: category,
-        title: remarks.trim() || `${category} Expense Voucher`,
-        vendor_name: vendorName.trim() || "General Vendor",
+        vendor_name: vendorName.trim() || "",
         amount: numericAmount,
         payment_status: paymentStatus,
         paid_via: paymentMode,
-        invoice_no: billNo.trim() || `EXP-${Date.now().toString().slice(-4)}`,
         notes: remarks.trim(),
         bill_image: billImage
       };
@@ -243,12 +460,10 @@ export default function NewExpenseVoucherPage() {
             expense_no: newExpense.expense_no,
             date: formattedDate,
             category: newExpense.category,
-            title: newExpense.title,
             vendor_name: newExpense.vendor_name,
             amount: newExpense.amount,
             payment_status: newExpense.payment_status,
             paid_via: newExpense.paid_via,
-            invoice_no: newExpense.invoice_no,
             notes: newExpense.notes,
             bill_image: newExpense.bill_image || undefined
           })
@@ -266,6 +481,8 @@ export default function NewExpenseVoucherPage() {
         const list = existing ? JSON.parse(existing) : [];
         list.unshift(newExpense);
         localStorage.setItem("om_sai_expenses", JSON.stringify(list));
+        window.dispatchEvent(new Event("app_data_update"));
+        window.dispatchEvent(new Event("storage"));
       } catch (err) {
         console.error(err);
       }
@@ -282,7 +499,9 @@ export default function NewExpenseVoucherPage() {
       {/* 1. TOP HEADER TOOLBAR */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
         <h2 className="font-extrabold text-slate-800 text-xs tracking-wide uppercase">
-          NEW EXPENSE VOUCHER REGISTRATION
+          {isEditMode
+            ? `EDIT EXPENSE VOUCHER ${editingExpenseNo ? `(${editingExpenseNo})` : ""}`
+            : `NEW EXPENSE VOUCHER REGISTRATION ${nextVoucherNo ? `(${nextVoucherNo})` : ""}`}
         </h2>
         <Link
           href="/expenses"
@@ -699,8 +918,7 @@ export default function NewExpenseVoucherPage() {
             </div>
 
             <div className="max-w-xl w-full space-y-3.5">
-              {/* STATE 1: NEITHER IS OPEN -> SHOW BOTH BUTTONS SIDE BY SIDE (IMAGE 1) */}
-              {!showVendorField && !showBillField && (
+              {!showVendorField ? (
                 <div className="flex flex-wrap items-center gap-6 pt-1">
                   <button
                     type="button"
@@ -710,164 +928,92 @@ export default function NewExpenseVoucherPage() {
                     <Plus className="w-3.5 h-3.5" />
                     <span>Enter Custom Payee / Shop</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowBillField(true)}
-                    className="text-blue-600 hover:text-blue-700 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Enter Bill / Invoice / Challan</span>
-                  </button>
                 </div>
-              )}
+              ) : (
+                <div className="space-y-1.5 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                      <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Vendor / Supplier</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsRegisteredVendorMode((prev) => !prev)}
+                      className="text-blue-600 hover:text-blue-700 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <Building2 className="w-3.5 h-3.5" />
+                      <span>{isRegisteredVendorMode ? "Enter Custom Payee / Shop" : "Select Registered Vendor"}</span>
+                    </button>
+                  </div>
 
-              {/* VENDOR / PAYEE EXPANDED OR TOGGLE BUTTON (IMAGE 2, 3, 4) */}
-              {(showVendorField || showBillField) && (
-                <>
-                  {/* IF VENDOR IS OPEN -> SHOW VENDOR / SUPPLIER FIELD (IMAGE 2 & 4) */}
-                  {showVendorField ? (
-                    <div className="space-y-1.5 animate-in fade-in duration-150">
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                          <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Vendor / Supplier</span>
-                        </div>
+                  <div className="flex items-center gap-2">
+                    {isRegisteredVendorMode ? (
+                      /* REGISTERED VENDOR DROPDOWN (ROUNDED-XL MATCHING OTHER FIELDS) */
+                      <div ref={vendorDropdownRef} className="relative flex-1">
                         <button
                           type="button"
-                          onClick={() => setIsRegisteredVendorMode((prev) => !prev)}
-                          className="text-blue-600 hover:text-blue-700 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                          onClick={() => setIsVendorSelectOpen((prev) => !prev)}
+                          className={`w-full h-9 px-3 bg-white border rounded-xl text-xs font-semibold text-slate-900 flex items-center justify-between transition-all cursor-pointer shadow-2xs ${
+                            isVendorSelectOpen
+                              ? "border-blue-500 ring-2 ring-blue-500/20"
+                              : "border-slate-300 hover:border-blue-400"
+                          }`}
                         >
-                          <Building2 className="w-3.5 h-3.5" />
-                          <span>{isRegisteredVendorMode ? "Enter Custom Payee / Shop" : "Select Registered Vendor"}</span>
+                          <span className={vendorName ? "font-bold text-slate-900 truncate" : "text-slate-400 font-normal truncate"}>
+                            {vendorName || "Select registered vendor from list..."}
+                          </span>
+                          <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
                         </button>
-                      </div>
 
-                      <div className="flex items-center gap-2">
-                        {isRegisteredVendorMode ? (
-                          /* REGISTERED VENDOR DROPDOWN (ROUNDED-XL MATCHING OTHER FIELDS) */
-                          <div ref={vendorDropdownRef} className="relative flex-1">
-                            <button
-                              type="button"
-                              onClick={() => setIsVendorSelectOpen((prev) => !prev)}
-                              className={`w-full h-9 px-3 bg-white border rounded-xl text-xs font-semibold text-slate-900 flex items-center justify-between transition-all cursor-pointer shadow-2xs ${
-                                isVendorSelectOpen
-                                  ? "border-blue-500 ring-2 ring-blue-500/20"
-                                  : "border-slate-300 hover:border-blue-400"
-                              }`}
-                            >
-                              <span className={vendorName ? "font-bold text-slate-900 truncate" : "text-slate-400 font-normal truncate"}>
-                                {vendorName || "Select registered vendor from list..."}
-                              </span>
-                              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
-                            </button>
-
-                            {isVendorSelectOpen && (
-                              <div className="absolute left-0 top-[calc(100%+4px)] z-50 min-w-full w-full bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 space-y-0.5 max-h-52 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
-                                {registeredVendorsList.map((v) => (
-                                  <button
-                                    key={v}
-                                    type="button"
-                                    onClick={() => {
-                                      setVendorName(v);
-                                      setIsVendorSelectOpen(false);
-                                    }}
-                                    className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 text-slate-800 flex items-center justify-between cursor-pointer"
-                                  >
-                                    <span className="truncate">{v}</span>
-                                    {vendorName === v && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2 stroke-[2.5]" />}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          /* CUSTOM PAYEE / SHOP TEXT INPUT (ROUNDED-XL MATCHING OTHER FIELDS) */
-                          <div className="relative flex-1">
-                            <input
-                              type="text"
-                              placeholder="Shop or payee name..."
-                              value={vendorName}
-                              onChange={(e) => setVendorName(e.target.value)}
-                              className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
-                              autoFocus
-                            />
+                        {isVendorSelectOpen && (
+                          <div className="absolute left-0 top-[calc(100%+4px)] z-50 min-w-full w-full bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 space-y-0.5 max-h-52 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                            {registeredVendorsList.map((v) => (
+                              <button
+                                key={v}
+                                type="button"
+                                onClick={() => {
+                                  setVendorName(v);
+                                  setIsVendorSelectOpen(false);
+                                }}
+                                className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 text-slate-800 flex items-center justify-between cursor-pointer"
+                              >
+                                <span className="truncate">{v}</span>
+                                {vendorName === v && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2 stroke-[2.5]" />}
+                              </button>
+                            ))}
                           </div>
                         )}
-
-                        {/* RED ✕ REMOVE BUTTON */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowVendorField(false);
-                            setVendorName("");
-                            setIsRegisteredVendorMode(false);
-                            setIsVendorSelectOpen(false);
-                          }}
-                          className="w-7 h-7 flex items-center justify-center text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
-                          title="Remove Vendor Field"
-                        >
-                          <X className="w-4 h-4 stroke-[2.5]" />
-                        </button>
                       </div>
-                    </div>
-                  ) : (
-                    /* IF VENDOR NOT OPEN, BUT BILL IS OPEN -> SHOW VENDOR BUTTON (IMAGE 3) */
+                    ) : (
+                      /* CUSTOM PAYEE / SHOP TEXT INPUT (ROUNDED-XL MATCHING OTHER FIELDS) */
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          placeholder="Shop or payee name..."
+                          value={vendorName}
+                          onChange={(e) => setVendorName(e.target.value)}
+                          className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
+                          autoFocus
+                        />
+                      </div>
+                    )}
+
+                    {/* RED ✕ REMOVE BUTTON */}
                     <button
                       type="button"
-                      onClick={() => setShowVendorField(true)}
-                      className="text-blue-600 hover:text-blue-700 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                      onClick={() => {
+                        setShowVendorField(false);
+                        setVendorName("");
+                        setIsRegisteredVendorMode(false);
+                        setIsVendorSelectOpen(false);
+                      }}
+                      className="w-7 h-7 flex items-center justify-center text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                      title="Remove Vendor Field"
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Enter Custom Payee / Shop</span>
+                      <X className="w-4 h-4 stroke-[2.5]" />
                     </button>
-                  )}
-
-                  {/* IF BILL IS OPEN -> SHOW BILL / INVOICE / CHALLAN FIELD (IMAGE 3 & 4) */}
-                  {showBillField ? (
-                    <div className="space-y-1.5 animate-in fade-in duration-150">
-                      <div className="flex items-center gap-1.5 font-bold text-slate-800 text-xs">
-                        <FileText className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Bill / Invoice / Challan</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <div className="relative flex-1">
-                          <input
-                            type="text"
-                            placeholder="Bill or invoice number..."
-                            value={billNo}
-                            onChange={(e) => setBillNo(e.target.value)}
-                            className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
-                            autoFocus
-                          />
-                        </div>
-
-                        {/* RED ✕ REMOVE BUTTON */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowBillField(false);
-                            setBillNo("");
-                          }}
-                          className="w-7 h-7 flex items-center justify-center text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
-                          title="Remove Bill Field"
-                        >
-                          <X className="w-4 h-4 stroke-[2.5]" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* IF BILL NOT OPEN, BUT VENDOR IS OPEN -> SHOW BILL BUTTON (IMAGE 2) */
-                    <button
-                      type="button"
-                      onClick={() => setShowBillField(true)}
-                      className="text-blue-600 hover:text-blue-700 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Enter Bill / Invoice / Challan</span>
-                    </button>
-                  )}
-                </>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -1036,17 +1182,31 @@ export default function NewExpenseVoucherPage() {
             {isSaving ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Saving Expense...</span>
+                <span>{isEditMode ? "Updating Expense..." : "Saving Expense..."}</span>
               </>
             ) : (
               <>
                 <Save className="w-4 h-4" />
-                <span>Save Expense Voucher</span>
+                <span>{isEditMode ? "Update Expense Voucher" : "Save Expense Voucher"}</span>
               </>
             )}
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NewExpenseVoucherPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <NewExpenseVoucherForm />
+    </Suspense>
   );
 }
