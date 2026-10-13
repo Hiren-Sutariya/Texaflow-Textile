@@ -427,6 +427,9 @@ export default function SettingsPage() {
         window.localStorage.setItem("app_documents", "[]");
         window.localStorage.setItem("app_tasks", "[]");
         window.localStorage.setItem("app_party_master", "[]");
+        window.localStorage.setItem("app_parties", "[]");
+        window.localStorage.setItem("app_parties_list", "[]");
+        window.localStorage.setItem("parties_register_data", "[]");
         window.localStorage.setItem("om_sai_custom_expense_categories", "[]");
 
         // Clear sessionStorage and restore auth session

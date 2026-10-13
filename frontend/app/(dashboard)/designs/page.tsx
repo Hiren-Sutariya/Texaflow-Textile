@@ -69,87 +69,7 @@ interface DesignFolder {
   items: DesignItem[];
 }
 
-const initialFolders: DesignFolder[] = [
-  {
-    id: "des-dummy-1",
-    folder_code: "PJD-2486",
-    title: "Rani Silk Saree Work",
-    party_name: "ABC Tex Fabrics",
-    created_date: "2026-10-01",
-    machine_requirement: "Multi-Head 12 Needles",
-    takko_length_meters: 104,
-    cut_length_meters: 0.93,
-    items: [
-      {
-        id: "item-1",
-        category: "Front",
-        component_name: "Front Body",
-        stitch_count: 48500,
-        rate_per_1k: 0.45
-      },
-      {
-        id: "item-2",
-        category: "Back",
-        component_name: "Back Body",
-        stitch_count: 36200,
-        rate_per_1k: 0.45
-      },
-      {
-        id: "item-3",
-        category: "Patta",
-        component_name: "Pallu Border",
-        stitch_count: 62000,
-        rate_per_1k: 0.45
-      }
-    ],
-    colorways: [
-      {
-        id: "cw-dummy-1",
-        color_name: "Rani",
-        color_code: "#E11D48",
-        takka_count: 2,
-        roll_meters: [106, 104],
-        override_pcs: 60,
-        threads: [
-          {
-            id: "th-1",
-            needle_no: "N1",
-            thread_name: "Rani Silk",
-            thread_code: "Shade #104"
-          },
-          {
-            id: "th-2",
-            needle_no: "N2",
-            thread_name: "Dull Gold Zari",
-            thread_code: "Zari #802"
-          }
-        ]
-      },
-      {
-        id: "cw-dummy-2",
-        color_name: "Rama",
-        color_code: "#0D9488",
-        takka_count: 2,
-        roll_meters: [105, 103],
-        override_pcs: 50,
-        threads: [
-          {
-            id: "th-3",
-            needle_no: "N1",
-            thread_name: "Rama Green",
-            thread_code: "Shade #305"
-          },
-          {
-            id: "th-4",
-            needle_no: "N2",
-            thread_name: "Silver Zari",
-            thread_code: "Zari #901"
-          }
-        ]
-      }
-    ]
-  }
-];
+const initialFolders: DesignFolder[] = [];
 
 export default function DesignsPage() {
   const router = useRouter();
@@ -377,11 +297,7 @@ export default function DesignsPage() {
   // Registered Parties list from localStorage (loads full party objects for suggestions)
   const [registeredParties, setRegisteredParties] = useState<
     { id: string; srNo: number; name: string; mobile: string; city: string; gstin: string }[]
-  >([
-    { id: "p-101", srNo: 1, name: "ABC Tex Fabrics", mobile: "+91 98765 43210", city: "Surat", gstin: "24AAAFA1234A1Z5" },
-    { id: "p-102", srNo: 2, name: "Royal Fashion House", mobile: "+91 98251 99887", city: "Ahmedabad", gstin: "24BBBFR9876B1Z2" },
-    { id: "p-103", srNo: 3, name: "Shree Ram Textiles", mobile: "+91 97230 44332", city: "Surat", gstin: "24CCCFS5544C1Z9" }
-  ]);
+  >([]);
 
   const [isPartyDropdownOpen, setIsPartyDropdownOpen] = useState(false);
   const [partyHighlightIdx, setPartyHighlightIdx] = useState<number>(0);
@@ -398,24 +314,33 @@ export default function DesignsPage() {
   };
 
   const loadPartiesInDesigns = () => {
-    const initialDefault = [
-      { id: "p-101", srNo: 1, name: "ABC Tex Fabrics", mobile: "+91 98765 43210", city: "Surat", gstin: "24AAAFA1234A1Z5" },
-      { id: "p-102", srNo: 2, name: "Royal Fashion House", mobile: "+91 98251 99887", city: "Ahmedabad", gstin: "24BBBFR9876B1Z2" },
-      { id: "p-103", srNo: 3, name: "Shree Ram Textiles", mobile: "+91 97230 44332", city: "Surat", gstin: "24CCCFS5544C1Z9" }
-    ];
-
     try {
       const saved = localStorage.getItem("app_parties");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setRegisteredParties(parsed);
+        if (Array.isArray(parsed)) {
+          // Filter out any legacy test dummy party records
+          const filtered = parsed.filter(
+            (p: any) =>
+              p.name !== "ABC Tex Fabrics" &&
+              p.name !== "Royal Fashion House" &&
+              p.name !== "Shree Ram Textiles" &&
+              p.id !== "p-101" &&
+              p.id !== "p-102" &&
+              p.id !== "p-103"
+          );
+          if (filtered.length !== parsed.length) {
+            localStorage.setItem("app_parties", JSON.stringify(filtered));
+            localStorage.setItem("app_parties_list", JSON.stringify(filtered));
+            localStorage.setItem("parties_register_data", JSON.stringify(filtered));
+          }
+          setRegisteredParties(filtered);
           return;
         }
       }
     } catch (e) {}
 
-    setRegisteredParties(initialDefault);
+    setRegisteredParties([]);
   };
 
   useEffect(() => {

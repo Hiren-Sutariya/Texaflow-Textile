@@ -42,19 +42,6 @@ const mockStock = [
     current_stock: 4.0,
     min_alert: 10.0,
     status: "Low_Stock"
-  },
-  {
-    id: "s-104",
-    material_code: "FAB-PARTY",
-    material_name: "Royal Blue Cotton 60s",
-    category: "Fabric",
-    unit: "meter",
-    warehouse: "Production Floor",
-    ownership_type: "Party",
-    party_name: "ABC Tex Fabrics",
-    current_stock: 500.0,
-    min_alert: 0.0,
-    status: "Normal"
   }
 ];
 
@@ -62,6 +49,13 @@ export default function InventoryPage() {
   const [stock, setStock] = useState(mockStock);
   const [ownershipFilter, setOwnershipFilter] = useState("All");
   const [search, setSearch] = useState("");
+
+  const companyStockTotal = stock
+    .filter((s) => s.ownership_type === "Company")
+    .reduce((acc, curr) => acc + curr.current_stock, 0);
+  const partyStockTotal = stock
+    .filter((s) => s.ownership_type === "Party")
+    .reduce((acc, curr) => acc + curr.current_stock, 0);
 
   const filteredStock = stock.filter((item) => {
     const matchesOwnership = ownershipFilter === "All" || item.ownership_type === ownershipFilter;
@@ -91,10 +85,10 @@ export default function InventoryPage() {
 
         <div className="flex items-center gap-2 flex-wrap">
           <div className="px-2.5 py-1 bg-blue-50 border border-blue-200 rounded-md text-[11px] font-bold text-blue-800">
-            Company Stock: 27.5 kg
+            Company Stock: {companyStockTotal.toFixed(1)} kg
           </div>
           <div className="px-2.5 py-1 bg-purple-50 border border-purple-200 rounded-md text-[11px] font-bold text-purple-800">
-            Party Owned: 500.0 m
+            Party Owned: {partyStockTotal.toFixed(1)} m
           </div>
           <div className="relative flex-1 sm:w-56 min-w-[180px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

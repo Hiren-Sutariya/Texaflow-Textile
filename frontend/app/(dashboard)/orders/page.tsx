@@ -41,11 +41,7 @@ export interface JobOrder {
 
 const initialOrders: JobOrder[] = [];
 
-const partyOptions = [
-  "ABC Tex Fabrics",
-  "Royal Fashion House",
-  "Shree Ram Textiles"
-];
+const partyOptions: string[] = [];
 
 const machineOptions = [
   "Select Machine",
@@ -94,7 +90,7 @@ export default function JobOrdersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [partyFilter, setPartyFilter] = useState("All");
-  const [availableParties, setAvailableParties] = useState<string[]>(partyOptions);
+  const [availableParties, setAvailableParties] = useState<string[]>([]);
   const [availableDesignFolders, setAvailableDesignFolders] = useState<any[]>([]);
   const [availableMachines, setAvailableMachines] = useState<string[]>(AVAILABLE_MACHINES);
   const [formMachineOptions, setFormMachineOptions] = useState<string[]>(machineOptions);
@@ -150,16 +146,22 @@ export default function JobOrdersPage() {
           if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed)) {
-              const names = parsed.map((p: any) => (typeof p === "string" ? p : p.name)).filter(Boolean);
+              const names = parsed
+                .map((p: any) => (typeof p === "string" ? p : p.name))
+                .filter(Boolean)
+                .filter(
+                  (n: string) =>
+                    n !== "ABC Tex Fabrics" &&
+                    n !== "Royal Fashion House" &&
+                    n !== "Shree Ram Textiles"
+                );
               combined = [...combined, ...names];
             }
           }
         } catch (e) {}
       }
-      const uniqueNames = Array.from(new Set([...combined, ...partyOptions]));
-      if (uniqueNames.length > 0) {
-        setAvailableParties(uniqueNames);
-      }
+      const uniqueNames = Array.from(new Set(combined));
+      setAvailableParties(uniqueNames);
     };
 
     loadPartiesList();
@@ -277,14 +279,14 @@ export default function JobOrdersPage() {
     localStorage.setItem("app_job_orders", JSON.stringify(newOrdersList));
   };
 
-  // Form State (Default colorways e.g. Rani: 60, Rama: 50)
+  // Form State
   const [formData, setFormData] = useState({
-    party_name: "ABC Tex Fabrics",
+    party_name: availableParties[0] || "",
     design_name: "",
     design_code: "",
     assigned_machine: "Select Machine",
-    colorways_input: "Rani: 60, Rama: 50",
-    total_quantity: 110,
+    colorways_input: "",
+    total_quantity: 0,
     target_date: new Date(Date.now() + 7 * 86400000).toLocaleDateString("en-GB"),
     status: "Pending" as JobOrder["status"],
     notes: ""
@@ -377,12 +379,12 @@ export default function JobOrdersPage() {
     window.dispatchEvent(new Event("app_data_update"));
     setShowInlineForm(false);
     setFormData({
-      party_name: availableParties[0] || "ABC Tex Fabrics",
+      party_name: availableParties[0] || "",
       design_name: "",
       design_code: "",
       assigned_machine: "Select Machine",
-      colorways_input: "Rani: 60, Rama: 50",
-      total_quantity: 110,
+      colorways_input: "",
+      total_quantity: 0,
       target_date: new Date(Date.now() + 7 * 86400000).toLocaleDateString("en-GB"),
       status: "Pending",
       notes: ""

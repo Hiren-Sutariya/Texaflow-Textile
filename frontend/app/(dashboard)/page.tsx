@@ -422,39 +422,23 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-3 mt-4">
-              <div className="p-3 bg-red-50/80 border border-red-200 rounded-lg">
+              <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-lg">
                 <div className="flex items-start justify-between">
-                  <h4 className="text-xs font-bold text-red-900">Material Shortage Alert</h4>
-                  <span className="text-[10px] font-bold text-red-700">Urgent</span>
+                  <h4 className="text-xs font-bold text-emerald-900">System Ready</h4>
+                  <span className="text-[10px] font-bold text-emerald-700">Live</span>
                 </div>
-                <p className="text-[11px] text-red-800 mt-1">
-                  JW-2026-001 requires 6 kg Gold Metallic Jari. Only 4 kg available.
-                </p>
-                <Link
-                  href="/purchases"
-                  className="inline-block mt-2 text-[11px] font-bold text-red-700 underline hover:text-red-900"
-                >
-                  Create Purchase Requirement →
-                </Link>
-              </div>
-
-              <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-lg">
-                <div className="flex items-start justify-between">
-                  <h4 className="text-xs font-bold text-amber-900">Delayed Job Work</h4>
-                  <span className="text-[10px] font-bold text-amber-700">Due 4 Days</span>
-                </div>
-                <p className="text-[11px] text-amber-800 mt-1">
-                  ABC Tex Fabrics (JW-2026-001) Peacock Border 2,000 pcs in production.
+                <p className="text-[11px] text-emerald-800 mt-1">
+                  All production machines and order ledgers are ready for operation.
                 </p>
               </div>
 
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
                 <div className="flex items-start justify-between">
-                  <h4 className="text-xs font-bold text-slate-900">Overdue Payment</h4>
-                  <span className="text-[10px] font-bold text-slate-600">₹15,000</span>
+                  <h4 className="text-xs font-bold text-slate-900">Payment Ledger Status</h4>
+                  <span className="text-[10px] font-bold text-emerald-700">All Cleared</span>
                 </div>
                 <p className="text-[11px] text-slate-600 mt-1">
-                  Invoice INV-2026-012 from ABC Tex Fabrics due since 5 days.
+                  No overdue party invoices found. All client ledgers are up to date.
                 </p>
               </div>
             </div>

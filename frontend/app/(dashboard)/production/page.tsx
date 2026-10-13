@@ -66,173 +66,24 @@ export interface EmbroideryMachine {
 
 // Initial Clean Machines - Unit 1
 const initialMachinesUnit1: EmbroideryMachine[] = [
-  {
-    id: "u1-m-1",
-    machine_number: "Machine 1",
-    unit_id: "unit_1",
-    head_count: 12,
-    needle_count: 12,
-    status: "Running",
-    current_job: {
-      order_id: "ord-amt-101",
-      party_name: "Om Sai Silks",
-      design_code: "AMS-101",
-      design_name: "Royal Gold Saree Border",
-      target_pcs: 450,
-      completed_pcs: 180,
-      operator_name: "Ramesh Bhai",
-      started_date: "04/10/2026"
-    }
-  },
-  {
-    id: "u1-m-2",
-    machine_number: "Machine 2",
-    unit_id: "unit_1",
-    head_count: 17,
-    needle_count: 12,
-    status: "Running",
-    current_job: {
-      order_id: "ord-amt-102",
-      party_name: "Vardhman Prints",
-      design_code: "AMS-102",
-      design_name: "Zari Border Dupatta Work",
-      target_pcs: 300,
-      completed_pcs: 120,
-      operator_name: "Mohan Lal",
-      started_date: "04/10/2026"
-    }
-  },
-  {
-    id: "u1-m-3",
-    machine_number: "Machine 3",
-    unit_id: "unit_1",
-    head_count: 12,
-    needle_count: 12,
-    status: "Idle"
-  },
-  {
-    id: "u1-m-4",
-    machine_number: "Machine 4",
-    unit_id: "unit_1",
-    head_count: 12,
-    needle_count: 12,
-    status: "Idle"
-  }
+  { id: "u1-m-1", machine_number: "Machine 1", unit_id: "unit_1", head_count: 12, needle_count: 12, status: "Idle" },
+  { id: "u1-m-2", machine_number: "Machine 2", unit_id: "unit_1", head_count: 17, needle_count: 12, status: "Idle" },
+  { id: "u1-m-3", machine_number: "Machine 3", unit_id: "unit_1", head_count: 12, needle_count: 12, status: "Idle" },
+  { id: "u1-m-4", machine_number: "Machine 4", unit_id: "unit_1", head_count: 12, needle_count: 12, status: "Idle" }
 ];
 
 // Initial Clean Machines - Unit 2 (Kadodara)
 const initialMachinesUnit2: EmbroideryMachine[] = [
-  {
-    id: "u2-m-1",
-    machine_number: "Machine 1",
-    unit_id: "unit_2",
-    head_count: 20,
-    needle_count: 12,
-    status: "Running",
-    current_job: {
-      order_id: "ord-kdd-201",
-      party_name: "Kadodara Fashion Hub",
-      design_code: "KDF-501",
-      design_name: "Designer Chaniya Choli Embroidery",
-      target_pcs: 1200,
-      completed_pcs: 850,
-      operator_name: "Suresh Kumar",
-      started_date: "04/10/2026"
-    }
-  },
-  {
-    id: "u2-m-2",
-    machine_number: "Machine 2",
-    unit_id: "unit_2",
-    head_count: 15,
-    needle_count: 12,
-    status: "Running",
-    current_job: {
-      order_id: "ord-kdd-202",
-      party_name: "Laxmi Fabrics Kadodara",
-      design_code: "LXF-808",
-      design_name: "Bridal Lehenga Heavy Lace",
-      target_pcs: 950,
-      completed_pcs: 450,
-      operator_name: "Mahesh Patel",
-      started_date: "04/10/2026"
-    }
-  },
-  {
-    id: "u2-m-3",
-    machine_number: "Machine 3",
-    unit_id: "unit_2",
-    head_count: 17,
-    needle_count: 12,
-    status: "Running",
-    current_job: {
-      order_id: "ord-kdd-203",
-      party_name: "Shree Ganesh Creation",
-      design_code: "KDF-502",
-      design_name: "Heavy Neck Kurti Pattern",
-      target_pcs: 600,
-      completed_pcs: 310,
-      operator_name: "Prakash Verma",
-      started_date: "05/10/2026"
-    }
-  },
-  {
-    id: "u2-m-4",
-    machine_number: "Machine 4",
-    unit_id: "unit_2",
-    head_count: 12,
-    needle_count: 12,
-    status: "Idle"
-  },
-  {
-    id: "u2-m-5",
-    machine_number: "Machine 5",
-    unit_id: "unit_2",
-    head_count: 12,
-    needle_count: 12,
-    status: "Idle"
-  },
-  {
-    id: "u2-m-6",
-    machine_number: "Machine 6",
-    unit_id: "unit_2",
-    head_count: 15,
-    needle_count: 12,
-    status: "Maintenance"
-  }
+  { id: "u2-m-1", machine_number: "Machine 1", unit_id: "unit_2", head_count: 20, needle_count: 12, status: "Idle" },
+  { id: "u2-m-2", machine_number: "Machine 2", unit_id: "unit_2", head_count: 15, needle_count: 12, status: "Idle" },
+  { id: "u2-m-3", machine_number: "Machine 3", unit_id: "unit_2", head_count: 17, needle_count: 12, status: "Idle" },
+  { id: "u2-m-4", machine_number: "Machine 4", unit_id: "unit_2", head_count: 12, needle_count: 12, status: "Idle" },
+  { id: "u2-m-5", machine_number: "Machine 5", unit_id: "unit_2", head_count: 12, needle_count: 12, status: "Idle" },
+  { id: "u2-m-6", machine_number: "Machine 6", unit_id: "unit_2", head_count: 15, needle_count: 12, status: "Idle" }
 ];
 
-// Initial Clean Dummy Production Logs
-const initialLogs: ProductionLog[] = [
-  {
-    id: "log-1",
-    date: "03/10/2026",
-    machine_id: "m-1",
-    machine_name: "Machine 1",
-    shift: "Day",
-    operator_name: "Ramesh Bhai",
-    party_name: "ABC Tex Fabrics",
-    design_code: "PJD-2486",
-    color_name: "Rani",
-    completed_pcs: 120,
-    completed_stitches: 5820000,
-    notes: "Katargam Unit 1 Day shift"
-  },
-  {
-    id: "log-2",
-    date: "03/10/2026",
-    machine_id: "m-5",
-    machine_name: "Machine 5",
-    shift: "Day",
-    operator_name: "Suresh Kumar",
-    party_name: "Royal Fashion House",
-    design_code: "KRT-8812",
-    color_name: "Rama",
-    completed_pcs: 250,
-    completed_stitches: 7450000,
-    notes: "Pandesara Unit 2 High speed"
-  }
-];
+// Initial Clean Production Logs
+const initialLogs: ProductionLog[] = [];
 
 export default function ProductionPage() {
   const router = useRouter();
@@ -252,7 +103,25 @@ export default function ProductionPage() {
     }
     return initialMachinesUnit1;
   });
-  const [logs, setLogs] = useState<ProductionLog[]>(initialLogs);
+  const [logs, setLogs] = useState<ProductionLog[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("app_production_logs");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            return parsed.filter(
+              (l: any) =>
+                l.party_name !== "ABC Tex Fabrics" &&
+                l.party_name !== "Royal Fashion House" &&
+                l.party_name !== "Shree Ram Textiles"
+            );
+          }
+        }
+      } catch {}
+    }
+    return [];
+  });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [selectedOperatorFilter, setSelectedOperatorFilter] = useState<string>("All");

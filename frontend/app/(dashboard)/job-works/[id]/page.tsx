@@ -34,7 +34,7 @@ export default function JobWorkDetailPage() {
                 In Production
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">Party: ABC Tex Fabrics (Surat) | Created: 15 Sep 2026</p>
+            <p className="text-xs text-slate-500 mt-0.5">Job Order Details & Floor Status</p>
           </div>
         </div>
 

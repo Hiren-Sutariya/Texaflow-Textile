@@ -29,95 +29,20 @@ export interface FinishedDesignItem {
 }
 
 // Initial Sample Data for Finished Designs & Stock - Unit 1
-const initialFinishedDesignsUnit1: FinishedDesignItem[] = [
-  {
-    id: "fd-amt-101",
-    unit_id: "unit_1",
-    design_code: "AMS-101",
-    design_name: "Royal Gold Saree Border",
-    party_name: "Om Sai Silks",
-    machine_number: "Machine 1",
-    total_pcs_produced: 450,
-    total_stitches: 1850000,
-    completion_date: "04-10-2026",
-    status: "Dhaga Cutting",
-    dispatched_pcs: 0,
-    remaining_pcs: 450
-  },
-  {
-    id: "fd-amt-102",
-    unit_id: "unit_1",
-    design_code: "AMS-102",
-    design_name: "Zari Border Dupatta Work",
-    party_name: "Vardhman Prints",
-    machine_number: "Machine 2",
-    total_pcs_produced: 300,
-    total_stitches: 1200000,
-    completion_date: "03-10-2026",
-    status: "Ready for Dispatch",
-    dispatched_pcs: 100,
-    remaining_pcs: 200
-  }
-];
+const initialFinishedDesignsUnit1: FinishedDesignItem[] = [];
 
 // Initial Sample Data for Finished Designs & Stock - Unit 2 (Kadodara)
-const initialFinishedDesignsUnit2: FinishedDesignItem[] = [
-  {
-    id: "fd-kdd-201",
-    unit_id: "unit_2",
-    design_code: "KDF-501",
-    design_name: "Designer Chaniya Choli Embroidery",
-    party_name: "Kadodara Fashion Hub",
-    machine_number: "Machine 1",
-    total_pcs_produced: 1200,
-    total_stitches: 5450000,
-    completion_date: "04-10-2026",
-    status: "Ready for Dispatch",
-    dispatched_pcs: 850,
-    remaining_pcs: 350
-  },
-  {
-    id: "fd-kdd-202",
-    unit_id: "unit_2",
-    design_code: "LXF-808",
-    design_name: "Bridal Lehenga Heavy Lace",
-    party_name: "Laxmi Fabrics Kadodara",
-    machine_number: "Machine 2",
-    total_pcs_produced: 950,
-    total_stitches: 4120000,
-    completion_date: "04-10-2026",
-    status: "Dhaga Cutting",
-    dispatched_pcs: 0,
-    remaining_pcs: 950
-  },
-  {
-    id: "fd-kdd-203",
-    unit_id: "unit_2",
-    design_code: "KDF-404",
-    design_name: "Velvet Blouse Piece Work",
-    party_name: "Shree Ganesh Creation",
-    machine_number: "Machine 3",
-    total_pcs_produced: 1500,
-    total_stitches: 6200000,
-    completion_date: "02-10-2026",
-    status: "Dispatched",
-    dispatched_pcs: 1500,
-    remaining_pcs: 0
-  }
-];
+const initialFinishedDesignsUnit2: FinishedDesignItem[] = [];
 
 export default function DispatchesPage() {
   const [activeUnit, setActiveUnit] = useState<string>("Unit 1");
-  const [finishedDesigns, setFinishedDesigns] = useState<FinishedDesignItem[]>(initialFinishedDesignsUnit1);
+  const [finishedDesigns, setFinishedDesigns] = useState<FinishedDesignItem[]>([]);
   const [activeTab, setActiveTab] = useState<string>("All");
   const [openStatusMenuId, setOpenStatusMenuId] = useState<string | null>(null);
 
   // Sync finished designs from Production page & Job Orders in localStorage per active unit
   useEffect(() => {
     const syncFinishedStock = () => {
-      const currentUnit = localStorage.getItem("app_active_unit") || "Unit 1";
-      const defaultList = currentUnit === "Unit 2" ? initialFinishedDesignsUnit2 : initialFinishedDesignsUnit1;
-
       let list: FinishedDesignItem[] = [];
 
       // 1. Read app_finished_designs from localStorage
@@ -126,16 +51,19 @@ export default function DispatchesPage() {
         try {
           const parsed = JSON.parse(savedFinished);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            list = parsed;
+            list = parsed.filter(
+              (d: any) =>
+                d.party_name !== "ABC Tex Fabrics" &&
+                d.party_name !== "Vardhman Prints" &&
+                d.party_name !== "Om Sai Silks" &&
+                d.party_name !== "Kadodara Fashion Hub" &&
+                d.party_name !== "Laxmi Fabrics Kadodara" &&
+                d.party_name !== "Shree Ganesh Creation"
+            );
           }
         } catch (e) {
           console.error("Error loading app_finished_designs", e);
         }
-      }
-
-      // Fallback to unit initial sample designs if empty
-      if (list.length === 0) {
-        list = [...defaultList];
       }
 
       setFinishedDesigns(list);
