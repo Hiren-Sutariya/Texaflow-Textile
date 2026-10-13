@@ -331,6 +331,12 @@ export default function SettingsPage() {
               return updated;
             });
           }
+          if (data.username) {
+            setAuthData((prev) => ({
+              ...prev,
+              username: data.username
+            }));
+          }
         }
       } catch (err) {
         console.warn("Could not fetch company settings from backend:", err);
@@ -1015,17 +1021,19 @@ export default function SettingsPage() {
         localStorage.setItem("app_settings_om_sai", JSON.stringify(formData));
       }
 
-      // Update company firmName in active user session so Sidebar header updates immediately!
+      // Update company firmName and username in active user session so Sidebar and session update immediately!
       const newFirmName = formData.company_name?.trim() || formData.brand_name?.trim();
-      if (newFirmName) {
-        updateUserSession({ firmName: newFirmName });
-      }
+      updateUserSession({
+        ...(newFirmName ? { firmName: newFirmName } : {}),
+        username: authData.username?.trim(),
+        email: authData.username?.trim()
+      });
 
       // Dispatch global events
       window.dispatchEvent(new CustomEvent("app_settings_update", { detail: formData }));
       window.dispatchEvent(new Event("app_data_update"));
 
-      // Also sync company name and details to backend API
+      // Also sync company name, username and details to backend API
       try {
         await fetch(`${API_BASE_URL}/auth/company-settings`, {
           method: "PUT",
@@ -1038,6 +1046,7 @@ export default function SettingsPage() {
             tagline: formData.tagline?.trim(),
             phone: formData.phone?.trim(),
             email: formData.email?.trim(),
+            username: authData.username?.trim(),
             address: formData.address?.trim(),
             city_state: formData.city_state?.trim(),
             pincode: formData.pincode?.trim(),
@@ -1237,8 +1246,26 @@ export default function SettingsPage() {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="contact@omsaienterprise.com"
+                    placeholder="owner@shivcreation.com"
                     className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Login Username / User ID */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block">Login Username *</label>
+                  <span className="text-[10px] text-slate-400 font-normal">Login કરવા માટેનું ID</span>
+                </div>
+                <div className="max-w-md">
+                  <input
+                    type="text"
+                    value={authData.username}
+                    onChange={(e) => setAuthData({ ...authData, username: e.target.value })}
+                    placeholder="e.g. owner@shivcreation.com"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    required
                   />
                 </div>
               </div>

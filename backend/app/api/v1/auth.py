@@ -282,6 +282,7 @@ class UpdateCompanySettingsRequest(BaseModel):
     tagline: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    username: Optional[str] = None
     address: Optional[str] = None
     city_state: Optional[str] = None
     pincode: Optional[str] = None
@@ -313,6 +314,7 @@ def get_company_settings(
     email = comp.email if (comp and comp.email) else (user.email if user else "")
     address = comp.address if (comp and comp.address) else ""
     gstin = comp.gstin if (comp and comp.gstin) else ""
+    username_val = user.username if user else (email or "owner@shivcreation.com")
 
     return {
         "success": True,
@@ -322,15 +324,17 @@ def get_company_settings(
         "owner_name": owner_name,
         "phone": phone,
         "email": email,
+        "username": username_val,
         "address": address,
         "gstin": gstin
     }
 
 @router.put("/company-settings")
 def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Depends(get_db)):
-    """Update company profile and name in database."""
+    """Update company profile, firm name, and username in database."""
     cid = req.company_id or "comp-001"
     clean_name = req.company_name.strip()
+    clean_user = req.username.strip() if req.username else None
 
     comp = db.query(Company).filter(Company.id == cid).first()
     if comp and clean_name:
@@ -356,17 +360,22 @@ def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Dep
         )
         db.add(comp)
 
-    # Also update firm_name on corresponding user(s)
+    # Also update firm_name and username on corresponding user(s)
     users = db.query(User).filter(User.company_id == cid).all()
     for u in users:
         if clean_name:
             u.firm_name = clean_name
+        if clean_user:
+            u.username = clean_user
+            if "@" in clean_user:
+                u.email = clean_user
 
     db.commit()
     return {
         "success": True,
         "message": "Company settings updated successfully",
-        "firm_name": clean_name
+        "firm_name": clean_name,
+        "username": clean_user
     }
 
 class RegisterCompanyRequest(BaseModel):
