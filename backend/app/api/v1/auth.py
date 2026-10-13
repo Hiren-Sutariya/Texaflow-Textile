@@ -53,6 +53,14 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         (User.username.ilike(clean_id)) | (User.email.ilike(clean_id))
     ).first()
 
+    # Also check known aliases for primary admin/owner
+    if not user and clean_id.lower() in ["owner", "admin", "shivcreation", "owner@shivcreation.com", "owner@om-sai.com"]:
+        user = db.query(User).filter(
+            (User.id == "usr-owner-01") | 
+            (User.email == "owner@shivcreation.com") |
+            (User.username == "owner@shivcreation.com")
+        ).first()
+
     # If no users exist in table yet, seed default and test against that
     if not user:
         # Check if table is empty
@@ -61,18 +69,19 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
             pw_hash = hash_password("owner123")
             default_user = User(
                 id="usr-owner-01",
-                username="owner@om-sai.com",
-                email="owner@om-sai.com",
+                username="owner@shivcreation.com",
+                email="owner@shivcreation.com",
                 name="Hiren Sutariya",
                 password_hash=pw_hash,
                 role="Owner",
                 role_title="Proprietor & Director",
-                firm_name="Om Sai Enterprises"
+                firm_name="Shiv Creation",
+                company_id="comp-001"
             )
             db.add(default_user)
             db.commit()
             db.refresh(default_user)
-            if clean_id.lower() in ["owner@om-sai.com", "owner", "admin"]:
+            if clean_id.lower() in ["owner@shivcreation.com", "owner", "admin", "shivcreation", "owner@om-sai.com"]:
                 user = default_user
 
     if not user:
@@ -128,26 +137,26 @@ def get_credentials(
     elif firm_name and firm_name.strip():
         user = query.filter(User.firm_name.ilike(f"%{firm_name.strip()}%")).first()
 
-    # Fallback logic: If company_id is comp-001 or no params passed, strictly return Om Sai Enterprises
+    # Fallback logic: If company_id is comp-001 or no params passed, strictly return Shiv Creation
     if not user:
         user = query.filter(
             (User.company_id == "comp-001") | 
             (User.id == "usr-owner-01") |
-            (User.firm_name.ilike("%om sai%"))
+            (User.firm_name.ilike("%shiv%"))
         ).first()
 
     if not user:
-        # Create default Om Sai user
+        # Create default Shiv Creation user
         pw_hash = hash_password("owner123")
         user = User(
             id="usr-owner-01",
-            username="owner@om-sai.com",
-            email="owner@om-sai.com",
+            username="owner@shivcreation.com",
+            email="owner@shivcreation.com",
             name="Hiren Sutariya",
             password_hash=pw_hash,
             role="Owner",
             role_title="Proprietor & Director",
-            firm_name="Om Sai Enterprises",
+            firm_name="Shiv Creation",
             company_id="comp-001"
         )
         db.add(user)

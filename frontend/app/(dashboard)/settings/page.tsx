@@ -140,7 +140,7 @@ function getDefaultSettings(cid: string, firmName?: string) {
     tagline: "High Precision Multi-Head Embroidery Job Work",
     phone: "9978987181",
     alt_phone: "",
-    email: "owner@om-sai.com",
+    email: "owner@shivcreation.com",
     address: "Plot No. 104-106, GIDC Khatodara Industrial Estate",
     city_state: "Surat, Gujarat",
     pincode: "395002",
@@ -255,7 +255,7 @@ export default function SettingsPage() {
       }
     }
     return {
-      username: "owner@om-sai.com",
+      username: "owner@shivcreation.com",
       name: "Hiren Sutariya",
       currentPassword: "",
       newPassword: "",
