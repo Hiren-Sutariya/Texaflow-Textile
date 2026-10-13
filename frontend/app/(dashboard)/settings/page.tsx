@@ -91,11 +91,52 @@ function getDefaultSettings(cid: string, firmName?: string) {
     };
   }
 
-  // comp-001 or default (User renamed company to Shiv Creation)
+  if (cid === "comp-003" || firmName?.toLowerCase().includes("om sai")) {
+    const fName = firmName || "Om Sai Enterprise";
+    return {
+      company_name: fName,
+      brand_name: "OM SAI",
+      tagline: "High Precision Multi-Head Embroidery Job Work",
+      phone: "9978987181",
+      alt_phone: "",
+      email: "omsai@om-sai.com",
+      address: "Plot No. 104-106, GIDC Khatodara Industrial Estate",
+      city_state: "Surat, Gujarat",
+      pincode: "395002",
+      msme_no: "UDYAM-GJ-24-0091823",
+      website: "",
+      gstin: "24AAAFA1234A1Z5",
+      pan: "AAAFA1234A",
+      bank_name: "HDFC Bank Ltd",
+      account_holder: fName,
+      account_no: "50200012345678",
+      account_type: "Current Account",
+      ifsc: "HDFC0000123",
+      branch_name: "Ring Road Branch, Surat",
+      upi_id: "omsaienterprise@hdfcbank",
+      qr_code_image: "",
+      invoice_title: "TAX INVOICE / JOBWORK BILL",
+      challan_title: "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
+      invoice_prefix: "OMS/26-27/",
+      next_invoice_no: "101",
+      challan_prefix: "DC/26-27/",
+      next_challan_no: "101",
+      hsn_sac_code: "998822 (Textile Jobwork)",
+      gst_rate: "5% (Textile Embroidery Jobwork)",
+      payment_terms: "Due on Receipt",
+      signatory_label: `For ${fName} (Authorized Signatory)`,
+      eway_threshold: "50000",
+      print_qr: true,
+      terms_conditions:
+        "1. Goods once delivered will not be taken back without inspection.\n2. Payment strictly due as per credit terms.\n3. Subject to Surat Jurisdiction only."
+    };
+  }
+
+  // comp-001 (Shiv Creation)
   const fName = firmName || "Shiv Creation";
   return {
     company_name: fName,
-    brand_name: fName.toUpperCase(),
+    brand_name: "SHIV CREATION",
     tagline: "High Precision Multi-Head Embroidery Job Work",
     phone: "9978987181",
     alt_phone: "",
@@ -117,7 +158,7 @@ function getDefaultSettings(cid: string, firmName?: string) {
     qr_code_image: "",
     invoice_title: "TAX INVOICE / JOBWORK BILL",
     challan_title: "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
-    invoice_prefix: "OMS/26-27/",
+    invoice_prefix: "SC/26-27/",
     next_invoice_no: "101",
     challan_prefix: "DC/26-27/",
     next_challan_no: "101",
@@ -198,6 +239,15 @@ export default function SettingsPage() {
         return {
           username: "radhe@krishna.com",
           name: "Kishorbhai Patel",
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        };
+      }
+      if (cid === "comp-003") {
+        return {
+          username: "omsai",
+          name: "Hiren Sutariya",
           currentPassword: "",
           newPassword: "",
           confirmPassword: ""

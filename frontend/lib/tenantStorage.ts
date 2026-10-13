@@ -20,18 +20,25 @@ export function getStoredCompanyId(): string {
       }
       // 3. User ID or username/email checks for known tenants
       if (
+        parsed?.id === "usr-comp-003-owner" ||
+        parsed?.username?.toLowerCase() === "omsai" ||
+        parsed?.email?.toLowerCase() === "omsai@om-sai.com" ||
+        parsed?.companyId === "comp-003"
+      ) {
+        return "comp-003";
+      }
+      if (
         parsed?.id === "usr-comp-002-owner" || 
         parsed?.email?.toLowerCase().includes("radhe") || 
         parsed?.username?.toLowerCase().includes("radhe") ||
-        parsed?.firmName?.toLowerCase().includes("radhe")
+        parsed?.firmName?.toLowerCase().includes("radhe") ||
+        parsed?.companyId === "comp-002"
       ) {
         return "comp-002";
       }
       if (
         parsed?.id === "usr-owner-01" || 
-        parsed?.email?.toLowerCase().includes("om-sai") ||
         parsed?.firmName?.toLowerCase().includes("shiv") ||
-        parsed?.firmName?.toLowerCase().includes("om sai") ||
         (parsed?.companyId && parsed.companyId.includes("shiv"))
       ) {
         return "comp-001";

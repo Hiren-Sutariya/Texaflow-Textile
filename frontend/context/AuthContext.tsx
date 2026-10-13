@@ -57,6 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (parsed.id && parsed.id.includes("comp-")) {
             const m = parsed.id.match(/(comp-\d+)/);
             if (m) resolvedCompanyId = m[1];
+          } else if (parsed.id === "usr-comp-003-owner" || parsed.username === "omsai" || parsed.firmName?.toLowerCase().includes("om sai")) {
+            resolvedCompanyId = "comp-003";
           } else if (parsed.firmName && parsed.firmName.toLowerCase().includes("radhe")) {
             resolvedCompanyId = "comp-002";
           } else if (
