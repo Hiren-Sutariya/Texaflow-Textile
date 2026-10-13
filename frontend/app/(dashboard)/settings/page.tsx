@@ -343,7 +343,7 @@ export default function SettingsPage() {
     if (user) {
       setAuthData((prev) => ({
         ...prev,
-        username: user.email || user.username || prev.username,
+        username: user.username || user.email || prev.username,
         name: user.name || prev.name
       }));
     }
@@ -353,7 +353,7 @@ export default function SettingsPage() {
         const queryParams = new URLSearchParams();
         if (user?.id) queryParams.set("user_id", user.id);
         if (cid) queryParams.set("company_id", cid);
-        if (user?.email || user?.username) queryParams.set("username", user.email || user.username || "");
+        if (user?.username || user?.email) queryParams.set("username", user.username || user.email || "");
         if (user?.firmName) queryParams.set("firm_name", user.firmName);
 
         const url = `${API_BASE_URL}/auth/credentials?${queryParams.toString()}`;
@@ -377,7 +377,7 @@ export default function SettingsPage() {
         if (user) {
           setAuthData((prev) => ({
             ...prev,
-            username: user.email || prev.username,
+            username: user.username || user.email || prev.username,
             name: user.name || prev.name
           }));
         }
@@ -969,11 +969,13 @@ export default function SettingsPage() {
         if (res.ok) {
           setSaveSuccessMsg(
             isChangingPassword
-              ? "Display Name & Password updated successfully!"
-              : "Profile Display Name updated successfully!"
+              ? "Login User ID, Name & Password updated successfully!"
+              : "Login User ID & Profile updated successfully! હવેથી આ નવા User ID થી Login થશે."
           );
           setAuthData((prev) => ({
             ...prev,
+            username: data.user?.username || authData.username.trim(),
+            name: data.user?.name || authData.name.trim(),
             currentPassword: "",
             newPassword: "",
             confirmPassword: ""
@@ -981,7 +983,8 @@ export default function SettingsPage() {
 
           // Immediately update active session in AuthContext so Sidebar updates!
           updateUserSession({
-            email: data.user?.username || authData.username.trim(),
+            username: data.user?.username || authData.username.trim(),
+            email: data.user?.email || data.user?.username || authData.username.trim(),
             name: data.user?.name || authData.name.trim()
           });
 
@@ -1756,16 +1759,42 @@ export default function SettingsPage() {
           {/* TAB 4: LOGIN & PASSWORD */}
           {/* ========================================================================= */}
           {activeTab === "Login & Password" && (
-            <div className="space-y-3.5 animate-in fade-in duration-100">
+            <div className="space-y-4 animate-in fade-in duration-100">
+              {/* Prominent Active Login ID Banner */}
+              <div className="p-4 bg-gradient-to-r from-blue-50/90 to-indigo-50/80 border border-blue-200/90 rounded-2xl flex items-start gap-3.5 shadow-2xs">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div className="space-y-1 w-full">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-blue-900 uppercase tracking-wider">
+                      Current Active Login ID / Username
+                    </span>
+                    <span className="px-2 py-0.5 text-[10px] font-extrabold bg-blue-600 text-white rounded-full uppercase tracking-wider">
+                      ACTIVE USER
+                    </span>
+                  </div>
+                  <div className="text-sm font-black text-slate-900 font-mono tracking-tight bg-white/80 border border-blue-200/70 px-2.5 py-1 rounded-lg w-fit mt-0.5">
+                    {authData.username || "owner@shivcreation.com"}
+                  </div>
+                  <p className="text-[11px] text-blue-800/90 leading-relaxed font-medium pt-0.5">
+                    આ તમારું અધિકૃત Login ID છે. Login પેજ પર આ જ User ID અને પાસવર્ડ દાખલ કરવો. જો તમે નીચેથી User ID બદલીને Save કરશો તો સોફ્ટવેરમાં તે નવા User ID થી જ Login થશે.
+                  </p>
+                </div>
+              </div>
+
               {/* User ID */}
               <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Login User ID / Email *</label>
+                <div>
+                  <label className="font-bold text-slate-700 block">Login User ID / Username *</label>
+                  <span className="text-[10px] text-slate-400 font-normal">Login કરવા માટેનું ID</span>
+                </div>
                 <div className="max-w-md">
                   <input
                     type="text"
                     value={authData.username}
                     onChange={(e) => setAuthData({ ...authData, username: e.target.value })}
-                    placeholder="owner@om-sai.com"
+                    placeholder="e.g. owner@shivcreation.com"
                     className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                     required
                   />
@@ -1774,7 +1803,10 @@ export default function SettingsPage() {
 
               {/* Display Name */}
               <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Display Name</label>
+                <div>
+                  <label className="font-bold text-slate-700 block">Display Name</label>
+                  <span className="text-[10px] text-slate-400 font-normal">સોફ્ટવેરમાં દેખાતું તમારું નામ</span>
+                </div>
                 <div className="max-w-md">
                   <input
                     type="text"
@@ -1790,7 +1822,7 @@ export default function SettingsPage() {
               <div className="pt-3 border-t border-slate-100 space-y-3">
                 <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80">
                   <p className="text-[11px] font-bold text-slate-500">
-                    🔑 Password Change (Optional) — Leave password fields blank if you only want to update your Display Name or User ID.
+                    🔑 Password Change (Optional) — જો ફક્ત User ID કે Name બદલવું હોય તો પાસવર્ડ ખાલી રાખી શકો છો.
                   </p>
                 </div>
 

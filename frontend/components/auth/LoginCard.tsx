@@ -140,7 +140,7 @@ export function LoginCard({ onSuccess }: LoginCardProps) {
               type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="owner@om-sai.com"
+              placeholder="owner@shivcreation.com"
               required
               className="w-full h-10 pl-9 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 transition-colors shadow-2xs"
             />

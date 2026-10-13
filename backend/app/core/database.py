@@ -71,17 +71,18 @@ def init_db():
                 
                 default_user = User(
                     id="usr-owner-01",
-                    username="owner@om-sai.com",
-                    email="owner@om-sai.com",
+                    username="owner@shivcreation.com",
+                    email="owner@shivcreation.com",
                     name="Hiren Sutariya",
                     password_hash=pw_hash,
                     role="Owner",
                     role_title="Proprietor & Director",
-                    firm_name="Om Sai Enterprises"
+                    firm_name="Shiv Creation",
+                    company_id="comp-001"
                 )
                 db.add(default_user)
                 db.commit()
-                print("✅ Default admin user created (owner@om-sai.com / owner123)")
+                print("✅ Default admin user created (owner@shivcreation.com / owner123)")
         finally:
             db.close()
     except Exception as e:

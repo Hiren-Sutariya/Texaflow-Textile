@@ -45,21 +45,13 @@ class ChangeCredentialsRequest(BaseModel):
 
 @router.post("/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    """Authenticate user with username/email and password."""
+    """Authenticate user strictly with their registered username or email and password."""
     clean_id = req.username_or_email.strip()
     
-    # Check in DB
+    # Check in DB strictly by registered username or email (case-insensitive)
     user = db.query(User).filter(
         (User.username.ilike(clean_id)) | (User.email.ilike(clean_id))
     ).first()
-
-    # Also check known aliases for primary admin/owner
-    if not user and clean_id.lower() in ["owner", "admin", "shivcreation", "owner@shivcreation.com", "owner@om-sai.com"]:
-        user = db.query(User).filter(
-            (User.id == "usr-owner-01") | 
-            (User.email == "owner@shivcreation.com") |
-            (User.username == "owner@shivcreation.com")
-        ).first()
 
     # If no users exist in table yet, seed default and test against that
     if not user:
@@ -81,7 +73,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
             db.add(default_user)
             db.commit()
             db.refresh(default_user)
-            if clean_id.lower() in ["owner@shivcreation.com", "owner", "admin", "shivcreation", "owner@om-sai.com"]:
+            if clean_id.lower() == "owner@shivcreation.com":
                 user = default_user
 
     if not user:
@@ -200,11 +192,11 @@ def change_credentials(req: ChangeCredentialsRequest, db: Session = Depends(get_
         ).first()
 
     if not user:
-        # Fallback to comp-001 / Om Sai user
+        # Fallback to comp-001 / Shiv Creation user
         user = query.filter(
             (User.company_id == "comp-001") |
             (User.id == "usr-owner-01") |
-            (User.firm_name.ilike("%om sai%"))
+            (User.firm_name.ilike("%shiv%"))
         ).first()
 
     if not user:

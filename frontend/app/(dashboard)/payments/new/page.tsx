@@ -59,9 +59,10 @@ export default function NewPaymentVoucherPage() {
     return Array.from(new Set(list));
   }, [currentFirmName]);
 
-  // Form State (Initializes paying company to current tenant firm name)
+  // Form State (Initializes paying company to current tenant firm name once)
   const [formType, setFormType] = useState<"Payment Out" | "Receipt In">("Payment Out");
-  const [payingCompany, setPayingCompany] = useState<string>("");
+  const [payingCompany, setPayingCompany] = useState<string>(() => user?.firmName || "Shiv Creation");
+  const isCompanyInitialized = useRef(Boolean(user?.firmName));
   const [supplierName, setSupplierName] = useState("");
   const [formVoucherDate, setFormVoucherDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -90,12 +91,13 @@ export default function NewPaymentVoucherPage() {
     );
   }, [vendorsList, supplierName]);
 
-  // Set default paying company once user firm name is ready
+  // Set default paying company strictly once on initial mount if not already set
   useEffect(() => {
-    if (!payingCompany && currentFirmName) {
+    if (!isCompanyInitialized.current && currentFirmName && currentFirmName !== "Main Account") {
       setPayingCompany(currentFirmName);
+      isCompanyInitialized.current = true;
     }
-  }, [currentFirmName, payingCompany]);
+  }, [currentFirmName]);
 
   // Load registered vendors for this company from API / storage
   useEffect(() => {

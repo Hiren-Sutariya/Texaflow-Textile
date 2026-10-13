@@ -79,7 +79,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
     setSuccessMsg("Authenticating via Google...");
     setIsSubmitting(true);
     try {
-      const res = await login("owner@om-sai.com", "owner123");
+      const res = await login("owner@shivcreation.com", "owner123");
       if (res.success) {
         setSuccessMsg("Signed in with Google successfully!");
         setTimeout(() => {
@@ -99,7 +99,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
     setSuccessMsg("Authenticating via Apple ID...");
     setIsSubmitting(true);
     try {
-      const res = await login("owner@om-sai.com", "owner123");
+      const res = await login("owner@shivcreation.com", "owner123");
       if (res.success) {
         setSuccessMsg("Signed in with Apple successfully!");
         setTimeout(() => {
@@ -674,7 +674,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                         type="email"
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
-                        placeholder="owner@om-sai.com"
+                        placeholder="owner@shivcreation.com"
                         required
                         className="w-full h-12 pl-11 pr-4 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition-colors shadow-2xs"
                       />
