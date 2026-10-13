@@ -163,11 +163,41 @@ export default function SettingsPage() {
       }
     } catch {}
 
+    // Synchronize authData from current logged-in user session immediately
+    if (user) {
+      setAuthData((prev) => ({
+        ...prev,
+        username: user.email || user.username || prev.username,
+        name: user.name || prev.name
+      }));
+    }
+
     const fetchCredentials = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/auth/credentials`);
+        const queryParams = new URLSearchParams();
+        if (user?.id) queryParams.set("user_id", user.id);
+        if (user?.companyId) queryParams.set("company_id", user.companyId);
+        if (user?.email || user?.username) queryParams.set("username", user.email || user.username || "");
+        if (user?.firmName) queryParams.set("firm_name", user.firmName);
+
+        const url = queryParams.toString()
+          ? `${API_BASE_URL}/auth/credentials?${queryParams.toString()}`
+          : `${API_BASE_URL}/auth/credentials`;
+
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
+          const currentCompanyId = user?.companyId || "comp-001";
+          // Strict Tenant Guard: NEVER overwrite current tenant with another tenant's credentials
+          if (data.company_id && data.company_id !== currentCompanyId) {
+            console.warn("Ignoring mismatched tenant credentials:", data);
+            return;
+          }
+          if (user?.firmName && data.firm_name && !data.firm_name.toLowerCase().includes(user.firmName.toLowerCase().slice(0, 4))) {
+            console.warn("Ignoring mismatched firm credentials:", data.firm_name);
+            return;
+          }
+
           if (data.username) {
             setAuthData((prev) => ({
               ...prev,
@@ -754,7 +784,9 @@ export default function SettingsPage() {
             current_password: authData.currentPassword,
             new_username: authData.username.trim(),
             name: authData.name.trim(),
-            new_password: authData.newPassword.trim()
+            new_password: authData.newPassword.trim(),
+            user_id: user?.id,
+            company_id: user?.companyId || "comp-001"
           })
         });
 

@@ -8,6 +8,7 @@ export interface UserSession {
   id: string;
   name: string;
   email: string;
+  username?: string;
   role: "Owner" | "Manager" | "Accounts";
   roleTitle: string;
   firmName: string;
@@ -113,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: data.user.id,
           name: data.user.name,
           email: data.user.email || data.user.username,
+          username: data.user.username || data.user.email,
           role: data.user.role || "Owner",
           roleTitle: data.user.roleTitle || "Proprietor & Director",
           firmName: data.user.firmName || "TexaFlow Textile",

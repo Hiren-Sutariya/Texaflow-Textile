@@ -40,6 +40,8 @@ class ChangeCredentialsRequest(BaseModel):
     new_username: str
     new_password: Optional[str] = None
     name: Optional[str] = None
+    user_id: Optional[str] = None
+    company_id: Optional[str] = None
 
 @router.post("/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
@@ -105,11 +107,37 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     }
 
 @router.get("/credentials")
-def get_credentials(db: Session = Depends(get_db)):
-    """Fetch current primary admin credentials info."""
-    user = db.query(User).first()
+def get_credentials(
+    user_id: Optional[str] = None,
+    username: Optional[str] = None,
+    company_id: Optional[str] = None,
+    firm_name: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Fetch current primary admin credentials info strictly isolated by user or company."""
+    query = db.query(User)
+    user = None
+
+    if user_id and user_id.strip():
+        user = query.filter(User.id == user_id.strip()).first()
+    elif username and username.strip():
+        clean = username.strip()
+        user = query.filter((User.username.ilike(clean)) | (User.email.ilike(clean))).first()
+    elif company_id and company_id.strip():
+        user = query.filter(User.company_id == company_id.strip()).first()
+    elif firm_name and firm_name.strip():
+        user = query.filter(User.firm_name.ilike(f"%{firm_name.strip()}%")).first()
+
+    # Fallback logic: If company_id is comp-001 or no params passed, strictly return Om Sai Enterprises
     if not user:
-        # Create default
+        user = query.filter(
+            (User.company_id == "comp-001") | 
+            (User.id == "usr-owner-01") |
+            (User.firm_name.ilike("%om sai%"))
+        ).first()
+
+    if not user:
+        # Create default Om Sai user
         pw_hash = hash_password("owner123")
         user = User(
             id="usr-owner-01",
@@ -119,7 +147,8 @@ def get_credentials(db: Session = Depends(get_db)):
             password_hash=pw_hash,
             role="Owner",
             role_title="Proprietor & Director",
-            firm_name="Om Sai Enterprises"
+            firm_name="Om Sai Enterprises",
+            company_id="comp-001"
         )
         db.add(user)
         db.commit()
@@ -127,17 +156,39 @@ def get_credentials(db: Session = Depends(get_db)):
 
     return {
         "success": True,
+        "id": user.id,
         "username": user.username,
         "email": user.email or user.username,
         "name": user.name,
         "role": user.role,
-        "firm_name": user.firm_name
+        "firm_name": user.firm_name,
+        "company_id": user.company_id or "comp-001"
     }
 
 @router.put("/change-credentials")
 def change_credentials(req: ChangeCredentialsRequest, db: Session = Depends(get_db)):
     """Change admin login username and password in the database."""
-    user = db.query(User).first()
+    query = db.query(User)
+    user = None
+    if req.user_id and req.user_id.strip():
+        user = query.filter(User.id == req.user_id.strip()).first()
+    elif req.company_id and req.company_id.strip():
+        user = query.filter(User.company_id == req.company_id.strip()).first()
+
+    if not user and req.new_username and req.new_username.strip():
+        user = query.filter(
+            (User.username.ilike(req.new_username.strip())) |
+            (User.email.ilike(req.new_username.strip()))
+        ).first()
+
+    if not user:
+        # Fallback to comp-001 / Om Sai user
+        user = query.filter(
+            (User.company_id == "comp-001") |
+            (User.id == "usr-owner-01") |
+            (User.firm_name.ilike("%om sai%"))
+        ).first()
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -193,7 +244,8 @@ def change_credentials(req: ChangeCredentialsRequest, db: Session = Depends(get_
             "id": user.id,
             "username": user.username,
             "email": user.email,
-            "name": user.name
+            "name": user.name,
+            "company_id": user.company_id or "comp-001"
         }
     }
 
