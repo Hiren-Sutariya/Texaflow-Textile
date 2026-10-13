@@ -141,13 +141,17 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       try {
         const cid = user?.companyId || "comp-001";
         const savedTenant = localStorage.getItem(`app_settings_${cid}`);
-        const savedLegacy = localStorage.getItem("app_settings_om_sai");
+        const savedLegacy = cid === "comp-001" ? localStorage.getItem("app_settings_om_sai") : null;
         const raw = savedTenant || savedLegacy;
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed.company_name?.trim()) {
             setCustomFirmName(parsed.company_name.trim());
+            return;
           }
+        }
+        if (user?.firmName?.trim()) {
+          setCustomFirmName(user.firmName.trim());
         }
       } catch {}
     };

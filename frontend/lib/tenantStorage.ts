@@ -9,27 +9,38 @@ export function getStoredCompanyId(): string {
     const raw = sessionStorage.getItem("texaflow_auth_session");
     if (raw) {
       const parsed = JSON.parse(raw);
-      // 1. Highest Priority: Explicit tenant marker in user ID (e.g. usr-comp-002-owner)
+      // 1. Explicit tenant marker in user ID (e.g. usr-comp-002-owner)
       if (parsed?.id && parsed.id.includes("comp-")) {
         const m = parsed.id.match(/(comp-\d+)/);
         if (m) return m[1];
       }
-      // 2. Specific non-default companyId
-      if (parsed?.companyId && parsed.companyId !== "comp-001") {
+      // 2. Specific valid companyId format (comp-001, comp-002, ...)
+      if (parsed?.companyId && /^comp-\d+$/.test(parsed.companyId)) {
         return parsed.companyId;
       }
-      // 3. Known or new company firm name check
-      if (parsed?.firmName && !parsed.firmName.toLowerCase().includes("om sai")) {
-        if (parsed.firmName.toLowerCase().includes("radhe")) {
-          return "comp-002";
-        }
-        return `comp-${parsed.firmName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8)}`;
-      }
-      // 4. Known company email check
-      if (parsed?.email?.toLowerCase().includes("radhe") || parsed?.username?.toLowerCase().includes("radhe")) {
+      // 3. User ID or username/email checks for known tenants
+      if (
+        parsed?.id === "usr-comp-002-owner" || 
+        parsed?.email?.toLowerCase().includes("radhe") || 
+        parsed?.username?.toLowerCase().includes("radhe") ||
+        parsed?.firmName?.toLowerCase().includes("radhe")
+      ) {
         return "comp-002";
       }
-      if (parsed?.companyId) return parsed.companyId;
+      if (
+        parsed?.id === "usr-owner-01" || 
+        parsed?.email?.toLowerCase().includes("om-sai") ||
+        parsed?.firmName?.toLowerCase().includes("shiv") ||
+        parsed?.firmName?.toLowerCase().includes("om sai") ||
+        (parsed?.companyId && parsed.companyId.includes("shiv"))
+      ) {
+        return "comp-001";
+      }
+      // 4. Fallback to valid companyId if present
+      if (parsed?.companyId && typeof parsed.companyId === "string" && parsed.companyId.startsWith("comp-")) {
+        const match = parsed.companyId.match(/(comp-\d+)/);
+        if (match) return match[1];
+      }
     }
   } catch {}
   return "comp-001";

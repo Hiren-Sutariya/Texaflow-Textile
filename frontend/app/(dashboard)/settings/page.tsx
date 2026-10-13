@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { API_BASE_URL, fetchApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { getStoredCompanyId } from "@/lib/tenantStorage";
 
 const PAYMENT_TERMS_OPTIONS = [
   "Due on Receipt",
@@ -47,6 +48,99 @@ const ACCOUNT_TYPES = [
   "Overdraft (OD) Account",
   "Savings Account"
 ];
+
+function getDefaultSettings(cid: string, firmName?: string) {
+  if (cid === "comp-002" || firmName?.toLowerCase().includes("radhe")) {
+    const fName = firmName || "Radhe Krishna Textiles";
+    return {
+      company_name: fName,
+      brand_name: "RADHE KRISHNA",
+      tagline: "High Precision Multi-Head Embroidery Job Work",
+      phone: "9876543210",
+      alt_phone: "",
+      email: "radhe@krishna.com",
+      address: "Surat, Gujarat",
+      city_state: "Surat, Gujarat",
+      pincode: "395002",
+      msme_no: "",
+      website: "",
+      gstin: "24AAAFR1234A1Z5",
+      pan: "AAAFR1234A",
+      bank_name: "State Bank of India",
+      account_holder: fName,
+      account_no: "",
+      account_type: "Current Account",
+      ifsc: "SBIN0001234",
+      branch_name: "Ring Road Branch, Surat",
+      upi_id: "radhekrishna@sbi",
+      qr_code_image: "",
+      invoice_title: "TAX INVOICE / JOBWORK BILL",
+      challan_title: "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
+      invoice_prefix: "RKT/26-27/",
+      next_invoice_no: "101",
+      challan_prefix: "DC/26-27/",
+      next_challan_no: "101",
+      hsn_sac_code: "998822 (Textile Jobwork)",
+      gst_rate: "5% (Textile Embroidery Jobwork)",
+      payment_terms: "Due on Receipt",
+      signatory_label: `For ${fName} (Authorized Signatory)`,
+      eway_threshold: "50000",
+      print_qr: true,
+      terms_conditions:
+        "1. Goods once delivered will not be taken back without inspection.\n2. Payment strictly due as per credit terms.\n3. Subject to Surat Jurisdiction only."
+    };
+  }
+
+  // comp-001 or default (User renamed company to Shiv Creation)
+  const fName = firmName || "Shiv Creation";
+  return {
+    company_name: fName,
+    brand_name: fName.toUpperCase(),
+    tagline: "High Precision Multi-Head Embroidery Job Work",
+    phone: "9978987181",
+    alt_phone: "",
+    email: "owner@om-sai.com",
+    address: "Plot No. 104-106, GIDC Khatodara Industrial Estate",
+    city_state: "Surat, Gujarat",
+    pincode: "395002",
+    msme_no: "UDYAM-GJ-24-0091823",
+    website: "",
+    gstin: "24AAAFA1234A1Z5",
+    pan: "AAAFA1234A",
+    bank_name: "HDFC Bank Ltd",
+    account_holder: fName,
+    account_no: "50200012345678",
+    account_type: "Current Account",
+    ifsc: "HDFC0000123",
+    branch_name: "Ring Road Branch, Surat",
+    upi_id: "omsaienterprise@hdfcbank",
+    qr_code_image: "",
+    invoice_title: "TAX INVOICE / JOBWORK BILL",
+    challan_title: "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
+    invoice_prefix: "OMS/26-27/",
+    next_invoice_no: "101",
+    challan_prefix: "DC/26-27/",
+    next_challan_no: "101",
+    hsn_sac_code: "998822 (Textile Jobwork)",
+    gst_rate: "5% (Textile Embroidery Jobwork)",
+    payment_terms: "Due on Receipt",
+    signatory_label: `For ${fName} (Authorized Signatory)`,
+    eway_threshold: "50000",
+    print_qr: true,
+    terms_conditions:
+      "1. Goods once delivered will not be taken back without inspection.\n2. Payment strictly due as per credit terms.\n3. Subject to Surat Jurisdiction only."
+  };
+}
+
+type SettingsFormData = ReturnType<typeof getDefaultSettings>;
+
+interface AuthDataState {
+  username: string;
+  name: string;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
 
 export default function SettingsPage() {
   const { user, updateUserSession } = useAuth();
@@ -79,57 +173,44 @@ export default function SettingsPage() {
   const gstRef = useRef<HTMLDivElement>(null);
   const accTypeRef = useRef<HTMLDivElement>(null);
 
-  // Form State: Company, Bank & Invoice Details
-  const [formData, setFormData] = useState({
-    // 1. Company & Address
-    company_name: "Om Sai Enterprise",
-    brand_name: "OM SAI",
-    tagline: "High Precision Multi-Head Embroidery Job Work",
-    phone: "9978987181",
-    alt_phone: "",
-    email: "contact@omsaienterprise.com",
-    address: "Plot No. 104-106, GIDC Khatodara Industrial Estate",
-    city_state: "Surat, Gujarat",
-    pincode: "395002",
-    msme_no: "UDYAM-GJ-24-0091823",
-    website: "",
-
-    // 2. Bank & GST
-    gstin: "24AAAFA1234A1Z5",
-    pan: "AAAFA1234A",
-    bank_name: "HDFC Bank Ltd",
-    account_holder: "Om Sai Enterprise",
-    account_no: "50200012345678",
-    account_type: "Current Account",
-    ifsc: "HDFC0000123",
-    branch_name: "Ring Road Branch, Surat",
-    upi_id: "omsaienterprise@hdfcbank",
-    qr_code_image: "",
-
-    // 3. Invoice & Bill
-    invoice_title: "TAX INVOICE / JOBWORK BILL",
-    challan_title: "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
-    invoice_prefix: "OMS/26-27/",
-    next_invoice_no: "101",
-    challan_prefix: "DC/26-27/",
-    next_challan_no: "101",
-    hsn_sac_code: "998822 (Textile Jobwork)",
-    gst_rate: "5% (Textile Embroidery Jobwork)",
-    payment_terms: "Due on Receipt",
-    signatory_label: "For Om Sai Enterprise (Authorized Signatory)",
-    eway_threshold: "50000",
-    print_qr: true,
-    terms_conditions:
-      "1. Goods once delivered will not be taken back without inspection.\n2. Payment strictly due as per credit terms.\n3. Subject to Surat Jurisdiction only."
+  // Form State: Company, Bank & Invoice Details (Initialized per-tenant with zero millisecond leakage!)
+  const [formData, setFormData] = useState<SettingsFormData>(() => {
+    if (typeof window !== "undefined") {
+      const cid = getStoredCompanyId();
+      try {
+        const savedTenant = localStorage.getItem(`app_settings_${cid}`);
+        if (savedTenant) return JSON.parse(savedTenant);
+        if (cid === "comp-001") {
+          const legacy = localStorage.getItem("app_settings_om_sai");
+          if (legacy) return JSON.parse(legacy);
+        }
+      } catch {}
+      return getDefaultSettings(cid);
+    }
+    return getDefaultSettings("comp-001");
   });
 
-  // 4. Form State: Login & Password
-  const [authData, setAuthData] = useState({
-    username: "owner@om-sai.com",
-    name: "Hiren Sutariya",
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: ""
+  // Form State: Login & Password
+  const [authData, setAuthData] = useState<AuthDataState>(() => {
+    if (typeof window !== "undefined") {
+      const cid = getStoredCompanyId();
+      if (cid === "comp-002") {
+        return {
+          username: "radhe@krishna.com",
+          name: "Kishorbhai Patel",
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        };
+      }
+    }
+    return {
+      username: "owner@om-sai.com",
+      name: "Hiren Sutariya",
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: ""
+    };
   });
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -152,18 +233,63 @@ export default function SettingsPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Load saved settings & credentials on mount
+  // Load saved settings & credentials on mount strictly isolated per tenant
   useEffect(() => {
     setHasMounted(true);
+    const cid = user?.companyId || getStoredCompanyId();
 
+    // 1. Load tenant-isolated settings from localStorage
     try {
-      const saved = localStorage.getItem("app_settings_om_sai");
-      if (saved) {
-        setFormData((prev) => ({ ...prev, ...JSON.parse(saved) }));
+      const savedTenant = localStorage.getItem(`app_settings_${cid}`);
+      if (savedTenant) {
+        setFormData((prev) => ({ ...prev, ...JSON.parse(savedTenant) }));
+      } else if (cid === "comp-001") {
+        const legacy = localStorage.getItem("app_settings_om_sai");
+        if (legacy) {
+          const parsed = JSON.parse(legacy);
+          if (user?.firmName && !user.firmName.toLowerCase().includes("om sai")) {
+            parsed.company_name = user.firmName;
+            parsed.brand_name = user.firmName.toUpperCase();
+          }
+          setFormData((prev) => ({ ...prev, ...parsed }));
+        }
+      } else {
+        setFormData(getDefaultSettings(cid, user?.firmName));
       }
     } catch {}
 
-    // Synchronize authData from current logged-in user session immediately
+    // 2. Fetch live company profile from Backend API (Supabase) to keep in sync
+    const fetchCompanySettings = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/company-settings?company_id=${cid}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.company_name) {
+            setFormData((prev) => {
+              const updated = {
+                ...prev,
+                company_name: data.company_name,
+                brand_name: data.brand_name || data.company_name.toUpperCase(),
+                phone: data.phone || prev.phone,
+                email: data.email || prev.email,
+                address: data.address || prev.address,
+                gstin: data.gstin || prev.gstin
+              };
+              try {
+                localStorage.setItem(`app_settings_${cid}`, JSON.stringify(updated));
+              } catch {}
+              return updated;
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch company settings from backend:", err);
+      }
+    };
+
+    fetchCompanySettings();
+
+    // 3. Synchronize authData from current logged-in user session immediately
     if (user) {
       setAuthData((prev) => ({
         ...prev,
@@ -176,28 +302,19 @@ export default function SettingsPage() {
       try {
         const queryParams = new URLSearchParams();
         if (user?.id) queryParams.set("user_id", user.id);
-        if (user?.companyId) queryParams.set("company_id", user.companyId);
+        if (cid) queryParams.set("company_id", cid);
         if (user?.email || user?.username) queryParams.set("username", user.email || user.username || "");
         if (user?.firmName) queryParams.set("firm_name", user.firmName);
 
-        const url = queryParams.toString()
-          ? `${API_BASE_URL}/auth/credentials?${queryParams.toString()}`
-          : `${API_BASE_URL}/auth/credentials`;
-
+        const url = `${API_BASE_URL}/auth/credentials?${queryParams.toString()}`;
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
-          const currentCompanyId = user?.companyId || "comp-001";
           // Strict Tenant Guard: NEVER overwrite current tenant with another tenant's credentials
-          if (data.company_id && data.company_id !== currentCompanyId) {
+          if (data.company_id && data.company_id !== cid) {
             console.warn("Ignoring mismatched tenant credentials:", data);
             return;
           }
-          if (user?.firmName && data.firm_name && !data.firm_name.toLowerCase().includes(user.firmName.toLowerCase().slice(0, 4))) {
-            console.warn("Ignoring mismatched firm credentials:", data.firm_name);
-            return;
-          }
-
           if (data.username) {
             setAuthData((prev) => ({
               ...prev,
@@ -701,8 +818,8 @@ export default function SettingsPage() {
 
       // 9. COMPANY PROFILE & SETTINGS (Clean 2-Column Vertical Table - Easily Readable in Excel!)
       const companyRows = [
-        { "Setting / Parameter": "Company Legal Name", "Configured Value": formData.company_name || "Om Sai Enterprise" },
-        { "Setting / Parameter": "Brand / Trade Name", "Configured Value": formData.brand_name || "OM SAI" },
+        { "Setting / Parameter": "Company Legal Name", "Configured Value": formData.company_name || "" },
+        { "Setting / Parameter": "Brand / Trade Name", "Configured Value": formData.brand_name || "" },
         { "Setting / Parameter": "Business Tagline", "Configured Value": formData.tagline || "" },
         { "Setting / Parameter": "Primary Phone", "Configured Value": formData.phone || "" },
         { "Setting / Parameter": "Alternate Phone", "Configured Value": formData.alt_phone || "N/A" },
@@ -839,9 +956,11 @@ export default function SettingsPage() {
     setIsSaving(true);
 
     try {
-      localStorage.setItem("app_settings_om_sai", JSON.stringify(formData));
-      const cid = user?.companyId || "comp-001";
+      const cid = user?.companyId || getStoredCompanyId();
       localStorage.setItem(`app_settings_${cid}`, JSON.stringify(formData));
+      if (cid === "comp-001") {
+        localStorage.setItem("app_settings_om_sai", JSON.stringify(formData));
+      }
 
       // Update company firmName in active user session so Sidebar header updates immediately!
       const newFirmName = formData.company_name?.trim() || formData.brand_name?.trim();
@@ -1007,7 +1126,7 @@ export default function SettingsPage() {
                     type="text"
                     value={formData.company_name}
                     onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                    placeholder="e.g. Om Sai Enterprise"
+                    placeholder="e.g. Registered Company Name"
                     className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                     required
                   />
@@ -1022,7 +1141,7 @@ export default function SettingsPage() {
                     type="text"
                     value={formData.brand_name}
                     onChange={(e) => setFormData({ ...formData, brand_name: e.target.value.toUpperCase() })}
-                    placeholder="e.g. OM SAI"
+                    placeholder="e.g. BRAND NAME"
                     className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
                   />
                 </div>
@@ -1180,7 +1299,7 @@ export default function SettingsPage() {
                     type="text"
                     value={formData.account_holder}
                     onChange={(e) => setFormData({ ...formData, account_holder: e.target.value })}
-                    placeholder="Om Sai Enterprise"
+                    placeholder="e.g. Account Holder / Legal Firm Name"
                     className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                   />
                 </div>

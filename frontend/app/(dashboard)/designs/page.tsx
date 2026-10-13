@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
+import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import {
   Folder,
   Plus,
@@ -77,30 +78,19 @@ export default function DesignsPage() {
   const [folders, setFolders] = useState<DesignFolder[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem("app_design_folders") || localStorage.getItem("om_sai_designs_library");
-        if (saved !== null) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            if (parsed.length === 0) return [];
-            return parsed;
-          }
+        const cid = getStoredCompanyId();
+        const saved = getTenantItem<DesignFolder[]>(
+          "app_design_folders",
+          cid === "comp-001" ? "om_sai_designs_library" : undefined
+        );
+        if (saved !== null && Array.isArray(saved)) {
+          return saved;
         }
       } catch {}
     }
     return [];
   });
-  const [isLoading, setIsLoading] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("app_design_folders") || localStorage.getItem("om_sai_designs_library");
-        if (saved !== null) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return false;
-        }
-      } catch {}
-    }
-    return true;
-  });
+  const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [expandedRollMetersColorId, setExpandedRollMetersColorId] = useState<string | null>(null);
@@ -112,11 +102,11 @@ export default function DesignsPage() {
     const loadDesignsFromApi = async () => {
       try {
         const live = await fetchApi<any[]>("/designs");
+        const cid = getStoredCompanyId();
         if (Array.isArray(live)) {
           if (live.length === 0) {
             setFolders([]);
-            localStorage.setItem("app_design_folders", "[]");
-            localStorage.setItem("om_sai_designs_library", "[]");
+            setTenantItem("app_design_folders", [], cid === "comp-001" ? "om_sai_designs_library" : undefined);
             setIsLoading(false);
             return;
           }
@@ -165,8 +155,7 @@ export default function DesignsPage() {
             };
           });
           setFolders(mapped);
-          localStorage.setItem("app_design_folders", JSON.stringify(mapped));
-          localStorage.setItem("om_sai_designs_library", JSON.stringify(mapped));
+          setTenantItem("app_design_folders", mapped, cid === "comp-001" ? "om_sai_designs_library" : undefined);
           setIsLoading(false);
           return;
         }
@@ -176,16 +165,16 @@ export default function DesignsPage() {
         setIsLoading(false);
       }
 
-      const saved = localStorage.getItem("app_design_folders");
+      const cid = getStoredCompanyId();
+      const saved = getTenantItem<any[]>("app_design_folders", cid === "comp-001" ? "om_sai_designs_library" : undefined);
       if (saved !== null) {
         try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            if (parsed.length === 0) {
+          if (Array.isArray(saved)) {
+            if (saved.length === 0) {
               setFolders([]);
               return;
             }
-            const sanitized = parsed.map((d: any) => ({
+            const sanitized = saved.map((d: any) => ({
               ...d,
               items: Array.isArray(d.items)
                 ? d.items.map((it: any, idx: number) => ({
@@ -219,7 +208,8 @@ export default function DesignsPage() {
 
   const saveDesignFolders = (newFolders: DesignFolder[]) => {
     setFolders(newFolders);
-    localStorage.setItem("app_design_folders", JSON.stringify(newFolders));
+    const cid = getStoredCompanyId();
+    setTenantItem("app_design_folders", newFolders, cid === "comp-001" ? "om_sai_designs_library" : undefined);
   };
 
 
@@ -1516,15 +1506,7 @@ export default function DesignsPage() {
       {/* CLEAN ENTERPRISE DESIGN FOLDER CARDS GRID */}
       {!selectedFolder && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-          {isLoading && folders.length === 0 ? (
-            [1, 2, 3, 4].map((n) => (
-              <div key={`d-skel-${n}`} className="bg-white rounded-xl border border-slate-200 p-4 animate-pulse space-y-3">
-                <div className="h-5 bg-slate-100 rounded w-24" />
-                <div className="h-4 bg-slate-100 rounded w-40" />
-                <div className="h-3 bg-slate-100 rounded w-20" />
-              </div>
-            ))
-          ) : filteredFolders.length === 0 ? (
+          {filteredFolders.length === 0 ? (
             <div className="col-span-full py-8 px-4 text-center bg-white rounded-2xl border border-slate-200">
               <p className="text-xs font-medium text-slate-400">
                 {search.trim()

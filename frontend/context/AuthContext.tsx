@@ -59,13 +59,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (m) resolvedCompanyId = m[1];
           } else if (parsed.firmName && parsed.firmName.toLowerCase().includes("radhe")) {
             resolvedCompanyId = "comp-002";
-          } else if (parsed.firmName && !parsed.firmName.toLowerCase().includes("om sai") && parsed.companyId === "comp-001") {
-            resolvedCompanyId = `comp-${parsed.firmName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8)}`;
+          } else if (
+            parsed.id === "usr-owner-01" || 
+            (parsed.companyId && parsed.companyId.includes("shiv")) ||
+            (parsed.firmName && parsed.firmName.toLowerCase().includes("shiv"))
+          ) {
+            resolvedCompanyId = "comp-001";
+          } else if (!resolvedCompanyId || !/^comp-\d+$/.test(resolvedCompanyId)) {
+            resolvedCompanyId = "comp-001";
           }
-            if (resolvedCompanyId && resolvedCompanyId !== parsed.companyId) {
-              parsed.companyId = resolvedCompanyId;
-              sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
-            }
+
+          if (resolvedCompanyId && resolvedCompanyId !== parsed.companyId) {
+            parsed.companyId = resolvedCompanyId;
+            sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
+          }
             setUser(parsed);
           }
         } else {
@@ -99,12 +106,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         let resolvedCompanyId = data.user.companyId;
-        if (!resolvedCompanyId) {
+        if (!resolvedCompanyId || !/^comp-\d+$/.test(resolvedCompanyId)) {
           if (data.user.id && data.user.id.includes("comp-")) {
             const m = data.user.id.match(/(comp-\d+)/);
             if (m) resolvedCompanyId = m[1];
-          } else if (data.user.firmName && !data.user.firmName.toLowerCase().includes("om sai")) {
-            resolvedCompanyId = `comp-${data.user.firmName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8)}`;
+          } else if (data.user.firmName && data.user.firmName.toLowerCase().includes("radhe")) {
+            resolvedCompanyId = "comp-002";
           } else {
             resolvedCompanyId = "comp-001";
           }

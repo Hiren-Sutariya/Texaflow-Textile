@@ -287,6 +287,44 @@ class UpdateCompanySettingsRequest(BaseModel):
     gstin: Optional[str] = None
     pan: Optional[str] = None
 
+@router.get("/company-settings")
+def get_company_settings(
+    company_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Retrieve company settings and profile strictly isolated by company_id or user_id."""
+    cid = company_id.strip() if company_id and company_id.strip() else None
+    if not cid and user_id and user_id.strip():
+        user = db.query(User).filter(User.id == user_id.strip()).first()
+        if user:
+            cid = user.company_id
+    if not cid:
+        cid = "comp-001"
+
+    comp = db.query(Company).filter(Company.id == cid).first()
+    user = db.query(User).filter(User.company_id == cid).first()
+
+    default_name = "Shiv Creation" if cid == "comp-001" else "Radhe Krishna Textiles"
+    comp_name = comp.name if (comp and comp.name) else (user.firm_name if (user and user.firm_name) else default_name)
+    owner_name = comp.owner_name if (comp and comp.owner_name) else (user.name if user else "Proprietor")
+    phone = comp.phone if (comp and comp.phone) else ""
+    email = comp.email if (comp and comp.email) else (user.email if user else "")
+    address = comp.address if (comp and comp.address) else ""
+    gstin = comp.gstin if (comp and comp.gstin) else ""
+
+    return {
+        "success": True,
+        "company_id": cid,
+        "company_name": comp_name,
+        "brand_name": comp_name,
+        "owner_name": owner_name,
+        "phone": phone,
+        "email": email,
+        "address": address,
+        "gstin": gstin
+    }
+
 @router.put("/company-settings")
 def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Depends(get_db)):
     """Update company profile and name in database."""
@@ -304,6 +342,18 @@ def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Dep
             comp.address = req.address.strip()
         if req.gstin:
             comp.gstin = req.gstin.strip()
+    elif not comp and clean_name:
+        comp = Company(
+            id=cid,
+            name=clean_name,
+            code=cid,
+            owner_name="Owner",
+            phone=req.phone.strip() if req.phone else "",
+            email=req.email.strip() if req.email else "",
+            address=req.address.strip() if req.address else "",
+            gstin=req.gstin.strip() if req.gstin else ""
+        )
+        db.add(comp)
 
     # Also update firm_name on corresponding user(s)
     users = db.query(User).filter(User.company_id == cid).all()
