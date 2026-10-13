@@ -146,11 +146,11 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           className="flex items-center gap-2.5 overflow-hidden p-1.5 rounded-xl hover:bg-slate-50 transition-colors w-full group outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
           title="Return to Main Dashboard"
         >
-          <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform uppercase">
+          <div suppressHydrationWarning className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform uppercase">
             {user?.firmName ? user.firmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "TF"}
           </div>
           <div className="truncate">
-            <h1 className="font-extrabold text-slate-900 text-xs tracking-tight leading-tight truncate uppercase">
+            <h1 suppressHydrationWarning className="font-extrabold text-slate-900 text-xs tracking-tight leading-tight truncate uppercase">
               {user?.firmName || "TEXAFLOW TEXTILE"}
             </h1>
             <p className="text-[9px] font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1 mt-0.5">
@@ -266,14 +266,14 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       {/* User Profile Footer */}
       <div className="h-[57px] px-3 border-t border-slate-200 bg-white flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-extrabold text-xs flex items-center justify-center border border-amber-200 shrink-0">
+          <div suppressHydrationWarning className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-extrabold text-xs flex items-center justify-center border border-amber-200 shrink-0">
             {user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : "👤"}
           </div>
           <div className="truncate">
-            <p className="text-xs font-bold text-slate-900 truncate leading-none">
+            <p suppressHydrationWarning className="text-xs font-bold text-slate-900 truncate leading-none">
               {user?.name || "Factory Admin"}
             </p>
-            <p className="text-[10px] text-slate-400 font-medium truncate mt-1">
+            <p suppressHydrationWarning className="text-[10px] text-slate-400 font-medium truncate mt-1">
               {user?.roleTitle || "Owner Account"}
             </p>
           </div>
