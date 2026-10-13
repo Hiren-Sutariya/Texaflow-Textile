@@ -197,6 +197,7 @@ export default function DesignsPage() {
             setFolders([]);
             localStorage.setItem("app_design_folders", "[]");
             localStorage.setItem("om_sai_designs_library", "[]");
+            setIsLoading(false);
             return;
           }
           const mapped: DesignFolder[] = live.map((d) => {
@@ -246,10 +247,13 @@ export default function DesignsPage() {
           setFolders(mapped);
           localStorage.setItem("app_design_folders", JSON.stringify(mapped));
           localStorage.setItem("om_sai_designs_library", JSON.stringify(mapped));
+          setIsLoading(false);
           return;
         }
       } catch (err) {
         console.warn("Backend designs load fallback", err);
+      } finally {
+        setIsLoading(false);
       }
 
       const saved = localStorage.getItem("app_design_folders");
@@ -1596,9 +1600,128 @@ export default function DesignsPage() {
               </div>
             ))
           ) : filteredFolders.length === 0 ? (
-            <div className="col-span-full py-8 text-center text-slate-400 font-medium bg-white rounded-xl border border-slate-200">
-              No design folders found matching your filters. Click &quot;+ New Design&quot; to add a record.
-            </div>
+            search.trim() ? (
+              <div className="col-span-full py-12 px-4 text-center bg-white rounded-2xl border border-slate-200 space-y-2">
+                <p className="text-sm font-bold text-slate-700">No designs found matching &quot;{search}&quot;</p>
+                <p className="text-xs text-slate-400">Try searching with a different party name or design code.</p>
+                <button
+                  onClick={() => setSearch("")}
+                  className="mt-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                >
+                  Clear Search
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Card 1: Add New Design (Primary Action Card) */}
+                <div
+                  onClick={() => setIsAddingFolderInline(true)}
+                  className="group bg-blue-50/40 hover:bg-blue-50 border-2 border-dashed border-blue-300 hover:border-blue-500 rounded-2xl p-5 flex flex-col justify-between items-start space-y-4 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md"
+                >
+                  <div className="space-y-2.5">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/30 group-hover:scale-105 transition-transform">
+                      <Plus className="w-5 h-5 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">
+                        + Add New Design
+                      </h4>
+                      <p className="text-[11px] font-medium text-slate-500 leading-relaxed mt-0.5">
+                        Create design code, front/back components, stitch rates & takka colorways.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Create Design</span>
+                  </button>
+                </div>
+
+                {/* Card 2: Saree & Pallu Concept */}
+                <div
+                  onClick={() => setIsAddingFolderInline(true)}
+                  className="group bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-2xl p-5 flex flex-col justify-between items-start space-y-4 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center border border-rose-200">
+                        <Palette className="w-5 h-5" />
+                      </div>
+                      <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
+                        Saree Concept
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-slate-900 text-sm">Saree & Pallu Work</h4>
+                      <p className="text-[11px] font-medium text-slate-500 leading-relaxed mt-0.5">
+                        Multi-head embroidery for Front Body, Pallu Border, Skirt Patta & Blouse pieces.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-full pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 group-hover:text-blue-600 font-bold transition-colors">
+                    <span>Quick Create</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
+
+                {/* Card 3: Suit & Kurti Concept */}
+                <div
+                  onClick={() => setIsAddingFolderInline(true)}
+                  className="group bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-2xl p-5 flex flex-col justify-between items-start space-y-4 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-800 flex items-center justify-center border border-violet-200">
+                        <Layers className="w-5 h-5" />
+                      </div>
+                      <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-200">
+                        Suit & Kurti
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-slate-900 text-sm">Dress & Kurti Material</h4>
+                      <p className="text-[11px] font-medium text-slate-500 leading-relaxed mt-0.5">
+                        Neckline embroidery, Daman border, Sleeves & 4-side Dupatta lace concepts.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-full pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 group-hover:text-blue-600 font-bold transition-colors">
+                    <span>Quick Create</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
+
+                {/* Card 4: Bridal Lehenga Concept */}
+                <div
+                  onClick={() => setIsAddingFolderInline(true)}
+                  className="group bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-2xl p-5 flex flex-col justify-between items-start space-y-4 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center border border-amber-200">
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                        Bridal Lehenga
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-slate-900 text-sm">Lehenga & Heavy Choli</h4>
+                      <p className="text-[11px] font-medium text-slate-500 leading-relaxed mt-0.5">
+                        16 Kali flare designs, Heavy Zari cord work, Sequins, Blouse & Odhani work.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-full pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 group-hover:text-blue-600 font-bold transition-colors">
+                    <span>Quick Create</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </>
+            )
           ) : (
             filteredFolders.map((f) => {
               const totalPcs = getTotalPcsForFolder(f);
