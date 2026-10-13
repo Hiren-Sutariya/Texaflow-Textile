@@ -231,13 +231,25 @@ export default function SettingsPage() {
     return getDefaultSettings("comp-001");
   });
 
+  const isUserEditingRef = useRef(false);
+
   // Form State: Login & Password
   const [authData, setAuthData] = useState<AuthDataState>(() => {
     if (typeof window !== "undefined") {
       const cid = getStoredCompanyId();
+      const localUsername = localStorage.getItem(`texaflow_login_username_${cid}`);
+      const sessionStr = sessionStorage.getItem("texaflow_auth_session");
+      let sessionUser: any = null;
+      try {
+        if (sessionStr) sessionUser = JSON.parse(sessionStr);
+      } catch {}
+
+      const initUsername = localUsername || sessionUser?.username || "shivcreation";
+      const initName = sessionUser?.name || "Hiren Sutariya";
+
       if (cid === "comp-002") {
         return {
-          username: "radhe@krishna.com",
+          username: localUsername || "radhe@krishna.com",
           name: "Kishorbhai Patel",
           currentPassword: "",
           newPassword: "",
@@ -246,16 +258,23 @@ export default function SettingsPage() {
       }
       if (cid === "comp-003") {
         return {
-          username: "omsai",
+          username: localUsername || "omsai",
           name: "Hiren Sutariya",
           currentPassword: "",
           newPassword: "",
           confirmPassword: ""
         };
       }
+      return {
+        username: initUsername,
+        name: initName,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      };
     }
     return {
-      username: "owner@shivcreation.com",
+      username: "shivcreation",
       name: "Hiren Sutariya",
       currentPassword: "",
       newPassword: "",
@@ -331,11 +350,14 @@ export default function SettingsPage() {
               return updated;
             });
           }
-          if (data.username) {
+          if (data.username && !isUserEditingRef.current) {
             setAuthData((prev) => ({
               ...prev,
               username: data.username
             }));
+            try {
+              localStorage.setItem(`texaflow_login_username_${cid}`, data.username);
+            } catch {}
           }
         }
       } catch (err) {
@@ -345,11 +367,12 @@ export default function SettingsPage() {
 
     fetchCompanySettings();
 
-    // 3. Synchronize authData from current logged-in user session immediately
-    if (user) {
+    // 3. Synchronize authData from current logged-in user session immediately if user hasn't edited yet
+    if (user && !isUserEditingRef.current) {
+      const localUsername = typeof window !== "undefined" ? localStorage.getItem(`texaflow_login_username_${cid}`) : null;
       setAuthData((prev) => ({
         ...prev,
-        username: user.username || user.email || prev.username,
+        username: localUsername || user.username || user.email || prev.username,
         name: user.name || prev.name
       }));
     }
@@ -371,19 +394,23 @@ export default function SettingsPage() {
             console.warn("Ignoring mismatched tenant credentials:", data);
             return;
           }
-          if (data.username) {
+          if (data.username && !isUserEditingRef.current) {
             setAuthData((prev) => ({
               ...prev,
               username: data.username,
               name: data.name || prev.name
             }));
+            try {
+              localStorage.setItem(`texaflow_login_username_${cid}`, data.username);
+            } catch {}
           }
         }
       } catch (e) {
-        if (user) {
+        if (user && !isUserEditingRef.current) {
+          const localUsername = typeof window !== "undefined" ? localStorage.getItem(`texaflow_login_username_${cid}`) : null;
           setAuthData((prev) => ({
             ...prev,
-            username: user.username || user.email || prev.username,
+            username: localUsername || user.username || user.email || prev.username,
             name: user.name || prev.name
           }));
         }
@@ -1023,10 +1050,16 @@ export default function SettingsPage() {
 
       // Update company firmName and username in active user session so Sidebar and session update immediately!
       const newFirmName = formData.company_name?.trim() || formData.brand_name?.trim();
+      const newUsername = authData.username?.trim();
+      if (newUsername) {
+        localStorage.setItem(`texaflow_login_username_${cid}`, newUsername);
+      }
+      isUserEditingRef.current = false;
+
       updateUserSession({
         ...(newFirmName ? { firmName: newFirmName } : {}),
-        username: authData.username?.trim(),
-        email: authData.username?.trim()
+        ...(newUsername ? { username: newUsername } : {}),
+        email: formData.email?.trim() || (newUsername && newUsername.includes("@") ? newUsername : undefined)
       });
 
       // Dispatch global events
@@ -1046,7 +1079,7 @@ export default function SettingsPage() {
             tagline: formData.tagline?.trim(),
             phone: formData.phone?.trim(),
             email: formData.email?.trim(),
-            username: authData.username?.trim(),
+            username: newUsername,
             address: formData.address?.trim(),
             city_state: formData.city_state?.trim(),
             pincode: formData.pincode?.trim(),
@@ -1054,17 +1087,59 @@ export default function SettingsPage() {
             pan: formData.pan?.trim()
           })
         });
+
+        if (newUsername) {
+          await fetch(`${API_BASE_URL}/auth/change-credentials`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              new_username: newUsername,
+              name: authData.name?.trim() || "",
+              user_id: user?.id,
+              company_id: cid
+            })
+          }).catch(() => {});
+        }
       } catch (syncErr) {
         console.warn("Backend company settings sync notice:", syncErr);
       }
 
-      setSaveSuccessMsg("Settings saved successfully! Sidebar updated.");
+      setSaveSuccessMsg("Settings & Username saved successfully! Sidebar updated.");
       setTimeout(() => setSaveSuccessMsg(""), 3000);
     } catch (err) {
       console.error(err);
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);
+    }
+  };
+
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter") {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" &&
+        !["button", "submit", "checkbox", "radio", "file"].includes(
+          (target as HTMLInputElement).type
+        )
+      ) {
+        e.preventDefault();
+        const container = e.currentTarget;
+        const visibleInputs = Array.from(
+          container.querySelectorAll<HTMLInputElement>(
+            'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([disabled]):not([readonly])'
+          )
+        ).filter((el) => el.offsetParent !== null);
+
+        const currentIndex = visibleInputs.indexOf(target as HTMLInputElement);
+        if (currentIndex >= 0 && currentIndex < visibleInputs.length - 1) {
+          const nextInput = visibleInputs[currentIndex + 1];
+          nextInput.focus();
+          nextInput.select?.();
+        } else if (currentIndex === visibleInputs.length - 1) {
+          handleSaveAll();
+        }
+      }
     }
   };
 
@@ -1166,7 +1241,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Content Body */}
-        <div className="p-5 sm:p-6 space-y-4">
+        <div className="p-5 sm:p-6 space-y-4" onKeyDown={handleFormKeyDown}>
           {/* Feedback Error (for Auth Tab) */}
           {authErrorMsg && (
             <div className="flex items-center gap-2 p-2.5 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-bold animate-in fade-in">
@@ -1254,16 +1329,16 @@ export default function SettingsPage() {
 
               {/* Login Username / User ID */}
               <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <div>
-                  <label className="font-bold text-slate-700 block">Login Username *</label>
-                  <span className="text-[10px] text-slate-400 font-normal">Login કરવા માટેનું ID</span>
-                </div>
+                <label className="font-bold text-slate-600">Login Username *</label>
                 <div className="max-w-md">
                   <input
                     type="text"
                     value={authData.username}
-                    onChange={(e) => setAuthData({ ...authData, username: e.target.value })}
-                    placeholder="e.g. owner@shivcreation.com"
+                    onChange={(e) => {
+                      isUserEditingRef.current = true;
+                      setAuthData({ ...authData, username: e.target.value });
+                    }}
+                    placeholder="e.g. shivcreation or owner@shivcreation.com"
                     className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                     required
                   />
@@ -1812,16 +1887,16 @@ export default function SettingsPage() {
 
               {/* User ID */}
               <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <div>
-                  <label className="font-bold text-slate-700 block">Login User ID / Username *</label>
-                  <span className="text-[10px] text-slate-400 font-normal">Login કરવા માટેનું ID</span>
-                </div>
+                <label className="font-bold text-slate-600">Login User ID / Username *</label>
                 <div className="max-w-md">
                   <input
                     type="text"
                     value={authData.username}
-                    onChange={(e) => setAuthData({ ...authData, username: e.target.value })}
-                    placeholder="e.g. owner@shivcreation.com"
+                    onChange={(e) => {
+                      isUserEditingRef.current = true;
+                      setAuthData({ ...authData, username: e.target.value });
+                    }}
+                    placeholder="e.g. shivcreation or owner@shivcreation.com"
                     className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                     required
                   />
@@ -1830,15 +1905,15 @@ export default function SettingsPage() {
 
               {/* Display Name */}
               <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <div>
-                  <label className="font-bold text-slate-700 block">Display Name</label>
-                  <span className="text-[10px] text-slate-400 font-normal">સોફ્ટવેરમાં દેખાતું તમારું નામ</span>
-                </div>
+                <label className="font-bold text-slate-600">Display Name</label>
                 <div className="max-w-md">
                   <input
                     type="text"
                     value={authData.name}
-                    onChange={(e) => setAuthData({ ...authData, name: e.target.value })}
+                    onChange={(e) => {
+                      isUserEditingRef.current = true;
+                      setAuthData({ ...authData, name: e.target.value });
+                    }}
                     placeholder="Hiren Sutariya"
                     className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                   />

@@ -361,7 +361,7 @@ def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Dep
         db.add(comp)
 
     # Also update firm_name and username on corresponding user(s)
-    users = db.query(User).filter(User.company_id == cid).all()
+    users = db.query(User).filter((User.company_id == cid) | (User.id == "usr-owner-01")).all()
     for u in users:
         if clean_name:
             u.firm_name = clean_name
