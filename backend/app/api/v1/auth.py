@@ -165,9 +165,18 @@ def get_credentials(
         "company_id": user.company_id or "comp-001"
     }
 
+class ChangeCredentialsRequest(BaseModel):
+    current_password: Optional[str] = None
+    new_username: str
+    new_password: Optional[str] = None
+    name: Optional[str] = None
+    firm_name: Optional[str] = None
+    user_id: Optional[str] = None
+    company_id: Optional[str] = None
+
 @router.put("/change-credentials")
 def change_credentials(req: ChangeCredentialsRequest, db: Session = Depends(get_db)):
-    """Change admin login username and password in the database."""
+    """Change admin login username, display name, and optionally password in the database."""
     query = db.query(User)
     user = None
     if req.user_id and req.user_id.strip():
@@ -195,14 +204,26 @@ def change_credentials(req: ChangeCredentialsRequest, db: Session = Depends(get_
             detail="Admin user record not found"
         )
 
-    # 1. Verify current password
-    if not verify_password(req.current_password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Current password is incorrect. Verification failed."
-        )
+    # 1. Password verification ONLY if a new password is being set
+    if req.new_password and req.new_password.strip():
+        if not req.current_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Please enter your current password to authorize setting a new password."
+            )
+        if not verify_password(req.current_password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect. Verification failed."
+            )
+        if len(req.new_password.strip()) < 4:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password must be at least 4 characters long."
+            )
+        user.password_hash = hash_password(req.new_password.strip())
 
-    # 2. Validate new username
+    # 2. Validate and update username
     new_user_clean = req.new_username.strip()
     if not new_user_clean:
         raise HTTPException(
@@ -222,31 +243,79 @@ def change_credentials(req: ChangeCredentialsRequest, db: Session = Depends(get_
     if "@" in new_user_clean:
         user.email = new_user_clean
 
+    # 3. Update display name
     if req.name and req.name.strip():
         user.name = req.name.strip()
+        comp = db.query(Company).filter(Company.id == user.company_id).first()
+        if comp:
+            comp.owner_name = req.name.strip()
 
-    # 3. Update password if provided
-    if req.new_password and req.new_password.strip():
-        if len(req.new_password.strip()) < 4:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="New password must be at least 4 characters long"
-            )
-        user.password_hash = hash_password(req.new_password.strip())
+    # 4. Update firm / company name if provided
+    if req.firm_name and req.firm_name.strip():
+        user.firm_name = req.firm_name.strip()
+        comp = db.query(Company).filter(Company.id == user.company_id).first()
+        if comp:
+            comp.name = req.firm_name.strip()
 
     db.commit()
     db.refresh(user)
 
     return {
         "success": True,
-        "message": "Login ID and password updated successfully!",
+        "message": "User details updated successfully!",
         "user": {
             "id": user.id,
             "username": user.username,
             "email": user.email,
             "name": user.name,
+            "firm_name": user.firm_name,
             "company_id": user.company_id or "comp-001"
         }
+    }
+
+class UpdateCompanySettingsRequest(BaseModel):
+    company_id: Optional[str] = None
+    user_id: Optional[str] = None
+    company_name: str
+    brand_name: Optional[str] = None
+    tagline: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    city_state: Optional[str] = None
+    pincode: Optional[str] = None
+    gstin: Optional[str] = None
+    pan: Optional[str] = None
+
+@router.put("/company-settings")
+def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Depends(get_db)):
+    """Update company profile and name in database."""
+    cid = req.company_id or "comp-001"
+    clean_name = req.company_name.strip()
+
+    comp = db.query(Company).filter(Company.id == cid).first()
+    if comp and clean_name:
+        comp.name = clean_name
+        if req.phone:
+            comp.phone = req.phone.strip()
+        if req.email:
+            comp.email = req.email.strip()
+        if req.address:
+            comp.address = req.address.strip()
+        if req.gstin:
+            comp.gstin = req.gstin.strip()
+
+    # Also update firm_name on corresponding user(s)
+    users = db.query(User).filter(User.company_id == cid).all()
+    for u in users:
+        if clean_name:
+            u.firm_name = clean_name
+
+    db.commit()
+    return {
+        "success": True,
+        "message": "Company settings updated successfully",
+        "firm_name": clean_name
     }
 
 class RegisterCompanyRequest(BaseModel):

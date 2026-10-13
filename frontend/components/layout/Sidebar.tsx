@@ -133,6 +133,43 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     return () => window.removeEventListener("app_location_change", updateUnit);
   }, []);
 
+  // Dynamic Company Brand Name (Syncs with Settings in Real-Time)
+  const [customFirmName, setCustomFirmName] = useState<string>("");
+
+  useEffect(() => {
+    const loadSettings = () => {
+      try {
+        const cid = user?.companyId || "comp-001";
+        const savedTenant = localStorage.getItem(`app_settings_${cid}`);
+        const savedLegacy = localStorage.getItem("app_settings_om_sai");
+        const raw = savedTenant || savedLegacy;
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.company_name?.trim()) {
+            setCustomFirmName(parsed.company_name.trim());
+          }
+        }
+      } catch {}
+    };
+
+    loadSettings();
+
+    const handleSettingsUpdate = (e: any) => {
+      if (e?.detail?.company_name?.trim()) {
+        setCustomFirmName(e.detail.company_name.trim());
+      }
+    };
+
+    window.addEventListener("app_settings_update", handleSettingsUpdate);
+    window.addEventListener("app_data_update", loadSettings);
+    return () => {
+      window.removeEventListener("app_settings_update", handleSettingsUpdate);
+      window.removeEventListener("app_data_update", loadSettings);
+    };
+  }, [user?.companyId]);
+
+  const displayedFirmName = customFirmName || user?.firmName || "TEXAFLOW TEXTILE";
+
   const renderNavContent = (isMobile = false) => (
     <>
       {/* Brand Header */}
@@ -147,11 +184,11 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           title="Return to Main Dashboard"
         >
           <div suppressHydrationWarning className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform uppercase">
-            {user?.firmName ? user.firmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "TF"}
+            {displayedFirmName ? displayedFirmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "TF"}
           </div>
           <div className="truncate">
             <h1 suppressHydrationWarning className="font-extrabold text-slate-900 text-xs tracking-tight leading-tight truncate uppercase">
-              {user?.firmName || "TEXAFLOW TEXTILE"}
+              {displayedFirmName}
             </h1>
             <p className="text-[9px] font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />

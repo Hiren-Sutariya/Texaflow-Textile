@@ -753,24 +753,28 @@ export default function SettingsPage() {
 
     // If on Login & Password tab, save credentials to backend DB
     if (activeTab === "Login & Password") {
-      if (!authData.currentPassword) {
-        setAuthErrorMsg("Please enter your current password to authorize changes.");
-        return;
-      }
+      const isChangingPassword = Boolean(authData.newPassword.trim() || authData.confirmPassword.trim());
 
-      if (!authData.newPassword || !authData.confirmPassword) {
-        setAuthErrorMsg("Please enter new password in both fields to confirm.");
-        return;
-      }
+      if (isChangingPassword) {
+        if (!authData.currentPassword.trim()) {
+          setAuthErrorMsg("Please enter your current password to authorize setting a new password.");
+          return;
+        }
 
-      if (authData.newPassword.length < 4) {
-        setAuthErrorMsg("New password must be at least 4 characters long.");
-        return;
-      }
+        if (!authData.newPassword.trim() || !authData.confirmPassword.trim()) {
+          setAuthErrorMsg("Please enter new password in both fields to confirm.");
+          return;
+        }
 
-      if (authData.newPassword !== authData.confirmPassword) {
-        setAuthErrorMsg("New Password and Confirm Password do not match. Please re-enter.");
-        return;
+        if (authData.newPassword.trim().length < 4) {
+          setAuthErrorMsg("New password must be at least 4 characters long.");
+          return;
+        }
+
+        if (authData.newPassword.trim() !== authData.confirmPassword.trim()) {
+          setAuthErrorMsg("New Password and Confirm Password do not match. Please re-enter.");
+          return;
+        }
       }
 
       isSavingRef.current = true;
@@ -781,10 +785,10 @@ export default function SettingsPage() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            current_password: authData.currentPassword,
+            current_password: isChangingPassword ? authData.currentPassword.trim() : "",
             new_username: authData.username.trim(),
             name: authData.name.trim(),
-            new_password: authData.newPassword.trim(),
+            new_password: isChangingPassword ? authData.newPassword.trim() : "",
             user_id: user?.id,
             company_id: user?.companyId || "comp-001"
           })
@@ -793,7 +797,11 @@ export default function SettingsPage() {
         const data = await res.json();
 
         if (res.ok) {
-          setSaveSuccessMsg("Login ID & Password updated successfully in database!");
+          setSaveSuccessMsg(
+            isChangingPassword
+              ? "Display Name & Password updated successfully!"
+              : "Profile Display Name updated successfully!"
+          );
           setAuthData((prev) => ({
             ...prev,
             currentPassword: "",
@@ -801,17 +809,21 @@ export default function SettingsPage() {
             confirmPassword: ""
           }));
 
+          // Immediately update active session in AuthContext so Sidebar updates!
           updateUserSession({
-            email: data.user?.username || authData.username,
-            name: data.user?.name || authData.name
+            email: data.user?.username || authData.username.trim(),
+            name: data.user?.name || authData.name.trim()
           });
+
+          // Dispatch event so other components receive the updated profile
+          window.dispatchEvent(new Event("app_data_update"));
 
           setTimeout(() => setSaveSuccessMsg(""), 3500);
         } else {
-          setAuthErrorMsg(data.detail || "Failed to update login credentials.");
+          setAuthErrorMsg(data.detail || "Failed to update profile.");
         }
       } catch (err) {
-        setAuthErrorMsg("Cannot connect to backend server on port 8000.");
+        setAuthErrorMsg("Cannot connect to backend server.");
       } finally {
         isSavingRef.current = false;
         setIsSaving(false);
@@ -819,13 +831,50 @@ export default function SettingsPage() {
       return;
     }
 
-    // Otherwise save Settings (Company, Bank, Invoice) to LocalStorage
+    // Otherwise save Settings (Company, Bank, Invoice)
     isSavingRef.current = true;
     setIsSaving(true);
 
     try {
       localStorage.setItem("app_settings_om_sai", JSON.stringify(formData));
-      setSaveSuccessMsg("Settings saved successfully!");
+      const cid = user?.companyId || "comp-001";
+      localStorage.setItem(`app_settings_${cid}`, JSON.stringify(formData));
+
+      // Update company firmName in active user session so Sidebar header updates immediately!
+      const newFirmName = formData.company_name?.trim() || formData.brand_name?.trim();
+      if (newFirmName) {
+        updateUserSession({ firmName: newFirmName });
+      }
+
+      // Dispatch global events
+      window.dispatchEvent(new CustomEvent("app_settings_update", { detail: formData }));
+      window.dispatchEvent(new Event("app_data_update"));
+
+      // Also sync company name and details to backend API
+      try {
+        await fetch(`${API_BASE_URL}/auth/company-settings`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            company_id: cid,
+            user_id: user?.id,
+            company_name: formData.company_name.trim(),
+            brand_name: formData.brand_name?.trim(),
+            tagline: formData.tagline?.trim(),
+            phone: formData.phone?.trim(),
+            email: formData.email?.trim(),
+            address: formData.address?.trim(),
+            city_state: formData.city_state?.trim(),
+            pincode: formData.pincode?.trim(),
+            gstin: formData.gstin?.trim(),
+            pan: formData.pan?.trim()
+          })
+        });
+      } catch (syncErr) {
+        console.warn("Backend company settings sync notice:", syncErr);
+      }
+
+      setSaveSuccessMsg("Settings saved successfully! Sidebar updated.");
       setTimeout(() => setSaveSuccessMsg(""), 3000);
     } catch (err) {
       console.error(err);
@@ -1565,69 +1614,75 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Current Password */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs pt-1 border-t border-slate-100">
-                <label className="font-bold text-slate-600">Current Password *</label>
-                <div className="max-w-md relative">
-                  <input
-                    type={showCurrentPassword ? "text" : "password"}
-                    value={authData.currentPassword}
-                    onChange={(e) => setAuthData({ ...authData, currentPassword: e.target.value })}
-                    placeholder="Enter current password"
-                    className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                  >
-                    {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
+              {/* Optional Password Change Section */}
+              <div className="pt-3 border-t border-slate-100 space-y-3">
+                <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80">
+                  <p className="text-[11px] font-bold text-slate-500">
+                    🔑 Password Change (Optional) — Leave password fields blank if you only want to update your Display Name or User ID.
+                  </p>
                 </div>
-              </div>
 
-              {/* New Password */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">New Password *</label>
-                <div className="max-w-md relative">
-                  <input
-                    type={showNewPassword ? "text" : "password"}
-                    value={authData.newPassword}
-                    onChange={(e) => setAuthData({ ...authData, newPassword: e.target.value })}
-                    placeholder="Minimum 4 characters"
-                    className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                  >
-                    {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
+                {/* Current Password */}
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+                  <label className="font-bold text-slate-600">Current Password</label>
+                  <div className="max-w-md relative">
+                    <input
+                      type={showCurrentPassword ? "text" : "password"}
+                      value={authData.currentPassword}
+                      onChange={(e) => setAuthData({ ...authData, currentPassword: e.target.value })}
+                      placeholder="Only needed if setting new password"
+                      className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                    >
+                      {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* Confirm New Password (2-times entry) */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Confirm Password *</label>
-                <div className="max-w-md relative">
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={authData.confirmPassword}
-                    onChange={(e) => setAuthData({ ...authData, confirmPassword: e.target.value })}
-                    placeholder="Re-enter new password"
-                    className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
+                {/* New Password */}
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+                  <label className="font-bold text-slate-600">New Password</label>
+                  <div className="max-w-md relative">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      value={authData.newPassword}
+                      onChange={(e) => setAuthData({ ...authData, newPassword: e.target.value })}
+                      placeholder="Leave blank to keep existing password"
+                      className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                    >
+                      {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm New Password */}
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+                  <label className="font-bold text-slate-600">Confirm Password</label>
+                  <div className="max-w-md relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={authData.confirmPassword}
+                      onChange={(e) => setAuthData({ ...authData, confirmPassword: e.target.value })}
+                      placeholder="Re-enter new password if changing"
+                      className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
