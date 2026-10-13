@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { fetchApi } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import {
   ArrowLeft,
@@ -24,32 +25,12 @@ import {
   FileText
 } from "lucide-react";
 
-// Paying Companies / Internal Firms List
-const payingCompanyOptions = [
-  "Om Sai Fabrics (Main Account)",
-  "Sai Creation Firm",
-  "Shreeji Textiles",
-  "Global Exports"
-];
-
 export interface VendorItemState {
   id: string;
   name: string;
   type: "SUPPLIER" | "PARTY";
   visible: boolean;
 }
-
-// Default Vendors & Parties List
-const initialVendorsList: VendorItemState[] = [
-  { id: "v1", name: "DIGISCALE", type: "SUPPLIER", visible: true },
-  { id: "v2", name: "Expense: Tea & Refreshments", type: "PARTY", visible: true },
-  { id: "v3", name: "Swami", type: "PARTY", visible: true },
-  { id: "v4", name: "ABC Tex Fabrics", type: "SUPPLIER", visible: true },
-  { id: "v5", name: "Hariom Yarns & Thread Vendor", type: "SUPPLIER", visible: true },
-  { id: "v6", name: "Radha Dress Creation", type: "PARTY", visible: true },
-  { id: "v7", name: "Surat Silk House", type: "PARTY", visible: true },
-  { id: "v8", name: "Shree Ram Synthetics", type: "SUPPLIER", visible: true }
-];
 
 const linkedSourceOptions = [
   "ON-ACCOUNT / GENERAL PAYMENT",
@@ -65,12 +46,32 @@ const paymentModeOptions = [
 
 export default function NewPaymentVoucherPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
 
-  // Form State (NO PREFILLED DEFAULTS - STARTS EMPTY AS REQUESTED)
+  const currentFirmName = user?.firmName || "Main Account";
+
+  // Dynamic Paying Company Options tailored to current tenant
+  const payingCompanyOptions = useMemo(() => {
+    if (user?.firmName && user.firmName.toLowerCase().includes("om sai")) {
+      return [
+        "Om Sai Fabrics (Main Account)",
+        "Sai Creation Firm",
+        "Shreeji Textiles",
+        "Global Exports"
+      ];
+    }
+    return [
+      currentFirmName,
+      `${currentFirmName} (Unit 2)`,
+      `${currentFirmName} (Petty Cash)`
+    ];
+  }, [currentFirmName, user]);
+
+  // Form State (Initializes paying company to current tenant firm name)
   const [formType, setFormType] = useState<"Payment Out" | "Receipt In">("Payment Out");
-  const [payingCompany, setPayingCompany] = useState("");
+  const [payingCompany, setPayingCompany] = useState<string>("");
   const [supplierName, setSupplierName] = useState("");
   const [formVoucherDate, setFormVoucherDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -84,10 +85,82 @@ export default function NewPaymentVoucherPage() {
   const [bankDetails, setBankDetails] = useState("");
   const [formNotes, setFormNotes] = useState("");
 
-  // Vendor List Visibility State
-  const [vendorsList, setVendorsList] = useState<VendorItemState[]>(initialVendorsList);
+  // Vendor List Visibility State - DYNAMIC PER TENANT (starts empty)
+  const [vendorsList, setVendorsList] = useState<VendorItemState[]>([]);
+  const [isLoadingVendors, setIsLoadingVendors] = useState<boolean>(true);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [manageSearchQuery, setManageSearchQuery] = useState("");
+
+  // Set default paying company once user firm name is ready
+  useEffect(() => {
+    if (!payingCompany && currentFirmName) {
+      setPayingCompany(
+        user?.firmName?.toLowerCase().includes("om sai")
+          ? "Om Sai Fabrics (Main Account)"
+          : currentFirmName
+      );
+    }
+  }, [currentFirmName, user, payingCompany]);
+
+  // Load registered vendors for this company from API / storage
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDynamicVendors() {
+      const currentCid = getStoredCompanyId();
+      setIsLoadingVendors(true);
+
+      try {
+        const live = await fetchApi<any[]>("/vendors");
+        if (isMounted && Array.isArray(live)) {
+          const scoped = live.filter((v: any) => (v.company_id || "comp-001") === currentCid);
+          const mapped: VendorItemState[] = scoped
+            .map((v: any) => ({
+              id: v.id || `v-${Math.random()}`,
+              name: v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim(),
+              type: "SUPPLIER" as const,
+              visible: true
+            }))
+            .filter((v) => v.name);
+          setVendorsList(mapped);
+          setIsLoadingVendors(false);
+          return;
+        }
+      } catch (err) {
+        console.warn("Could not load vendors from backend:", err);
+      }
+
+      if (!isMounted) return;
+      try {
+        const saved = getTenantItem<any[]>(
+          "texaflow_vendors",
+          currentCid === "comp-001" ? "om_sai_vendors" : undefined
+        );
+        if (saved && Array.isArray(saved)) {
+          const scoped = saved.filter((v: any) => (v.company_id || "comp-001") === currentCid);
+          const mapped: VendorItemState[] = scoped
+            .map((v: any) => ({
+              id: v.id || `v-${Math.random()}`,
+              name: v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim(),
+              type: "SUPPLIER" as const,
+              visible: true
+            }))
+            .filter((v) => v.name);
+          setVendorsList(mapped);
+        } else {
+          setVendorsList([]);
+        }
+      } catch {
+        setVendorsList([]);
+      } finally {
+        if (isMounted) setIsLoadingVendors(false);
+      }
+    }
+
+    loadDynamicVendors();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Custom Dropdown Open States
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
@@ -391,9 +464,16 @@ export default function NewPaymentVoucherPage() {
               {isSupplierDropdownOpen && (
                 <div className="absolute left-0 top-[calc(100%+4px)] z-50 min-w-full w-full bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
                   <div className="max-h-48 overflow-y-auto space-y-0.5 no-scrollbar">
-                    {visibleVendors.length === 0 ? (
-                      <div className="py-4 text-center text-slate-400 font-medium">
-                        No visible vendors found.
+                    {isLoadingVendors ? (
+                      <div className="py-4 text-center text-slate-400 font-medium text-xs">
+                        Loading registered vendors...
+                      </div>
+                    ) : visibleVendors.length === 0 ? (
+                      <div className="py-5 px-3 text-center space-y-1">
+                        <p className="text-xs font-bold text-slate-700">No vendors registered yet</p>
+                        <p className="text-[11px] text-slate-400">
+                          Click &quot;+ Add&quot; below to add your first supplier or vendor.
+                        </p>
                       </div>
                     ) : (
                       visibleVendors.map((opt) => {
@@ -895,9 +975,23 @@ export default function NewPaymentVoucherPage() {
 
             {/* VENDOR LIST GROUPED BY TYPE */}
             <div className="space-y-4 max-h-80 overflow-y-auto pr-1 no-scrollbar pt-1">
-              
-              {/* SUPPLIERS GROUP */}
-              {["SUPPLIER", "PARTY"].map((groupType) => {
+              {vendorsList.length === 0 ? (
+                <div className="py-8 text-center space-y-2">
+                  <p className="text-xs font-bold text-slate-700">No vendors registered yet</p>
+                  <p className="text-[11px] text-slate-400">
+                    Your company does not have any suppliers or vendors registered yet.
+                  </p>
+                  <Link
+                    href="/vendors?action=new"
+                    onClick={() => setIsManageModalOpen(false)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs mt-2"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Add New Vendor</span>
+                  </Link>
+                </div>
+              ) : (
+                ["SUPPLIER", "PARTY"].map((groupType) => {
                 const groupItems = vendorsList.filter(
                   (v) =>
                     v.type === groupType &&
@@ -973,7 +1067,7 @@ export default function NewPaymentVoucherPage() {
                     </div>
                   </div>
                 );
-              })}
+              }))}
             </div>
 
             {/* MODAL FOOTER */}

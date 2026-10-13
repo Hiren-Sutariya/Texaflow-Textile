@@ -114,7 +114,7 @@ function NewExpenseVoucherForm() {
   const [showVendorField, setShowVendorField] = useState(false);
   const [isRegisteredVendorMode, setIsRegisteredVendorMode] = useState(false);
   const [isVendorSelectOpen, setIsVendorSelectOpen] = useState(false);
-  const [registeredVendorsList, setRegisteredVendorsList] = useState<string[]>(defaultRegisteredVendors);
+  const [registeredVendorsList, setRegisteredVendorsList] = useState<string[]>([]);
   const vendorDropdownRef = useRef<HTMLDivElement>(null);
 
   const [vendorName, setVendorName] = useState("");
@@ -134,19 +134,55 @@ function NewExpenseVoucherForm() {
   const modeRef = useRef<HTMLDivElement>(null);
   const datePickerRef = useRef<HTMLDivElement>(null);
 
-  // Load registered vendors from localStorage
+  // Load registered vendors from API or localStorage
   useEffect(() => {
-    try {
-      const saved = getTenantItem<any[]>("texaflow_vendors", "om_sai_vendors");
-      if (saved && Array.isArray(saved) && saved.length > 0) {
-        const names = saved
-          .map((v: any) => v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim())
-          .filter(Boolean);
-        if (names.length > 0) {
-          setRegisteredVendorsList(Array.from(new Set([...names, ...defaultRegisteredVendors])));
+    let isMounted = true;
+    const currentCid = getStoredCompanyId();
+
+    async function loadVendors() {
+      try {
+        const live = await fetchApi<any[]>("/vendors");
+        if (isMounted && Array.isArray(live)) {
+          const scoped = live.filter((v: any) => (v.company_id || "comp-001") === currentCid);
+          const names = scoped
+            .map((v: any) => v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim())
+            .filter(Boolean);
+          if (names.length > 0) {
+            setRegisteredVendorsList(names);
+            return;
+          }
         }
+      } catch {}
+
+      if (!isMounted) return;
+      try {
+        const saved = getTenantItem<any[]>(
+          "texaflow_vendors",
+          currentCid === "comp-001" ? "om_sai_vendors" : undefined
+        );
+        if (saved && Array.isArray(saved) && saved.length > 0) {
+          const scoped = saved.filter((v: any) => (v.company_id || "comp-001") === currentCid);
+          const names = scoped
+            .map((v: any) => v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim())
+            .filter(Boolean);
+          if (names.length > 0) {
+            setRegisteredVendorsList(names);
+            return;
+          }
+        }
+      } catch {}
+
+      if (currentCid === "comp-001") {
+        setRegisteredVendorsList(defaultRegisteredVendors);
+      } else {
+        setRegisteredVendorsList([]);
       }
-    } catch {}
+    }
+
+    loadVendors();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Close dropdowns on outside click
