@@ -483,3 +483,21 @@ def list_companies(db: Session = Depends(get_db)):
         }
         for c in companies
     ]
+
+@router.delete("/companies/{company_id}")
+def delete_company(company_id: str, db: Session = Depends(get_db)):
+    """Delete a company and associated users (comp-001 protected)."""
+    clean_id = company_id.strip()
+    if clean_id == "comp-001":
+        raise HTTPException(status_code=400, detail="Primary company comp-001 cannot be deleted.")
+
+    comp = db.query(Company).filter(Company.id == clean_id).first()
+    if not comp:
+        raise HTTPException(status_code=404, detail=f"Company '{clean_id}' not found.")
+
+    # Delete users
+    db.query(User).filter(User.company_id == clean_id).delete()
+    db.delete(comp)
+    db.commit()
+    return {"success": True, "message": f"Company {clean_id} deleted successfully."}
+

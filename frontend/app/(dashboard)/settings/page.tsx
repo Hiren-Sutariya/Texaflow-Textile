@@ -50,33 +50,33 @@ const ACCOUNT_TYPES = [
 ];
 
 function getDefaultSettings(cid: string, firmName?: string) {
-  if (cid === "comp-002" || firmName?.toLowerCase().includes("radhe")) {
-    const fName = firmName || "Radhe Krishna Textiles";
+  if (cid === "comp-001") {
+    const fName = firmName || "Shiv Creation";
     return {
       company_name: fName,
-      brand_name: "RADHE KRISHNA",
+      brand_name: "SHIV CREATION",
       tagline: "High Precision Multi-Head Embroidery Job Work",
-      phone: "9876543210",
+      phone: "9978987181",
       alt_phone: "",
-      email: "radhe@krishna.com",
-      address: "Surat, Gujarat",
+      email: "owner@shivcreation.com",
+      address: "Plot No. 104-106, GIDC Khatodara Industrial Estate",
       city_state: "Surat, Gujarat",
       pincode: "395002",
-      msme_no: "",
+      msme_no: "UDYAM-GJ-24-0091823",
       website: "",
-      gstin: "24AAAFR1234A1Z5",
-      pan: "AAAFR1234A",
+      gstin: "",
+      pan: "",
       bank_name: "State Bank of India",
       account_holder: fName,
       account_no: "",
       account_type: "Current Account",
       ifsc: "SBIN0001234",
       branch_name: "Ring Road Branch, Surat",
-      upi_id: "radhekrishna@sbi",
+      upi_id: "shivcreation@sbi",
       qr_code_image: "",
       invoice_title: "TAX INVOICE / JOBWORK BILL",
       challan_title: "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
-      invoice_prefix: "RKT/26-27/",
+      invoice_prefix: "SC/26-27/",
       next_invoice_no: "101",
       challan_prefix: "DC/26-27/",
       next_challan_no: "101",
@@ -91,74 +91,34 @@ function getDefaultSettings(cid: string, firmName?: string) {
     };
   }
 
-  if (cid === "comp-003" || firmName?.toLowerCase().includes("om sai")) {
-    const fName = firmName || "Om Sai Enterprise";
-    return {
-      company_name: fName,
-      brand_name: "OM SAI",
-      tagline: "High Precision Multi-Head Embroidery Job Work",
-      phone: "9978987181",
-      alt_phone: "",
-      email: "omsai@om-sai.com",
-      address: "Plot No. 104-106, GIDC Khatodara Industrial Estate",
-      city_state: "Surat, Gujarat",
-      pincode: "395002",
-      msme_no: "UDYAM-GJ-24-0091823",
-      website: "",
-      gstin: "24AAAFA1234A1Z5",
-      pan: "AAAFA1234A",
-      bank_name: "HDFC Bank Ltd",
-      account_holder: fName,
-      account_no: "50200012345678",
-      account_type: "Current Account",
-      ifsc: "HDFC0000123",
-      branch_name: "Ring Road Branch, Surat",
-      upi_id: "omsaienterprise@hdfcbank",
-      qr_code_image: "",
-      invoice_title: "TAX INVOICE / JOBWORK BILL",
-      challan_title: "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
-      invoice_prefix: "OMS/26-27/",
-      next_invoice_no: "101",
-      challan_prefix: "DC/26-27/",
-      next_challan_no: "101",
-      hsn_sac_code: "998822 (Textile Jobwork)",
-      gst_rate: "5% (Textile Embroidery Jobwork)",
-      payment_terms: "Due on Receipt",
-      signatory_label: `For ${fName} (Authorized Signatory)`,
-      eway_threshold: "50000",
-      print_qr: true,
-      terms_conditions:
-        "1. Goods once delivered will not be taken back without inspection.\n2. Payment strictly due as per credit terms.\n3. Subject to Surat Jurisdiction only."
-    };
-  }
-
-  // comp-001 (Shiv Creation)
-  const fName = firmName || "Shiv Creation";
+  // Any newly registered company or other tenant
+  const fName = firmName || "New Enterprise";
+  const prefix = fName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 3).join("").toUpperCase() || "INV";
   return {
     company_name: fName,
-    brand_name: "SHIV CREATION",
-    tagline: "High Precision Multi-Head Embroidery Job Work",
-    phone: "9978987181",
+    brand_name: fName.toUpperCase(),
+    tagline: "Textile & Embroidery Manufacturing",
+    phone: "",
     alt_phone: "",
-    email: "owner@shivcreation.com",
-    address: "Plot No. 104-106, GIDC Khatodara Industrial Estate",
+    email: "",
+    address: "Surat, Gujarat",
     city_state: "Surat, Gujarat",
     pincode: "395002",
-    msme_no: "UDYAM-GJ-24-0091823",
+    msme_no: "",
     website: "",
-    gstin: "24AAAFA1234A1Z5",
-    pan: "AAAFA1234A",
-    bank_name: "HDFC Bank Ltd",
+    gstin: "",
+    pan: "",
+    bank_name: "",
     account_holder: fName,
-    account_no: "50200012345678",
+    account_no: "",
     account_type: "Current Account",
-    ifsc: "HDFC0000123",
-    branch_name: "Ring Road Branch, Surat",
-    upi_id: "omsaienterprise@hdfcbank",
+    ifsc: "",
+    branch_name: "",
+    upi_id: "",
     qr_code_image: "",
     invoice_title: "TAX INVOICE / JOBWORK BILL",
     challan_title: "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
-    invoice_prefix: "SC/26-27/",
+    invoice_prefix: `${prefix}/26-27/`,
     next_invoice_no: "101",
     challan_prefix: "DC/26-27/",
     next_challan_no: "101",

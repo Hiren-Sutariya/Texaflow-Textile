@@ -114,10 +114,50 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
     }
   };
 
+  const handleRegisterKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key === "Enter") {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT") {
+        const form = target.closest("form");
+        if (!form) return;
+        const inputs = Array.from(form.querySelectorAll("input:not([disabled])")) as HTMLElement[];
+        const currentIndex = inputs.indexOf(target);
+        if (currentIndex > -1 && currentIndex < inputs.length - 1) {
+          e.preventDefault();
+          inputs[currentIndex + 1].focus();
+        }
+      }
+    }
+  };
+
   const handleRegisterCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
+
+    const cleanCompany = regCompanyName.trim();
+    const cleanOwner = regOwnerName.trim();
+    const cleanUser = regEmail.trim();
+    const cleanPassword = regPassword.trim();
+    const cleanPhone = regPhone.trim();
+
+    if (!cleanCompany) {
+      setErrorMsg("Please enter company name");
+      return;
+    }
+    if (!cleanOwner) {
+      setErrorMsg("Please enter owner / director name");
+      return;
+    }
+    if (!cleanUser) {
+      setErrorMsg("Please enter login username or email");
+      return;
+    }
+    if (!cleanPassword || cleanPassword.length < 4) {
+      setErrorMsg("Password must be at least 4 characters");
+      return;
+    }
+
     setIsRegistering(true);
 
     try {
@@ -125,11 +165,11 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          company_name: regCompanyName.trim(),
-          owner_name: regOwnerName.trim(),
-          username_or_email: regEmail.trim(),
-          password: regPassword.trim(),
-          phone: regPhone.trim() || undefined
+          company_name: cleanCompany,
+          owner_name: cleanOwner,
+          username_or_email: cleanUser,
+          password: cleanPassword,
+          phone: cleanPhone || undefined
         })
       });
 
@@ -138,17 +178,35 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
         throw new Error(data.detail || "Registration failed. Please try again.");
       }
 
-      setSuccessMsg(`Company "${regCompanyName}" registered successfully! Signing in...`);
+      const newCid = data?.company?.id || data?.user?.companyId || "comp-002";
+
+      // Seed initial tenant settings in localStorage immediately
+      try {
+        const initialSettings = {
+          company_name: cleanCompany,
+          brand_name: cleanCompany.toUpperCase(),
+          owner_name: cleanOwner,
+          phone: cleanPhone || "",
+          email: cleanUser.includes("@") ? cleanUser : "",
+          username: cleanUser,
+          status: "active"
+        };
+        localStorage.setItem(`app_settings_${newCid}`, JSON.stringify(initialSettings));
+        localStorage.setItem(`texaflow_login_username_${newCid}`, cleanUser);
+      } catch {}
+
+      setSuccessMsg(`Company "${cleanCompany}" registered successfully! Launching ERP...`);
+
       // Auto-login into the newly created company panel
-      const loginRes = await login(regEmail.trim(), regPassword.trim());
+      const loginRes = await login(cleanUser, cleanPassword);
       if (loginRes.success) {
         setTimeout(() => {
           if (onSuccess) onSuccess();
-          else router.push("/");
-        }, 400);
+          else window.location.href = "/";
+        }, 300);
       } else {
         setMode("login");
-        setEmail(regEmail.trim());
+        setEmail(cleanUser);
       }
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to register company. Please try again.");
@@ -447,7 +505,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                 {/* Onboard New Company */}
                 <div className="pt-2 text-center border-t border-slate-100">
                   <p className="text-xs text-slate-500 font-medium">
-                    New company onboarding?{" "}
+                    New company?{" "}
                     <button
                       type="button"
                       onClick={() => {
@@ -457,7 +515,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                       }}
                       className="text-blue-600 hover:text-blue-700 font-bold hover:underline cursor-pointer"
                     >
-                      Register New Company / નવી કંપની
+                      Register Company
                     </button>
                   </p>
                 </div>
@@ -502,7 +560,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                 </div>
               )}
 
-              <form onSubmit={handleRegisterCompany} className="space-y-3.5">
+              <form onSubmit={handleRegisterCompany} onKeyDown={handleRegisterKeyDown} className="space-y-3.5">
                 {/* Company Name */}
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Company / Firm Name *</label>
