@@ -52,22 +52,12 @@ export default function NewPaymentVoucherPage() {
 
   const currentFirmName = user?.firmName || "Main Account";
 
-  // Dynamic Paying Company Options tailored to current tenant
+  // Dynamic Paying Company Options tailored to current tenant (NO fake sister companies!)
   const payingCompanyOptions = useMemo(() => {
-    if (user?.firmName && user.firmName.toLowerCase().includes("om sai")) {
-      return [
-        "Om Sai Fabrics (Main Account)",
-        "Sai Creation Firm",
-        "Shreeji Textiles",
-        "Global Exports"
-      ];
-    }
-    return [
-      currentFirmName,
-      `${currentFirmName} (Unit 2)`,
-      `${currentFirmName} (Petty Cash)`
-    ];
-  }, [currentFirmName, user]);
+    const list = [currentFirmName];
+    list.push(`${currentFirmName} (Main A/c)`, `${currentFirmName} (Petty Cash)`);
+    return Array.from(new Set(list));
+  }, [currentFirmName]);
 
   // Form State (Initializes paying company to current tenant firm name)
   const [formType, setFormType] = useState<"Payment Out" | "Receipt In">("Payment Out");
@@ -91,16 +81,21 @@ export default function NewPaymentVoucherPage() {
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [manageSearchQuery, setManageSearchQuery] = useState("");
 
+  // Filter vendors based on user manual input
+  const filteredVendors = useMemo(() => {
+    const q = (supplierName || "").toLowerCase().trim();
+    if (!q) return vendorsList.filter((v) => v.visible);
+    return vendorsList.filter(
+      (v) => v.visible && v.name.toLowerCase().includes(q)
+    );
+  }, [vendorsList, supplierName]);
+
   // Set default paying company once user firm name is ready
   useEffect(() => {
     if (!payingCompany && currentFirmName) {
-      setPayingCompany(
-        user?.firmName?.toLowerCase().includes("om sai")
-          ? "Om Sai Fabrics (Main Account)"
-          : currentFirmName
-      );
+      setPayingCompany(currentFirmName);
     }
-  }, [currentFirmName, user, payingCompany]);
+  }, [currentFirmName, payingCompany]);
 
   // Load registered vendors for this company from API / storage
   useEffect(() => {
@@ -376,32 +371,34 @@ export default function NewPaymentVoucherPage() {
 
           {/* ROW 2: PAYING COMPANY / INTERNAL FIRM * */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-bold text-slate-700">Paying Company*</label>
+            <div className="flex flex-col">
+              <label className="font-bold text-slate-700">Paying Company*</label>
+              <span className="text-[10px] text-slate-400 font-normal">Type manually or select</span>
+            </div>
             <div ref={companyRef} className="relative max-w-xl w-full">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCompanyDropdownOpen((prev) => {
-                    if (!prev) {
-                      setIsSupplierDropdownOpen(false);
-                      setIsSourceDropdownOpen(false);
-                      setIsModeDropdownOpen(false);
-                      setIsDatePickerOpen(false);
-                    }
-                    return !prev;
-                  });
-                }}
-                className={`w-full h-9 px-3 bg-white border rounded-xl text-xs font-semibold text-slate-900 flex items-center justify-between transition-all cursor-pointer shadow-2xs ${
-                  isCompanyDropdownOpen
-                    ? "border-blue-500 ring-2 ring-blue-500/20"
-                    : "border-slate-300 hover:border-blue-400"
-                }`}
-              >
-                <span className={`truncate ${!payingCompany ? "text-slate-400 font-normal" : "font-semibold"}`}>
-                  {payingCompany || "Select Paying Company"}
-                </span>
-                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${isCompanyDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
-              </button>
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  placeholder="e.g. Main Factory Account"
+                  value={payingCompany}
+                  onChange={(e) => setPayingCompany(e.target.value)}
+                  className="w-full h-9 px-3 pr-8 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs placeholder:font-normal placeholder:text-slate-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCompanyDropdownOpen((prev) => !prev);
+                    setIsSupplierDropdownOpen(false);
+                    setIsSourceDropdownOpen(false);
+                    setIsModeDropdownOpen(false);
+                    setIsDatePickerOpen(false);
+                  }}
+                  className="absolute right-2 p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                  title="Toggle company accounts"
+                >
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isCompanyDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
+                </button>
+              </div>
 
               {isCompanyDropdownOpen && (
                 <div className="absolute left-0 top-[calc(100%+4px)] z-50 min-w-full w-full bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 space-y-0.5 max-h-52 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
@@ -431,53 +428,63 @@ export default function NewPaymentVoucherPage() {
             </div>
           </div>
 
-          {/* ROW 3: SUPPLIER / VENDOR NAME * (DIRECT VENDOR REDIRECT & MANAGE MODAL) */}
+          {/* ROW 3: SUPPLIER / VENDOR NAME * (TYPE MANUALLY OR SELECT FROM MASTER) */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-extrabold text-rose-600">Supplier / Vendor*</label>
+            <div className="flex flex-col">
+              <label className="font-extrabold text-rose-600">Supplier / Vendor*</label>
+              <span className="text-[10px] text-slate-400 font-normal">Type name manually</span>
+            </div>
             <div ref={supplierRef} className="relative max-w-xl w-full">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSupplierDropdownOpen((prev) => {
-                    if (!prev) {
-                      setIsCompanyDropdownOpen(false);
-                      setIsSourceDropdownOpen(false);
-                      setIsModeDropdownOpen(false);
-                      setIsDatePickerOpen(false);
-                    }
-                    return !prev;
-                  });
-                }}
-                className={`w-full h-9 px-3 bg-white border rounded-xl text-xs font-semibold text-slate-900 flex items-center justify-between transition-all cursor-pointer shadow-2xs ${
-                  isSupplierDropdownOpen
-                    ? "border-blue-500 ring-2 ring-blue-500/20"
-                    : "border-slate-300 hover:border-blue-400"
-                }`}
-              >
-                <span className={`truncate ${!supplierName ? "text-slate-400 font-normal" : "font-semibold"}`}>
-                  {supplierName || "Select Supplier / Vendor"}
-                </span>
-                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${isSupplierDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
-              </button>
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  placeholder="Type supplier / vendor name manually..."
+                  value={supplierName}
+                  onChange={(e) => {
+                    setSupplierName(e.target.value);
+                    if (!isSupplierDropdownOpen) setIsSupplierDropdownOpen(true);
+                  }}
+                  onFocus={() => {
+                    if (vendorsList.length > 0) setIsSupplierDropdownOpen(true);
+                  }}
+                  className="w-full h-9 px-3 pr-8 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs placeholder:font-normal placeholder:text-slate-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSupplierDropdownOpen((prev) => !prev);
+                    setIsCompanyDropdownOpen(false);
+                    setIsSourceDropdownOpen(false);
+                    setIsModeDropdownOpen(false);
+                    setIsDatePickerOpen(false);
+                  }}
+                  className="absolute right-2 p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                  title="Toggle registered vendor list"
+                >
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isSupplierDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
+                </button>
+              </div>
 
-              {/* SUPPLIER DROPDOWN WITH DIRECT + ADD & SETTINGS MANAGE BUTTON */}
+              {/* SUPPLIER DROPDOWN / AUTOCOMPLETE */}
               {isSupplierDropdownOpen && (
                 <div className="absolute left-0 top-[calc(100%+4px)] z-50 min-w-full w-full bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
                   <div className="max-h-48 overflow-y-auto space-y-0.5 no-scrollbar">
                     {isLoadingVendors ? (
-                      <div className="py-4 text-center text-slate-400 font-medium text-xs">
+                      <div className="py-3 text-center text-slate-400 font-medium text-xs">
                         Loading registered vendors...
                       </div>
-                    ) : visibleVendors.length === 0 ? (
-                      <div className="py-5 px-3 text-center space-y-1">
-                        <p className="text-xs font-bold text-slate-700">No vendors registered yet</p>
-                        <p className="text-[11px] text-slate-400">
-                          Click &quot;+ Add&quot; below to add your first supplier or vendor.
+                    ) : filteredVendors.length === 0 ? (
+                      <div className="py-3.5 px-3 text-center space-y-1">
+                        <p className="text-xs font-bold text-slate-700">
+                          {supplierName ? `Using "${supplierName}" (Custom Name)` : "No saved vendors found"}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          You can type any name directly in the box above.
                         </p>
                       </div>
                     ) : (
-                      visibleVendors.map((opt) => {
-                        const isSelected = supplierName === opt.name;
+                      filteredVendors.map((opt) => {
+                        const isSelected = supplierName.toLowerCase() === opt.name.toLowerCase();
                         return (
                           <button
                             key={opt.id}
@@ -513,7 +520,7 @@ export default function NewPaymentVoucherPage() {
                       className="py-1.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-blue-200/60"
                     >
                       <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>Add</span>
+                      <span>Add to Master</span>
                     </Link>
                     <button
                       type="button"
@@ -524,7 +531,7 @@ export default function NewPaymentVoucherPage() {
                       className="py-1.5 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-200/60"
                     >
                       <Settings className="w-3.5 h-3.5" />
-                      <span>Manage</span>
+                      <span>Manage List</span>
                     </button>
                   </div>
                 </div>

@@ -7,8 +7,8 @@ import { AuthProvider } from "@/context/AuthContext";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Om Sai Enterprises — TexaFlow Textile",
-  description: "TexaFlow Textile — Operating System for Om Sai Enterprises. Powered & Developed by DigiScale Infotech",
+  title: "TexaFlow Textile — Operating System",
+  description: "TexaFlow Textile — Modern Cloud Operating System for Textile & Embroidery Manufacturing",
 };
 
 export default function RootLayout({

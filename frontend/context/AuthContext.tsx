@@ -31,8 +31,51 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const SESSION_STORAGE_KEY = "texaflow_auth_session";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserSession | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<UserSession | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && (parsed.email || parsed.username || parsed.id)) {
+            if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+              sessionStorage.removeItem(SESSION_STORAGE_KEY);
+              return null;
+            }
+            let resolvedCompanyId = parsed.companyId;
+            if (parsed.id && parsed.id.includes("comp-")) {
+              const m = parsed.id.match(/(comp-\d+)/);
+              if (m) resolvedCompanyId = m[1];
+            } else if (parsed.firmName && parsed.firmName.toLowerCase().includes("radhe")) {
+              resolvedCompanyId = "comp-002";
+            } else if (parsed.firmName && !parsed.firmName.toLowerCase().includes("om sai") && parsed.companyId === "comp-001") {
+              resolvedCompanyId = `comp-${parsed.firmName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8)}`;
+            }
+            if (resolvedCompanyId) parsed.companyId = resolvedCompanyId;
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return null;
+  });
+
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && (parsed.email || parsed.username || parsed.id)) {
+            if (!parsed.expiresAt || Date.now() <= parsed.expiresAt) {
+              return false;
+            }
+          }
+        }
+      } catch {}
+    }
+    return true;
+  });
   const router = useRouter();
 
   useEffect(() => {

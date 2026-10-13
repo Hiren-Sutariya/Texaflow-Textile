@@ -147,11 +147,11 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           title="Return to Main Dashboard"
         >
           <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform uppercase">
-            {user?.firmName ? user.firmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "OS"}
+            {user?.firmName ? user.firmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "TF"}
           </div>
           <div className="truncate">
             <h1 className="font-extrabold text-slate-900 text-xs tracking-tight leading-tight truncate uppercase">
-              {user?.firmName || "OM SAI ENTERPRISES"}
+              {user?.firmName || "TEXAFLOW TEXTILE"}
             </h1>
             <p className="text-[9px] font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
@@ -271,7 +271,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           </div>
           <div className="truncate">
             <p className="text-xs font-bold text-slate-900 truncate leading-none">
-              {user?.name || "Om Sai Embroidery"}
+              {user?.name || "Factory Admin"}
             </p>
             <p className="text-[10px] text-slate-400 font-medium truncate mt-1">
               {user?.roleTitle || "Owner Account"}
