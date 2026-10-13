@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { fetchApi } from "@/lib/api";
+import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -172,6 +173,7 @@ export default function NewPaymentVoucherPage() {
       let assignedId = `pay-${Date.now()}`;
       let finalVoucherNo = `VOU-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`;
 
+      const currentCid = getStoredCompanyId();
       try {
         const backendRes = await fetchApi<any>("/payments", {
           method: "POST",
@@ -182,10 +184,11 @@ export default function NewPaymentVoucherPage() {
             party_name: supplierName,
             amount: parseFloat(formAmount) || 0,
             payment_mode: formMode,
-            bank_account: bankDetails || "HDFC Bank Main A/c",
+            bank_account: bankDetails || "Main Bank A/c",
             reference_no: formRefNo || `REF-${Math.floor(Math.random() * 89999 + 10000)}`,
             status: "Paid",
-            remarks: formNotes || "Payment voucher transaction entry"
+            remarks: formNotes || "Payment voucher transaction entry",
+            company_id: currentCid
           })
         });
         if (backendRes?.id) {
@@ -207,16 +210,25 @@ export default function NewPaymentVoucherPage() {
         amount: parseFloat(formAmount) || 0,
         mode: formMode,
         ref_no: formRefNo || `REF-${Math.floor(Math.random() * 89999 + 10000)}`,
-        bank_details: bankDetails || "HDFC Bank Main A/c",
-        notes: formNotes || "Payment voucher transaction entry"
+        bank_details: bankDetails || "Main Bank A/c",
+        notes: formNotes || "Payment voucher transaction entry",
+        company_id: currentCid
       };
 
       // Save to localStorage
       try {
-        const existing = localStorage.getItem("om_sai_vouchers");
-        const list = existing ? JSON.parse(existing) : [];
+        const existing = getTenantItem<any[]>(
+          "texaflow_vouchers",
+          currentCid === "comp-001" ? "om_sai_vouchers" : undefined
+        ) || [];
+        const scoped = existing.filter((p: any) => (p.company_id || "comp-001") === currentCid);
+        const list = [...scoped];
         list.unshift(newVoucher);
-        localStorage.setItem("om_sai_vouchers", JSON.stringify(list));
+        setTenantItem(
+          "texaflow_vouchers",
+          list,
+          currentCid === "comp-001" ? "om_sai_vouchers" : undefined
+        );
       } catch (err) {
         console.error(err);
       }

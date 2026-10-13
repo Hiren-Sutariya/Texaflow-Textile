@@ -264,7 +264,8 @@ export const normalizeAndRenumberExpenses = (list: ExpenseItem[]): ExpenseItem[]
   });
 
   try {
-    setTenantItem("texaflow_expenses", updated, "om_sai_expenses");
+    const currentCid = getStoredCompanyId();
+    setTenantItem("texaflow_expenses", updated, currentCid === "comp-001" ? "om_sai_expenses" : undefined);
   } catch {}
 
   return updated;
@@ -620,10 +621,18 @@ export default function ExpensesPage() {
         setExpenses((prev) => prev.map((item) => (item.expense_no === newEntry.expense_no ? { ...item, id: savedRes.id } : item)));
       }
 
-      const existing = getTenantItem<ExpenseItem[]>("texaflow_expenses", "om_sai_expenses") || [];
+      const currentCid = getStoredCompanyId();
+      const existing = getTenantItem<ExpenseItem[]>(
+        "texaflow_expenses",
+        currentCid === "comp-001" ? "om_sai_expenses" : undefined
+      ) || [];
       const list = [...existing];
       list.unshift(newEntry);
-      setTenantItem("texaflow_expenses", list, "om_sai_expenses");
+      setTenantItem(
+        "texaflow_expenses",
+        list,
+        currentCid === "comp-001" ? "om_sai_expenses" : undefined
+      );
     } catch (err) {
       console.warn("Backend sync notice:", err);
     }
@@ -656,10 +665,18 @@ export default function ExpensesPage() {
       const updated = expenses.filter((e) => e.id !== id);
       setExpenses(updated);
       try {
-        const saved = getTenantItem<ExpenseItem[]>("texaflow_expenses", "om_sai_expenses");
+        const currentCid = getStoredCompanyId();
+        const saved = getTenantItem<ExpenseItem[]>(
+          "texaflow_expenses",
+          currentCid === "comp-001" ? "om_sai_expenses" : undefined
+        );
         if (saved && Array.isArray(saved)) {
           const parsed = saved.filter((e: any) => e.id !== id);
-          setTenantItem("texaflow_expenses", parsed, "om_sai_expenses");
+          setTenantItem(
+            "texaflow_expenses",
+            parsed,
+            currentCid === "comp-001" ? "om_sai_expenses" : undefined
+          );
         }
         await fetchApi(`/expenses/${id}`, { method: "DELETE" });
       } catch (err) {

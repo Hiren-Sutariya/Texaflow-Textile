@@ -282,8 +282,14 @@ function NewExpenseVoucherForm() {
   useEffect(() => {
     if (!isEditMode) {
       try {
-        const saved = localStorage.getItem("om_sai_expenses");
-        const list = saved ? JSON.parse(saved) : [];
+        const currentCid = getStoredCompanyId();
+        const saved = getTenantItem<any[]>(
+          "texaflow_expenses",
+          currentCid === "comp-001" ? "om_sai_expenses" : undefined
+        );
+        const list = Array.isArray(saved)
+          ? saved.filter((item: any) => (item.company_id || "comp-001") === currentCid)
+          : [];
         let maxSeq = 0;
         list.forEach((item: any) => {
           if (item.expense_no) {
@@ -396,11 +402,19 @@ function NewExpenseVoucherForm() {
 
         // 2. Update localStorage
         try {
-          const list = getTenantItem<any[]>("texaflow_expenses", "om_sai_expenses") || [];
+          const currentCid = getStoredCompanyId();
+          const list = getTenantItem<any[]>(
+            "texaflow_expenses",
+            currentCid === "comp-001" ? "om_sai_expenses" : undefined
+          ) || [];
           const updatedList = list.map((item: any) =>
             String(item.id) === String(editId) || item.expense_no === editId ? updatedExpense : item
           );
-          setTenantItem("texaflow_expenses", updatedList, "om_sai_expenses");
+          setTenantItem(
+            "texaflow_expenses",
+            updatedList,
+            currentCid === "comp-001" ? "om_sai_expenses" : undefined
+          );
           window.dispatchEvent(new Event("app_data_update"));
           window.dispatchEvent(new Event("storage"));
         } catch (err) {

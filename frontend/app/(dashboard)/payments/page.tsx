@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { fetchApi } from "@/lib/api";
+import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import {
   ArrowUpRight,
   ArrowDownLeft,
@@ -78,12 +79,13 @@ export default function PaymentsAndVouchersPage() {
   const [vouchers, setVouchers] = useState<PaymentVoucherItem[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem("om_sai_vouchers");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            return parsed;
-          }
+        const currentCid = getStoredCompanyId();
+        const saved = getTenantItem<PaymentVoucherItem[]>(
+          "texaflow_vouchers",
+          currentCid === "comp-001" ? "om_sai_vouchers" : undefined
+        );
+        if (Array.isArray(saved)) {
+          return saved.filter((p: any) => (p.company_id || "comp-001") === currentCid);
         }
       } catch {}
     }
@@ -111,27 +113,33 @@ export default function PaymentsAndVouchersPage() {
     setHasMounted(true);
     let isMounted = true;
     const loadVouchers = async () => {
+      const currentCid = getStoredCompanyId();
       try {
         const live = await fetchApi<any[]>("/payments");
         if (!isMounted) return;
         if (Array.isArray(live)) {
-          const mapped: PaymentVoucherItem[] = live.map((p) => ({
+          const scoped = live.filter((p: any) => (p.company_id || "comp-001") === currentCid);
+          const mapped: PaymentVoucherItem[] = scoped.map((p) => ({
             id: p.id,
             voucher_no: p.voucher_no,
             date: p.date,
             party_name: p.party_name,
-            paying_company: "Om Sai Fabrics (Main Account)",
+            paying_company: currentCid === "comp-001" ? "Om Sai Fabrics (Main Account)" : "Main Factory Account",
             type: (p.voucher_type as any) || "Payment Out",
             linked_source: "Job Work / Purchase" as any,
             amount: Number(p.amount) || 0,
             mode: p.payment_mode || "Bank Transfer",
             ref_no: p.reference_no || "-",
-            bank_details: p.bank_account || "HDFC Bank Main A/c",
+            bank_details: p.bank_account || "Main Bank A/c",
             notes: p.remarks || ""
           }));
           setVouchers(mapped);
           try {
-            localStorage.setItem("om_sai_vouchers", JSON.stringify(mapped));
+            setTenantItem(
+              "texaflow_vouchers",
+              mapped,
+              currentCid === "comp-001" ? "om_sai_vouchers" : undefined
+            );
           } catch {}
           setIsLoading(false);
           return;
@@ -142,14 +150,15 @@ export default function PaymentsAndVouchersPage() {
 
       if (!isMounted) return;
       try {
-        const saved = localStorage.getItem("om_sai_vouchers");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            setVouchers(parsed);
-            setIsLoading(false);
-            return;
-          }
+        const saved = getTenantItem<PaymentVoucherItem[]>(
+          "texaflow_vouchers",
+          currentCid === "comp-001" ? "om_sai_vouchers" : undefined
+        );
+        if (saved && Array.isArray(saved)) {
+          const scoped = saved.filter((p: any) => (p.company_id || "comp-001") === currentCid);
+          setVouchers(scoped);
+          setIsLoading(false);
+          return;
         }
       } catch (err) {
         console.error(err);
@@ -236,7 +245,12 @@ export default function PaymentsAndVouchersPage() {
       const updated = vouchers.filter((v) => v.id !== id);
       setVouchers(updated);
       try {
-        localStorage.setItem("om_sai_vouchers", JSON.stringify(updated));
+        const currentCid = getStoredCompanyId();
+        setTenantItem(
+          "texaflow_vouchers",
+          updated,
+          currentCid === "comp-001" ? "om_sai_vouchers" : undefined
+        );
       } catch (err) {
         console.error(err);
       }
