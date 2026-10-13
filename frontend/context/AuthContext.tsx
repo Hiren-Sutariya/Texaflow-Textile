@@ -31,9 +31,57 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SESSION_STORAGE_KEY = "texaflow_auth_session";
 
+function getInitialAuthSession(): UserSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    if (!parsed || (!parsed.email && !parsed.username && !parsed.id)) return null;
+    if (parsed.expiresAt && Date.now() > parsed.expiresAt) return null;
+
+    let resolvedCompanyId = parsed.companyId;
+    if (parsed.id && parsed.id.includes("comp-")) {
+      const m = parsed.id.match(/(comp-\d+)/);
+      if (m) resolvedCompanyId = m[1];
+    } else if (parsed.id === "usr-comp-003-owner" || parsed.username === "omsai" || parsed.firmName?.toLowerCase().includes("om sai")) {
+      resolvedCompanyId = "comp-003";
+    } else if (parsed.firmName && parsed.firmName.toLowerCase().includes("radhe")) {
+      resolvedCompanyId = "comp-002";
+    } else if (
+      parsed.id === "usr-owner-01" || 
+      (parsed.companyId && parsed.companyId.includes("shiv")) ||
+      (parsed.firmName && parsed.firmName.toLowerCase().includes("shiv"))
+    ) {
+      resolvedCompanyId = "comp-001";
+    } else if (!resolvedCompanyId || !/^comp-\d+$/.test(resolvedCompanyId)) {
+      resolvedCompanyId = "comp-001";
+    }
+
+    if (resolvedCompanyId) {
+      parsed.companyId = resolvedCompanyId;
+    }
+
+    if (!parsed.firmName || parsed.firmName.toLowerCase().includes("texaflow")) {
+      if (resolvedCompanyId === "comp-002") parsed.firmName = "Radhe Fashion";
+      else if (resolvedCompanyId === "comp-003") parsed.firmName = "Om Sai Enterprise";
+      else parsed.firmName = "Shiv Creation";
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserSession | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<UserSession | null>(getInitialAuthSession);
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return !sessionStorage.getItem(SESSION_STORAGE_KEY);
+    }
+    return true;
+  });
   const router = useRouter();
 
   useEffect(() => {
@@ -73,9 +121,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (resolvedCompanyId && resolvedCompanyId !== parsed.companyId) {
             parsed.companyId = resolvedCompanyId;
-            sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
           }
-            setUser(parsed);
+
+          if (!parsed.firmName || parsed.firmName.toLowerCase().includes("texaflow")) {
+            if (resolvedCompanyId === "comp-002") parsed.firmName = "Radhe Fashion";
+            else if (resolvedCompanyId === "comp-003") parsed.firmName = "Om Sai Enterprise";
+            else parsed.firmName = "Shiv Creation";
+          }
+
+          sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
+          setUser(parsed);
           }
         } else {
           setUser(null);
@@ -119,6 +174,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
+        const fallbackFirm = resolvedCompanyId === "comp-002" ? "Radhe Fashion" : resolvedCompanyId === "comp-003" ? "Om Sai Enterprise" : "Shiv Creation";
+        const finalFirmName = data.user.firmName && !data.user.firmName.toLowerCase().includes("texaflow") ? data.user.firmName : fallbackFirm;
+
         const session: UserSession = {
           id: data.user.id,
           name: data.user.name,
@@ -126,7 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           username: data.user.username || data.user.email,
           role: data.user.role || "Owner",
           roleTitle: data.user.roleTitle || "Proprietor & Director",
-          firmName: data.user.firmName || "TexaFlow Textile",
+          firmName: finalFirmName,
           companyId: resolvedCompanyId,
           lastLogin: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
           expiresAt: Date.now() + 4 * 60 * 60 * 1000 // Valid for 4 hours

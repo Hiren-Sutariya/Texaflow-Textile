@@ -35,6 +35,7 @@ import {
   LogOut
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { getStoredFirmName, getStoredCompanyId } from "@/lib/tenantStorage";
 
 interface MenuItem {
   name: string;
@@ -133,22 +134,16 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     return () => window.removeEventListener("app_location_change", updateUnit);
   }, []);
 
-  // Dynamic Company Brand Name (Syncs with Settings in Real-Time)
-  const [customFirmName, setCustomFirmName] = useState<string>("");
+  // Dynamic Company Brand Name (Syncs with Settings in Real-Time with ZERO delay on refresh)
+  const [customFirmName, setCustomFirmName] = useState<string>(() => getStoredFirmName());
 
   useEffect(() => {
     const loadSettings = () => {
       try {
-        const cid = user?.companyId || "comp-001";
-        const savedTenant = localStorage.getItem(`app_settings_${cid}`);
-        const savedLegacy = cid === "comp-001" ? localStorage.getItem("app_settings_om_sai") : null;
-        const raw = savedTenant || savedLegacy;
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed.company_name?.trim()) {
-            setCustomFirmName(parsed.company_name.trim());
-            return;
-          }
+        const firm = getStoredFirmName();
+        if (firm) {
+          setCustomFirmName(firm);
+          return;
         }
         if (user?.firmName?.trim()) {
           setCustomFirmName(user.firmName.trim());
@@ -170,9 +165,9 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       window.removeEventListener("app_settings_update", handleSettingsUpdate);
       window.removeEventListener("app_data_update", loadSettings);
     };
-  }, [user?.companyId]);
+  }, [user?.companyId, user?.firmName]);
 
-  const displayedFirmName = customFirmName || user?.firmName || "TEXAFLOW TEXTILE";
+  const displayedFirmName = customFirmName || user?.firmName || getStoredFirmName() || "Shiv Creation";
 
   const renderNavContent = (isMobile = false) => (
     <>
@@ -188,7 +183,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           title="Return to Main Dashboard"
         >
           <div suppressHydrationWarning className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform uppercase">
-            {displayedFirmName ? displayedFirmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "TF"}
+            {displayedFirmName ? displayedFirmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "SC"}
           </div>
           <div className="truncate">
             <h1 suppressHydrationWarning className="font-extrabold text-slate-900 text-xs tracking-tight leading-tight truncate uppercase">

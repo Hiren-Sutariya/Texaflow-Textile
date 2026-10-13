@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { getStoredFirmName } from "@/lib/tenantStorage";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { 
   Users, 
@@ -123,11 +124,11 @@ export default function Home() {
       <div className="w-full max-w-6xl bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 shadow-2xs flex items-center justify-between gap-2.5 sm:gap-3 text-xs">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div suppressHydrationWarning className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0 tracking-wider uppercase">
-            {user?.firmName ? user.firmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "TF"}
+            {(user?.firmName || getStoredFirmName()) ? (user?.firmName || getStoredFirmName()).split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "SC"}
           </div>
           <div className="min-w-0 truncate">
             <div className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5 truncate">
-              <span suppressHydrationWarning className="truncate">{user?.firmName || "TexaFlow Textile"}</span>
+              <span suppressHydrationWarning className="truncate">{user?.firmName || getStoredFirmName() || "Shiv Creation"}</span>
               <span suppressHydrationWarning className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[9px] sm:text-[10px] font-bold shrink-0">
                 {user?.roleTitle || "Owner"}
               </span>

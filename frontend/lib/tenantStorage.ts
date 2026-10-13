@@ -53,6 +53,39 @@ export function getStoredCompanyId(): string {
   return "comp-001";
 }
 
+export function getStoredFirmName(): string {
+  if (typeof window === "undefined") return "Shiv Creation";
+  try {
+    const cid = getStoredCompanyId();
+    // 1. Check saved tenant settings
+    const savedTenant = localStorage.getItem(`app_settings_${cid}`);
+    const savedLegacy = cid === "comp-001" ? localStorage.getItem("app_settings_om_sai") : null;
+    const raw = savedTenant || savedLegacy;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.company_name && typeof parsed.company_name === "string" && parsed.company_name.trim()) {
+        return parsed.company_name.trim();
+      }
+      if (parsed?.brand_name && typeof parsed.brand_name === "string" && parsed.brand_name.trim()) {
+        return parsed.brand_name.trim();
+      }
+    }
+    // 2. Check auth session
+    const sess = sessionStorage.getItem("texaflow_auth_session");
+    if (sess) {
+      const parsedSess = JSON.parse(sess);
+      if (parsedSess?.firmName && typeof parsedSess.firmName === "string" && parsedSess.firmName.trim() && !parsedSess.firmName.toLowerCase().includes("texaflow")) {
+        return parsedSess.firmName.trim();
+      }
+    }
+    // 3. Fallbacks by known company IDs
+    if (cid === "comp-002") return "Radhe Fashion";
+    if (cid === "comp-003") return "Om Sai Enterprise";
+    return "Shiv Creation";
+  } catch {}
+  return "Shiv Creation";
+}
+
 export function getTenantStorageKey(baseKey: string, companyId?: string): string {
   const cid = companyId || getStoredCompanyId();
   return `${baseKey}_${cid}`;

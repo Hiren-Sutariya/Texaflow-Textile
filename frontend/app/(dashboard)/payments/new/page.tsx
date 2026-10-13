@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
+import { getTenantItem, setTenantItem, getStoredCompanyId, getStoredFirmName } from "@/lib/tenantStorage";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -50,7 +50,7 @@ export default function NewPaymentVoucherPage() {
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
 
-  const currentFirmName = user?.firmName || "Main Account";
+  const currentFirmName = user?.firmName || getStoredFirmName() || "Shiv Creation";
 
   // Dynamic Paying Company Options tailored to current tenant (NO fake sister companies!)
   const payingCompanyOptions = useMemo(() => {
@@ -61,7 +61,7 @@ export default function NewPaymentVoucherPage() {
 
   // Form State (Initializes paying company to current tenant firm name once)
   const [formType, setFormType] = useState<"Payment Out" | "Receipt In">("Payment Out");
-  const [payingCompany, setPayingCompany] = useState<string>(() => user?.firmName || "Shiv Creation");
+  const [payingCompany, setPayingCompany] = useState<string>(() => user?.firmName || getStoredFirmName() || "Shiv Creation");
   const isCompanyInitialized = useRef(Boolean(user?.firmName));
   const [supplierName, setSupplierName] = useState("");
   const [formVoucherDate, setFormVoucherDate] = useState(
