@@ -130,30 +130,36 @@ def get_credentials(
         user = query.filter(User.firm_name.ilike(f"%{firm_name.strip()}%")).first()
 
     # Fallback logic: If company_id is comp-001 or no params passed, strictly return Shiv Creation
-    if not user:
+    if not user and (not company_id or company_id.strip() == "comp-001"):
         user = query.filter(
             (User.company_id == "comp-001") | 
             (User.id == "usr-owner-01") |
             (User.firm_name.ilike("%shiv%"))
         ).first()
 
+        if not user:
+            # Create default Shiv Creation user
+            pw_hash = hash_password("owner123")
+            user = User(
+                id="usr-owner-01",
+                username="owner@shivcreation.com",
+                email="owner@shivcreation.com",
+                name="Hiren Sutariya",
+                password_hash=pw_hash,
+                role="Owner",
+                role_title="Proprietor & Director",
+                firm_name="Shiv Creation",
+                company_id="comp-001"
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
     if not user:
-        # Create default Shiv Creation user
-        pw_hash = hash_password("owner123")
-        user = User(
-            id="usr-owner-01",
-            username="owner@shivcreation.com",
-            email="owner@shivcreation.com",
-            name="Hiren Sutariya",
-            password_hash=pw_hash,
-            role="Owner",
-            role_title="Proprietor & Director",
-            firm_name="Shiv Creation",
-            company_id="comp-001"
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Credentials not found for the requested company"
         )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
 
     return {
         "success": True,
@@ -191,7 +197,7 @@ def change_credentials(req: ChangeCredentialsRequest, db: Session = Depends(get_
             (User.email.ilike(req.new_username.strip()))
         ).first()
 
-    if not user:
+    if not user and (not req.company_id or req.company_id.strip() == "comp-001"):
         # Fallback to comp-001 / Shiv Creation user
         user = query.filter(
             (User.company_id == "comp-001") |

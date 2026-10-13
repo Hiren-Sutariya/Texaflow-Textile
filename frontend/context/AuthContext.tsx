@@ -41,31 +41,48 @@ function getInitialAuthSession(): UserSession | null {
     if (parsed.expiresAt && Date.now() > parsed.expiresAt) return null;
 
     let resolvedCompanyId = parsed.companyId;
-    if (parsed.id && parsed.id.includes("comp-")) {
+    if (parsed.id && typeof parsed.id === "string" && parsed.id.includes("comp-")) {
       const m = parsed.id.match(/(comp-\d+)/);
       if (m) resolvedCompanyId = m[1];
-    } else if (parsed.id === "usr-comp-003-owner" || parsed.username === "omsai" || parsed.firmName?.toLowerCase().includes("om sai")) {
-      resolvedCompanyId = "comp-003";
-    } else if (parsed.firmName && parsed.firmName.toLowerCase().includes("radhe")) {
-      resolvedCompanyId = "comp-002";
-    } else if (
-      parsed.id === "usr-owner-01" || 
-      (parsed.companyId && parsed.companyId.includes("shiv")) ||
-      (parsed.firmName && parsed.firmName.toLowerCase().includes("shiv"))
-    ) {
-      resolvedCompanyId = "comp-001";
-    } else if (!resolvedCompanyId || !/^comp-\d+$/.test(resolvedCompanyId)) {
+    }
+    if (!resolvedCompanyId || !/^comp-\d+$/.test(resolvedCompanyId)) {
       resolvedCompanyId = "comp-001";
     }
 
-    if (resolvedCompanyId) {
-      parsed.companyId = resolvedCompanyId;
+    parsed.companyId = resolvedCompanyId;
+
+    // Synchronously resolve real name from local tenant settings if missing or placeholder
+    if (!parsed.name || parsed.name === "Factory Admin") {
+      const savedTenant = localStorage.getItem(`app_settings_${resolvedCompanyId}`);
+      if (savedTenant) {
+        try {
+          const p = JSON.parse(savedTenant);
+          if (p?.owner_name && typeof p.owner_name === "string" && p.owner_name.trim()) {
+            parsed.name = p.owner_name.trim();
+          }
+        } catch {}
+      }
+      if (!parsed.name && resolvedCompanyId === "comp-001") {
+        parsed.name = "Hiren Sutariya";
+      }
     }
 
+    // Synchronously resolve real firm name from local tenant settings if missing or placeholder
     if (!parsed.firmName || parsed.firmName.toLowerCase().includes("texaflow")) {
-      if (resolvedCompanyId === "comp-002") parsed.firmName = "Radhe Fashion";
-      else if (resolvedCompanyId === "comp-003") parsed.firmName = "Om Sai Enterprise";
-      else parsed.firmName = "Shiv Creation";
+      const savedTenant = localStorage.getItem(`app_settings_${resolvedCompanyId}`);
+      if (savedTenant) {
+        try {
+          const p = JSON.parse(savedTenant);
+          if (p?.company_name && typeof p.company_name === "string" && p.company_name.trim()) {
+            parsed.firmName = p.company_name.trim();
+          } else if (p?.brand_name && typeof p.brand_name === "string" && p.brand_name.trim()) {
+            parsed.firmName = p.brand_name.trim();
+          }
+        } catch {}
+      }
+      if (!parsed.firmName && resolvedCompanyId === "comp-001") {
+        parsed.firmName = "Shiv Creation";
+      }
     }
 
     return parsed;
@@ -100,37 +117,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             sessionStorage.removeItem(SESSION_STORAGE_KEY);
             setUser(null);
           } else {
-          // Auto-reconcile companyId if session has legacy or mismatched companyId
-          let resolvedCompanyId = parsed.companyId;
-          if (parsed.id && parsed.id.includes("comp-")) {
-            const m = parsed.id.match(/(comp-\d+)/);
-            if (m) resolvedCompanyId = m[1];
-          } else if (parsed.id === "usr-comp-003-owner" || parsed.username === "omsai" || parsed.firmName?.toLowerCase().includes("om sai")) {
-            resolvedCompanyId = "comp-003";
-          } else if (parsed.firmName && parsed.firmName.toLowerCase().includes("radhe")) {
-            resolvedCompanyId = "comp-002";
-          } else if (
-            parsed.id === "usr-owner-01" || 
-            (parsed.companyId && parsed.companyId.includes("shiv")) ||
-            (parsed.firmName && parsed.firmName.toLowerCase().includes("shiv"))
-          ) {
-            resolvedCompanyId = "comp-001";
-          } else if (!resolvedCompanyId || !/^comp-\d+$/.test(resolvedCompanyId)) {
-            resolvedCompanyId = "comp-001";
-          }
+            let resolvedCompanyId = parsed.companyId;
+            if (parsed.id && typeof parsed.id === "string" && parsed.id.includes("comp-")) {
+              const m = parsed.id.match(/(comp-\d+)/);
+              if (m) resolvedCompanyId = m[1];
+            }
+            if (!resolvedCompanyId || !/^comp-\d+$/.test(resolvedCompanyId)) {
+              resolvedCompanyId = "comp-001";
+            }
 
-          if (resolvedCompanyId && resolvedCompanyId !== parsed.companyId) {
             parsed.companyId = resolvedCompanyId;
-          }
+            sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
+            setUser(parsed);
 
-          if (!parsed.firmName || parsed.firmName.toLowerCase().includes("texaflow")) {
-            if (resolvedCompanyId === "comp-002") parsed.firmName = "Radhe Fashion";
-            else if (resolvedCompanyId === "comp-003") parsed.firmName = "Om Sai Enterprise";
-            else parsed.firmName = "Shiv Creation";
-          }
-
-          sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
-          setUser(parsed);
+            // Fetch live user & company details from backend to ensure real owner name and firm name
+            const cid = resolvedCompanyId;
+            const uid = parsed.id || "";
+            fetch(`${API_BASE_URL}/auth/credentials?company_id=${cid}&user_id=${uid}`)
+              .then((res) => (res.ok ? res.json() : null))
+              .then((cred) => {
+                if (cred && cred.success) {
+                  let changed = false;
+                  if (cred.name && cred.name.trim() && cred.name !== "Factory Admin" && parsed.name !== cred.name.trim()) {
+                    parsed.name = cred.name.trim();
+                    changed = true;
+                  }
+                  if (cred.firm_name && cred.firm_name.trim() && !cred.firm_name.toLowerCase().includes("texaflow") && parsed.firmName !== cred.firm_name.trim()) {
+                    parsed.firmName = cred.firm_name.trim();
+                    changed = true;
+                  }
+                  if (changed) {
+                    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
+                    setUser({ ...parsed });
+                  }
+                }
+              })
+              .catch(() => {});
           }
         } else {
           setUser(null);
@@ -167,19 +189,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (data.user.id && data.user.id.includes("comp-")) {
             const m = data.user.id.match(/(comp-\d+)/);
             if (m) resolvedCompanyId = m[1];
-          } else if (data.user.firmName && data.user.firmName.toLowerCase().includes("radhe")) {
-            resolvedCompanyId = "comp-002";
           } else {
             resolvedCompanyId = "comp-001";
           }
         }
 
-        const fallbackFirm = resolvedCompanyId === "comp-002" ? "Radhe Fashion" : resolvedCompanyId === "comp-003" ? "Om Sai Enterprise" : "Shiv Creation";
+        const fallbackFirm = resolvedCompanyId === "comp-001" ? "Shiv Creation" : "Company";
         const finalFirmName = data.user.firmName && !data.user.firmName.toLowerCase().includes("texaflow") ? data.user.firmName : fallbackFirm;
+        const finalName = data.user.name && data.user.name.trim() && data.user.name !== "Factory Admin" ? data.user.name.trim() : (resolvedCompanyId === "comp-001" ? "Hiren Sutariya" : "Owner");
 
         const session: UserSession = {
           id: data.user.id,
-          name: data.user.name,
+          name: finalName,
           email: data.user.email || data.user.username,
           username: data.user.username || data.user.email,
           role: data.user.role || "Owner",

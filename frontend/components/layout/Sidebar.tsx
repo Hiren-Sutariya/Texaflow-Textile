@@ -35,7 +35,7 @@ import {
   LogOut
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { getStoredFirmName, getStoredCompanyId } from "@/lib/tenantStorage";
+import { getStoredFirmName, getStoredUserName, getStoredCompanyId } from "@/lib/tenantStorage";
 
 interface MenuItem {
   name: string;
@@ -134,20 +134,20 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     return () => window.removeEventListener("app_location_change", updateUnit);
   }, []);
 
-  // Dynamic Company Brand Name (Syncs with Settings in Real-Time with ZERO delay on refresh)
+  // Dynamic Company Brand Name & Owner Name (Syncs with Settings in Real-Time with ZERO delay on refresh)
   const [customFirmName, setCustomFirmName] = useState<string>(() => getStoredFirmName());
+  const [customUserName, setCustomUserName] = useState<string>(() => getStoredUserName());
 
   useEffect(() => {
     const loadSettings = () => {
       try {
         const firm = getStoredFirmName();
-        if (firm) {
-          setCustomFirmName(firm);
-          return;
-        }
-        if (user?.firmName?.trim()) {
-          setCustomFirmName(user.firmName.trim());
-        }
+        if (firm) setCustomFirmName(firm);
+        else if (user?.firmName?.trim()) setCustomFirmName(user.firmName.trim());
+
+        const uName = getStoredUserName();
+        if (uName) setCustomUserName(uName);
+        else if (user?.name?.trim()) setCustomUserName(user.name.trim());
       } catch {}
     };
 
@@ -157,6 +157,9 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       if (e?.detail?.company_name?.trim()) {
         setCustomFirmName(e.detail.company_name.trim());
       }
+      if (e?.detail?.owner_name?.trim()) {
+        setCustomUserName(e.detail.owner_name.trim());
+      }
     };
 
     window.addEventListener("app_settings_update", handleSettingsUpdate);
@@ -165,9 +168,10 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       window.removeEventListener("app_settings_update", handleSettingsUpdate);
       window.removeEventListener("app_data_update", loadSettings);
     };
-  }, [user?.companyId, user?.firmName]);
+  }, [user?.companyId, user?.firmName, user?.name]);
 
-  const displayedFirmName = customFirmName || user?.firmName || getStoredFirmName() || "Shiv Creation";
+  const displayedFirmName = customFirmName || user?.firmName || getStoredFirmName() || "Company";
+  const displayedUserName = customUserName || user?.name || getStoredUserName() || "Owner";
 
   const renderNavContent = (isMobile = false) => (
     <>
@@ -183,7 +187,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           title="Return to Main Dashboard"
         >
           <div suppressHydrationWarning className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform uppercase">
-            {displayedFirmName ? displayedFirmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "SC"}
+            {displayedFirmName ? displayedFirmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "CO"}
           </div>
           <div className="truncate">
             <h1 suppressHydrationWarning className="font-extrabold text-slate-900 text-xs tracking-tight leading-tight truncate uppercase">
@@ -303,14 +307,14 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       <div className="h-[57px] px-3 border-t border-slate-200 bg-white flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <div suppressHydrationWarning className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-extrabold text-xs flex items-center justify-center border border-amber-200 shrink-0">
-            {user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : "👤"}
+            {user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : (displayedUserName ? displayedUserName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "👤")}
           </div>
           <div className="truncate">
             <p suppressHydrationWarning className="text-xs font-bold text-slate-900 truncate leading-none">
-              {user?.name || "Factory Admin"}
+              {displayedUserName}
             </p>
             <p suppressHydrationWarning className="text-[10px] text-slate-400 font-medium truncate mt-1">
-              {user?.roleTitle || "Owner Account"}
+              {user?.roleTitle || (user?.role === "Manager" ? "Factory Manager" : user?.role === "Accounts" ? "Accounts Officer" : "Owner Account")}
             </p>
           </div>
         </div>

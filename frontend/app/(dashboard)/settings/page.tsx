@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { API_BASE_URL, fetchApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { getStoredCompanyId } from "@/lib/tenantStorage";
+import { getStoredCompanyId, getStoredUserName } from "@/lib/tenantStorage";
 
 const PAYMENT_TERMS_OPTIONS = [
   "Due on Receipt",
@@ -204,27 +204,9 @@ export default function SettingsPage() {
         if (sessionStr) sessionUser = JSON.parse(sessionStr);
       } catch {}
 
-      const initUsername = localUsername || sessionUser?.username || "shivcreation";
-      const initName = sessionUser?.name || "Hiren Sutariya";
+      const initUsername = localUsername || sessionUser?.username || sessionUser?.email || (cid === "comp-001" ? "owner@shivcreation.com" : "owner");
+      const initName = sessionUser?.name || getStoredUserName() || (cid === "comp-001" ? "Hiren Sutariya" : "Owner");
 
-      if (cid === "comp-002") {
-        return {
-          username: localUsername || "radhe@krishna.com",
-          name: "Kishorbhai Patel",
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: ""
-        };
-      }
-      if (cid === "comp-003") {
-        return {
-          username: localUsername || "omsai",
-          name: "Hiren Sutariya",
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: ""
-        };
-      }
       return {
         username: initUsername,
         name: initName,
@@ -234,8 +216,8 @@ export default function SettingsPage() {
       };
     }
     return {
-      username: "shivcreation",
-      name: "Hiren Sutariya",
+      username: "owner",
+      name: "Owner",
       currentPassword: "",
       newPassword: "",
       confirmPassword: ""
@@ -1003,14 +985,19 @@ export default function SettingsPage() {
 
     try {
       const cid = user?.companyId || getStoredCompanyId();
-      localStorage.setItem(`app_settings_${cid}`, JSON.stringify(formData));
+      const settingsToSave = {
+        ...formData,
+        owner_name: authData.name?.trim() || user?.name || formData.company_name?.trim()
+      };
+      localStorage.setItem(`app_settings_${cid}`, JSON.stringify(settingsToSave));
       if (cid === "comp-001") {
-        localStorage.setItem("app_settings_om_sai", JSON.stringify(formData));
+        localStorage.setItem("app_settings_om_sai", JSON.stringify(settingsToSave));
       }
 
-      // Update company firmName and username in active user session so Sidebar and session update immediately!
+      // Update company firmName, username and owner name in active user session so Sidebar and session update immediately!
       const newFirmName = formData.company_name?.trim() || formData.brand_name?.trim();
       const newUsername = authData.username?.trim();
+      const newName = authData.name?.trim();
       if (newUsername) {
         localStorage.setItem(`texaflow_login_username_${cid}`, newUsername);
       }
@@ -1019,11 +1006,12 @@ export default function SettingsPage() {
       updateUserSession({
         ...(newFirmName ? { firmName: newFirmName } : {}),
         ...(newUsername ? { username: newUsername } : {}),
+        ...(newName ? { name: newName } : {}),
         email: formData.email?.trim() || (newUsername && newUsername.includes("@") ? newUsername : undefined)
       });
 
       // Dispatch global events
-      window.dispatchEvent(new CustomEvent("app_settings_update", { detail: formData }));
+      window.dispatchEvent(new CustomEvent("app_settings_update", { detail: settingsToSave }));
       window.dispatchEvent(new Event("app_data_update"));
 
       // Also sync company name, username and details to backend API
@@ -1048,13 +1036,14 @@ export default function SettingsPage() {
           })
         });
 
-        if (newUsername) {
+        if (newUsername || newName) {
           await fetch(`${API_BASE_URL}/auth/change-credentials`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              new_username: newUsername,
-              name: authData.name?.trim() || "",
+              new_username: newUsername || user?.username || user?.email,
+              name: newName || "",
+              firm_name: newFirmName || "",
               user_id: user?.id,
               company_id: cid
             })

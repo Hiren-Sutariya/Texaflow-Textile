@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { getStoredFirmName } from "@/lib/tenantStorage";
+import { getStoredFirmName, getStoredUserName } from "@/lib/tenantStorage";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { 
   Users, 
@@ -124,18 +124,18 @@ export default function Home() {
       <div className="w-full max-w-6xl bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 shadow-2xs flex items-center justify-between gap-2.5 sm:gap-3 text-xs">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div suppressHydrationWarning className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0 tracking-wider uppercase">
-            {(user?.firmName || getStoredFirmName()) ? (user?.firmName || getStoredFirmName()).split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "SC"}
+            {(user?.firmName || getStoredFirmName()) ? (user?.firmName || getStoredFirmName()).split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "CO"}
           </div>
           <div className="min-w-0 truncate">
             <div className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5 truncate">
-              <span suppressHydrationWarning className="truncate">{user?.firmName || getStoredFirmName() || "Shiv Creation"}</span>
+              <span suppressHydrationWarning className="truncate">{user?.firmName || getStoredFirmName() || "Company"}</span>
               <span suppressHydrationWarning className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[9px] sm:text-[10px] font-bold shrink-0">
                 {user?.roleTitle || "Owner"}
               </span>
             </div>
             <div className="text-[10px] sm:text-[11px] text-blue-600 font-bold flex items-center gap-1 mt-0.5 truncate">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span suppressHydrationWarning className="truncate">TexaFlow Textile • {user?.name || "Factory Admin"}</span>
+              <span suppressHydrationWarning className="truncate">TexaFlow Textile • {user?.name || getStoredUserName() || "Owner"}</span>
             </div>
           </div>
         </div>
