@@ -416,8 +416,16 @@ export default function ExpensesPage() {
       console.error(err);
     }
 
+    const handleDataRefresh = () => {
+      loadLiveExpenses();
+    };
+    window.addEventListener("app_data_update", handleDataRefresh);
+    window.addEventListener("app_refresh_content", handleDataRefresh);
+
     return () => {
       isMounted = false;
+      window.removeEventListener("app_data_update", handleDataRefresh);
+      window.removeEventListener("app_refresh_content", handleDataRefresh);
     };
   }, []);
 

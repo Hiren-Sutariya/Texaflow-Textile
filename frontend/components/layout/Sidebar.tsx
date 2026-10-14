@@ -135,13 +135,10 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   }, []);
 
   // Dynamic Company Brand Name & Owner Name (Syncs with Settings in Real-Time with ZERO delay on refresh)
-  const [mounted, setMounted] = useState(false);
   const [liveUpdatedFirm, setLiveUpdatedFirm] = useState<string>("");
   const [liveUpdatedOwner, setLiveUpdatedOwner] = useState<string>("");
 
   useEffect(() => {
-    setMounted(true);
-
     const handleSettingsUpdate = (e: any) => {
       const updateCid = e?.detail?.company_id;
       const currentCid = user?.companyId || getStoredCompanyId();
@@ -161,9 +158,9 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     };
   }, [user?.companyId]);
 
-  const cid = user?.companyId || (mounted ? getStoredCompanyId() : "");
-  const defaultFirm = cid === "comp-002" ? "Om Sai Enterprise" : (cid === "comp-001" ? "Shiv Creation" : "Textile Company");
-  const defaultOwner = cid === "comp-002" ? "Nilesh Sutariya" : (cid === "comp-001" ? "Hiren Sutariya" : "Owner");
+  const cid = user?.companyId || getStoredCompanyId() || "comp-001";
+  const defaultFirm = cid === "comp-002" ? "Om Sai Enterprise" : "Shiv Creation";
+  const defaultOwner = cid === "comp-002" ? "Nilesh Sutariya" : "Hiren Sutariya";
 
   // Determine active displayed firm name strictly isolated per tenant
   let displayedFirmName = defaultFirm;
@@ -171,7 +168,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     displayedFirmName = liveUpdatedFirm.trim();
   } else if (user?.firmName && user.firmName.trim() && user.firmName.toLowerCase() !== "company" && !user.firmName.toLowerCase().includes("texaflow")) {
     displayedFirmName = user.firmName.trim();
-  } else if (mounted) {
+  } else {
     const stored = getStoredFirmName();
     if (stored && stored.toLowerCase() !== "company") displayedFirmName = stored;
   }
@@ -188,7 +185,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     displayedUserName = liveUpdatedOwner.trim();
   } else if (user?.name && user.name.trim() && user.name !== "Factory Admin" && user.name.toLowerCase() !== "owner") {
     displayedUserName = user.name.trim();
-  } else if (mounted) {
+  } else {
     const stored = getStoredUserName();
     if (stored && stored !== "Factory Admin" && stored.toLowerCase() !== "owner") displayedUserName = stored;
   }
@@ -209,42 +206,30 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
   const renderNavContent = (isMobile = false) => (
     <>
-      {/* Brand Header */}
-      <div className="border-b border-slate-100 p-3 bg-white relative flex items-center justify-between">
-        {!mounted ? (
-          <div className="flex items-center gap-2.5 overflow-hidden p-1.5 w-full">
-            <div className="w-8 h-8 rounded-xl bg-blue-600/15 flex items-center justify-center shrink-0">
-              <span className="w-3.5 h-3.5 rounded bg-blue-600/40 animate-pulse" />
-            </div>
-            <div className="truncate space-y-1.5 flex-1">
-              <div className="h-3 w-28 bg-slate-200/80 rounded animate-pulse" />
-              <div className="h-2 w-16 bg-blue-100 rounded animate-pulse" />
-            </div>
+      {/* Brand Header - Solidly rendered with zero blinking on refresh */}
+      <div suppressHydrationWarning className="border-b border-slate-100 p-3 bg-white relative flex items-center justify-between">
+        <Link 
+          href="/"
+          prefetch={true}
+          onClick={() => {
+            if (isMobile) onClose?.();
+          }}
+          className="flex items-center gap-2.5 overflow-hidden p-1.5 rounded-xl hover:bg-slate-50 transition-colors w-full group outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+          title="Return to Main Dashboard"
+        >
+          <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform uppercase">
+            {brandInitials}
           </div>
-        ) : (
-          <Link 
-            href="/"
-            prefetch={true}
-            onClick={() => {
-              if (isMobile) onClose?.();
-            }}
-            className="flex items-center gap-2.5 overflow-hidden p-1.5 rounded-xl hover:bg-slate-50 transition-colors w-full group outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
-            title="Return to Main Dashboard"
-          >
-            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform uppercase">
-              {brandInitials}
-            </div>
-            <div className="truncate">
-              <h1 className="font-extrabold text-slate-900 text-xs tracking-tight leading-tight truncate uppercase">
-                {displayedFirmName}
-              </h1>
-              <p className="text-[9px] font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span>TexaFlow Textile</span>
-              </p>
-            </div>
-          </Link>
-        )}
+          <div className="truncate">
+            <h1 className="font-extrabold text-slate-900 text-xs tracking-tight leading-tight truncate uppercase">
+              {displayedFirmName}
+            </h1>
+            <p className="text-[9px] font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span>TexaFlow Textile</span>
+            </p>
+          </div>
+        </Link>
 
         {isMobile && (
           <button
@@ -349,33 +334,21 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         </div>
       </nav>
 
-      {/* User Profile Footer */}
-      <div className="h-[57px] px-3 border-t border-slate-200 bg-white flex items-center justify-between shrink-0">
-        {!mounted ? (
-          <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200/60 shrink-0">
-              <span className="w-3.5 h-3.5 rounded-full bg-slate-200 animate-pulse" />
-            </div>
-            <div className="truncate space-y-1.5">
-              <div className="h-3 w-20 bg-slate-200/80 rounded animate-pulse" />
-              <div className="h-2 w-24 bg-slate-100 rounded" />
-            </div>
+      {/* User Profile Footer - Solidly rendered with zero blinking on refresh */}
+      <div suppressHydrationWarning className="h-[57px] px-3 border-t border-slate-200 bg-white flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2.5 overflow-hidden">
+          <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-extrabold text-xs flex items-center justify-center border border-amber-200 shrink-0">
+            {user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : userInitials}
           </div>
-        ) : (
-          <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-extrabold text-xs flex items-center justify-center border border-amber-200 shrink-0">
-              {user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : userInitials}
-            </div>
-            <div className="truncate">
-              <p className="text-xs font-bold text-slate-900 truncate leading-none">
-                {displayedUserName}
-              </p>
-              <p className="text-[10px] text-slate-400 font-medium truncate mt-1">
-                {user?.roleTitle || (user?.role === "Manager" ? "Factory Manager" : user?.role === "Accounts" ? "Accounts Officer" : "Proprietor & Director")}
-              </p>
-            </div>
+          <div className="truncate">
+            <p className="text-xs font-bold text-slate-900 truncate leading-none">
+              {displayedUserName}
+            </p>
+            <p className="text-[10px] text-slate-400 font-medium truncate mt-1">
+              {user?.roleTitle || (user?.role === "Manager" ? "Factory Manager" : user?.role === "Accounts" ? "Accounts Officer" : "Proprietor & Director")}
+            </p>
           </div>
-        )}
+        </div>
 
         <button
           type="button"

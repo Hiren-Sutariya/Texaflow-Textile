@@ -167,8 +167,16 @@ export default function PaymentsAndVouchersPage() {
       setIsLoading(false);
     };
     loadVouchers();
+    const handleRefresh = () => {
+      loadVouchers();
+    };
+    window.addEventListener("app_data_update", handleRefresh);
+    window.addEventListener("app_refresh_content", handleRefresh);
+
     return () => {
       isMounted = false;
+      window.removeEventListener("app_data_update", handleRefresh);
+      window.removeEventListener("app_refresh_content", handleRefresh);
     };
   }, []);
 

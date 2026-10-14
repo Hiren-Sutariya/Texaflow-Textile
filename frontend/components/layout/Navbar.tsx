@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, Search, AlertCircle, RefreshCw, LayoutGrid, Menu } from "lucide-react";
@@ -33,6 +34,7 @@ interface NavbarProps {
 
 export function Navbar({ onToggleMobileMenu }: NavbarProps) {
   const pathname = usePathname();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   let pageTitle = pageTitles[pathname];
   if (!pageTitle) {
@@ -42,6 +44,18 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
       pageTitle = "Business Monitoring";
     }
   }
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    // 1. Dispatch custom event for main content area (2nd image) to refresh
+    window.dispatchEvent(new CustomEvent("app_refresh_content"));
+    // 2. Dispatch data update for all data-fetching pages
+    window.dispatchEvent(new Event("app_data_update"));
+
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 600);
+  };
 
   return (
     <header className="h-14 border-b border-slate-200/80 bg-white px-3 sm:px-5 flex items-center justify-between sticky top-0 z-10 shadow-2xs">
@@ -60,7 +74,6 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
         </h1>
       </div>
 
-
       {/* Right Section: Quick Controls */}
       <div className="flex items-center gap-3">
         <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 bg-amber-50/80 border border-amber-200 rounded-full text-xs font-semibold text-amber-800">
@@ -69,11 +82,12 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
         </div>
 
         <button 
-          onClick={() => window.location.reload()}
-          className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-          title="Refresh Data"
+          type="button"
+          onClick={handleRefresh}
+          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+          title="Refresh Data (Soft Refresh)"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
+          <RefreshCw className={`w-3.5 h-3.5 transition-transform ${isRefreshing ? "animate-spin text-blue-600" : ""}`} />
         </button>
 
         <button className="relative p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">

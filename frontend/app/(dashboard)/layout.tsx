@@ -122,6 +122,17 @@ export default function DashboardLayout({
     } catch {}
   }, []);
 
+  const [isContentRefreshing, setIsContentRefreshing] = useState(false);
+
+  useEffect(() => {
+    const onRefreshContent = () => {
+      setIsContentRefreshing(true);
+      setTimeout(() => setIsContentRefreshing(false), 350);
+    };
+    window.addEventListener("app_refresh_content", onRefreshContent);
+    return () => window.removeEventListener("app_refresh_content", onRefreshContent);
+  }, []);
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       <Sidebar 
@@ -133,7 +144,12 @@ export default function DashboardLayout({
           onToggleMobileMenu={() => setMobileSidebarOpen((prev) => !prev)} 
         />
         <main suppressHydrationWarning className="flex-1 overflow-y-auto p-2 sm:p-3.5 bg-slate-50/60 no-scrollbar">
-          <div suppressHydrationWarning className="w-full space-y-3.5 max-w-[1600px] mx-auto">
+          <div 
+            suppressHydrationWarning 
+            className={`w-full space-y-3.5 max-w-[1600px] mx-auto transition-opacity duration-200 ${
+              isContentRefreshing ? "opacity-30 scale-[0.999]" : "opacity-100 scale-100"
+            }`}
+          >
             {children}
           </div>
         </main>
