@@ -5,13 +5,21 @@ from app.core.config import settings
 def get_engine():
     db_url = settings.DATABASE_URL
     is_sqlite = db_url.startswith("sqlite")
-    connect_args = {"check_same_thread": False} if is_sqlite else {}
+    connect_args = {"check_same_thread": False} if is_sqlite else {
+        "connect_timeout": 3,
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 3
+    }
 
     try:
         engine = create_engine(
             db_url,
             connect_args=connect_args,
-            pool_pre_ping=not is_sqlite,
+            pool_pre_ping=False,
+            pool_recycle=120,
+            pool_timeout=5,
             **({} if is_sqlite else {"pool_size": 10, "max_overflow": 20})
         )
         return engine

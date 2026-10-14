@@ -70,13 +70,11 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
       const res = await login(email, password);
       if (res.success) {
         setSuccessMsg("Signed in successfully!");
-        setTimeout(() => {
-          if (onSuccess) {
-            onSuccess();
-          } else {
-            router.push("/");
-          }
-        }, 200);
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          router.push("/");
+        }
       } else {
         setErrorMsg(res.error || "Invalid username or password");
       }
