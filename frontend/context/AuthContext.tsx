@@ -31,58 +31,98 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SESSION_STORAGE_KEY = "texaflow_auth_session";
 
+function resolveSessionTenant(parsed: any): {
+  resolvedCompanyId: string;
+  firmName: string;
+  name: string;
+} {
+  const isOmSai = 
+    parsed?.companyId === "comp-002" ||
+    parsed?.company_id === "comp-002" ||
+    (typeof parsed?.id === "string" && parsed.id.includes("comp-002")) ||
+    parsed?.firmName?.toLowerCase().includes("om sai") ||
+    parsed?.firm_name?.toLowerCase().includes("om sai") ||
+    parsed?.company_name?.toLowerCase().includes("om sai") ||
+    parsed?.email?.includes("om-sai") ||
+    parsed?.username?.includes("om-sai") ||
+    parsed?.name?.toLowerCase().includes("nilesh");
+
+  const isShiv = 
+    parsed?.companyId === "comp-001" ||
+    parsed?.company_id === "comp-001" ||
+    (typeof parsed?.id === "string" && (parsed.id.includes("comp-001") || parsed.id === "usr-owner-01" || parsed.id === "user-001")) ||
+    parsed?.firmName?.toLowerCase().includes("shiv") ||
+    parsed?.firm_name?.toLowerCase().includes("shiv") ||
+    parsed?.company_name?.toLowerCase().includes("shiv") ||
+    parsed?.email?.includes("shiv") ||
+    parsed?.username?.includes("shiv") ||
+    parsed?.name?.toLowerCase().includes("hiren");
+
+  let resolvedCompanyId = "comp-002";
+  if (isShiv && !isOmSai) {
+    resolvedCompanyId = "comp-001";
+  } else if (isOmSai) {
+    resolvedCompanyId = "comp-002";
+  } else if (parsed?.companyId && /^comp-\d+$/.test(parsed.companyId)) {
+    resolvedCompanyId = parsed.companyId;
+  } else if (parsed?.company_id && /^comp-\d+$/.test(parsed.company_id)) {
+    resolvedCompanyId = parsed.company_id;
+  } else if (typeof parsed?.id === "string") {
+    const userMatch = parsed.id.match(/^user-(\d+)$/);
+    if (userMatch) resolvedCompanyId = `comp-${userMatch[1]}`;
+  }
+
+  let finalFirmName = resolvedCompanyId === "comp-002" ? "Om Sai Enterprise" : (resolvedCompanyId === "comp-001" ? "Shiv Creation" : "Textile Company");
+  let finalName = resolvedCompanyId === "comp-002" ? "Nilesh Sutariya" : (resolvedCompanyId === "comp-001" ? "Hiren Sutariya" : "Owner");
+
+  const rawFirm = parsed?.firmName || parsed?.firm_name || parsed?.company_name;
+  if (rawFirm && typeof rawFirm === "string" && rawFirm.trim() && !rawFirm.toLowerCase().includes("texaflow") && rawFirm.toLowerCase() !== "company") {
+    const cleanFirm = rawFirm.trim();
+    if (resolvedCompanyId === "comp-002" && !cleanFirm.toLowerCase().includes("shiv")) {
+      finalFirmName = cleanFirm;
+    } else if (resolvedCompanyId === "comp-001" && !cleanFirm.toLowerCase().includes("om sai")) {
+      finalFirmName = cleanFirm;
+    } else if (resolvedCompanyId !== "comp-001" && resolvedCompanyId !== "comp-002") {
+      finalFirmName = cleanFirm;
+    }
+  }
+
+  const rawName = parsed?.name || parsed?.owner_name;
+  if (rawName && typeof rawName === "string" && rawName.trim() && rawName !== "Factory Admin" && rawName.toLowerCase() !== "owner") {
+    const cleanName = rawName.trim();
+    if (resolvedCompanyId === "comp-002" && !cleanName.toLowerCase().includes("hiren")) {
+      finalName = cleanName;
+    } else if (resolvedCompanyId === "comp-001" && !cleanName.toLowerCase().includes("nilesh")) {
+      finalName = cleanName;
+    } else if (resolvedCompanyId !== "comp-001" && resolvedCompanyId !== "comp-002") {
+      finalName = cleanName;
+    }
+  }
+
+  return {
+    resolvedCompanyId,
+    firmName: finalFirmName,
+    name: finalName
+  };
+}
+
 function getInitialAuthSession(): UserSession | null {
   if (typeof window === "undefined") return null;
   try {
-    const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    const stored = sessionStorage.getItem(SESSION_STORAGE_KEY) || localStorage.getItem(SESSION_STORAGE_KEY);
     if (!stored) return null;
     const parsed = JSON.parse(stored);
     if (!parsed || (!parsed.email && !parsed.username && !parsed.id)) return null;
     if (parsed.expiresAt && Date.now() > parsed.expiresAt) return null;
 
-    let resolvedCompanyId = parsed.companyId;
-    if (parsed.id && typeof parsed.id === "string" && parsed.id.includes("comp-")) {
-      const m = parsed.id.match(/(comp-\d+)/);
-      if (m) resolvedCompanyId = m[1];
-    }
-    if (!resolvedCompanyId || !/^comp-\d+$/.test(resolvedCompanyId)) {
-      resolvedCompanyId = "comp-001";
-    }
+    const tenant = resolveSessionTenant(parsed);
+    parsed.companyId = tenant.resolvedCompanyId;
+    parsed.company_id = tenant.resolvedCompanyId;
+    parsed.firmName = tenant.firmName;
+    parsed.name = tenant.name;
 
-    parsed.companyId = resolvedCompanyId;
-
-    // Synchronously resolve real name from local tenant settings if missing or placeholder
-    if (!parsed.name || parsed.name === "Factory Admin") {
-      const savedTenant = localStorage.getItem(`app_settings_${resolvedCompanyId}`);
-      if (savedTenant) {
-        try {
-          const p = JSON.parse(savedTenant);
-          if (p?.owner_name && typeof p.owner_name === "string" && p.owner_name.trim()) {
-            parsed.name = p.owner_name.trim();
-          }
-        } catch {}
-      }
-      if (!parsed.name && resolvedCompanyId === "comp-001") {
-        parsed.name = "Hiren Sutariya";
-      }
-    }
-
-    // Synchronously resolve real firm name from local tenant settings if missing or placeholder
-    if (!parsed.firmName || parsed.firmName.toLowerCase().includes("texaflow")) {
-      const savedTenant = localStorage.getItem(`app_settings_${resolvedCompanyId}`);
-      if (savedTenant) {
-        try {
-          const p = JSON.parse(savedTenant);
-          if (p?.company_name && typeof p.company_name === "string" && p.company_name.trim()) {
-            parsed.firmName = p.company_name.trim();
-          } else if (p?.brand_name && typeof p.brand_name === "string" && p.brand_name.trim()) {
-            parsed.firmName = p.brand_name.trim();
-          }
-        } catch {}
-      }
-      if (!parsed.firmName && resolvedCompanyId === "comp-001") {
-        parsed.firmName = "Shiv Creation";
-      }
+    if (!parsed.roleTitle || parsed.roleTitle === "Owner Account") {
+      parsed.roleTitle = "Proprietor & Director";
     }
 
     return parsed;
@@ -93,61 +133,54 @@ function getInitialAuthSession(): UserSession | null {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserSession | null>(getInitialAuthSession);
-  const [isLoading, setIsLoading] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      return !sessionStorage.getItem(SESSION_STORAGE_KEY);
-    }
-    return true;
-  });
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const router = useRouter();
 
   useEffect(() => {
     try {
-      // 1. Purge legacy persistent localStorage sessions to prevent infinite logins
-      localStorage.removeItem(SESSION_STORAGE_KEY);
-      localStorage.removeItem("texaflow_auth_session");
-
-      // 2. Only read from sessionStorage (strictly cleared when browser/tab closes)
-      const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+      const stored = sessionStorage.getItem(SESSION_STORAGE_KEY) || localStorage.getItem(SESSION_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && (parsed.email || parsed.username || parsed.id)) {
           // Check expiration (4 hours limit)
           if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
             sessionStorage.removeItem(SESSION_STORAGE_KEY);
+            localStorage.removeItem(SESSION_STORAGE_KEY);
             setUser(null);
           } else {
-            let resolvedCompanyId = parsed.companyId;
-            if (parsed.id && typeof parsed.id === "string" && parsed.id.includes("comp-")) {
-              const m = parsed.id.match(/(comp-\d+)/);
-              if (m) resolvedCompanyId = m[1];
-            }
-            if (!resolvedCompanyId || !/^comp-\d+$/.test(resolvedCompanyId)) {
-              resolvedCompanyId = "comp-001";
+            const tenant = resolveSessionTenant(parsed);
+            parsed.companyId = tenant.resolvedCompanyId;
+            parsed.company_id = tenant.resolvedCompanyId;
+            parsed.firmName = tenant.firmName;
+            parsed.name = tenant.name;
+
+            if (!parsed.roleTitle || parsed.roleTitle === "Owner Account") {
+              parsed.roleTitle = "Proprietor & Director";
             }
 
-            parsed.companyId = resolvedCompanyId;
             sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
+            localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
             setUser(parsed);
 
-            // Fetch live user & company details from backend to ensure real owner name and firm name
-            const cid = resolvedCompanyId;
+            // Fetch live user & company details from backend strictly matching company_id
+            const cid = tenant.resolvedCompanyId;
             const uid = parsed.id || "";
             fetch(`${API_BASE_URL}/auth/credentials?company_id=${cid}&user_id=${uid}`)
               .then((res) => (res.ok ? res.json() : null))
               .then((cred) => {
-                if (cred && cred.success) {
+                if (cred && cred.success && (cred.company_id === cid || cred.companyId === cid)) {
                   let changed = false;
-                  if (cred.name && cred.name.trim() && cred.name !== "Factory Admin" && parsed.name !== cred.name.trim()) {
+                  if (cred.name && cred.name.trim() && cred.name !== "Factory Admin" && cred.name.toLowerCase() !== "owner" && parsed.name !== cred.name.trim()) {
                     parsed.name = cred.name.trim();
                     changed = true;
                   }
-                  if (cred.firm_name && cred.firm_name.trim() && !cred.firm_name.toLowerCase().includes("texaflow") && parsed.firmName !== cred.firm_name.trim()) {
+                  if (cred.firm_name && cred.firm_name.trim() && !cred.firm_name.toLowerCase().includes("texaflow") && cred.firm_name.toLowerCase() !== "company" && parsed.firmName !== cred.firm_name.trim()) {
                     parsed.firmName = cred.firm_name.trim();
                     changed = true;
                   }
                   if (changed) {
                     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
+                    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
                     setUser({ ...parsed });
                   }
                 }
@@ -184,37 +217,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (res.ok) {
         const data = await res.json();
-        let resolvedCompanyId = data.user.companyId;
-        if (!resolvedCompanyId || !/^comp-\d+$/.test(resolvedCompanyId)) {
-          if (data.user.id && data.user.id.includes("comp-")) {
-            const m = data.user.id.match(/(comp-\d+)/);
-            if (m) resolvedCompanyId = m[1];
-          } else {
-            resolvedCompanyId = "comp-001";
-          }
-        }
-
-        const fallbackFirm = resolvedCompanyId === "comp-001" ? "Shiv Creation" : "Company";
-        const finalFirmName = data.user.firmName && !data.user.firmName.toLowerCase().includes("texaflow") ? data.user.firmName : fallbackFirm;
-        const finalName = data.user.name && data.user.name.trim() && data.user.name !== "Factory Admin" ? data.user.name.trim() : (resolvedCompanyId === "comp-001" ? "Hiren Sutariya" : "Owner");
+        const tenant = resolveSessionTenant({
+          ...data.user,
+          firmName: data.user.firmName,
+          companyId: data.user.companyId || data.user.company_id
+        });
 
         const session: UserSession = {
           id: data.user.id,
-          name: finalName,
+          name: tenant.name,
           email: data.user.email || data.user.username,
           username: data.user.username || data.user.email,
           role: data.user.role || "Owner",
           roleTitle: data.user.roleTitle || "Proprietor & Director",
-          firmName: finalFirmName,
-          companyId: resolvedCompanyId,
+          firmName: tenant.firmName,
+          companyId: tenant.resolvedCompanyId,
           lastLogin: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
           expiresAt: Date.now() + 4 * 60 * 60 * 1000 // Valid for 4 hours
         };
         setUser(session);
-        // Save ONLY in sessionStorage - completely wiped when browser closes!
         sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-        localStorage.removeItem(SESSION_STORAGE_KEY);
-        localStorage.removeItem("texaflow_auth_session");
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
         return { success: true };
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -238,6 +261,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const updated = { ...prev, ...data };
       try {
         sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(updated));
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(updated));
       } catch {}
       return updated;
     });

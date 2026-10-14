@@ -141,13 +141,19 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   useEffect(() => {
     const loadSettings = () => {
       try {
-        const firm = getStoredFirmName();
-        if (firm) setCustomFirmName(firm);
-        else if (user?.firmName?.trim()) setCustomFirmName(user.firmName.trim());
+        if (user?.firmName?.trim()) {
+          setCustomFirmName(user.firmName.trim());
+        } else {
+          const firm = getStoredFirmName();
+          if (firm) setCustomFirmName(firm);
+        }
 
-        const uName = getStoredUserName();
-        if (uName) setCustomUserName(uName);
-        else if (user?.name?.trim()) setCustomUserName(user.name.trim());
+        if (user?.name?.trim()) {
+          setCustomUserName(user.name.trim());
+        } else {
+          const uName = getStoredUserName();
+          if (uName) setCustomUserName(uName);
+        }
       } catch {}
     };
 
@@ -170,8 +176,51 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     };
   }, [user?.companyId, user?.firmName, user?.name]);
 
-  const displayedFirmName = customFirmName || user?.firmName || getStoredFirmName() || "Company";
-  const displayedUserName = customUserName || user?.name || getStoredUserName() || "Owner";
+  const cid = user?.companyId || getStoredCompanyId();
+  const defaultFirm = cid === "comp-002" ? "Om Sai Enterprise" : (cid === "comp-001" ? "Shiv Creation" : "Textile ERP");
+  const defaultOwner = cid === "comp-002" ? "Nilesh Sutariya" : (cid === "comp-001" ? "Hiren Sutariya" : "Proprietor");
+
+  // Determine active displayed firm name strictly isolated per tenant
+  let displayedFirmName = defaultFirm;
+  if (user?.firmName && user.firmName.trim() && user.firmName.toLowerCase() !== "company" && !user.firmName.toLowerCase().includes("texaflow")) {
+    displayedFirmName = user.firmName.trim();
+  } else if (customFirmName && customFirmName.trim() && customFirmName.toLowerCase() !== "company") {
+    displayedFirmName = customFirmName.trim();
+  } else {
+    const stored = getStoredFirmName();
+    if (stored && stored.toLowerCase() !== "company") displayedFirmName = stored;
+  }
+  // Sanity check to avoid cross-tenant contamination:
+  if (cid === "comp-001" && displayedFirmName.toLowerCase().includes("om sai")) {
+    displayedFirmName = "Shiv Creation";
+  } else if (cid === "comp-002" && displayedFirmName.toLowerCase().includes("shiv")) {
+    displayedFirmName = "Om Sai Enterprise";
+  }
+
+  // Determine active displayed user name strictly isolated per tenant
+  let displayedUserName = defaultOwner;
+  if (user?.name && user.name.trim() && user.name !== "Factory Admin" && user.name.toLowerCase() !== "owner") {
+    displayedUserName = user.name.trim();
+  } else if (customUserName && customUserName.trim() && customUserName !== "Factory Admin" && customUserName.toLowerCase() !== "owner") {
+    displayedUserName = customUserName.trim();
+  } else {
+    const stored = getStoredUserName();
+    if (stored && stored !== "Factory Admin" && stored.toLowerCase() !== "owner") displayedUserName = stored;
+  }
+  // Sanity check to avoid cross-tenant contamination:
+  if (cid === "comp-001" && (displayedUserName.toLowerCase().includes("nilesh") || displayedUserName.toLowerCase() === "owner")) {
+    displayedUserName = "Hiren Sutariya";
+  } else if (cid === "comp-002" && (displayedUserName.toLowerCase().includes("hiren") || displayedUserName.toLowerCase() === "owner")) {
+    displayedUserName = "Nilesh Sutariya";
+  }
+
+  const brandInitials = displayedFirmName
+    ? displayedFirmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase()
+    : (cid === "comp-002" ? "OS" : "SC");
+
+  const userInitials = displayedUserName
+    ? displayedUserName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase()
+    : (cid === "comp-002" ? "NS" : "HS");
 
   const renderNavContent = (isMobile = false) => (
     <>
@@ -187,7 +236,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           title="Return to Main Dashboard"
         >
           <div suppressHydrationWarning className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform uppercase">
-            {displayedFirmName ? displayedFirmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "CO"}
+            {brandInitials}
           </div>
           <div className="truncate">
             <h1 suppressHydrationWarning className="font-extrabold text-slate-900 text-xs tracking-tight leading-tight truncate uppercase">
@@ -307,14 +356,14 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       <div className="h-[57px] px-3 border-t border-slate-200 bg-white flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <div suppressHydrationWarning className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-extrabold text-xs flex items-center justify-center border border-amber-200 shrink-0">
-            {user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : (displayedUserName ? displayedUserName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "👤")}
+            {user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : userInitials}
           </div>
           <div className="truncate">
             <p suppressHydrationWarning className="text-xs font-bold text-slate-900 truncate leading-none">
               {displayedUserName}
             </p>
             <p suppressHydrationWarning className="text-[10px] text-slate-400 font-medium truncate mt-1">
-              {user?.roleTitle || (user?.role === "Manager" ? "Factory Manager" : user?.role === "Accounts" ? "Accounts Officer" : "Owner Account")}
+              {user?.roleTitle || (user?.role === "Manager" ? "Factory Manager" : user?.role === "Accounts" ? "Accounts Officer" : "Proprietor & Director")}
             </p>
           </div>
         </div>

@@ -1,6 +1,13 @@
 import { getStoredCompanyId } from "./tenantStorage";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://texaflow-backend.onrender.com/api/v1";
+const getBaseUrl = (): string => {
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+    return "http://localhost:8000/api/v1";
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "https://texaflow-backend.onrender.com/api/v1";
+};
+
+export const API_BASE_URL = getBaseUrl();
 
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;

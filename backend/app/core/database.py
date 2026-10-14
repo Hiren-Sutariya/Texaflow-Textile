@@ -70,14 +70,12 @@ def init_db():
                 pw_hash = f"{salt}:{key.hex()}"
                 
                 default_user = User(
-                    id="usr-owner-01",
-                    username="owner@shivcreation.com",
-                    email="owner@shivcreation.com",
-                    name="Hiren Sutariya",
-                    password_hash=pw_hash,
-                    role="Owner",
-                    role_title="Proprietor & Director",
+                    id="user-001",
                     firm_name="Shiv Creation",
+                    name="Hiren Sutariya",
+                    email="owner@shivcreation.com",
+                    username="owner@shivcreation.com",
+                    password_hash=pw_hash,
                     company_id="comp-001"
                 )
                 db.add(default_user)

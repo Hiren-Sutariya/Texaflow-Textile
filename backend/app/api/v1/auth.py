@@ -60,14 +60,12 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         if total_users == 0:
             pw_hash = hash_password("owner123")
             default_user = User(
-                id="usr-owner-01",
-                username="owner@shivcreation.com",
-                email="owner@shivcreation.com",
-                name="Hiren Sutariya",
-                password_hash=pw_hash,
-                role="Owner",
-                role_title="Proprietor & Director",
+                id="user-001",
                 firm_name="Shiv Creation",
+                name="Hiren Sutariya",
+                email="owner@shivcreation.com",
+                username="owner@shivcreation.com",
+                password_hash=pw_hash,
                 company_id="comp-001"
             )
             db.add(default_user)
@@ -90,7 +88,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         )
 
     company = db.query(Company).filter(Company.id == user.company_id).first()
-    firm_name = company.name if company else (user.firm_name or "Om Sai Enterprises")
+    firm_name = company.name if company else (user.firm_name or "Om Sai Enterprise")
 
     return {
         "success": True,
@@ -100,8 +98,8 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
             "name": user.name,
             "email": user.email,
             "username": user.username,
-            "role": user.role,
-            "roleTitle": user.role_title,
+            "role": "Owner",
+            "roleTitle": "Proprietor & Director",
             "firmName": firm_name,
             "companyId": user.company_id or "comp-001"
         }
@@ -133,6 +131,7 @@ def get_credentials(
     if not user and (not company_id or company_id.strip() == "comp-001"):
         user = query.filter(
             (User.company_id == "comp-001") | 
+            (User.id == "user-001") |
             (User.id == "usr-owner-01") |
             (User.firm_name.ilike("%shiv%"))
         ).first()
@@ -141,14 +140,12 @@ def get_credentials(
             # Create default Shiv Creation user
             pw_hash = hash_password("owner123")
             user = User(
-                id="usr-owner-01",
-                username="owner@shivcreation.com",
-                email="owner@shivcreation.com",
-                name="Hiren Sutariya",
-                password_hash=pw_hash,
-                role="Owner",
-                role_title="Proprietor & Director",
+                id="user-001",
                 firm_name="Shiv Creation",
+                name="Hiren Sutariya",
+                email="owner@shivcreation.com",
+                username="owner@shivcreation.com",
+                password_hash=pw_hash,
                 company_id="comp-001"
             )
             db.add(user)
@@ -167,7 +164,7 @@ def get_credentials(
         "username": user.username,
         "email": user.email or user.username,
         "name": user.name,
-        "role": user.role,
+        "role": "Owner",
         "firm_name": user.firm_name,
         "company_id": user.company_id or "comp-001"
     }
@@ -201,6 +198,7 @@ def change_credentials(req: ChangeCredentialsRequest, db: Session = Depends(get_
         # Fallback to comp-001 / Shiv Creation user
         user = query.filter(
             (User.company_id == "comp-001") |
+            (User.id == "user-001") |
             (User.id == "usr-owner-01") |
             (User.firm_name.ilike("%shiv%"))
         ).first()
@@ -367,7 +365,7 @@ def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Dep
         db.add(comp)
 
     # Also update firm_name and username on corresponding user(s)
-    users = db.query(User).filter((User.company_id == cid) | (User.id == "usr-owner-01")).all()
+    users = db.query(User).filter((User.company_id == cid) | (User.id == "user-001") | (User.id == "usr-owner-01")).all()
     for u in users:
         if clean_name:
             u.firm_name = clean_name
@@ -387,29 +385,54 @@ def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Dep
 class RegisterCompanyRequest(BaseModel):
     company_name: str
     owner_name: str
-    username_or_email: str
+    email: Optional[str] = None
+    username: Optional[str] = None
+    username_or_email: Optional[str] = None  # fallback for backward compatibility
     password: str
     phone: Optional[str] = None
     gstin: Optional[str] = None
     address: Optional[str] = None
+    city: Optional[str] = None
 
 @router.post("/register-company", status_code=status.HTTP_201_CREATED)
 def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db)):
-    """Registers a new tenant company and creates their primary Owner login."""
-    clean_user = req.username_or_email.strip()
-    if not clean_user:
-        raise HTTPException(status_code=400, detail="Username / Email is required")
+    """Registers a new tenant company with dedicated email, username, and business profile."""
+    clean_company = req.company_name.strip()
+    clean_owner = req.owner_name.strip()
+    if not clean_company:
+        raise HTTPException(status_code=400, detail="Company / Firm Name is required")
+    if not clean_owner:
+        raise HTTPException(status_code=400, detail="Owner / Director Name is required")
+
+    # 1. Resolve separate username and email
+    raw_user = req.username.strip() if req.username else ""
+    raw_email = req.email.strip() if req.email else ""
+    raw_legacy = req.username_or_email.strip() if req.username_or_email else ""
+
+    clean_username = raw_user or (raw_legacy if "@" not in raw_legacy else raw_legacy.split("@")[0])
+    clean_email = raw_email or (raw_legacy if "@" in raw_legacy else "")
+
+    if not clean_username:
+        raise HTTPException(status_code=400, detail="Login Username is required")
+    if not clean_email or "@" not in clean_email:
+        raise HTTPException(status_code=400, detail="A valid Email Address is required")
     if not req.password or len(req.password.strip()) < 4:
         raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
 
-    # Check if user already exists
-    existing_user = db.query(User).filter(
-        (User.username.ilike(clean_user)) | (User.email.ilike(clean_user))
-    ).first()
-    if existing_user:
+    # Check if username is already taken
+    existing_username = db.query(User).filter(User.username.ilike(clean_username)).first()
+    if existing_username:
         raise HTTPException(
             status_code=400,
-            detail=f"User with username/email '{clean_user}' already exists."
+            detail=f"Username '{clean_username}' is already taken. Please choose another username."
+        )
+
+    # Check if email is already registered
+    existing_email = db.query(User).filter(User.email.ilike(clean_email)).first()
+    if existing_email:
+        raise HTTPException(
+            status_code=400,
+            detail=f"An account with email '{clean_email}' already exists. Please sign in or use another email."
         )
 
     # Generate sequential company_id (comp-002, comp-003, ...)
@@ -421,19 +444,36 @@ def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db))
             if suffix.isdigit():
                 max_comp_num = max(max_comp_num, int(suffix))
 
-    next_comp_id = f"comp-{max_comp_num + 1:03d}"
-    clean_code = req.company_name.strip().upper().replace(" ", "")[:8]
+    all_users = db.query(User.id).all()
+    for (uid,) in all_users:
+        if uid and uid.startswith("user-"):
+            suffix = uid.replace("user-", "")
+            if suffix.isdigit():
+                max_comp_num = max(max_comp_num, int(suffix))
+
+    next_comp_num = max_comp_num + 1
+    next_comp_id = f"comp-{next_comp_num:03d}"
+    next_user_id = f"user-{next_comp_num:03d}"
+    clean_code = clean_company.upper().replace(" ", "")[:8]
+
+    # Combine address if city provided
+    full_address = req.address.strip() if req.address else ""
+    if req.city and req.city.strip():
+        if full_address and req.city.strip() not in full_address:
+            full_address = f"{full_address}, {req.city.strip()}"
+        elif not full_address:
+            full_address = req.city.strip()
 
     # Create Company
     new_company = Company(
         id=next_comp_id,
-        name=req.company_name.strip(),
-        code=f"{clean_code}-{max_comp_num + 1:03d}",
-        owner_name=req.owner_name.strip(),
+        name=clean_company,
+        code=f"{clean_code}-{next_comp_num:03d}",
+        owner_name=clean_owner,
         phone=req.phone.strip() if req.phone else None,
-        email=clean_user if "@" in clean_user else None,
-        address=req.address.strip() if req.address else None,
-        gstin=req.gstin.strip() if req.gstin else None,
+        email=clean_email,
+        address=full_address if full_address else None,
+        gstin=req.gstin.strip().upper() if req.gstin else None,
         status="active"
     )
     db.add(new_company)
@@ -441,14 +481,12 @@ def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db))
     # Create Owner User
     pw_hash = hash_password(req.password.strip())
     new_user = User(
-        id=f"usr-{next_comp_id}-owner",
-        username=clean_user,
-        email=clean_user if "@" in clean_user else None,
-        name=req.owner_name.strip(),
+        id=next_user_id,
+        firm_name=clean_company,
+        name=clean_owner,
+        email=clean_email,
+        username=clean_username,
         password_hash=pw_hash,
-        role="Owner",
-        role_title="Proprietor & Director",
-        firm_name=req.company_name.strip(),
         company_id=next_comp_id
     )
     db.add(new_user)
@@ -463,12 +501,20 @@ def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db))
             "id": new_company.id,
             "name": new_company.name,
             "code": new_company.code,
-            "ownerName": new_company.owner_name
+            "ownerName": new_company.owner_name,
+            "email": new_company.email,
+            "phone": new_company.phone,
+            "address": new_company.address,
+            "gstin": new_company.gstin
         },
         "user": {
             "id": new_user.id,
             "username": new_user.username,
-            "role": new_user.role,
+            "email": new_user.email,
+            "name": new_user.name,
+            "firmName": new_user.firm_name,
+            "role": "Owner",
+            "roleTitle": "Proprietor & Director",
             "companyId": new_user.company_id
         }
     }

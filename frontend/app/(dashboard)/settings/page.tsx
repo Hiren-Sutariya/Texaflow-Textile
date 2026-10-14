@@ -91,6 +91,48 @@ function getDefaultSettings(cid: string, firmName?: string) {
     };
   }
 
+  if (cid === "comp-002") {
+    const fName = firmName || "Om Sai Enterprise";
+    return {
+      company_name: fName,
+      brand_name: "OM SAI ENTERPRISE",
+      owner_name: "Nilesh Sutariya",
+      tagline: "High Precision Multi-Head Embroidery Job Work",
+      phone: "9978987181",
+      alt_phone: "",
+      email: "owner@om-sai.com",
+      address: "Plot No. 104-106, GIDC Khatodara / Kadodara",
+      city_state: "Surat, Gujarat",
+      pincode: "395002",
+      msme_no: "UDYAM-GJ-24-0091823",
+      website: "",
+      gstin: "",
+      pan: "",
+      bank_name: "State Bank of India",
+      account_holder: fName,
+      account_no: "",
+      account_type: "Current Account",
+      ifsc: "SBIN0001234",
+      branch_name: "Ring Road Branch, Surat",
+      upi_id: "omsai@sbi",
+      qr_code_image: "",
+      invoice_title: "TAX INVOICE / JOBWORK BILL",
+      challan_title: "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
+      invoice_prefix: "OS/26-27/",
+      next_invoice_no: "101",
+      challan_prefix: "DC/26-27/",
+      next_challan_no: "101",
+      hsn_sac_code: "998822 (Textile Jobwork)",
+      gst_rate: "5% (Textile Embroidery Jobwork)",
+      payment_terms: "Due on Receipt",
+      signatory_label: `For ${fName} (Authorized Signatory)`,
+      eway_threshold: "50000",
+      print_qr: true,
+      terms_conditions:
+        "1. Goods once delivered will not be taken back without inspection.\n2. Payment strictly due as per credit terms.\n3. Subject to Surat Jurisdiction only."
+    };
+  }
+
   // Any newly registered company or other tenant
   const fName = firmName || "New Enterprise";
   const prefix = fName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 3).join("").toUpperCase() || "INV";
@@ -180,10 +222,11 @@ export default function SettingsPage() {
       const cid = getStoredCompanyId();
       try {
         const savedTenant = localStorage.getItem(`app_settings_${cid}`);
-        if (savedTenant) return JSON.parse(savedTenant);
-        if (cid === "comp-001") {
-          const legacy = localStorage.getItem("app_settings_om_sai");
-          if (legacy) return JSON.parse(legacy);
+        if (savedTenant) {
+          const parsed = JSON.parse(savedTenant);
+          const isPoisoned = (cid === "comp-001" && parsed?.company_name?.toLowerCase().includes("om sai")) ||
+                             (cid === "comp-002" && parsed?.company_name?.toLowerCase().includes("shiv"));
+          if (!isPoisoned) return parsed;
         }
       } catch {}
       return getDefaultSettings(cid);
@@ -197,15 +240,19 @@ export default function SettingsPage() {
   const [authData, setAuthData] = useState<AuthDataState>(() => {
     if (typeof window !== "undefined") {
       const cid = getStoredCompanyId();
-      const localUsername = localStorage.getItem(`texaflow_login_username_${cid}`);
-      const sessionStr = sessionStorage.getItem("texaflow_auth_session");
+      let localUsername = localStorage.getItem(`texaflow_login_username_${cid}`);
+      const sessionStr = sessionStorage.getItem("texaflow_auth_session") || localStorage.getItem("texaflow_auth_session");
       let sessionUser: any = null;
       try {
         if (sessionStr) sessionUser = JSON.parse(sessionStr);
       } catch {}
 
-      const initUsername = localUsername || sessionUser?.username || sessionUser?.email || (cid === "comp-001" ? "owner@shivcreation.com" : "owner");
-      const initName = sessionUser?.name || getStoredUserName() || (cid === "comp-001" ? "Hiren Sutariya" : "Owner");
+      // Reject cross-tenant leakage:
+      if (cid === "comp-001" && localUsername?.includes("om-sai")) localUsername = null;
+      if (cid === "comp-002" && localUsername?.includes("shiv")) localUsername = null;
+
+      const initUsername = localUsername || sessionUser?.username || sessionUser?.email || (cid === "comp-001" ? "owner@shivcreation.com" : (cid === "comp-002" ? "owner@om-sai.com" : "owner"));
+      const initName = (cid === "comp-001" ? "Hiren Sutariya" : (cid === "comp-002" ? "Nilesh Sutariya" : (sessionUser?.name || "Owner")));
 
       return {
         username: initUsername,
@@ -216,8 +263,8 @@ export default function SettingsPage() {
       };
     }
     return {
-      username: "owner",
-      name: "Owner",
+      username: "owner@om-sai.com",
+      name: "Nilesh Sutariya",
       currentPassword: "",
       newPassword: "",
       confirmPassword: ""
@@ -249,20 +296,22 @@ export default function SettingsPage() {
     setHasMounted(true);
     const cid = user?.companyId || getStoredCompanyId();
 
-    // 1. Load tenant-isolated settings from localStorage
+    // 1. Wipe legacy keys
+    try {
+      localStorage.removeItem("app_settings_om_sai");
+    } catch {}
+
+    // 2. Load tenant-isolated settings from localStorage
     try {
       const savedTenant = localStorage.getItem(`app_settings_${cid}`);
       if (savedTenant) {
-        setFormData((prev) => ({ ...prev, ...JSON.parse(savedTenant) }));
-      } else if (cid === "comp-001") {
-        const legacy = localStorage.getItem("app_settings_om_sai");
-        if (legacy) {
-          const parsed = JSON.parse(legacy);
-          if (user?.firmName && !user.firmName.toLowerCase().includes("om sai")) {
-            parsed.company_name = user.firmName;
-            parsed.brand_name = user.firmName.toUpperCase();
-          }
+        const parsed = JSON.parse(savedTenant);
+        const isPoisoned = (cid === "comp-001" && parsed?.company_name?.toLowerCase().includes("om sai")) ||
+                           (cid === "comp-002" && parsed?.company_name?.toLowerCase().includes("shiv"));
+        if (!isPoisoned) {
           setFormData((prev) => ({ ...prev, ...parsed }));
+        } else {
+          setFormData(getDefaultSettings(cid, user?.firmName));
         }
       } else {
         setFormData(getDefaultSettings(cid, user?.firmName));
@@ -281,10 +330,10 @@ export default function SettingsPage() {
                 ...prev,
                 company_name: data.company_name,
                 brand_name: data.brand_name || data.company_name.toUpperCase(),
-                phone: data.phone || prev.phone,
-                email: data.email || prev.email,
-                address: data.address || prev.address,
-                gstin: data.gstin || prev.gstin
+                phone: (data.phone && data.phone.trim()) ? data.phone.trim() : prev.phone,
+                email: (data.email && data.email.trim()) ? data.email.trim() : (cid === "comp-001" ? "owner@shivcreation.com" : (cid === "comp-002" ? "owner@om-sai.com" : prev.email)),
+                address: (data.address && data.address.trim()) ? data.address.trim() : prev.address,
+                gstin: (data.gstin && data.gstin.trim()) ? data.gstin.trim() : prev.gstin
               };
               try {
                 localStorage.setItem(`app_settings_${cid}`, JSON.stringify(updated));
@@ -295,7 +344,8 @@ export default function SettingsPage() {
           if (data.username && !isUserEditingRef.current) {
             setAuthData((prev) => ({
               ...prev,
-              username: data.username
+              username: data.username,
+              name: data.owner_name || (cid === "comp-002" ? "Nilesh Sutariya" : (cid === "comp-001" ? "Hiren Sutariya" : prev.name))
             }));
             try {
               localStorage.setItem(`texaflow_login_username_${cid}`, data.username);
@@ -311,11 +361,14 @@ export default function SettingsPage() {
 
     // 3. Synchronize authData from current logged-in user session immediately if user hasn't edited yet
     if (user && !isUserEditingRef.current) {
-      const localUsername = typeof window !== "undefined" ? localStorage.getItem(`texaflow_login_username_${cid}`) : null;
+      let localUsername = typeof window !== "undefined" ? localStorage.getItem(`texaflow_login_username_${cid}`) : null;
+      if (cid === "comp-001" && localUsername?.includes("om-sai")) localUsername = null;
+      if (cid === "comp-002" && localUsername?.includes("shiv")) localUsername = null;
+
       setAuthData((prev) => ({
         ...prev,
-        username: localUsername || user.username || user.email || prev.username,
-        name: user.name || prev.name
+        username: localUsername || user.username || user.email || (cid === "comp-001" ? "owner@shivcreation.com" : (cid === "comp-002" ? "owner@om-sai.com" : prev.username)),
+        name: user.name || (cid === "comp-002" ? "Nilesh Sutariya" : (cid === "comp-001" ? "Hiren Sutariya" : prev.name))
       }));
     }
 
@@ -325,7 +378,6 @@ export default function SettingsPage() {
         if (user?.id) queryParams.set("user_id", user.id);
         if (cid) queryParams.set("company_id", cid);
         if (user?.username || user?.email) queryParams.set("username", user.username || user.email || "");
-        if (user?.firmName) queryParams.set("firm_name", user.firmName);
 
         const url = `${API_BASE_URL}/auth/credentials?${queryParams.toString()}`;
         const res = await fetch(url);
@@ -340,7 +392,7 @@ export default function SettingsPage() {
             setAuthData((prev) => ({
               ...prev,
               username: data.username,
-              name: data.name || prev.name
+              name: data.name || (cid === "comp-002" ? "Nilesh Sutariya" : (cid === "comp-001" ? "Hiren Sutariya" : prev.name))
             }));
             try {
               localStorage.setItem(`texaflow_login_username_${cid}`, data.username);
@@ -987,12 +1039,10 @@ export default function SettingsPage() {
       const cid = user?.companyId || getStoredCompanyId();
       const settingsToSave = {
         ...formData,
-        owner_name: authData.name?.trim() || user?.name || formData.company_name?.trim()
+        owner_name: authData.name?.trim() || user?.name || (cid === "comp-002" ? "Nilesh Sutariya" : (cid === "comp-001" ? "Hiren Sutariya" : formData.company_name?.trim()))
       };
       localStorage.setItem(`app_settings_${cid}`, JSON.stringify(settingsToSave));
-      if (cid === "comp-001") {
-        localStorage.setItem("app_settings_om_sai", JSON.stringify(settingsToSave));
-      }
+      localStorage.removeItem("app_settings_om_sai");
 
       // Update company firmName, username and owner name in active user session so Sidebar and session update immediately!
       const newFirmName = formData.company_name?.trim() || formData.brand_name?.trim();

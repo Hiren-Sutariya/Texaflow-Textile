@@ -69,8 +69,8 @@ export function LoginCard({ onSuccess }: LoginCardProps) {
       
       {/* BRANDING HEADER */}
       <div className="text-center space-y-2">
-        <div className="w-13 h-13 rounded-2xl bg-emerald-50 border border-emerald-200/70 text-emerald-600 flex items-center justify-center text-2xl mx-auto shadow-2xs">
-          🧵
+        <div className="w-13 h-13 rounded-2xl bg-emerald-50 border border-emerald-200/70 text-emerald-600 flex items-center justify-center mx-auto shadow-2xs">
+          <Building2 className="w-6 h-6 text-emerald-600" />
         </div>
         <div>
           <h1 className="text-lg font-bold text-slate-900 tracking-tight">

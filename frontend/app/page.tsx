@@ -1,8 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { getStoredFirmName, getStoredUserName } from "@/lib/tenantStorage";
+import { getStoredFirmName, getStoredUserName, getStoredCompanyId } from "@/lib/tenantStorage";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { 
   Users, 
@@ -96,18 +97,15 @@ const destinationModules = [
 
 export default function Home() {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const [mounted, setMounted] = useState(false);
 
-  // 1. Subtle light-themed loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans select-none">
-        <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 font-black text-2xl flex items-center justify-center shadow-2xs mb-3 animate-pulse">
-          🧵
-        </div>
-        <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mb-2" />
-        <p className="text-xs text-slate-500 font-medium">Checking Security Session...</p>
-      </div>
-    );
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 1. Clean silent mount transition - no thread icon or loading message
+  if (!mounted || isLoading) {
+    return <div className="min-h-screen bg-slate-50" />;
   }
 
   // 2. FIRST SCREEN: If NOT logged in, show the full-screen split Login Screen immediately!
@@ -115,6 +113,40 @@ export default function Home() {
   if (!isAuthenticated) {
     return <LoginScreen />;
   }
+
+  const cid = user?.companyId || getStoredCompanyId();
+  const defaultFirm = cid === "comp-002" ? "Om Sai Enterprise" : (cid === "comp-001" ? "Shiv Creation" : "Textile ERP");
+  const defaultOwner = cid === "comp-002" ? "Nilesh Sutariya" : (cid === "comp-001" ? "Hiren Sutariya" : "Proprietor");
+
+  let displayedFirmName = defaultFirm;
+  if (user?.firmName && user.firmName.trim() && user.firmName.toLowerCase() !== "company" && !user.firmName.toLowerCase().includes("texaflow")) {
+    displayedFirmName = user.firmName.trim();
+  } else {
+    const stored = getStoredFirmName();
+    if (stored && stored.toLowerCase() !== "company") displayedFirmName = stored;
+  }
+  if (cid === "comp-001" && displayedFirmName.toLowerCase().includes("om sai")) {
+    displayedFirmName = "Shiv Creation";
+  } else if (cid === "comp-002" && displayedFirmName.toLowerCase().includes("shiv")) {
+    displayedFirmName = "Om Sai Enterprise";
+  }
+
+  let displayedUserName = defaultOwner;
+  if (user?.name && user.name.trim() && user.name !== "Factory Admin" && user.name.toLowerCase() !== "owner") {
+    displayedUserName = user.name.trim();
+  } else {
+    const stored = getStoredUserName();
+    if (stored && stored !== "Factory Admin" && stored.toLowerCase() !== "owner") displayedUserName = stored;
+  }
+  if (cid === "comp-001" && (displayedUserName.toLowerCase().includes("nilesh") || displayedUserName.toLowerCase() === "owner")) {
+    displayedUserName = "Hiren Sutariya";
+  } else if (cid === "comp-002" && (displayedUserName.toLowerCase().includes("hiren") || displayedUserName.toLowerCase() === "owner")) {
+    displayedUserName = "Nilesh Sutariya";
+  }
+
+  const brandInitials = displayedFirmName
+    ? displayedFirmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase()
+    : (cid === "comp-002" ? "OS" : "SC");
 
   // 3. SECOND SCREEN: Once authenticated, show the 8 Module Dashboard Cards Grid!
   return (
@@ -124,18 +156,18 @@ export default function Home() {
       <div className="w-full max-w-6xl bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 shadow-2xs flex items-center justify-between gap-2.5 sm:gap-3 text-xs">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div suppressHydrationWarning className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0 tracking-wider uppercase">
-            {(user?.firmName || getStoredFirmName()) ? (user?.firmName || getStoredFirmName()).split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() : "CO"}
+            {brandInitials}
           </div>
           <div className="min-w-0 truncate">
             <div className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5 truncate">
-              <span suppressHydrationWarning className="truncate">{user?.firmName || getStoredFirmName() || "Company"}</span>
+              <span suppressHydrationWarning className="truncate">{displayedFirmName}</span>
               <span suppressHydrationWarning className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[9px] sm:text-[10px] font-bold shrink-0">
-                {user?.roleTitle || "Owner"}
+                {user?.roleTitle || "Proprietor & Director"}
               </span>
             </div>
             <div className="text-[10px] sm:text-[11px] text-blue-600 font-bold flex items-center gap-1 mt-0.5 truncate">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span suppressHydrationWarning className="truncate">TexaFlow Textile • {user?.name || getStoredUserName() || "Owner"}</span>
+              <span suppressHydrationWarning className="truncate">TexaFlow Textile • {displayedUserName}</span>
             </div>
           </div>
         </div>

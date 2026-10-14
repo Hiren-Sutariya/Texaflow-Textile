@@ -16,7 +16,10 @@ import {
   CheckCircle2,
   Building2,
   User,
-  Phone
+  Phone,
+  MapPin,
+  Receipt,
+  UserCheck
 } from "lucide-react";
 
 interface LoginScreenProps {
@@ -39,8 +42,13 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
   const [regCompanyName, setRegCompanyName] = useState("");
   const [regOwnerName, setRegOwnerName] = useState("");
   const [regEmail, setRegEmail] = useState("");
+  const [regUsername, setRegUsername] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
+  const [regShowPassword, setRegShowPassword] = useState(false);
   const [regPhone, setRegPhone] = useState("");
+  const [regCity, setRegCity] = useState("");
+  const [regGstin, setRegGstin] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
 
   // Forgot password form state
@@ -137,24 +145,40 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
 
     const cleanCompany = regCompanyName.trim();
     const cleanOwner = regOwnerName.trim();
-    const cleanUser = regEmail.trim();
+    const cleanEmail = regEmail.trim();
+    const cleanUsername = regUsername.trim();
     const cleanPassword = regPassword.trim();
+    const cleanConfirmPassword = regConfirmPassword.trim();
     const cleanPhone = regPhone.trim();
+    const cleanCity = regCity.trim();
+    const cleanGstin = regGstin.trim().toUpperCase();
 
     if (!cleanCompany) {
-      setErrorMsg("Please enter company name");
+      setErrorMsg("Please enter Company / Firm Name");
       return;
     }
     if (!cleanOwner) {
-      setErrorMsg("Please enter owner / director name");
+      setErrorMsg("Please enter Owner / Director Name");
       return;
     }
-    if (!cleanUser) {
-      setErrorMsg("Please enter login username or email");
+    if (!cleanEmail || !cleanEmail.includes("@") || !cleanEmail.includes(".")) {
+      setErrorMsg("Please enter a valid Email Address");
+      return;
+    }
+    if (!cleanUsername || cleanUsername.length < 3) {
+      setErrorMsg("Username must be at least 3 characters long");
+      return;
+    }
+    if (/\s/.test(cleanUsername)) {
+      setErrorMsg("Username cannot contain spaces. Use letters, numbers or underscore.");
       return;
     }
     if (!cleanPassword || cleanPassword.length < 4) {
-      setErrorMsg("Password must be at least 4 characters");
+      setErrorMsg("Password must be at least 4 characters long");
+      return;
+    }
+    if (cleanPassword !== cleanConfirmPassword) {
+      setErrorMsg("Password and Confirm Password do not match");
       return;
     }
 
@@ -167,9 +191,13 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
         body: JSON.stringify({
           company_name: cleanCompany,
           owner_name: cleanOwner,
-          username_or_email: cleanUser,
+          email: cleanEmail,
+          username: cleanUsername,
           password: cleanPassword,
-          phone: cleanPhone || undefined
+          phone: cleanPhone || undefined,
+          gstin: cleanGstin || undefined,
+          address: cleanCity || undefined,
+          city: cleanCity || undefined
         })
       });
 
@@ -178,7 +206,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
         throw new Error(data.detail || "Registration failed. Please try again.");
       }
 
-      const newCid = data?.company?.id || data?.user?.companyId || "comp-002";
+      const newCid = data?.company?.id || data?.user?.companyId || "comp-003";
 
       // Seed initial tenant settings in localStorage immediately
       try {
@@ -187,18 +215,21 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
           brand_name: cleanCompany.toUpperCase(),
           owner_name: cleanOwner,
           phone: cleanPhone || "",
-          email: cleanUser.includes("@") ? cleanUser : "",
-          username: cleanUser,
+          email: cleanEmail,
+          username: cleanUsername,
+          address: cleanCity || "",
+          gstin: cleanGstin || "",
           status: "active"
         };
         localStorage.setItem(`app_settings_${newCid}`, JSON.stringify(initialSettings));
-        localStorage.setItem(`texaflow_login_username_${newCid}`, cleanUser);
+        localStorage.setItem(`texaflow_login_username_${newCid}`, cleanUsername);
+        localStorage.setItem("texaflow_active_company_id", newCid);
       } catch {}
 
       setSuccessMsg(`Company "${cleanCompany}" registered successfully! Launching ERP...`);
 
-      // Auto-login into the newly created company panel
-      const loginRes = await login(cleanUser, cleanPassword);
+      // Auto-login into the newly created company panel using the new username
+      const loginRes = await login(cleanUsername, cleanPassword);
       if (loginRes.success) {
         setTimeout(() => {
           if (onSuccess) onSuccess();
@@ -206,7 +237,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
         }, 300);
       } else {
         setMode("login");
-        setEmail(cleanUser);
+        setEmail(cleanUsername);
       }
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to register company. Please try again.");
@@ -354,7 +385,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
         </div>
 
         {/* Elongated, Comfortable Auth Card */}
-        <div className="w-full max-w-[420px] sm:max-w-[460px] bg-white border border-blue-200/90 rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 shadow-sm shadow-blue-500/5 space-y-5 sm:space-y-6 relative z-10">
+        <div className={`w-full ${mode === "register" ? "max-w-[560px] sm:max-w-[620px]" : "max-w-[420px] sm:max-w-[460px]"} bg-white border border-blue-200/90 rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-9 shadow-sm shadow-blue-500/5 space-y-5 sm:space-y-6 relative z-10 transition-all duration-300`}>
 
 
           
@@ -523,8 +554,8 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
             </>
           ) : mode === "register" ? (
             /* ================= VIEW 3: REGISTER NEW COMPANY ================= */
-            <div className="space-y-5 animate-in fade-in duration-200">
-              <div className="space-y-1.5">
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="space-y-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -547,85 +578,132 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
 
               {/* Alerts */}
               {errorMsg && (
-                <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
               {successMsg && (
-                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
                   <span>{successMsg}</span>
                 </div>
               )}
 
-              <form onSubmit={handleRegisterCompany} onKeyDown={handleRegisterKeyDown} className="space-y-3.5">
-                {/* Company Name */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Company / Firm Name *</label>
-                  <div className="relative">
-                    <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={regCompanyName}
-                      onChange={(e) => setRegCompanyName(e.target.value)}
-                      placeholder="e.g. Radhe Krishna Textiles"
-                      required
-                      className="w-full h-11 pl-10 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 transition-colors shadow-2xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Owner Name */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Owner / Director Name *</label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={regOwnerName}
-                      onChange={(e) => setRegOwnerName(e.target.value)}
-                      placeholder="e.g. Ramesh Patel"
-                      required
-                      className="w-full h-11 pl-10 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 transition-colors shadow-2xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Username / Email */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Login Username / Email *</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={regEmail}
-                      onChange={(e) => setRegEmail(e.target.value)}
-                      placeholder="owner@radhe-textiles.com"
-                      required
-                      className="w-full h-11 pl-10 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 transition-colors shadow-2xs font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Password & Phone */}
-                <div className="grid grid-cols-2 gap-3">
+              <form onSubmit={handleRegisterCompany} onKeyDown={handleRegisterKeyDown} className="space-y-3">
+                {/* Row 1: Company / Firm Name & Owner Name */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Password *</label>
+                    <label className="text-xs font-bold text-slate-700">Company / Firm Name *</label>
                     <div className="relative">
-                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
-                        type="password"
-                        value={regPassword}
-                        onChange={(e) => setRegPassword(e.target.value)}
-                        placeholder="••••••••"
+                        type="text"
+                        value={regCompanyName}
+                        onChange={(e) => setRegCompanyName(e.target.value)}
+                        placeholder="e.g. Radhe Krishna Textiles"
+                        required
+                        className="w-full h-11 pl-10 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 transition-colors shadow-2xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Owner / Director Name *</label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={regOwnerName}
+                        onChange={(e) => setRegOwnerName(e.target.value)}
+                        placeholder="e.g. Ramesh Patel"
+                        required
+                        className="w-full h-11 pl-10 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 transition-colors shadow-2xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 2: Dedicated Email ID & Dedicated Login Username */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Email Address *</label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="email"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        placeholder="owner@radhe-textiles.com"
                         required
                         className="w-full h-11 pl-10 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 transition-colors shadow-2xs font-mono"
                       />
                     </div>
                   </div>
 
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                      <span>Login Username *</span>
+                      <span className="text-[10px] text-blue-600 font-semibold lowercase">for quick login</span>
+                    </label>
+                    <div className="relative">
+                      <UserCheck className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={regUsername}
+                        onChange={(e) => setRegUsername(e.target.value.toLowerCase().replace(/\s+/g, ""))}
+                        placeholder="e.g. radhetextiles"
+                        required
+                        className="w-full h-11 pl-10 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 transition-colors shadow-2xs font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 3: Password & Confirm Password */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Password *</label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type={regShowPassword ? "text" : "password"}
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="w-full h-11 pl-10 pr-10 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 transition-colors shadow-2xs font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setRegShowPassword(!regShowPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        tabIndex={-1}
+                      >
+                        {regShowPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Confirm Password *</label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type={regShowPassword ? "text" : "password"}
+                        value={regConfirmPassword}
+                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="w-full h-11 pl-10 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 transition-colors shadow-2xs font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 4: Phone & GSTIN (Optional) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-700">Phone (Optional)</label>
                     <div className="relative">
@@ -638,6 +716,36 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                         className="w-full h-11 pl-10 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 transition-colors shadow-2xs"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">GSTIN (Optional)</label>
+                    <div className="relative">
+                      <Receipt className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={regGstin}
+                        onChange={(e) => setRegGstin(e.target.value.toUpperCase())}
+                        placeholder="24AAAAA0000A1Z5"
+                        maxLength={15}
+                        className="w-full h-11 pl-10 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 transition-colors shadow-2xs uppercase font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 5: City / Business Address (Optional) */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">City / Business Address (Optional)</label>
+                  <div className="relative">
+                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={regCity}
+                      onChange={(e) => setRegCity(e.target.value)}
+                      placeholder="e.g. Ring Road, Surat, Gujarat"
+                      className="w-full h-11 pl-10 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 transition-colors shadow-2xs"
+                    />
                   </div>
                 </div>
 
@@ -659,10 +767,14 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                   )}
                 </button>
 
-                <div className="text-center pt-2">
+                <div className="text-center pt-1.5">
                   <button
                     type="button"
-                    onClick={() => setMode("login")}
+                    onClick={() => {
+                      setMode("login");
+                      setErrorMsg("");
+                      setSuccessMsg("");
+                    }}
                     className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
                   >
                     Already registered? Back to Sign In
