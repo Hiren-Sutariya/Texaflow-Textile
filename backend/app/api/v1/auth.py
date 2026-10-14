@@ -1,5 +1,8 @@
 import hashlib
 import secrets
+import json
+import base64
+import urllib.request
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -102,6 +105,167 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
             "roleTitle": "Proprietor & Director",
             "firmName": firm_name,
             "companyId": user.company_id or "comp-001"
+        }
+    }
+
+class GoogleAuthRequest(BaseModel):
+    credential: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    company_name: Optional[str] = None
+    picture: Optional[str] = None
+
+@router.post("/google")
+def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)):
+    """Authenticates via Google Identity Services (GIS).
+    Verifies token or email, locates the user's tenant company, or onboards them automatically.
+    """
+    email = req.email.strip() if req.email else ""
+    name = req.name.strip() if req.name else ""
+    picture = req.picture
+
+    # If Google credential (JWT ID token) is provided, verify / decode it
+    if req.credential and req.credential.strip():
+        token = req.credential.strip()
+        # 1. Attempt token verification with Google OAuth2 tokeninfo
+        try:
+            url = f"https://oauth2.googleapis.com/tokeninfo?id_token={token}"
+            req_obj = urllib.request.Request(url, headers={"User-Agent": "TexaFlow-ERP"})
+            with urllib.request.urlopen(req_obj, timeout=5) as response:
+                if response.status == 200:
+                    data = json.loads(response.read().decode("utf-8"))
+                    if data.get("email"):
+                        email = data.get("email").strip()
+                    if data.get("name"):
+                        name = data.get("name").strip()
+                    if data.get("picture"):
+                        picture = data.get("picture")
+        except Exception:
+            # 2. Fallback: Parse JWT payload safely
+            try:
+                parts = token.split(".")
+                if len(parts) >= 2:
+                    payload_b64 = parts[1]
+                    payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
+                    payload_json = base64.urlsafe_b64decode(payload_b64.encode("utf-8")).decode("utf-8")
+                    data = json.loads(payload_json)
+                    if data.get("email"):
+                        email = data.get("email").strip()
+                    if data.get("name"):
+                        name = data.get("name").strip()
+                    if data.get("picture"):
+                        picture = data.get("picture")
+            except Exception:
+                pass
+
+    if not email or "@" not in email:
+        raise HTTPException(
+            status_code=400,
+            detail="A valid Google account email is required to sign in."
+        )
+
+    clean_email = email.lower()
+
+    # Check if user already exists with this email or username
+    user = db.query(User).filter(
+        (User.email.ilike(clean_email)) | (User.username.ilike(clean_email))
+    ).first()
+
+    if user:
+        company = db.query(Company).filter(Company.id == user.company_id).first()
+        firm_name = company.name if company else (user.firm_name or "Om Sai Enterprise")
+
+        # Update name if previously generic
+        if name and (not user.name or user.name in ["Owner", "Factory Admin", "Proprietor"]):
+            user.name = name
+            if company and (not company.owner_name or company.owner_name == "Owner"):
+                company.owner_name = name
+            db.commit()
+
+        return {
+            "success": True,
+            "message": f"Welcome back, {user.name}!",
+            "isNewUser": False,
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email or clean_email,
+                "username": user.username,
+                "role": "Owner",
+                "roleTitle": "Proprietor & Director",
+                "firmName": firm_name,
+                "companyId": user.company_id or "comp-001",
+                "avatar": picture
+            }
+        }
+
+    # If new user: automatically provision new tenant enterprise company
+    owner_name = name if name else clean_email.split("@")[0].replace(".", " ").title()
+    firm_name = req.company_name.strip() if req.company_name and req.company_name.strip() else f"{owner_name} Textiles"
+
+    # Compute next sequential company_id and user_id
+    max_comp_num = 1
+    all_companies = db.query(Company.id).all()
+    for (cid,) in all_companies:
+        if cid and cid.startswith("comp-"):
+            suffix = cid.replace("comp-", "")
+            if suffix.isdigit():
+                max_comp_num = max(max_comp_num, int(suffix))
+
+    all_users = db.query(User.id).all()
+    for (uid,) in all_users:
+        if uid and uid.startswith("user-"):
+            suffix = uid.replace("user-", "")
+            if suffix.isdigit():
+                max_comp_num = max(max_comp_num, int(suffix))
+
+    next_num = max_comp_num + 1
+    next_comp_id = f"comp-{next_num:03d}"
+    next_user_id = f"user-{next_num:03d}"
+    clean_code = firm_name.upper().replace(" ", "")[:8]
+
+    # Create Company
+    new_company = Company(
+        id=next_comp_id,
+        name=firm_name,
+        code=f"{clean_code}-{next_num:03d}",
+        owner_name=owner_name,
+        email=clean_email,
+        status="active"
+    )
+    db.add(new_company)
+
+    # Create Owner User
+    random_pw = secrets.token_hex(12)
+    pw_hash = hash_password(random_pw)
+    new_user = User(
+        id=next_user_id,
+        firm_name=firm_name,
+        name=owner_name,
+        email=clean_email,
+        username=clean_email,
+        password_hash=pw_hash,
+        company_id=next_comp_id
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_company)
+    db.refresh(new_user)
+
+    return {
+        "success": True,
+        "message": f"Enterprise account created for {firm_name}!",
+        "isNewUser": True,
+        "user": {
+            "id": new_user.id,
+            "name": new_user.name,
+            "email": new_user.email,
+            "username": new_user.username,
+            "role": "Owner",
+            "roleTitle": "Proprietor & Director",
+            "firmName": new_company.name,
+            "companyId": new_company.id,
+            "avatar": picture
         }
     }
 

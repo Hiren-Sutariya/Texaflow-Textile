@@ -22,6 +22,7 @@ interface AuthContextType {
   user: UserSession | null;
   isLoading: boolean;
   login: (emailOrPin: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: (data: { credential?: string; email?: string; name?: string; companyName?: string; picture?: string }) => Promise<{ success: boolean; error?: string; message?: string }>;
   logout: () => void;
   updateUserSession: (data: Partial<UserSession>) => void;
   isAuthenticated: boolean;
@@ -255,6 +256,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (data: {
+    credential?: string;
+    email?: string;
+    name?: string;
+    companyName?: string;
+    picture?: string;
+  }): Promise<{ success: boolean; error?: string; message?: string }> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          credential: data.credential || null,
+          email: data.email || null,
+          name: data.name || null,
+          company_name: data.companyName || null,
+          picture: data.picture || null
+        })
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const u = json.user;
+        const tenant = resolveSessionTenant(u);
+
+        const session: UserSession = {
+          id: u.id,
+          name: tenant.name || u.name,
+          email: u.email || "",
+          username: u.username || "",
+          role: "Owner",
+          roleTitle: "Proprietor & Director",
+          firmName: tenant.firmName || u.firmName,
+          companyId: tenant.resolvedCompanyId || u.companyId,
+          avatar: u.avatar || data.picture || "",
+          lastLogin: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+          expiresAt: Date.now() + 4 * 60 * 60 * 1000
+        };
+
+        setUser(session);
+        sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+        return { success: true, message: json.message };
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        return {
+          success: false,
+          error: errData.detail || "Google authentication failed. Please try again."
+        };
+      }
+    } catch (networkErr) {
+      console.error("Google auth network error:", networkErr);
+      return {
+        success: false,
+        error: "Cannot connect to server. Please verify your connection."
+      };
+    }
+  };
+
   const updateUserSession = (data: Partial<UserSession>) => {
     setUser((prev) => {
       if (!prev) return null;
@@ -285,6 +345,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading,
         login,
+        loginWithGoogle,
         logout,
         updateUserSession,
         isAuthenticated: !!user
