@@ -4,61 +4,65 @@
  */
 
 export function getStoredCompanyId(): string {
-  if (typeof window === "undefined") return "comp-002";
+  if (typeof window === "undefined") return "comp-001";
   try {
     const raw = sessionStorage.getItem("texaflow_auth_session") || localStorage.getItem("texaflow_auth_session");
     if (raw) {
       const parsed = JSON.parse(raw);
-      
-      // 1. Explicit indicator checks first to prevent wrong cross-tenant assignment
-      const isOmSai = 
-        parsed?.companyId === "comp-002" ||
-        parsed?.company_id === "comp-002" ||
-        (typeof parsed?.id === "string" && parsed.id.includes("comp-002")) ||
-        parsed?.firmName?.toLowerCase().includes("om sai") ||
-        parsed?.firm_name?.toLowerCase().includes("om sai") ||
-        parsed?.company_name?.toLowerCase().includes("om sai") ||
-        parsed?.email?.includes("om-sai") ||
-        parsed?.username?.includes("om-sai") ||
-        parsed?.name?.toLowerCase().includes("nilesh");
+      const directCid = parsed?.companyId || parsed?.company_id;
+      const email = (parsed?.email || "").toLowerCase().trim();
+      const username = (parsed?.username || "").toLowerCase().trim();
+      const rawId = typeof parsed?.id === "string" ? parsed.id.trim() : "";
+      const firm = (parsed?.firmName || parsed?.firm_name || parsed?.company_name || "").toLowerCase().trim();
+      const name = (parsed?.name || parsed?.owner_name || "").toLowerCase().trim();
 
-      const isShiv = 
-        parsed?.companyId === "comp-001" ||
-        parsed?.company_id === "comp-001" ||
-        (typeof parsed?.id === "string" && (parsed.id.includes("comp-001") || parsed.id === "usr-owner-01" || parsed.id === "user-001")) ||
-        parsed?.firmName?.toLowerCase().includes("shiv") ||
-        parsed?.firm_name?.toLowerCase().includes("shiv") ||
-        parsed?.company_name?.toLowerCase().includes("shiv") ||
-        parsed?.email?.includes("shiv") ||
-        parsed?.username?.includes("shiv") ||
-        parsed?.name?.toLowerCase().includes("hiren");
+      // 1. Direct authoritative check on company ID first
+      if (directCid === "comp-001") return "comp-001";
+      if (directCid === "comp-002") return "comp-002";
 
-      if (isOmSai && !isShiv) return "comp-002";
-      if (isShiv && !isOmSai) return "comp-001";
+      // 2. Direct email / username check
+      if (email.includes("shiv") || username.includes("shiv")) return "comp-001";
+      if (email.includes("om-sai") || username.includes("om-sai") || email.includes("omsai") || username.includes("omsai")) return "comp-002";
 
-      // 2. Direct check on companyId / company_id
-      const rawCid = parsed?.companyId || parsed?.company_id;
-      if (rawCid && typeof rawCid === "string" && /^comp-\d+$/.test(rawCid)) {
-        return rawCid;
+      // 3. User ID check
+      if (rawId === "user-001" || rawId === "usr-owner-01" || rawId.includes("comp-001")) return "comp-001";
+      if (rawId === "user-002" || rawId.includes("comp-002")) return "comp-002";
+
+      // 4. Firm name check
+      if (firm.includes("shiv")) return "comp-001";
+      if (firm.includes("om sai") || firm.includes("omsai")) return "comp-002";
+
+      // 5. Name check
+      if (name.includes("hiren")) return "comp-001";
+      if (name.includes("nilesh")) return "comp-002";
+
+      // 6. Generic comp-XXX pattern
+      if (directCid && typeof directCid === "string" && /^comp-\d+$/.test(directCid)) {
+        return directCid;
       }
-
-      // 3. Check ID pattern
-      if (parsed?.id && typeof parsed.id === "string") {
-        const m = parsed.id.match(/(comp-\d+)/);
+      if (rawId) {
+        const m = rawId.match(/(comp-\d+)/);
         if (m) return m[1];
-        const userM = parsed.id.match(/^user-(\d+)$/);
+        const userM = rawId.match(/^user-(\d+)$/);
         if (userM) return `comp-${userM[1]}`;
       }
     }
+
+    // If no active auth session, check saved settings in localStorage
+    const savedComp001 = localStorage.getItem("app_settings_comp-001") || localStorage.getItem("texaflow_login_username_comp-001");
+    const savedComp002 = localStorage.getItem("app_settings_comp-002") || localStorage.getItem("texaflow_login_username_comp-002");
+    if (savedComp001 && !savedComp002) return "comp-001";
+    if (savedComp002 && !savedComp001) return "comp-002";
   } catch {}
-  return "comp-002";
+  return "comp-001";
 }
 
 export function getStoredFirmName(): string {
-  if (typeof window === "undefined") return "Om Sai Enterprise";
+  const cid = getStoredCompanyId();
+  if (typeof window === "undefined") {
+    return cid === "comp-002" ? "Om Sai Enterprise" : "Shiv Creation";
+  }
   try {
-    const cid = getStoredCompanyId();
-
     // 1. Check active auth session firm name FIRST (sessionStorage or localStorage)
     const rawSess = sessionStorage.getItem("texaflow_auth_session") || localStorage.getItem("texaflow_auth_session");
     if (rawSess) {
@@ -103,14 +107,15 @@ export function getStoredFirmName(): string {
     if (cid === "comp-002") return "Om Sai Enterprise";
     if (cid === "comp-001") return "Shiv Creation";
   } catch {}
-  return "Om Sai Enterprise";
+  return cid === "comp-002" ? "Om Sai Enterprise" : "Shiv Creation";
 }
 
 export function getStoredUserName(): string {
-  if (typeof window === "undefined") return "Nilesh Sutariya";
+  const cid = getStoredCompanyId();
+  if (typeof window === "undefined") {
+    return cid === "comp-002" ? "Nilesh Sutariya" : "Hiren Sutariya";
+  }
   try {
-    const cid = getStoredCompanyId();
-
     // 1. Check active auth session user name (sessionStorage or localStorage)
     const rawSess = sessionStorage.getItem("texaflow_auth_session") || localStorage.getItem("texaflow_auth_session");
     if (rawSess) {
@@ -154,7 +159,7 @@ export function getStoredUserName(): string {
     if (cid === "comp-002") return "Nilesh Sutariya";
     if (cid === "comp-001") return "Hiren Sutariya";
   } catch {}
-  return "Nilesh Sutariya";
+  return cid === "comp-002" ? "Nilesh Sutariya" : "Hiren Sutariya";
 }
 
 export function getTenantStorageKey(baseKey: string, companyId?: string): string {

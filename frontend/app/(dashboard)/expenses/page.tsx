@@ -295,10 +295,10 @@ export default function ExpensesPage() {
         const currentCid = getStoredCompanyId();
         const saved = getTenantItem<ExpenseItem[]>(
           "texaflow_expenses",
-          currentCid === "comp-001" ? "om_sai_expenses" : undefined
+          currentCid === "comp-002" ? "om_sai_expenses" : undefined
         );
         if (Array.isArray(saved) && saved.length > 0) {
-          const scoped = saved.filter((item: any) => (item.company_id || "comp-001") === currentCid);
+          const scoped = saved.filter((item: any) => (item.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001")) === currentCid);
           return normalizeAndRenumberExpenses(scoped);
         }
       } catch {}
@@ -360,13 +360,13 @@ export default function ExpensesPage() {
         if (isMounted && Array.isArray(live)) {
           // Strict multi-tenant guard: only show expenses belonging to this company!
           const scoped = live.filter((item: any) => {
-            const itemCid = item.company_id || "comp-001";
+            const itemCid = item.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001");
             return itemCid === currentCid;
           });
           const cleanList = normalizeAndRenumberExpenses(scoped);
           setExpenses(cleanList);
           try {
-            setTenantItem("texaflow_expenses", cleanList, currentCid === "comp-001" ? "om_sai_expenses" : undefined);
+            setTenantItem("texaflow_expenses", cleanList, currentCid === "comp-002" ? "om_sai_expenses" : undefined);
           } catch {}
           setIsLoading(false);
           return;
@@ -379,10 +379,10 @@ export default function ExpensesPage() {
       try {
         const saved = getTenantItem<ExpenseItem[]>(
           "texaflow_expenses",
-          currentCid === "comp-001" ? "om_sai_expenses" : undefined
+          currentCid === "comp-002" ? "om_sai_expenses" : undefined
         );
         if (saved && isMounted && Array.isArray(saved) && saved.length > 0) {
-          const scoped = saved.filter((item: any) => (item.company_id || "comp-001") === currentCid);
+          const scoped = saved.filter((item: any) => (item.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001")) === currentCid);
           const cleanList = normalizeAndRenumberExpenses(scoped);
           setExpenses(cleanList);
           setIsLoading(false);
@@ -668,14 +668,14 @@ export default function ExpensesPage() {
         const currentCid = getStoredCompanyId();
         const saved = getTenantItem<ExpenseItem[]>(
           "texaflow_expenses",
-          currentCid === "comp-001" ? "om_sai_expenses" : undefined
+          currentCid === "comp-002" ? "om_sai_expenses" : undefined
         );
         if (saved && Array.isArray(saved)) {
           const parsed = saved.filter((e: any) => e.id !== id);
           setTenantItem(
             "texaflow_expenses",
             parsed,
-            currentCid === "comp-001" ? "om_sai_expenses" : undefined
+            currentCid === "comp-002" ? "om_sai_expenses" : undefined
           );
         }
         await fetchApi(`/expenses/${id}`, { method: "DELETE" });

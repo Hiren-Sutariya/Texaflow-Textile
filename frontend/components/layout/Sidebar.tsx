@@ -135,58 +135,43 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   }, []);
 
   // Dynamic Company Brand Name & Owner Name (Syncs with Settings in Real-Time with ZERO delay on refresh)
-  const [customFirmName, setCustomFirmName] = useState<string>(() => getStoredFirmName());
-  const [customUserName, setCustomUserName] = useState<string>(() => getStoredUserName());
+  const [mounted, setMounted] = useState(false);
+  const [liveUpdatedFirm, setLiveUpdatedFirm] = useState<string>("");
+  const [liveUpdatedOwner, setLiveUpdatedOwner] = useState<string>("");
 
   useEffect(() => {
-    const loadSettings = () => {
-      try {
-        if (user?.firmName?.trim()) {
-          setCustomFirmName(user.firmName.trim());
-        } else {
-          const firm = getStoredFirmName();
-          if (firm) setCustomFirmName(firm);
-        }
-
-        if (user?.name?.trim()) {
-          setCustomUserName(user.name.trim());
-        } else {
-          const uName = getStoredUserName();
-          if (uName) setCustomUserName(uName);
-        }
-      } catch {}
-    };
-
-    loadSettings();
+    setMounted(true);
 
     const handleSettingsUpdate = (e: any) => {
+      const updateCid = e?.detail?.company_id;
+      const currentCid = user?.companyId || getStoredCompanyId();
+      if (updateCid && updateCid !== currentCid) return;
+
       if (e?.detail?.company_name?.trim()) {
-        setCustomFirmName(e.detail.company_name.trim());
+        setLiveUpdatedFirm(e.detail.company_name.trim());
       }
       if (e?.detail?.owner_name?.trim()) {
-        setCustomUserName(e.detail.owner_name.trim());
+        setLiveUpdatedOwner(e.detail.owner_name.trim());
       }
     };
 
     window.addEventListener("app_settings_update", handleSettingsUpdate);
-    window.addEventListener("app_data_update", loadSettings);
     return () => {
       window.removeEventListener("app_settings_update", handleSettingsUpdate);
-      window.removeEventListener("app_data_update", loadSettings);
     };
-  }, [user?.companyId, user?.firmName, user?.name]);
+  }, [user?.companyId]);
 
-  const cid = user?.companyId || getStoredCompanyId();
+  const cid = user?.companyId || (mounted ? getStoredCompanyId() : "comp-001");
   const defaultFirm = cid === "comp-002" ? "Om Sai Enterprise" : (cid === "comp-001" ? "Shiv Creation" : "Textile ERP");
   const defaultOwner = cid === "comp-002" ? "Nilesh Sutariya" : (cid === "comp-001" ? "Hiren Sutariya" : "Proprietor");
 
   // Determine active displayed firm name strictly isolated per tenant
   let displayedFirmName = defaultFirm;
-  if (user?.firmName && user.firmName.trim() && user.firmName.toLowerCase() !== "company" && !user.firmName.toLowerCase().includes("texaflow")) {
+  if (liveUpdatedFirm && liveUpdatedFirm.trim()) {
+    displayedFirmName = liveUpdatedFirm.trim();
+  } else if (user?.firmName && user.firmName.trim() && user.firmName.toLowerCase() !== "company" && !user.firmName.toLowerCase().includes("texaflow")) {
     displayedFirmName = user.firmName.trim();
-  } else if (customFirmName && customFirmName.trim() && customFirmName.toLowerCase() !== "company") {
-    displayedFirmName = customFirmName.trim();
-  } else {
+  } else if (mounted) {
     const stored = getStoredFirmName();
     if (stored && stored.toLowerCase() !== "company") displayedFirmName = stored;
   }
@@ -199,11 +184,11 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
   // Determine active displayed user name strictly isolated per tenant
   let displayedUserName = defaultOwner;
-  if (user?.name && user.name.trim() && user.name !== "Factory Admin" && user.name.toLowerCase() !== "owner") {
+  if (liveUpdatedOwner && liveUpdatedOwner.trim()) {
+    displayedUserName = liveUpdatedOwner.trim();
+  } else if (user?.name && user.name.trim() && user.name !== "Factory Admin" && user.name.toLowerCase() !== "owner") {
     displayedUserName = user.name.trim();
-  } else if (customUserName && customUserName.trim() && customUserName !== "Factory Admin" && customUserName.toLowerCase() !== "owner") {
-    displayedUserName = customUserName.trim();
-  } else {
+  } else if (mounted) {
     const stored = getStoredUserName();
     if (stored && stored !== "Factory Admin" && stored.toLowerCase() !== "owner") displayedUserName = stored;
   }

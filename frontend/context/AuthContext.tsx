@@ -37,63 +37,77 @@ function resolveSessionTenant(parsed: any): {
   firmName: string;
   name: string;
 } {
-  const isOmSai = 
-    parsed?.companyId === "comp-002" ||
-    parsed?.company_id === "comp-002" ||
-    (typeof parsed?.id === "string" && parsed.id.includes("comp-002")) ||
-    parsed?.firmName?.toLowerCase().includes("om sai") ||
-    parsed?.firm_name?.toLowerCase().includes("om sai") ||
-    parsed?.company_name?.toLowerCase().includes("om sai") ||
-    parsed?.email?.includes("om-sai") ||
-    parsed?.username?.includes("om-sai") ||
-    parsed?.name?.toLowerCase().includes("nilesh");
+  const directCid = parsed?.companyId || parsed?.company_id;
+  const rawEmail = (parsed?.email || "").toLowerCase().trim();
+  const rawUsername = (parsed?.username || "").toLowerCase().trim();
+  const rawId = typeof parsed?.id === "string" ? parsed.id.trim() : "";
+  const rawFirm = typeof (parsed?.firmName || parsed?.firm_name || parsed?.company_name) === "string" 
+    ? (parsed?.firmName || parsed?.firm_name || parsed?.company_name).toLowerCase().trim() 
+    : "";
+  const rawName = typeof (parsed?.name || parsed?.owner_name) === "string"
+    ? (parsed?.name || parsed?.owner_name).toLowerCase().trim()
+    : "";
 
-  const isShiv = 
-    parsed?.companyId === "comp-001" ||
-    parsed?.company_id === "comp-001" ||
-    (typeof parsed?.id === "string" && (parsed.id.includes("comp-001") || parsed.id === "usr-owner-01" || parsed.id === "user-001")) ||
-    parsed?.firmName?.toLowerCase().includes("shiv") ||
-    parsed?.firm_name?.toLowerCase().includes("shiv") ||
-    parsed?.company_name?.toLowerCase().includes("shiv") ||
-    parsed?.email?.includes("shiv") ||
-    parsed?.username?.includes("shiv") ||
-    parsed?.name?.toLowerCase().includes("hiren");
+  let resolvedCompanyId = "";
 
-  let resolvedCompanyId = "comp-002";
-  if (isShiv && !isOmSai) {
+  // 1. Direct authoritative check on company ID first
+  if (directCid === "comp-001") {
     resolvedCompanyId = "comp-001";
-  } else if (isOmSai) {
+  } else if (directCid === "comp-002") {
     resolvedCompanyId = "comp-002";
-  } else if (parsed?.companyId && /^comp-\d+$/.test(parsed.companyId)) {
-    resolvedCompanyId = parsed.companyId;
-  } else if (parsed?.company_id && /^comp-\d+$/.test(parsed.company_id)) {
-    resolvedCompanyId = parsed.company_id;
-  } else if (typeof parsed?.id === "string") {
-    const userMatch = parsed.id.match(/^user-(\d+)$/);
+  } else if (rawEmail.includes("shiv") || rawUsername.includes("shiv")) {
+    resolvedCompanyId = "comp-001";
+  } else if (rawEmail.includes("om-sai") || rawUsername.includes("om-sai") || rawEmail.includes("omsai") || rawUsername.includes("omsai")) {
+    resolvedCompanyId = "comp-002";
+  } else if (rawId === "user-001" || rawId === "usr-owner-01" || rawId.includes("comp-001")) {
+    resolvedCompanyId = "comp-001";
+  } else if (rawId === "user-002" || rawId.includes("comp-002")) {
+    resolvedCompanyId = "comp-002";
+  } else if (rawFirm.includes("shiv")) {
+    resolvedCompanyId = "comp-001";
+  } else if (rawFirm.includes("om sai") || rawFirm.includes("omsai")) {
+    resolvedCompanyId = "comp-002";
+  } else if (rawName.includes("hiren")) {
+    resolvedCompanyId = "comp-001";
+  } else if (rawName.includes("nilesh")) {
+    resolvedCompanyId = "comp-002";
+  } else if (directCid && /^comp-\d+$/.test(directCid)) {
+    resolvedCompanyId = directCid;
+  } else if (rawId) {
+    const userMatch = rawId.match(/^user-(\d+)$/);
     if (userMatch) resolvedCompanyId = `comp-${userMatch[1]}`;
   }
 
-  let finalFirmName = resolvedCompanyId === "comp-002" ? "Om Sai Enterprise" : (resolvedCompanyId === "comp-001" ? "Shiv Creation" : "Textile Company");
-  let finalName = resolvedCompanyId === "comp-002" ? "Nilesh Sutariya" : (resolvedCompanyId === "comp-001" ? "Hiren Sutariya" : "Owner");
+  if (!resolvedCompanyId) {
+    resolvedCompanyId = "comp-001";
+  }
 
-  const rawFirm = parsed?.firmName || parsed?.firm_name || parsed?.company_name;
-  if (rawFirm && typeof rawFirm === "string" && rawFirm.trim() && !rawFirm.toLowerCase().includes("texaflow") && rawFirm.toLowerCase() !== "company") {
-    const cleanFirm = rawFirm.trim();
-    if (resolvedCompanyId === "comp-002" && !cleanFirm.toLowerCase().includes("shiv")) {
+  let finalFirmName = resolvedCompanyId === "comp-001" 
+    ? "Shiv Creation" 
+    : (resolvedCompanyId === "comp-002" ? "Om Sai Enterprise" : "Textile Company");
+
+  let finalName = resolvedCompanyId === "comp-001" 
+    ? "Hiren Sutariya" 
+    : (resolvedCompanyId === "comp-002" ? "Nilesh Sutariya" : "Owner");
+
+  const rawOriginalFirm = parsed?.firmName || parsed?.firm_name || parsed?.company_name;
+  if (rawOriginalFirm && typeof rawOriginalFirm === "string" && rawOriginalFirm.trim() && !rawOriginalFirm.toLowerCase().includes("texaflow") && rawOriginalFirm.toLowerCase() !== "company") {
+    const cleanFirm = rawOriginalFirm.trim();
+    if (resolvedCompanyId === "comp-001" && !cleanFirm.toLowerCase().includes("om sai")) {
       finalFirmName = cleanFirm;
-    } else if (resolvedCompanyId === "comp-001" && !cleanFirm.toLowerCase().includes("om sai")) {
+    } else if (resolvedCompanyId === "comp-002" && !cleanFirm.toLowerCase().includes("shiv")) {
       finalFirmName = cleanFirm;
     } else if (resolvedCompanyId !== "comp-001" && resolvedCompanyId !== "comp-002") {
       finalFirmName = cleanFirm;
     }
   }
 
-  const rawName = parsed?.name || parsed?.owner_name;
-  if (rawName && typeof rawName === "string" && rawName.trim() && rawName !== "Factory Admin" && rawName.toLowerCase() !== "owner") {
-    const cleanName = rawName.trim();
-    if (resolvedCompanyId === "comp-002" && !cleanName.toLowerCase().includes("hiren")) {
+  const rawOriginalName = parsed?.name || parsed?.owner_name;
+  if (rawOriginalName && typeof rawOriginalName === "string" && rawOriginalName.trim() && rawOriginalName !== "Factory Admin" && rawOriginalName.toLowerCase() !== "owner") {
+    const cleanName = rawOriginalName.trim();
+    if (resolvedCompanyId === "comp-001" && !cleanName.toLowerCase().includes("nilesh")) {
       finalName = cleanName;
-    } else if (resolvedCompanyId === "comp-001" && !cleanName.toLowerCase().includes("nilesh")) {
+    } else if (resolvedCompanyId === "comp-002" && !cleanName.toLowerCase().includes("hiren")) {
       finalName = cleanName;
     } else if (resolvedCompanyId !== "comp-001" && resolvedCompanyId !== "comp-002") {
       finalName = cleanName;
@@ -171,6 +185,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               .then((cred) => {
                 if (cred && cred.success && (cred.company_id === cid || cred.companyId === cid)) {
                   let changed = false;
+                  // Strict guard against cross-tenant contamination:
+                  if (cid === "comp-001" && cred.name && cred.name.toLowerCase().includes("nilesh")) return;
+                  if (cid === "comp-002" && cred.name && cred.name.toLowerCase().includes("hiren")) return;
+                  if (cid === "comp-001" && cred.firm_name && cred.firm_name.toLowerCase().includes("om sai")) return;
+                  if (cid === "comp-002" && cred.firm_name && cred.firm_name.toLowerCase().includes("shiv")) return;
+
                   if (cred.name && cred.name.trim() && cred.name !== "Factory Admin" && cred.name.toLowerCase() !== "owner" && parsed.name !== cred.name.trim()) {
                     parsed.name = cred.name.trim();
                     changed = true;

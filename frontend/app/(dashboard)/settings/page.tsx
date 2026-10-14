@@ -231,7 +231,7 @@ export default function SettingsPage() {
       } catch {}
       return getDefaultSettings(cid);
     }
-    return getDefaultSettings("comp-001");
+    return getDefaultSettings(getStoredCompanyId());
   });
 
   const isUserEditingRef = useRef(false);
@@ -262,9 +262,10 @@ export default function SettingsPage() {
         confirmPassword: ""
       };
     }
+    const ssrCid = getStoredCompanyId();
     return {
-      username: "owner@om-sai.com",
-      name: "Nilesh Sutariya",
+      username: ssrCid === "comp-002" ? "owner@om-sai.com" : "owner@shivcreation.com",
+      name: ssrCid === "comp-002" ? "Nilesh Sutariya" : "Hiren Sutariya",
       currentPassword: "",
       newPassword: "",
       confirmPassword: ""
@@ -1061,7 +1062,7 @@ export default function SettingsPage() {
       });
 
       // Dispatch global events
-      window.dispatchEvent(new CustomEvent("app_settings_update", { detail: settingsToSave }));
+      window.dispatchEvent(new CustomEvent("app_settings_update", { detail: { ...settingsToSave, company_id: cid } }));
       window.dispatchEvent(new Event("app_data_update"));
 
       // Also sync company name, username and details to backend API
