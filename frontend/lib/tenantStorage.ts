@@ -4,8 +4,15 @@
  */
 
 export function getStoredCompanyId(): string {
-  if (typeof window === "undefined") return "comp-001";
+  if (typeof window === "undefined") return "";
   try {
+    // 1. Direct active company pointer first (synchronous & instant)
+    const activeCid = sessionStorage.getItem("texaflow_active_company_id") || localStorage.getItem("texaflow_active_company_id");
+    if (activeCid === "comp-001") return "comp-001";
+    if (activeCid === "comp-002") return "comp-002";
+    if (activeCid && /^comp-\d+$/.test(activeCid)) return activeCid;
+
+    // 2. Parse active session
     const raw = sessionStorage.getItem("texaflow_auth_session") || localStorage.getItem("texaflow_auth_session");
     if (raw) {
       const parsed = JSON.parse(raw);
@@ -16,27 +23,27 @@ export function getStoredCompanyId(): string {
       const firm = (parsed?.firmName || parsed?.firm_name || parsed?.company_name || "").toLowerCase().trim();
       const name = (parsed?.name || parsed?.owner_name || "").toLowerCase().trim();
 
-      // 1. Direct authoritative check on company ID first
+      // Direct authoritative check on company ID first
       if (directCid === "comp-001") return "comp-001";
       if (directCid === "comp-002") return "comp-002";
 
-      // 2. Direct email / username check
+      // Direct email / username check
       if (email.includes("shiv") || username.includes("shiv")) return "comp-001";
       if (email.includes("om-sai") || username.includes("om-sai") || email.includes("omsai") || username.includes("omsai")) return "comp-002";
 
-      // 3. User ID check
+      // User ID check
       if (rawId === "user-001" || rawId === "usr-owner-01" || rawId.includes("comp-001")) return "comp-001";
       if (rawId === "user-002" || rawId.includes("comp-002")) return "comp-002";
 
-      // 4. Firm name check
+      // Firm name check
       if (firm.includes("shiv")) return "comp-001";
       if (firm.includes("om sai") || firm.includes("omsai")) return "comp-002";
 
-      // 5. Name check
+      // Name check
       if (name.includes("hiren")) return "comp-001";
       if (name.includes("nilesh")) return "comp-002";
 
-      // 6. Generic comp-XXX pattern
+      // Generic comp-XXX pattern
       if (directCid && typeof directCid === "string" && /^comp-\d+$/.test(directCid)) {
         return directCid;
       }
@@ -54,13 +61,13 @@ export function getStoredCompanyId(): string {
     if (savedComp001 && !savedComp002) return "comp-001";
     if (savedComp002 && !savedComp001) return "comp-002";
   } catch {}
-  return "comp-001";
+  return "";
 }
 
 export function getStoredFirmName(): string {
   const cid = getStoredCompanyId();
   if (typeof window === "undefined") {
-    return cid === "comp-002" ? "Om Sai Enterprise" : "Shiv Creation";
+    return cid === "comp-002" ? "Om Sai Enterprise" : (cid === "comp-001" ? "Shiv Creation" : "");
   }
   try {
     // 1. Check active auth session firm name FIRST (sessionStorage or localStorage)
@@ -107,13 +114,13 @@ export function getStoredFirmName(): string {
     if (cid === "comp-002") return "Om Sai Enterprise";
     if (cid === "comp-001") return "Shiv Creation";
   } catch {}
-  return cid === "comp-002" ? "Om Sai Enterprise" : "Shiv Creation";
+  return cid === "comp-002" ? "Om Sai Enterprise" : (cid === "comp-001" ? "Shiv Creation" : "");
 }
 
 export function getStoredUserName(): string {
   const cid = getStoredCompanyId();
   if (typeof window === "undefined") {
-    return cid === "comp-002" ? "Nilesh Sutariya" : "Hiren Sutariya";
+    return cid === "comp-002" ? "Nilesh Sutariya" : (cid === "comp-001" ? "Hiren Sutariya" : "");
   }
   try {
     // 1. Check active auth session user name (sessionStorage or localStorage)
@@ -159,7 +166,7 @@ export function getStoredUserName(): string {
     if (cid === "comp-002") return "Nilesh Sutariya";
     if (cid === "comp-001") return "Hiren Sutariya";
   } catch {}
-  return cid === "comp-002" ? "Nilesh Sutariya" : "Hiren Sutariya";
+  return cid === "comp-002" ? "Nilesh Sutariya" : (cid === "comp-001" ? "Hiren Sutariya" : "");
 }
 
 export function getTenantStorageKey(baseKey: string, companyId?: string): string {

@@ -155,19 +155,19 @@ export default function Home() {
       {/* TOP USER WELCOME & TERMINAL STATUS BAR */}
       <div className="w-full max-w-6xl bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 shadow-2xs flex items-center justify-between gap-2.5 sm:gap-3 text-xs">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div suppressHydrationWarning className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0 tracking-wider uppercase">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0 tracking-wider uppercase">
             {brandInitials}
           </div>
           <div className="min-w-0 truncate">
             <div className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5 truncate">
-              <span suppressHydrationWarning className="truncate">{displayedFirmName}</span>
-              <span suppressHydrationWarning className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[9px] sm:text-[10px] font-bold shrink-0">
+              <span className="truncate">{displayedFirmName}</span>
+              <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[9px] sm:text-[10px] font-bold shrink-0">
                 {user?.roleTitle || "Proprietor & Director"}
               </span>
             </div>
             <div className="text-[10px] sm:text-[11px] text-blue-600 font-bold flex items-center gap-1 mt-0.5 truncate">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span suppressHydrationWarning className="truncate">TexaFlow Textile • {displayedUserName}</span>
+              <span className="truncate">TexaFlow Textile • {displayedUserName}</span>
             </div>
           </div>
         </div>

@@ -281,23 +281,41 @@ def get_credentials(
     query = db.query(User)
     user = None
 
-    if user_id and user_id.strip():
-        user = query.filter(User.id == user_id.strip()).first()
-    elif username and username.strip():
-        clean = username.strip()
-        user = query.filter((User.username.ilike(clean)) | (User.email.ilike(clean))).first()
-    elif company_id and company_id.strip():
-        user = query.filter(User.company_id == company_id.strip()).first()
-    elif firm_name and firm_name.strip():
-        user = query.filter(User.firm_name.ilike(f"%{firm_name.strip()}%")).first()
+    if company_id and company_id.strip():
+        cid_clean = company_id.strip()
+        scoped_query = query.filter(User.company_id == cid_clean)
+        if user_id and user_id.strip():
+            user = scoped_query.filter(User.id == user_id.strip()).first()
+        elif username and username.strip():
+            clean = username.strip()
+            user = scoped_query.filter((User.username.ilike(clean)) | (User.email.ilike(clean))).first()
+        if not user:
+            user = scoped_query.first()
+    else:
+        if user_id and user_id.strip():
+            user = query.filter(User.id == user_id.strip()).first()
+        elif username and username.strip():
+            clean = username.strip()
+            user = query.filter((User.username.ilike(clean)) | (User.email.ilike(clean))).first()
+        elif firm_name and firm_name.strip():
+            user = query.filter(User.firm_name.ilike(f"%{firm_name.strip()}%")).first()
 
-    # Fallback logic: If company_id is comp-001 or no params passed, strictly return Shiv Creation
+    # Fallback logic strictly per tenant
+    if not user and company_id and company_id.strip() == "comp-002":
+        user = query.filter(
+            (User.company_id == "comp-002") |
+            (User.id == "user-002") |
+            (User.firm_name.ilike("%om sai%")) |
+            (User.email.ilike("%om-sai%"))
+        ).first()
+
     if not user and (not company_id or company_id.strip() == "comp-001"):
         user = query.filter(
             (User.company_id == "comp-001") | 
             (User.id == "user-001") |
             (User.id == "usr-owner-01") |
-            (User.firm_name.ilike("%shiv%"))
+            (User.firm_name.ilike("%shiv%")) |
+            (User.email.ilike("%shiv%"))
         ).first()
 
         if not user:

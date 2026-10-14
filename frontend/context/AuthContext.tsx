@@ -175,6 +175,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
             localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
+            sessionStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
+            localStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
             setUser(parsed);
 
             // Fetch live user & company details from backend strictly matching company_id
@@ -259,6 +261,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session);
         sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
         localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+        sessionStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
+        localStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
         return { success: true };
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -353,6 +357,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.removeItem(SESSION_STORAGE_KEY);
       localStorage.removeItem(SESSION_STORAGE_KEY);
       localStorage.removeItem("texaflow_auth_session");
+      sessionStorage.removeItem("texaflow_active_company_id");
+      localStorage.removeItem("texaflow_active_company_id");
     } catch (e) {
       console.error(e);
     }
