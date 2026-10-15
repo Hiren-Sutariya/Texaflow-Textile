@@ -146,7 +146,7 @@ export default function Home() {
 
   const brandInitials = displayedFirmName
     ? displayedFirmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase()
-    : (cid === "comp-002" ? "OS" : "SC");
+    : (cid === "comp-002" ? "OS" : (cid === "comp-001" ? "SC" : "TF"));
 
   // 3. SECOND SCREEN: Once authenticated, show the 8 Module Dashboard Cards Grid!
   return (

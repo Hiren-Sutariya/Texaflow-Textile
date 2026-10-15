@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { fetchApi } from "@/lib/api";
+import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import {
   Building2,
   Plus,
@@ -1878,49 +1879,48 @@ export default function VendorsPage() {
 
           </div>
 
-          {/* Fixed Actions Footer Bar - Perfectly Aligned with Sidebar Bottom Footer (0px space at bottom) */}
-          <div className="fixed bottom-0 left-0 lg:left-[250px] right-0 z-40 h-[57px] bg-white border-t border-slate-200 px-6 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
-              <span>Synced</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                disabled={isSaving}
-                onClick={() => setIsFormOpen(false)}
-                className={`px-4 py-2 font-bold rounded-xl border border-slate-300 text-xs transition-colors shadow-2xs ${
-                  isSaving
-                    ? "bg-slate-100 text-slate-400 cursor-not-allowed pointer-events-none"
-                    : "bg-white hover:bg-slate-100 text-slate-700 cursor-pointer"
-                }`}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isSaving}
-                onClick={handleSaveVendor}
-                className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
-                  isSaving
-                    ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
-                    : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
-                }`}
-              >
-                {isSaving ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Saving Vendor...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    <span>Save Vendor</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+          {/* UNIFIED Fixed Actions Footer Bar */}
+          <BottomActionBar
+            showSynced={true}
+            rightContent={
+              <>
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => setIsFormOpen(false)}
+                  className={`px-4 py-2 font-bold rounded-xl border border-slate-300 text-xs transition-colors shadow-2xs ${
+                    isSaving
+                      ? "bg-slate-100 text-slate-400 cursor-not-allowed pointer-events-none"
+                      : "bg-white hover:bg-slate-100 text-slate-700 cursor-pointer"
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={handleSaveVendor}
+                  className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
+                    isSaving
+                      ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
+                      : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
+                  }`}
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Saving Vendor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Save Vendor</span>
+                    </>
+                  )}
+                </button>
+              </>
+            }
+          />
 
           {/* CONFIGURE PAYMENT TERMS MODAL (MATCHING USER SCREENSHOT 5) */}
           {isConfigureTermsOpen && (

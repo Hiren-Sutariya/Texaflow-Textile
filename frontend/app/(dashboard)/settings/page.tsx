@@ -27,6 +27,7 @@ import {
 import { API_BASE_URL, fetchApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { getStoredCompanyId, getStoredUserName } from "@/lib/tenantStorage";
+import { BottomActionBar } from "@/components/layout/BottomActionBar";
 
 const PAYMENT_TERMS_OPTIONS = [
   "Due on Receipt",
@@ -1146,7 +1147,7 @@ export default function SettingsPage() {
   if (!hasMounted) return null;
 
   return (
-    <div className="w-full max-w-4xl font-sans text-slate-800 pb-24 space-y-4">
+    <div className="w-full max-w-4xl font-sans text-slate-800 pb-[57px] space-y-4">
       {/* Toast Notification Banner */}
       {saveSuccessMsg && (
         <div className="fixed top-16 right-5 z-50 inline-flex items-center gap-1.5 bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/20 animate-in fade-in slide-in-from-top duration-200">
@@ -2156,16 +2157,12 @@ export default function SettingsPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* STATIC / FIXED BOTTOM ACTIONS BAR (Identical to Image 1 & Vendors Form) */}
+      {/* UNIFIED STATIC / FIXED BOTTOM ACTIONS BAR */}
       {/* ========================================================================= */}
-      <div className="fixed bottom-0 left-0 lg:left-[250px] right-0 z-40 h-[57px] bg-white border-t border-slate-200 px-6 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
-          <span>Synced</span>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          {activeTab === "Data & Storage" ? (
+      <BottomActionBar
+        showSynced={true}
+        rightContent={
+          activeTab === "Data & Storage" ? (
             <button
               type="button"
               disabled={isExportingExcel}
@@ -2203,9 +2200,9 @@ export default function SettingsPage() {
                 </span>
               )}
             </button>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
     </div>
   );
 }

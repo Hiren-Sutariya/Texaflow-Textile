@@ -48,6 +48,7 @@ def get_db():
 def init_db():
     """Create active database tables and seed initial admin user if needed."""
     try:
+        from app.models.company import Company
         from app.models.vendor import Vendor
         from app.models.employee import Employee
         from app.models.design import Design
@@ -56,6 +57,7 @@ def init_db():
         from app.models.user import User
 
         active_tables = [
+            Company.__table__,
             Vendor.__table__,
             Employee.__table__,
             Design.__table__,

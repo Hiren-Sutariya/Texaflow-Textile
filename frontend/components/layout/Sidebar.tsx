@@ -94,12 +94,23 @@ const quickCreateOptions = [
   { title: "Party / Client", href: "/parties", icon: Users, color: "bg-purple-50 text-purple-600 border-purple-100" }
 ];
 
+import { setTenantCookie } from "@/lib/cookieStorage";
+
 interface SidebarProps {
   mobileOpen?: boolean;
   onClose?: () => void;
+  serverCompanyId?: string;
+  serverFirmName?: string;
+  serverOwnerName?: string;
 }
 
-export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
+export function Sidebar({ 
+  mobileOpen = false, 
+  onClose,
+  serverCompanyId,
+  serverFirmName,
+  serverOwnerName
+}: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -108,7 +119,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Masters: true,
     "Finance & Accounts": true,
-    "Staff & Settings": false,
+    "Staff & Settings": true,
   });
 
   const handleOptionClick = (href: string) => {
@@ -116,6 +127,12 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     onClose?.();
     router.push(href);
   };
+
+  useEffect(() => {
+    const handleOpenQuickModal = () => setShowQuickModal(true);
+    window.addEventListener("app_open_quick_create", handleOpenQuickModal);
+    return () => window.removeEventListener("app_open_quick_create", handleOpenQuickModal);
+  }, []);
 
   const [activeUnit, setActiveUnit] = useState<string>("Unit 1");
 
@@ -141,7 +158,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   useEffect(() => {
     const handleSettingsUpdate = (e: any) => {
       const updateCid = e?.detail?.company_id;
-      const currentCid = user?.companyId || getStoredCompanyId();
+      const currentCid = user?.companyId || getStoredCompanyId() || serverCompanyId;
       if (updateCid && updateCid !== currentCid) return;
 
       if (e?.detail?.company_name?.trim()) {
@@ -156,11 +173,19 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     return () => {
       window.removeEventListener("app_settings_update", handleSettingsUpdate);
     };
-  }, [user?.companyId]);
+  }, [user?.companyId, serverCompanyId]);
 
-  const cid = user?.companyId || getStoredCompanyId() || "comp-001";
-  const defaultFirm = cid === "comp-002" ? "Om Sai Enterprise" : "Shiv Creation";
-  const defaultOwner = cid === "comp-002" ? "Nilesh Sutariya" : "Hiren Sutariya";
+  // Client-side active CID vs Server-side SSR cookie CID
+  const clientCid = user?.companyId || (typeof window !== "undefined" ? getStoredCompanyId() : "");
+  const cid = clientCid || serverCompanyId || "";
+
+  // Base defaults per company ID - NEVER fall back to comp-001 if unknown or Om Sai
+  const defaultFirm = cid === "comp-002"
+    ? "Om Sai Enterprise"
+    : (cid === "comp-001" ? "Shiv Creation" : (serverFirmName || ""));
+  const defaultOwner = cid === "comp-002"
+    ? "Nilesh Sutariya"
+    : (cid === "comp-001" ? "Hiren Sutariya" : (serverOwnerName || ""));
 
   // Determine active displayed firm name strictly isolated per tenant
   let displayedFirmName = defaultFirm;
@@ -168,14 +193,17 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     displayedFirmName = liveUpdatedFirm.trim();
   } else if (user?.firmName && user.firmName.trim() && user.firmName.toLowerCase() !== "company" && !user.firmName.toLowerCase().includes("texaflow")) {
     displayedFirmName = user.firmName.trim();
-  } else {
+  } else if (typeof window !== "undefined") {
     const stored = getStoredFirmName();
     if (stored && stored.toLowerCase() !== "company") displayedFirmName = stored;
+  } else if (serverFirmName && serverFirmName.trim() && serverFirmName.toLowerCase() !== "company" && !serverFirmName.toLowerCase().includes("texaflow")) {
+    displayedFirmName = serverFirmName.trim();
   }
-  // Sanity check to avoid cross-tenant contamination:
-  if (cid === "comp-001" && displayedFirmName.toLowerCase().includes("om sai")) {
+
+  // Strict cross-tenant sanitization
+  if (cid === "comp-001" && (displayedFirmName.toLowerCase().includes("om sai") || !displayedFirmName)) {
     displayedFirmName = "Shiv Creation";
-  } else if (cid === "comp-002" && displayedFirmName.toLowerCase().includes("shiv")) {
+  } else if (cid === "comp-002" && (displayedFirmName.toLowerCase().includes("shiv") || !displayedFirmName)) {
     displayedFirmName = "Om Sai Enterprise";
   }
 
@@ -185,36 +213,46 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     displayedUserName = liveUpdatedOwner.trim();
   } else if (user?.name && user.name.trim() && user.name !== "Factory Admin" && user.name.toLowerCase() !== "owner") {
     displayedUserName = user.name.trim();
-  } else {
+  } else if (typeof window !== "undefined") {
     const stored = getStoredUserName();
     if (stored && stored !== "Factory Admin" && stored.toLowerCase() !== "owner") displayedUserName = stored;
+  } else if (serverOwnerName && serverOwnerName.trim() && serverOwnerName !== "Factory Admin" && serverOwnerName.toLowerCase() !== "owner") {
+    displayedUserName = serverOwnerName.trim();
   }
-  // Sanity check to avoid cross-tenant contamination:
-  if (cid === "comp-001" && (displayedUserName.toLowerCase().includes("nilesh") || displayedUserName.toLowerCase() === "owner")) {
+
+  // Strict cross-tenant sanitization
+  if (cid === "comp-001" && (displayedUserName.toLowerCase().includes("nilesh") || displayedUserName.toLowerCase() === "owner" || !displayedUserName)) {
     displayedUserName = "Hiren Sutariya";
-  } else if (cid === "comp-002" && (displayedUserName.toLowerCase().includes("hiren") || displayedUserName.toLowerCase() === "owner")) {
+  } else if (cid === "comp-002" && (displayedUserName.toLowerCase().includes("hiren") || displayedUserName.toLowerCase() === "owner" || !displayedUserName)) {
     displayedUserName = "Nilesh Sutariya";
   }
 
   const brandInitials = displayedFirmName
     ? displayedFirmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase()
-    : (cid === "comp-002" ? "OS" : "SC");
+    : (cid === "comp-002" ? "OS" : (cid === "comp-001" ? "SC" : ""));
 
   const userInitials = displayedUserName
     ? displayedUserName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase()
-    : (cid === "comp-002" ? "NS" : "HS");
+    : (cid === "comp-002" ? "NS" : (cid === "comp-001" ? "HS" : ""));
+
+  // Keep cookies constantly in sync in background whenever displayed tenant is known
+  useEffect(() => {
+    if (typeof window !== "undefined" && cid) {
+      setTenantCookie(cid, displayedFirmName, displayedUserName);
+    }
+  }, [cid, displayedFirmName, displayedUserName]);
 
   const renderNavContent = (isMobile = false) => (
     <>
-      {/* Brand Header - Solidly rendered with zero blinking on refresh */}
-      <div suppressHydrationWarning className="border-b border-slate-100 p-3 bg-white relative flex items-center justify-between">
+      {/* Brand Header - Perfectly leveled with Navbar header (h-14, border-b border-slate-200/80) */}
+      <div suppressHydrationWarning className="h-14 px-3 border-b border-slate-200/80 bg-white relative flex items-center justify-between shrink-0">
         <Link 
           href="/"
           prefetch={true}
           onClick={() => {
             if (isMobile) onClose?.();
           }}
-          className="flex items-center gap-2.5 overflow-hidden p-1.5 rounded-xl hover:bg-slate-50 transition-colors w-full group outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+          className="flex items-center gap-2.5 overflow-hidden py-1 px-1.5 rounded-xl hover:bg-slate-50 transition-colors w-full group outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
           title="Return to Main Dashboard"
         >
           <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform uppercase">

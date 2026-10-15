@@ -682,8 +682,17 @@ def get_company_settings(
     if not cid:
         cid = "comp-001"
 
-    comp = db.query(Company).filter(Company.id == cid).first()
-    user = db.query(User).filter(User.company_id == cid).first()
+    comp = None
+    try:
+        comp = db.query(Company).filter(Company.id == cid).first()
+    except Exception as e:
+        print(f"⚠️ Company table query notice: {e}")
+
+    user = None
+    try:
+        user = db.query(User).filter(User.company_id == cid).first()
+    except Exception as e:
+        print(f"⚠️ User table query notice: {e}")
 
     default_name = "Shiv Creation" if cid == "comp-001" else "Radhe Krishna Textiles"
     comp_name = comp.name if (comp and comp.name) else (user.firm_name if (user and user.firm_name) else default_name)

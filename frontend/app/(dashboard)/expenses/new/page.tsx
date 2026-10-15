@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, Suspense } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { fetchApi } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
+import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import {
   ArrowLeft,
   ChevronDown,
@@ -37,7 +38,8 @@ import {
   Sparkles,
   Search,
   Star,
-  Trash2
+  Trash2,
+  CheckCircle2
 } from "lucide-react";
 
 interface CategoryCardItem {
@@ -114,54 +116,102 @@ function NewExpenseVoucherForm() {
   const [voucherDate, setVoucherDate] = useState(getTodayStr());
 
   // 3. Category & Custom Arrangement
+  const [isMounted, setIsMounted] = useState(false);
   const [category, setCategory] = useState("Packaging Materials");
-  const [categoryViewTab, setCategoryViewTab] = useState<"all" | "standard" | "custom">("all");
+  const [defaultCategory, setDefaultCategory] = useState<string>("Packaging Materials");
   const [categoryPage, setCategoryPage] = useState(0); // 0-indexed page (9 items per page)
-  const [customCategories, setCustomCategories] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = getTenantItem<string[]>("texaflow_custom_expense_categories", "om_sai_custom_expense_categories");
-        if (saved && Array.isArray(saved)) return saved;
-      } catch {}
-    }
-    return [];
-  });
-  const [categoryOrder, setCategoryOrder] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const savedOrder = getTenantItem<string[]>("texaflow_expense_categories_order", "om_sai_expense_categories_order");
-        if (savedOrder && Array.isArray(savedOrder) && savedOrder.length > 0) return savedOrder;
-      } catch {}
-    }
-    return defaultCategories.map((c) => c.name);
-  });
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [categoryOrder, setCategoryOrder] = useState<string[]>(() => defaultCategories.map((c) => c.name));
   const [newCatName, setNewCatName] = useState("");
   const [isAddInputOpen, setIsAddInputOpen] = useState(false);
+  const [defaultSavedToast, setDefaultSavedToast] = useState(false);
+
+  const refreshFormState = useCallback(() => {
+    let loadedCats: string[] = [];
+    try {
+      const savedCats = getTenantItem<string[]>("texaflow_custom_expense_categories", "om_sai_custom_expense_categories")
+        || (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("texaflow_custom_expense_categories") || "[]") : []);
+      if (Array.isArray(savedCats) && savedCats.length > 0) {
+        loadedCats = savedCats;
+        setCustomCategories(savedCats);
+      } else {
+        setCustomCategories([]);
+      }
+    } catch {}
+
+    const allAvailable = [
+      ...defaultCategories.map((c) => c.name),
+      ...loadedCats
+    ];
+
+    let finalOrder = allAvailable;
+    try {
+      const cid = getStoredCompanyId();
+      const savedOrder = getTenantItem<string[]>("texaflow_expense_categories_order", "om_sai_expense_categories_order")
+        || (cid && typeof window !== "undefined" ? JSON.parse(localStorage.getItem(`texaflow_expense_categories_order_${cid}`) || "null") : null)
+        || (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("texaflow_expense_categories_order") || "null") : null);
+
+      if (Array.isArray(savedOrder) && savedOrder.length > 0) {
+        const valid = savedOrder.filter((name) => allAvailable.includes(name));
+        allAvailable.forEach((name) => {
+          if (!valid.includes(name)) {
+            valid.push(name);
+          }
+        });
+        finalOrder = valid;
+      }
+    } catch {}
+
+    setCategoryOrder(finalOrder);
+
+    // Load custom default category selection if set
+    let initialDefault = "Packaging Materials";
+    try {
+      const savedDefault = getTenantItem<string>("texaflow_default_expense_category", "om_sai_default_expense_category");
+      if (savedDefault && typeof savedDefault === "string" && allAvailable.includes(savedDefault)) {
+        initialDefault = savedDefault;
+      }
+    } catch {}
+
+    setDefaultCategory(initialDefault);
+
+    if (!editId) {
+      setCategory(initialDefault);
+      const defIdx = finalOrder.indexOf(initialDefault);
+      if (defIdx >= 0) {
+        setCategoryPage(Math.floor(defIdx / 9));
+      }
+      setAmount("");
+      setRemarks("");
+      setBillImage("");
+      setVendorName("");
+      setShowVendorField(false);
+      setPaymentMode("BANK TRANSFER (NEFT/RTGS/IMPS)");
+      setPaymentStatus("Paid");
+      setVoucherDate(getTodayStr());
+    }
+  }, [editId]);
+
+  useEffect(() => {
+    refreshFormState();
+    setIsMounted(true);
+  }, [refreshFormState]);
+
+  useEffect(() => {
+    const handleDataUpdate = () => {
+      refreshFormState();
+    };
+    window.addEventListener("app_data_update", handleDataUpdate);
+    return () => window.removeEventListener("app_data_update", handleDataUpdate);
+  }, [refreshFormState]);
 
   // Reorder modal state
   const [isArrangeModalOpen, setIsArrangeModalOpen] = useState(false);
   const [tempOrder, setTempOrder] = useState<string[]>([]);
   const [arrangeSearch, setArrangeSearch] = useState("");
-  const [modalNewCatName, setModalNewCatName] = useState("");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [orderSavedToast, setOrderSavedToast] = useState(false);
-
-  // Keep categoryOrder synchronized with available categories
-  useEffect(() => {
-    const allAvailable = [
-      ...defaultCategories.map((c) => c.name),
-      ...customCategories
-    ];
-    setCategoryOrder((prev) => {
-      const valid = prev.filter((name) => allAvailable.includes(name));
-      allAvailable.forEach((name) => {
-        if (!valid.includes(name)) {
-          valid.push(name);
-        }
-      });
-      return valid;
-    });
-  }, [customCategories]);
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
 
   // 4. Vendor / Payee (Optional Toggleable Field)
   const [showVendorField, setShowVendorField] = useState(false);
@@ -399,19 +449,7 @@ function NewExpenseVoucherForm() {
     }
   }, [isEditMode]);
 
-  const handlePinToTop = (catName: string) => {
-    const filtered = categoryOrder.filter((n) => n !== catName);
-    const updated = [catName, ...filtered];
-    setCategoryOrder(updated);
-    try {
-      setTenantItem("texaflow_expense_categories_order", updated, "om_sai_expense_categories_order");
-    } catch {}
-    setCategory(catName);
-    setCategoryViewTab("all");
-    setCategoryPage(0);
-    setOrderSavedToast(true);
-    setTimeout(() => setOrderSavedToast(false), 2500);
-  };
+
 
   const handleAddCategory = (toTop: boolean = false) => {
     const trimmed = newCatName.trim();
@@ -421,29 +459,62 @@ function NewExpenseVoucherForm() {
       setCustomCategories(updated);
       try {
         setTenantItem("texaflow_custom_expense_categories", updated, "om_sai_custom_expense_categories");
-      } catch {}
-      const updatedOrder = toTop
-        ? [trimmed, ...categoryOrder.filter((c) => c !== trimmed)]
-        : [...categoryOrder.filter((c) => c !== trimmed), trimmed];
-      setCategoryOrder(updatedOrder);
-      try {
-        setTenantItem("texaflow_expense_categories_order", updatedOrder, "om_sai_expense_categories_order");
-      } catch {}
+        const cid = getStoredCompanyId();
+        if (cid && typeof window !== "undefined") {
+          localStorage.setItem(`texaflow_custom_expense_categories_${cid}`, JSON.stringify(updated));
+        }
+        if (typeof window !== "undefined") {
+          localStorage.setItem("texaflow_custom_expense_categories", JSON.stringify(updated));
+        }
+      } catch (err) {
+        console.error(err);
+      }
     }
+    const updatedOrder = toTop
+      ? [trimmed, ...categoryOrder.filter((c) => c !== trimmed)]
+      : [...categoryOrder.filter((c) => c !== trimmed), trimmed];
+    setCategoryOrder(updatedOrder);
+    try {
+      setTenantItem("texaflow_expense_categories_order", updatedOrder, "om_sai_expense_categories_order");
+      const cid = getStoredCompanyId();
+      if (cid && typeof window !== "undefined") {
+        localStorage.setItem(`texaflow_expense_categories_order_${cid}`, JSON.stringify(updatedOrder));
+      }
+      if (typeof window !== "undefined") {
+        localStorage.setItem("texaflow_expense_categories_order", JSON.stringify(updatedOrder));
+      }
+    } catch {}
+
     setCategory(trimmed);
     setNewCatName("");
     setIsAddInputOpen(false);
-    if (toTop) {
-      setCategoryViewTab("all");
-      setCategoryPage(0);
+
+    const newIdx = updatedOrder.indexOf(trimmed);
+    if (newIdx >= 0) {
+      setCategoryPage(Math.floor(newIdx / ITEMS_PER_PAGE));
     }
   };
 
   const handleDeleteCustomCategory = (nameToRemove: string) => {
+    setCategoryToDelete(nameToRemove);
+  };
+
+  const confirmDeleteCustomCategory = () => {
+    if (!categoryToDelete) return;
+    const nameToRemove = categoryToDelete;
+    setCategoryToDelete(null);
+
     const updated = customCategories.filter((c) => c !== nameToRemove);
     setCustomCategories(updated);
     try {
       setTenantItem("texaflow_custom_expense_categories", updated, "om_sai_custom_expense_categories");
+      const cid = getStoredCompanyId();
+      if (cid && typeof window !== "undefined") {
+        localStorage.setItem(`texaflow_custom_expense_categories_${cid}`, JSON.stringify(updated));
+      }
+      if (typeof window !== "undefined") {
+        localStorage.setItem("texaflow_custom_expense_categories", JSON.stringify(updated));
+      }
     } catch (err) {
       console.error(err);
     }
@@ -451,18 +522,46 @@ function NewExpenseVoucherForm() {
     setCategoryOrder(updatedOrder);
     try {
       setTenantItem("texaflow_expense_categories_order", updatedOrder, "om_sai_expense_categories_order");
+      const cid = getStoredCompanyId();
+      if (cid && typeof window !== "undefined") {
+        localStorage.setItem(`texaflow_expense_categories_order_${cid}`, JSON.stringify(updatedOrder));
+      }
+      if (typeof window !== "undefined") {
+        localStorage.setItem("texaflow_expense_categories_order", JSON.stringify(updatedOrder));
+      }
     } catch {}
     setTempOrder((prev) => prev.filter((c) => c !== nameToRemove));
 
-    if (category === nameToRemove) {
-      setCategory("Packaging Materials");
+    // Clamp page so user immediately returns to page 1 if this was the last item on the page
+    const newTotalPages = Math.max(1, Math.ceil(updatedOrder.length / 9));
+    setCategoryPage((prev) => Math.min(prev, newTotalPages - 1));
+
+    if (defaultCategory === nameToRemove) {
+      const fallbackDef = updatedOrder[0] || "Packaging Materials";
+      setDefaultCategory(fallbackDef);
+      try {
+        setTenantItem("texaflow_default_expense_category", fallbackDef, "om_sai_default_expense_category");
+      } catch {}
     }
+
+    if (category === nameToRemove) {
+      setCategory(updatedOrder[0] || "Packaging Materials");
+    }
+  };
+
+  const handleSetDefaultCategory = (catName: string) => {
+    setDefaultCategory(catName);
+    setCategory(catName);
+    try {
+      setTenantItem("texaflow_default_expense_category", catName, "om_sai_default_expense_category");
+    } catch {}
+    setDefaultSavedToast(true);
+    setTimeout(() => setDefaultSavedToast(false), 2500);
   };
 
   const handleOpenArrangeModal = () => {
     setTempOrder([...categoryOrder]);
     setArrangeSearch("");
-    setModalNewCatName("");
     setIsArrangeModalOpen(true);
   };
 
@@ -474,22 +573,22 @@ function NewExpenseVoucherForm() {
     setTempOrder(copy);
   };
 
-  const moveToTop = (idx: number) => {
-    if (idx === 0) return;
-    const copy = [...tempOrder];
-    const [moved] = copy.splice(idx, 1);
-    copy.unshift(moved);
-    setTempOrder(copy);
-  };
+
 
   const handleSaveOrder = () => {
     setCategoryOrder(tempOrder);
     try {
       setTenantItem("texaflow_expense_categories_order", tempOrder, "om_sai_expense_categories_order");
+      const cid = getStoredCompanyId();
+      if (cid && typeof window !== "undefined") {
+        localStorage.setItem(`texaflow_expense_categories_order_${cid}`, JSON.stringify(tempOrder));
+      }
+      if (typeof window !== "undefined") {
+        localStorage.setItem("texaflow_expense_categories_order", JSON.stringify(tempOrder));
+      }
     } catch {}
     setIsArrangeModalOpen(false);
     setCategoryPage(0);
-    setCategoryViewTab("all");
     setOrderSavedToast(true);
     setTimeout(() => setOrderSavedToast(false), 3000);
   };
@@ -502,40 +601,22 @@ function NewExpenseVoucherForm() {
     setTempOrder(defaultSeq);
   };
 
-  const handleModalAddCategory = (toFront: boolean = false) => {
-    const trimmed = modalNewCatName.trim();
-    if (!trimmed) return;
-    if (!customCategories.includes(trimmed)) {
-      const updatedCats = [...customCategories, trimmed];
-      setCustomCategories(updatedCats);
-      try {
-        setTenantItem("texaflow_custom_expense_categories", updatedCats, "om_sai_custom_expense_categories");
-      } catch {}
-    }
-    if (!tempOrder.includes(trimmed)) {
-      const updatedOrder = toFront ? [trimmed, ...tempOrder] : [...tempOrder, trimmed];
-      setTempOrder(updatedOrder);
-    }
-    setModalNewCatName("");
-  };
-
-  // Calculate items to display based on active view tab
-  const displayedCategoriesList: string[] = (() => {
-    if (categoryViewTab === "standard") {
-      return defaultCategories.map((c) => c.name);
-    }
-    if (categoryViewTab === "custom") {
-      return customCategories;
-    }
-    // "all": follows user's custom arranged order!
-    return categoryOrder;
-  })();
+  // Directly follows unified category order (standard + custom arranged)
+  const displayedCategoriesList: string[] = categoryOrder;
 
   const ITEMS_PER_PAGE = 9;
   const totalCategoryPages = Math.max(1, Math.ceil(displayedCategoriesList.length / ITEMS_PER_PAGE));
+  const safeCategoryPage = Math.min(categoryPage, totalCategoryPages - 1);
+
+  useEffect(() => {
+    if (categoryPage >= totalCategoryPages) {
+      setCategoryPage(Math.max(0, totalCategoryPages - 1));
+    }
+  }, [totalCategoryPages, categoryPage]);
+
   const activePageCategories = displayedCategoriesList.slice(
-    categoryPage * ITEMS_PER_PAGE,
-    (categoryPage + 1) * ITEMS_PER_PAGE
+    safeCategoryPage * ITEMS_PER_PAGE,
+    (safeCategoryPage + 1) * ITEMS_PER_PAGE
   );
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -738,7 +819,7 @@ function NewExpenseVoucherForm() {
 
       {/* 2. FORM CONTAINER */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 sm:p-6 space-y-4.5">
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {/* FIELD 1: AMOUNT (₹) * */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
             <label className="font-extrabold text-rose-600">Amount (₹)*</label>
@@ -750,7 +831,6 @@ function NewExpenseVoucherForm() {
                 type="number"
                 step="any"
                 placeholder="0.00"
-                required
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className="h-10 pl-8 pr-3 w-full bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs font-mono"
@@ -929,91 +1009,44 @@ function NewExpenseVoucherForm() {
                 <span>Category*</span>
               </label>
               <span className="text-[10px] text-slate-400 block mt-0.5">
-                {categoryViewTab === "all"
-                  ? "Custom Arranged Priority"
-                  : categoryViewTab === "standard"
-                  ? "Standard Categories"
-                  : "Custom Categories"}
+                Standard & custom categories
               </span>
             </div>
 
             <div className="space-y-2.5 w-full max-w-4xl">
               {/* TOP SLIDER CONTROLS & ARRANGE ACTION */}
               <div className="flex flex-wrap items-center justify-between gap-2 pb-0.5">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[11px] font-bold text-slate-700">
-                    {categoryViewTab === "all"
-                      ? "Custom Order"
-                      : categoryViewTab === "standard"
-                      ? "Standard Categories"
-                      : `Custom Categories (${customCategories.length})`}
+                    Categories ({categoryOrder.length})
                   </span>
                   <span className="text-[10px] bg-blue-50 text-blue-700 font-extrabold px-2 py-0.5 rounded-full border border-blue-200">
-                    {categoryPage + 1} / {totalCategoryPages}
+                    {safeCategoryPage + 1} / {totalCategoryPages}
                   </span>
+
                   {orderSavedToast && (
                     <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1 animate-in fade-in">
                       <Check className="w-3 h-3 stroke-[2.5]" />
                       Order Saved!
                     </span>
                   )}
+                  {defaultSavedToast && (
+                    <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1 animate-in fade-in">
+                      <Check className="w-3 h-3 stroke-[2.5]" />
+                      Default Category Saved!
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {/* VIEW TAB BUTTONS */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCategoryViewTab("all");
-                      setCategoryPage(0);
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                      categoryViewTab === "all"
-                        ? "bg-blue-600 text-white shadow-2xs"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
-                  >
-                    Custom Order ({categoryOrder.length})
-                  </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCategoryViewTab("standard");
-                      setCategoryPage(0);
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                      categoryViewTab === "standard"
-                        ? "bg-blue-600 text-white shadow-2xs"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
-                  >
-                    Standard (9)
-                  </button>
-
-                  {customCategories.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCategoryViewTab("custom");
-                        setCategoryPage(0);
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                        categoryViewTab === "custom"
-                          ? "bg-blue-600 text-white shadow-2xs"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      Custom ({customCategories.length})
-                    </button>
-                  )}
 
                   {/* CUSTOM ARRANGE / REORDER BUTTON */}
                   <button
                     type="button"
                     onClick={handleOpenArrangeModal}
                     className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
-                    title="Customize Category Order (Move custom or favorite categories to front)"
+                    title="Customize Category Order"
                   >
                     <SlidersHorizontal className="w-3.5 h-3.5 text-amber-700" />
                     <span>Arrange Order</span>
@@ -1025,7 +1058,7 @@ function NewExpenseVoucherForm() {
                       <button
                         type="button"
                         onClick={() => setCategoryPage((p) => Math.max(0, p - 1))}
-                        disabled={categoryPage === 0}
+                        disabled={safeCategoryPage === 0}
                         className="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:border-blue-400 text-slate-600 hover:text-blue-600 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-all cursor-pointer shadow-2xs"
                         title="Previous Page"
                       >
@@ -1034,7 +1067,7 @@ function NewExpenseVoucherForm() {
                       <button
                         type="button"
                         onClick={() => setCategoryPage((p) => Math.min(totalCategoryPages - 1, p + 1))}
-                        disabled={categoryPage >= totalCategoryPages - 1}
+                        disabled={safeCategoryPage >= totalCategoryPages - 1}
                         className="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:border-blue-400 text-slate-600 hover:text-blue-600 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-all cursor-pointer shadow-2xs"
                         title="Next Page"
                       >
@@ -1047,110 +1080,92 @@ function NewExpenseVoucherForm() {
 
               {/* CATEGORIES GRID: STARTS FLUSH AT THE LEFT WITH NO MARGIN / PUSH */}
               <div className="w-full">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {activePageCategories.map((catName) => {
-                    const IconComp = getCategoryIcon(catName);
-                    const isSelected = category === catName;
-                    const isCustom = !isStandardCategory(catName);
-                    const overallIndex = categoryOrder.indexOf(catName);
-
-                    return (
+                {!isMounted ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {Array.from({ length: 9 }).map((_, i) => (
                       <div
-                        key={catName}
-                        className={`h-10 px-3 rounded-xl border flex items-center justify-between gap-2 transition-all group relative ${
-                          isSelected
-                            ? "border-2 border-blue-600 bg-blue-50/70 text-blue-950 font-bold shadow-2xs ring-1 ring-blue-500/20"
-                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 text-slate-700 font-semibold"
-                        }`}
+                        key={i}
+                        className="h-10 px-3 rounded-xl border border-slate-200 bg-slate-50/70 animate-pulse flex items-center gap-2.5"
                       >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCategory(catName);
-                            if (catName === "Miscellaneous / Other") {
-                              setIsAddInputOpen(true);
-                            } else {
-                              setIsAddInputOpen(false);
-                            }
-                          }}
-                          className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer h-full"
-                        >
-                          <div
-                            className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                              isSelected
-                                ? "bg-blue-600 text-white"
-                                : isCustom
-                                ? "bg-indigo-50 text-indigo-600 border border-indigo-200/50"
-                                : "bg-slate-100 text-slate-500"
-                            }`}
-                          >
-                            <IconComp className="w-3.5 h-3.5" />
-                          </div>
-                          <span className="text-xs truncate">{catName}</span>
-                        </button>
-
-                        {/* BADGES & QUICK ACTIONS */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          {isCustom && (
-                            <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-                              Custom
-                            </span>
-                          )}
-
-                          {/* Quick Pin to Front (#1) button - shown on hover or when not at #1 */}
-                          {overallIndex > 0 && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePinToTop(catName);
-                              }}
-                              className="w-5 h-5 rounded-md text-slate-400 hover:text-amber-600 hover:bg-amber-50 flex items-center justify-center transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
-                              title={`Pin "${catName}" to #1 (Move to Front Page)`}
-                            >
-                              <Star className="w-3 h-3" />
-                            </button>
-                          )}
-
-                          {/* Custom Category Delete Button */}
-                          {isCustom && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteCustomCategory(catName);
-                              }}
-                              className="w-5 h-5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer opacity-70 group-hover:opacity-100"
-                              title={`Remove "${catName}"`}
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
+                        <div className="w-6 h-6 rounded-lg bg-slate-200/80 shrink-0" />
+                        <div className="h-3.5 bg-slate-200/80 rounded w-28" />
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {activePageCategories.map((catName) => {
+                      const IconComp = getCategoryIcon(catName);
+                      const isSelected = category === catName;
+                      const isCustom = !isStandardCategory(catName);
+                      const overallIndex = categoryOrder.indexOf(catName);
 
-                  {/* + ADD CATEGORY CARD (SHOWN ON LAST PAGE OF ALL OR IN CUSTOM TAB) */}
-                  {((categoryViewTab === "all" && categoryPage === totalCategoryPages - 1) ||
-                    categoryViewTab === "custom") && (
-                    <button
-                      type="button"
-                      onClick={() => setIsAddInputOpen(true)}
-                      className={`h-10 px-3.5 rounded-xl border border-dashed transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold ${
-                        isAddInputOpen
-                          ? "border-blue-500 bg-blue-50/60 text-blue-700"
-                          : "border-slate-300 hover:border-blue-400 bg-slate-50/50 hover:bg-blue-50/40 text-slate-600 hover:text-blue-600"
-                      }`}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add Category</span>
-                    </button>
-                  )}
-                </div>
+                      return (
+                        <div
+                          key={catName}
+                          className={`h-10 px-3 rounded-xl border flex items-center justify-between gap-2 transition-all group relative ${
+                            isSelected
+                              ? "border-2 border-blue-600 bg-blue-50/70 text-blue-950 font-bold shadow-2xs ring-1 ring-blue-500/20"
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 text-slate-700 font-semibold"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCategory(catName);
+                              if (catName === "Miscellaneous / Other") {
+                                setIsAddInputOpen(true);
+                              } else {
+                                setIsAddInputOpen(false);
+                              }
+                            }}
+                            className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer h-full"
+                          >
+                            <div
+                              className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                                isSelected
+                                  ? "bg-blue-600 text-white"
+                                  : isCustom
+                                  ? "bg-indigo-50 text-indigo-600 border border-indigo-200/50"
+                                  : "bg-slate-100 text-slate-500"
+                              }`}
+                            >
+                              <IconComp className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="text-xs truncate">{catName}</span>
+                          </button>
+
+                          {/* BADGES & QUICK ACTIONS */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {isCustom && (
+                              <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+                                Custom
+                              </span>
+                            )}
+
+                            {/* Custom Category Delete Button */}
+                            {isCustom && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteCustomCategory(catName);
+                                }}
+                                className="w-5 h-5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer opacity-70 group-hover:opacity-100"
+                                title={`Remove "${catName}"`}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              {/* CONDITIONAL INPUT BAR: SHOWN FOR "Miscellaneous / Other" OR WHEN CLICKING "+ Add Category" */}
+              {/* CONDITIONAL INPUT BAR: SHOWN ONLY FOR "Miscellaneous / Other" */}
               {(category === "Miscellaneous / Other" || isAddInputOpen) && (
                 <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-150">
                   <div className="relative flex-1">
@@ -1172,17 +1187,23 @@ function NewExpenseVoucherForm() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleAddCategory(true)}
-                    className="h-9 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1 shadow-2xs transition-all cursor-pointer active:scale-95 shrink-0"
-                    title="Save and place at #1 (Front Page)"
+                    onClick={() => {
+                      setIsAddInputOpen(false);
+                      setNewCatName("");
+                      if (category === "Miscellaneous / Other") {
+                        setCategory(categoryOrder[0] || "Packaging Materials");
+                      }
+                    }}
+                    className="h-9 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0 border border-slate-200"
                   >
-                    <Star className="w-3 h-3 fill-current" />
-                    <span>Save to Front</span>
+                    <X className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Cancel</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleAddCategory(false)}
-                    className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95 shrink-0"
+                    disabled={!newCatName.trim()}
+                    className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95 shrink-0 disabled:opacity-50 disabled:pointer-events-none"
                   >
                     <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                     <span>Save</span>
@@ -1443,43 +1464,42 @@ function NewExpenseVoucherForm() {
         </form>
       </div>
 
-      {/* 3. STATIC / FIXED ACTIONS FOOTER BAR */}
-      <div className="fixed bottom-0 left-0 lg:left-[250px] right-0 z-40 h-[57px] bg-white border-t border-slate-200 px-6 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
-          <span>Synced</span>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <Link
-            href="/expenses"
-            className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-300 text-xs transition-colors cursor-pointer shadow-2xs"
-          >
-            Cancel
-          </Link>
-          <button
-            type="button"
-            disabled={isSaving}
-            onClick={handleSubmit}
-            className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
-              isSaving
-                ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
-                : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
-            }`}
-          >
-            {isSaving ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>{isEditMode ? "Updating Expense..." : "Saving Expense..."}</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>{isEditMode ? "Update Expense Voucher" : "Save Expense Voucher"}</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+      {/* 3. UNIFIED STATIC / FIXED ACTIONS FOOTER BAR */}
+      <BottomActionBar
+        showSynced={true}
+        rightContent={
+          <>
+            <Link
+              href="/expenses"
+              className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-300 text-xs transition-colors cursor-pointer shadow-2xs"
+            >
+              Cancel
+            </Link>
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={handleSubmit}
+              className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
+                isSaving
+                  ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
+                  : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
+              }`}
+            >
+              {isSaving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>{isEditMode ? "Updating Expense..." : "Saving Expense..."}</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>{isEditMode ? "Update Expense Voucher" : "Save Expense Voucher"}</span>
+                </>
+              )}
+            </button>
+          </>
+        }
+      />
 
       {/* ================= MODAL: CUSTOMIZE CATEGORY ORDER & PRIORITY ================= */}
       {isArrangeModalOpen && (
@@ -1496,7 +1516,7 @@ function NewExpenseVoucherForm() {
                     Arrange Category Order &amp; Priority
                   </h3>
                   <p className="text-xs text-slate-500">
-                    તમારી જરૂરિયાત મુજબ કેટેગરી આગળ-પાછળ ગોઠવો
+                    Drag or use Up/Down buttons to organize your categories
                   </p>
                 </div>
               </div>
@@ -1511,55 +1531,6 @@ function NewExpenseVoucherForm() {
 
             {/* Modal Body */}
             <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 text-xs">
-              {/* Info banner */}
-              <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200/80 text-blue-900 text-xs flex items-start gap-2.5">
-                <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <div className="space-y-0.5 leading-relaxed">
-                  <span className="font-bold">Front Screen Priority (#1 થી #9):</span>
-                  <p className="text-blue-800 text-[11px]">
-                    પ્રથમ 9 કેટેગરી મુખ્ય સ્ક્રીન (Page 1) પર સીધી દેખાશે. તમારી કોઈ પણ કસ્ટમ કેટેગરી (દા.ત. કેમિકલ, બોબીન, ટ્રાન્સપોર્ટ) ને <strong>"🔝 Top"</strong> અથવા <strong>"▲ Up"</strong> બટનથી આગળ લાવી શકો છો.
-                  </p>
-                </div>
-              </div>
-
-              {/* Add New Custom Category row inside modal */}
-              <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <label className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider block">
-                  + Add New Custom Category
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={modalNewCatName}
-                    onChange={(e) => setModalNewCatName(e.target.value)}
-                    placeholder="e.g. Chemical & Washing, Needle Mart..."
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleModalAddCategory(false);
-                      }
-                    }}
-                    className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleModalAddCategory(true)}
-                    className="h-9 px-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] rounded-lg shrink-0 flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs"
-                    title="Add directly to #1 (Top Priority)"
-                  >
-                    <Star className="w-3 h-3 fill-current" />
-                    <span>Add to Top (#1)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleModalAddCategory(false)}
-                    className="h-9 px-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] rounded-lg shrink-0 flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add to End</span>
-                  </button>
-                </div>
-              </div>
 
               {/* Search Filter in Modal */}
               <div className="relative">
@@ -1638,7 +1609,7 @@ function NewExpenseVoucherForm() {
                               </span>
                             ) : (
                               <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-500">
-                                Default
+                                Standard
                               </span>
                             )}
                           </div>
@@ -1646,28 +1617,22 @@ function NewExpenseVoucherForm() {
 
                         {/* Position Badge & Controls */}
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md hidden sm:inline-block ${
-                              isTopNine
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : "bg-slate-100 text-slate-500"
+                          {/* Set Default Selection */}
+                          <button
+                            type="button"
+                            onClick={() => handleSetDefaultCategory(catName)}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
+                              defaultCategory === catName
+                                ? "bg-emerald-600 text-white shadow-2xs"
+                                : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
                             }`}
+                            title={`Set "${catName}" as default selected category on page open`}
                           >
-                            {isTopNine ? "★ Page 1" : "Page 2"}
-                          </span>
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            <span>{defaultCategory === catName ? "Default" : "Set Default"}</span>
+                          </button>
 
-                          {/* Move to Top */}
-                          {originalIndex > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => moveToTop(originalIndex)}
-                              className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-0.5 transition-colors cursor-pointer"
-                              title="Move directly to #1 (Top Priority)"
-                            >
-                              <Star className="w-2.5 h-2.5 fill-current" />
-                              <span>Top</span>
-                            </button>
-                          )}
+
 
                           {/* Up Arrow */}
                           <button
@@ -1737,6 +1702,51 @@ function NewExpenseVoucherForm() {
                   <span>Save &amp; Apply Order</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM IN-APP DELETE CONFIRMATION MODAL */}
+      {categoryToDelete && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setCategoryToDelete(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-sm w-full p-5 space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-extrabold text-slate-900">
+                  Delete Category?
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Are you sure you want to delete <span className="font-bold text-slate-800">"{categoryToDelete}"</span>? This category will be permanently removed.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setCategoryToDelete(null)}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteCustomCategory}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow-md shadow-rose-500/25 flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes, Delete</span>
+              </button>
             </div>
           </div>
         </div>

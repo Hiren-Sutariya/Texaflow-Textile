@@ -4,7 +4,13 @@ from typing import List
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-# Load environment variables from .env
+from pathlib import Path
+
+# Load environment variables from backend/.env explicitly
+backend_dir = Path(__file__).resolve().parent.parent.parent
+dotenv_path = backend_dir / ".env"
+if dotenv_path.exists():
+    load_dotenv(dotenv_path=dotenv_path)
 load_dotenv()
 
 def get_cors_origins() -> List[str]:

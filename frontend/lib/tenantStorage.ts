@@ -1,16 +1,14 @@
-/**
- * Multi-Tenant Local Storage Helper for Texaflow ERP.
- * Isolates browser storage per company/tenant ID while preserving backwards compatibility.
- */
+import { getTenantCookie, setTenantCookie } from "@/lib/cookieStorage";
 
 export function getStoredCompanyId(): string {
   if (typeof window === "undefined") return "";
   try {
     // 1. Direct active company pointer first (synchronous & instant)
     const activeCid = sessionStorage.getItem("texaflow_active_company_id") || localStorage.getItem("texaflow_active_company_id");
-    if (activeCid === "comp-001") return "comp-001";
-    if (activeCid === "comp-002") return "comp-002";
-    if (activeCid && /^comp-\d+$/.test(activeCid)) return activeCid;
+    if (activeCid === "comp-001" || activeCid === "comp-002" || (activeCid && /^comp-\d+$/.test(activeCid))) {
+      setTenantCookie(activeCid);
+      return activeCid;
+    }
 
     // 2. Parse active session
     const raw = sessionStorage.getItem("texaflow_auth_session") || localStorage.getItem("texaflow_auth_session");
@@ -60,6 +58,12 @@ export function getStoredCompanyId(): string {
     const savedComp002 = localStorage.getItem("app_settings_comp-002") || localStorage.getItem("texaflow_login_username_comp-002");
     if (savedComp001 && !savedComp002) return "comp-001";
     if (savedComp002 && !savedComp001) return "comp-002";
+
+    // 3. Cookie fallback
+    const cookieCid = getTenantCookie("texaflow_active_company_id");
+    if (cookieCid === "comp-001" || cookieCid === "comp-002" || /^comp-\d+$/.test(cookieCid)) {
+      return cookieCid;
+    }
   } catch {}
   return "";
 }
@@ -181,13 +185,21 @@ export function getTenantItem<T>(baseKey: string, legacyKey?: string): T | null 
   try {
     const item = localStorage.getItem(key);
     if (item !== null) {
-      return JSON.parse(item);
+      try {
+        return JSON.parse(item);
+      } catch {
+        return item as unknown as T;
+      }
     }
     // Backward compatibility for Om Sai (comp-002) only
     if (cid === "comp-002" && legacyKey) {
       const legacy = localStorage.getItem(legacyKey);
       if (legacy !== null) {
-        return JSON.parse(legacy);
+        try {
+          return JSON.parse(legacy);
+        } catch {
+          return legacy as unknown as T;
+        }
       }
     }
   } catch (e) {

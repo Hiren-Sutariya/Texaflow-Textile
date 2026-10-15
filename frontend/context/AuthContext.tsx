@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { useRouter } from "next/navigation";
+import { setTenantCookie, clearTenantCookie } from "@/lib/cookieStorage";
 
 export interface UserSession {
   id: string;
@@ -140,6 +141,7 @@ function getInitialAuthSession(): UserSession | null {
       parsed.roleTitle = "Proprietor & Director";
     }
 
+    setTenantCookie(tenant.resolvedCompanyId, tenant.firmName, tenant.name);
     return parsed;
   } catch {
     return null;
@@ -161,6 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
             sessionStorage.removeItem(SESSION_STORAGE_KEY);
             localStorage.removeItem(SESSION_STORAGE_KEY);
+            clearTenantCookie();
             setUser(null);
           } else {
             const tenant = resolveSessionTenant(parsed);
@@ -177,6 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
             sessionStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
             localStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
+            setTenantCookie(tenant.resolvedCompanyId, tenant.firmName, tenant.name);
             setUser(parsed);
 
             // Fetch live user & company details from backend strictly matching company_id
@@ -204,6 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   if (changed) {
                     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
                     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(parsed));
+                    setTenantCookie(cid, parsed.firmName, parsed.name);
                     setUser({ ...parsed });
                   }
                 }
@@ -259,6 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(instantSession));
       sessionStorage.setItem("texaflow_active_company_id", targetCid);
       localStorage.setItem("texaflow_active_company_id", targetCid);
+      setTenantCookie(targetCid, targetFirm, targetName);
 
       // Background sync without blocking instant navigation
       fetch(`${API_BASE_URL}/auth/login`, {
@@ -306,6 +312,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
         sessionStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
         localStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
+        setTenantCookie(tenant.resolvedCompanyId, tenant.firmName, tenant.name);
         return { success: true };
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -365,6 +372,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session);
         sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
         localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+        setTenantCookie(session.companyId || tenant.resolvedCompanyId, session.firmName, session.name);
         return { success: true, message: json.message };
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -389,6 +397,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(updated));
         localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(updated));
+        if (updated.companyId) {
+          setTenantCookie(updated.companyId, updated.firmName, updated.name);
+        }
       } catch {}
       return updated;
     });
@@ -402,6 +413,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("texaflow_auth_session");
       sessionStorage.removeItem("texaflow_active_company_id");
       localStorage.removeItem("texaflow_active_company_id");
+      clearTenantCookie();
     } catch (e) {
       console.error(e);
     }

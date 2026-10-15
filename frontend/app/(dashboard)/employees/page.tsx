@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { fetchApi } from "@/lib/api";
+import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import {
   Users,
   UserCheck,
@@ -1598,39 +1599,42 @@ export default function EmployeesPage() {
           )}
         </div>
 
-        {/* FIXED BOTTOM ACTION BAR (Matching Vendor Form static footer) */}
-        <div className="fixed bottom-0 left-0 lg:left-[250px] right-0 z-40 h-[57px] bg-white border-t border-slate-200 px-6 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-          <button
-            type="button"
-            onClick={() => setIsFormOpen(false)}
-            className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer shadow-2xs"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            disabled={isSaving}
-            onClick={() => handleSaveFullWorker()}
-            className={`px-6 py-2.5 font-extrabold rounded-xl text-xs shadow-md transition-all flex items-center gap-2 ${
-              isSaving
-                ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
-                : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
-            }`}
-          >
-            {isSaving ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Saving Worker...</span>
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4" />
-                <span>Save Worker</span>
-              </>
-            )}
-          </button>
-        </div>
+        {/* UNIFIED FIXED BOTTOM ACTION BAR */}
+        <BottomActionBar
+          leftContent={
+            <button
+              type="button"
+              onClick={() => setIsFormOpen(false)}
+              className="px-5 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer shadow-2xs"
+            >
+              Cancel
+            </button>
+          }
+          rightContent={
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={() => handleSaveFullWorker()}
+              className={`px-6 py-2.5 font-extrabold rounded-xl text-xs shadow-md transition-all flex items-center gap-2 ${
+                isSaving
+                  ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
+                  : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
+              }`}
+            >
+              {isSaving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Saving Worker...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Save Worker</span>
+                </>
+              )}
+            </button>
+          }
+        />
 
         {/* MANAGE FACTORY MACHINES MODAL MATCHING SCREENSHOT 1 */}
         {isManageMachinesModalOpen && (

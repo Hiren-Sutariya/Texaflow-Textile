@@ -6,6 +6,7 @@ import Link from "next/link";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { getTenantItem, setTenantItem, getStoredCompanyId, getStoredFirmName } from "@/lib/tenantStorage";
+import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -50,7 +51,9 @@ export default function NewPaymentVoucherPage() {
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
 
-  const currentFirmName = user?.firmName || getStoredFirmName() || "Shiv Creation";
+  const activeCid = user?.companyId || getStoredCompanyId();
+  const defaultTenantFirm = activeCid === "comp-002" ? "Om Sai Enterprise" : (activeCid === "comp-001" ? "Shiv Creation" : "");
+  const currentFirmName = user?.firmName || getStoredFirmName() || defaultTenantFirm || "Company";
 
   // Dynamic Paying Company Options tailored to current tenant (NO fake sister companies!)
   const payingCompanyOptions = useMemo(() => {
@@ -61,7 +64,7 @@ export default function NewPaymentVoucherPage() {
 
   // Form State (Initializes paying company to current tenant firm name once)
   const [formType, setFormType] = useState<"Payment Out" | "Receipt In">("Payment Out");
-  const [payingCompany, setPayingCompany] = useState<string>(() => user?.firmName || getStoredFirmName() || "Shiv Creation");
+  const [payingCompany, setPayingCompany] = useState<string>(() => user?.firmName || getStoredFirmName() || defaultTenantFirm || "Company");
   const isCompanyInitialized = useRef(Boolean(user?.firmName));
   const [supplierName, setSupplierName] = useState("");
   const [formVoucherDate, setFormVoucherDate] = useState(
@@ -903,43 +906,42 @@ export default function NewPaymentVoucherPage() {
         </form>
       </div>
 
-      {/* 3. STATIC / FIXED ACTIONS FOOTER BAR */}
-      <div className="fixed bottom-0 left-0 lg:left-[250px] right-0 z-40 h-[57px] bg-white border-t border-slate-200 px-6 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
-          <span>Synced</span>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <Link
-            href="/payments"
-            className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-300 text-xs transition-colors cursor-pointer shadow-2xs"
-          >
-            Cancel
-          </Link>
-          <button
-            type="button"
-            disabled={isSaving}
-            onClick={handleSubmit}
-            className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
-              isSaving
-                ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
-                : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
-            }`}
-          >
-            {isSaving ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Saving Voucher...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Save Payment Voucher</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+      {/* 3. UNIFIED STATIC / FIXED ACTIONS FOOTER BAR */}
+      <BottomActionBar
+        showSynced={true}
+        rightContent={
+          <>
+            <Link
+              href="/payments"
+              className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-300 text-xs transition-colors cursor-pointer shadow-2xs"
+            >
+              Cancel
+            </Link>
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={handleSubmit}
+              className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
+                isSaving
+                  ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
+                  : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
+              }`}
+            >
+              {isSaving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Saving Voucher...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Save Payment Voucher</span>
+                </>
+              )}
+            </button>
+          </>
+        }
+      />
 
       {/* 4. MANAGE VENDOR VISIBILITY MODAL (EXACT MATCHING USER'S IMAGE 3) */}
       {isManageModalOpen && (
