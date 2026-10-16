@@ -6,6 +6,7 @@ import Link from "next/link";
 import { fetchApi } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
+import { VoiceTextarea } from "@/components/ui/VoiceTextarea";
 import {
   ArrowLeft,
   ChevronDown,
@@ -1417,12 +1418,11 @@ function NewExpenseVoucherForm() {
           {/* FIELD 7: REMARKS / DESCRIPTION */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs pt-1">
             <label className="font-bold text-slate-700 pt-2">Remarks / Notes</label>
-            <textarea
+            <VoiceTextarea
               rows={3}
               placeholder="Add optional expense description, items purchased or notes..."
               value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              className="p-3 max-w-xl w-full bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none transition-all shadow-2xs"
+              onChangeValue={(val) => setRemarks(val)}
             />
           </div>
 

@@ -7,6 +7,7 @@ import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { getTenantItem, setTenantItem, getStoredCompanyId, getStoredFirmName } from "@/lib/tenantStorage";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
+import { VoiceTextarea } from "@/components/ui/VoiceTextarea";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -894,12 +895,11 @@ export default function NewPaymentVoucherPage() {
           {/* ROW 10: REMARKS / NOTES */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs pt-1">
             <label className="font-bold text-slate-700 pt-2">Remarks / Notes</label>
-            <textarea
+            <VoiceTextarea
               rows={3}
               placeholder="Add optional payment notes..."
               value={formNotes}
-              onChange={(e) => setFormNotes(e.target.value)}
-              className="p-3 max-w-xl w-full bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none transition-all shadow-2xs"
+              onChangeValue={(val) => setFormNotes(val)}
             />
           </div>
 

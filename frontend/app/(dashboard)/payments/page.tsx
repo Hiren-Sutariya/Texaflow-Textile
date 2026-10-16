@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { fetchApi } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   ArrowUpRight,
   ArrowDownLeft,
@@ -74,6 +75,7 @@ const SEED_VOUCHERS: PaymentVoucherItem[] = [
 ];
 
 export default function PaymentsAndVouchersPage() {
+  const { t } = useLanguage();
   const [hasMounted, setHasMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [vouchers, setVouchers] = useState<PaymentVoucherItem[]>(() => {
@@ -661,15 +663,15 @@ export default function PaymentsAndVouchersPage() {
                 {/* Details Grid: Source & Mode */}
                 <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Linked Source</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">{t("Linked Source")}</span>
                     <span className="font-bold text-slate-700 inline-block mt-0.5">
-                      {v.linked_source}
+                      {t(v.linked_source)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Payment Mode</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">{t("Payment Mode")}</span>
                     <span className="font-bold text-slate-800 inline-block mt-0.5">
-                      {v.mode}
+                      {t(v.mode)}
                     </span>
                     {v.mode.toLowerCase() !== "cash" &&
                       v.ref_no &&
@@ -710,14 +712,14 @@ export default function PaymentsAndVouchersPage() {
           <table className="w-full text-left text-xs border-collapse min-w-[850px]">
             <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
               <tr>
-                <th className="py-3.5 px-5">Date</th>
-                <th className="py-3.5 px-5">Voucher No</th>
-                <th className="py-3.5 px-5">Type</th>
-                <th className="py-3.5 px-5">Party / Vendor</th>
-                <th className="py-3.5 px-5">Linked Source</th>
-                <th className="py-3.5 px-5">Payment Mode</th>
-                <th className="py-3.5 px-5 text-right">Amount (₹)</th>
-                <th className="py-3.5 px-5 text-center">Action</th>
+                <th className="py-3.5 px-5">{t("Date")}</th>
+                <th className="py-3.5 px-5">{t("Voucher No")}</th>
+                <th className="py-3.5 px-5">{t("Type")}</th>
+                <th className="py-3.5 px-5">{t("Party / Vendor")}</th>
+                <th className="py-3.5 px-5">{t("Linked Source")}</th>
+                <th className="py-3.5 px-5">{t("Payment Mode")}</th>
+                <th className="py-3.5 px-5 text-right">{t("Amount (₹)")}</th>
+                <th className="py-3.5 px-5 text-center">{t("Action")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
@@ -755,25 +757,25 @@ export default function PaymentsAndVouchersPage() {
                     <td className="py-4 px-5 whitespace-nowrap">
                       {v.type === "Receipt In" ? (
                         <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 inline-block">
-                          Received In
+                          {t("Receipt In")}
                         </span>
                       ) : (
                         <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 inline-block">
-                          Paid Out
+                          {t("Payment Out")}
                         </span>
                       )}
                     </td>
                     <td className="py-4 px-5">
-                      <div className="font-extrabold text-slate-900">{v.party_name}</div>
-                      {v.notes && <div className="text-[10px] text-slate-400 truncate max-w-xs font-medium">{v.notes}</div>}
+                      <div className="font-extrabold text-slate-900">{t(v.party_name)}</div>
+                      {v.notes && <div className="text-[10px] text-slate-400 truncate max-w-xs font-medium">{t(v.notes)}</div>}
                     </td>
                     <td className="py-4 px-5 whitespace-nowrap">
                       <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                        {v.linked_source}
+                        {t(v.linked_source)}
                       </span>
                     </td>
                     <td className="py-4 px-5">
-                      <div className="text-slate-800 font-bold">{v.mode}</div>
+                      <div className="text-slate-800 font-bold">{t(v.mode)}</div>
                       {v.mode.toLowerCase() !== "cash" &&
                        v.ref_no &&
                        v.ref_no !== "-" &&

@@ -16,6 +16,7 @@ import {
   CheckCircle2, 
   X
 } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 const pageTitles: Record<string, string> = {
   "/": "Owner Command Center",
@@ -47,10 +48,8 @@ interface NavbarProps {
 export function Navbar({ onToggleMobileMenu }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { language, setLanguage, t } = useLanguage();
   const [isSpinning, setIsSpinning] = useState(false);
-
-  // Language state: 'en' (English) or 'gu' (ગુજરાતી)
-  const [currentLanguage, setCurrentLanguage] = useState<"en" | "gu">("en");
   const [isLangOpen, setIsLangOpen] = useState(false);
   const langDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -60,15 +59,6 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
 
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedLang = localStorage.getItem("app_language");
-      if (savedLang === "gu" || savedLang === "en") {
-        setCurrentLanguage(savedLang);
-      }
-    }
-  }, []);
 
   // Track fullscreen state changes
   useEffect(() => {
@@ -113,22 +103,19 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
   }, []);
 
   const handleSelectLanguage = (lang: "en" | "gu") => {
-    setCurrentLanguage(lang);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("app_language", lang);
-      window.dispatchEvent(new CustomEvent("app_language_change", { detail: lang }));
-    }
+    setLanguage(lang);
     setIsLangOpen(false);
   };
 
-  let pageTitle = pageTitles[pathname];
-  if (!pageTitle) {
+  let rawPageTitle = pageTitles[pathname];
+  if (!rawPageTitle) {
     if (pathname.startsWith("/job-works/")) {
-      pageTitle = "Job Work 360 View";
+      rawPageTitle = "Job Work 360 View";
     } else {
-      pageTitle = "Business Monitoring";
+      rawPageTitle = "Business Monitoring";
     }
   }
+  const pageTitle = t(rawPageTitle);
 
   const handleRefresh = useCallback(() => {
     setIsSpinning(true);
@@ -290,11 +277,11 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
             type="button"
             onClick={() => setIsLangOpen((prev) => !prev)}
             className="h-9 px-3.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-2xs select-none active:scale-98"
-            title="Select Language / ભાષા પસંદ કરો"
+            title={language === "gu" ? "ભાષા પસંદ કરો" : "Select Language"}
           >
             <Languages className="w-4 h-4 text-blue-600 shrink-0" />
             <span className="font-bold tracking-tight">
-              {currentLanguage === "gu" ? "ગુજરાતી" : "English"}
+              {language === "gu" ? "ગુજરાતી" : "English"}
             </span>
             <ChevronDown className={`w-3.5 h-3.5 text-blue-500 transition-transform duration-200 ${isLangOpen ? "rotate-180" : ""}`} />
           </button>
@@ -302,13 +289,13 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           {isLangOpen && (
             <div className="absolute right-0 mt-2 w-40 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
-                Language / ભાષા
+                {language === "gu" ? "ભાષા પસંદગી" : "Language / ભાષા"}
               </div>
               <button
                 type="button"
                 onClick={() => handleSelectLanguage("en")}
                 className={`w-full flex items-center justify-between px-2.5 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer text-left ${
-                  currentLanguage === "en"
+                  language === "en"
                     ? "bg-blue-50 text-blue-700 font-extrabold"
                     : "text-slate-700 hover:bg-slate-50"
                 }`}
@@ -317,14 +304,14 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
                   <span className="text-sm">🇬🇧</span>
                   <span>English</span>
                 </div>
-                {currentLanguage === "en" && <Check className="w-4 h-4 text-blue-600 stroke-[2.5]" />}
+                {language === "en" && <Check className="w-4 h-4 text-blue-600 stroke-[2.5]" />}
               </button>
 
               <button
                 type="button"
                 onClick={() => handleSelectLanguage("gu")}
                 className={`w-full flex items-center justify-between px-2.5 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer text-left ${
-                  currentLanguage === "gu"
+                  language === "gu"
                     ? "bg-blue-50 text-blue-700 font-extrabold"
                     : "text-slate-700 hover:bg-slate-50"
                 }`}
@@ -333,7 +320,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
                   <span className="text-sm">🇮🇳</span>
                   <span>ગુજરાતી</span>
                 </div>
-                {currentLanguage === "gu" && <Check className="w-4 h-4 text-blue-600 stroke-[2.5]" />}
+                {language === "gu" && <Check className="w-4 h-4 text-blue-600 stroke-[2.5]" />}
               </button>
             </div>
           )}

@@ -29,6 +29,7 @@ import {
   CreditCard,
   Edit3
 } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ExpenseItem {
   id: string;
@@ -287,6 +288,7 @@ const toInputDate = (dateStr: string) => {
 };
 
 export default function ExpensesPage() {
+  const { t } = useLanguage();
   const [hasMounted, setHasMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
@@ -793,7 +795,7 @@ export default function ExpensesPage() {
                     : "text-slate-500 hover:text-slate-800"
                 }`}
               >
-                {st}
+                {t(st)}
               </button>
             ))}
           </div>
@@ -814,7 +816,7 @@ export default function ExpensesPage() {
             >
               <Tag className="w-3.5 h-3.5 text-blue-600" />
               <span className="uppercase tracking-wider">
-                {selectedCategory === "All" ? "ALL CATEGORIES" : selectedCategory}
+                {selectedCategory === "All" ? t("ALL CATEGORIES") : t(selectedCategory)}
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isCategoryDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
             </button>
@@ -836,7 +838,7 @@ export default function ExpensesPage() {
                         : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
                     }`}
                   >
-                    <span>All Categories</span>
+                    <span>{t("All Categories")}</span>
                     {selectedCategory === "All" && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
                   </button>
 
@@ -857,7 +859,7 @@ export default function ExpensesPage() {
                             : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
                         }`}
                       >
-                        <span className="truncate">{cat}</span>
+                        <span className="truncate">{t(cat)}</span>
                         {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
                       </button>
                     );
@@ -884,14 +886,14 @@ export default function ExpensesPage() {
               <Calendar className="w-3.5 h-3.5 text-blue-600" />
               <span className="uppercase tracking-wider">
                 {periodFilter === "all"
-                  ? "ALL TIME"
+                  ? t("ALL TIME")
                   : periodFilter === "this_week"
-                  ? "THIS WEEK"
+                  ? t("THIS WEEK")
                   : periodFilter === "this_month"
-                  ? "THIS MONTH"
+                  ? t("THIS MONTH")
                   : periodFilter === "this_year"
-                  ? "THIS YEAR"
-                  : "CUSTOM DATES"}
+                  ? t("THIS YEAR")
+                  : t("CUSTOM DATES")}
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isPeriodDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
             </button>
@@ -901,11 +903,11 @@ export default function ExpensesPage() {
                 <div className="fixed inset-0 z-20" onClick={() => setIsPeriodDropdownOpen(false)} />
                 <div className="absolute right-0 sm:left-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100 font-sans">
                   {[
-                    { id: "all", label: "All Time (Badha)" },
-                    { id: "this_month", label: "This Month" },
-                    { id: "this_week", label: "This Week" },
-                    { id: "this_year", label: "This Year" },
-                    { id: "custom_date", label: "Custom Date Range" }
+                    { id: "all", label: t("All Time") },
+                    { id: "this_month", label: t("This Month") },
+                    { id: "this_week", label: t("This Week") },
+                    { id: "this_year", label: t("This Year") },
+                    { id: "custom_date", label: t("Custom Date Range") }
                   ].map((p) => {
                     const isSelected = periodFilter === p.id;
                     return (
@@ -934,7 +936,7 @@ export default function ExpensesPage() {
                   {periodFilter === "custom_date" && (
                     <div className="mt-2 pt-2 border-t border-slate-100 space-y-2 p-2.5 bg-slate-50 rounded-2xl">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">From:</span>
+                        <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">{t("From")}:</span>
                         <input
                           type="date"
                           value={startDate}
@@ -943,7 +945,7 @@ export default function ExpensesPage() {
                         />
                       </div>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">To:</span>
+                        <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">{t("To")}:</span>
                         <input
                           type="date"
                           value={endDate}
@@ -956,7 +958,7 @@ export default function ExpensesPage() {
                         onClick={() => setIsPeriodDropdownOpen(false)}
                         className="w-full mt-1 py-2 text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-2xs cursor-pointer"
                       >
-                        Apply Date Range
+                        {t("Apply Date Range")}
                       </button>
                     </div>
                   )}
@@ -972,7 +974,7 @@ export default function ExpensesPage() {
             title="Download Excel CSV File"
           >
             <FileSpreadsheet className="w-4 h-4 text-blue-600" />
-            <span>Export Excel</span>
+            <span>{t("Export Excel")}</span>
           </button>
 
           {/* ADD EXPENSE BUTTON -> NAVIGATES TO /expenses/new */}
@@ -981,7 +983,7 @@ export default function ExpensesPage() {
             className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-98 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Expense</span>
+            <span>{t("Add Expense")}</span>
           </Link>
         </div>
       </div>
@@ -1030,7 +1032,7 @@ export default function ExpensesPage() {
                           : "bg-amber-50 text-amber-700 border-amber-200"
                       }`}
                     >
-                      {item.payment_status}
+                      {item.payment_status === "Paid" ? t("Paid") : t("Pending")}
                     </span>
                     <div className="flex items-center gap-1">
                       <Link
@@ -1056,7 +1058,7 @@ export default function ExpensesPage() {
                 <div className="flex items-start justify-between gap-3 pt-1 border-t border-slate-100">
                   <div className="min-w-0">
                     <h4 className="font-extrabold text-slate-900 text-sm leading-snug">
-                      {item.vendor_name || "-"}
+                      {t(item.vendor_name || "-")}
                     </h4>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
@@ -1085,15 +1087,15 @@ export default function ExpensesPage() {
                 {/* Category & Payment Mode */}
                 <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Category</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">{t("Category")}</span>
                     <span className="font-bold text-blue-900 inline-block mt-0.5 truncate">
-                      {item.category}
+                      {t(item.category)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Payment Mode</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">{t("Payment Mode")}</span>
                     <span className="font-bold text-slate-800 inline-block mt-0.5 truncate">
-                      {item.paid_via}
+                      {t(item.paid_via)}
                     </span>
                   </div>
                 </div>
@@ -1102,7 +1104,7 @@ export default function ExpensesPage() {
                 {item.notes && (
                   <div className="pt-1 border-t border-slate-100">
                     <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                      {item.notes}
+                      {t(item.notes)}
                     </p>
                   </div>
                 )}
@@ -1116,15 +1118,15 @@ export default function ExpensesPage() {
           <table suppressHydrationWarning className="w-full text-left border-collapse text-xs min-w-[950px]">
             <thead>
               <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                <th className="py-3.5 px-4">DATE</th>
-                <th className="py-3.5 px-4">EXPENSE / BILL</th>
-                <th className="py-3.5 px-4">CATEGORY</th>
-                <th className="py-3.5 px-4">VENDOR / PAYEE</th>
-                <th className="py-3.5 px-4">PAYMENT MODE</th>
-                <th className="py-3.5 px-4">STATUS</th>
-                <th className="py-3.5 px-4">REMARKS / NOTES</th>
-                <th className="py-3.5 px-4 text-right">AMOUNT (₹)</th>
-                <th className="py-3.5 px-4 text-center w-20">ACTION</th>
+                <th className="py-3.5 px-4">{t("DATE")}</th>
+                <th className="py-3.5 px-4">{t("EXPENSE / BILL")}</th>
+                <th className="py-3.5 px-4">{t("CATEGORY")}</th>
+                <th className="py-3.5 px-4">{t("VENDOR / PAYEE")}</th>
+                <th className="py-3.5 px-4">{t("PAYMENT MODE")}</th>
+                <th className="py-3.5 px-4">{t("STATUS")}</th>
+                <th className="py-3.5 px-4">{t("REMARKS / NOTES")}</th>
+                <th className="py-3.5 px-4 text-right">{t("AMOUNT (₹)")}</th>
+                <th className="py-3.5 px-4 text-center w-20">{t("ACTION")}</th>
               </tr>
             </thead>
             <tbody suppressHydrationWarning className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -1179,18 +1181,18 @@ export default function ExpensesPage() {
                   {/* 3. CATEGORY */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     <span className="px-2.5 py-1 bg-blue-50/70 text-blue-900 border border-blue-200/80 rounded-lg text-[11px] font-bold inline-block">
-                      {item.category}
+                      {t(item.category)}
                     </span>
                   </td>
 
                   {/* 4. VENDOR / PAYEE */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
-                    <span className="font-bold text-slate-900">{item.vendor_name || "-"}</span>
+                    <span className="font-bold text-slate-900">{t(item.vendor_name || "-")}</span>
                   </td>
 
                   {/* 5. PAYMENT MODE */}
                   <td className="py-3.5 px-4 whitespace-nowrap text-slate-700 font-semibold text-xs">
-                    {item.paid_via}
+                    {t(item.paid_via)}
                   </td>
 
                   {/* 6. STATUS */}
@@ -1202,14 +1204,14 @@ export default function ExpensesPage() {
                           : "bg-amber-50 text-amber-700 border-amber-200"
                       }`}
                     >
-                      {item.payment_status}
+                      {item.payment_status === "Paid" ? t("Paid") : t("Pending")}
                     </span>
                   </td>
 
                   {/* 7. REMARKS / NOTES */}
                   <td className="py-3.5 px-4 min-w-[200px] max-w-sm">
                     <p className="text-slate-700 text-xs font-medium leading-relaxed break-words">
-                      {item.notes || "-"}
+                      {t(item.notes || "-")}
                     </p>
                   </td>
 
