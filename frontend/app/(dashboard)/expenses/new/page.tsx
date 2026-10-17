@@ -803,18 +803,19 @@ function NewExpenseVoucherForm() {
   return (
     <div className="w-full space-y-3.5 pb-24 animate-in fade-in duration-150 text-xs font-sans">
       {/* 1. TOP HEADER TOOLBAR */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
-        <h2 className="font-extrabold text-slate-800 text-xs tracking-wide uppercase">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 text-xs">
+        <h2 className="font-extrabold text-slate-800 text-xs sm:text-sm tracking-wide uppercase truncate mr-1">
           {isEditMode
             ? `EDIT EXPENSE VOUCHER ${editingExpenseNo ? `(${editingExpenseNo})` : ""}`
             : `NEW EXPENSE VOUCHER REGISTRATION ${nextVoucherNo ? `(${nextVoucherNo})` : ""}`}
         </h2>
         <Link
           href="/expenses"
-          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-slate-200"
+          className="px-2.5 sm:px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-slate-200"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Voucher List</span>
+          <span className="hidden sm:inline">Back to Voucher List</span>
+          <span className="sm:hidden inline">Back</span>
         </Link>
       </div>
 
@@ -1079,22 +1080,22 @@ function NewExpenseVoucherForm() {
                 </div>
               </div>
 
-              {/* CATEGORIES GRID: STARTS FLUSH AT THE LEFT WITH NO MARGIN / PUSH */}
+              {/* CATEGORIES GRID: 2 COLUMNS ON MOBILE, 3 COLUMNS ON DESKTOP */}
               <div className="w-full">
                 {!isMounted ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2">
                     {Array.from({ length: 9 }).map((_, i) => (
                       <div
                         key={i}
-                        className="h-10 px-3 rounded-xl border border-slate-200 bg-slate-50/70 animate-pulse flex items-center gap-2.5"
+                        className="h-10 px-2.5 sm:px-3 rounded-xl border border-slate-200 bg-slate-50/70 animate-pulse flex items-center gap-2"
                       >
-                        <div className="w-6 h-6 rounded-lg bg-slate-200/80 shrink-0" />
-                        <div className="h-3.5 bg-slate-200/80 rounded w-28" />
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-slate-200/80 shrink-0" />
+                        <div className="h-3.5 bg-slate-200/80 rounded w-20 sm:w-28" />
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2">
                     {activePageCategories.map((catName) => {
                       const IconComp = getCategoryIcon(catName);
                       const isSelected = category === catName;
@@ -1104,7 +1105,7 @@ function NewExpenseVoucherForm() {
                       return (
                         <div
                           key={catName}
-                          className={`h-10 px-3 rounded-xl border flex items-center justify-between gap-2 transition-all group relative ${
+                          className={`h-10 px-2 sm:px-3 rounded-xl border flex items-center justify-between gap-1.5 sm:gap-2 transition-all group relative ${
                             isSelected
                               ? "border-2 border-blue-600 bg-blue-50/70 text-blue-950 font-bold shadow-2xs ring-1 ring-blue-500/20"
                               : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 text-slate-700 font-semibold"
@@ -1120,10 +1121,10 @@ function NewExpenseVoucherForm() {
                                 setIsAddInputOpen(false);
                               }
                             }}
-                            className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer h-full"
+                            className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1 text-left cursor-pointer h-full"
                           >
                             <div
-                              className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                              className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                                 isSelected
                                   ? "bg-blue-600 text-white"
                                   : isCustom
@@ -1131,9 +1132,9 @@ function NewExpenseVoucherForm() {
                                   : "bg-slate-100 text-slate-500"
                               }`}
                             >
-                              <IconComp className="w-3.5 h-3.5" />
+                              <IconComp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                             </div>
-                            <span className="text-xs truncate">{catName}</span>
+                            <span className="text-[11px] sm:text-xs truncate font-bold">{catName}</span>
                           </button>
 
                           {/* BADGES & QUICK ACTIONS */}
@@ -1471,7 +1472,7 @@ function NewExpenseVoucherForm() {
           <>
             <Link
               href="/expenses"
-              className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-300 text-xs transition-colors cursor-pointer shadow-2xs"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-300 text-xs transition-colors cursor-pointer shadow-2xs shrink-0"
             >
               Cancel
             </Link>
@@ -1479,7 +1480,7 @@ function NewExpenseVoucherForm() {
               type="button"
               disabled={isSaving}
               onClick={handleSubmit}
-              className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
+              className={`px-3 sm:px-5 py-1.5 sm:py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-1.5 sm:gap-2 transition-all shrink-0 ${
                 isSaving
                   ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
                   : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
@@ -1487,13 +1488,14 @@ function NewExpenseVoucherForm() {
             >
               {isSaving ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>{isEditMode ? "Updating Expense..." : "Saving Expense..."}</span>
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
+                  <span className="truncate">{isEditMode ? "Updating..." : "Saving..."}</span>
                 </>
               ) : (
                 <>
-                  <Save className="w-4 h-4" />
-                  <span>{isEditMode ? "Update Expense Voucher" : "Save Expense Voucher"}</span>
+                  <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="hidden sm:inline">{isEditMode ? "Update Expense Voucher" : "Save Expense Voucher"}</span>
+                  <span className="sm:hidden inline">{isEditMode ? "Update" : "Save Voucher"}</span>
                 </>
               )}
             </button>
@@ -1577,10 +1579,10 @@ function NewExpenseVoucherForm() {
                         }`}
                       >
                         {/* Drag handle & rank */}
-                        <div className="flex items-center gap-2 min-w-0">
-                          <GripVertical className="w-4 h-4 text-slate-400 cursor-grab active:cursor-grabbing shrink-0" />
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+                          <GripVertical className="hidden sm:block w-4 h-4 text-slate-400 cursor-grab active:cursor-grabbing shrink-0" />
                           <span
-                            className={`w-6 h-6 rounded-lg text-[11px] font-extrabold flex items-center justify-center shrink-0 ${
+                            className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg text-[10px] sm:text-[11px] font-extrabold flex items-center justify-center shrink-0 ${
                               isTopNine
                                 ? "bg-blue-600 text-white shadow-2xs"
                                 : "bg-slate-200 text-slate-700"
@@ -1590,25 +1592,25 @@ function NewExpenseVoucherForm() {
                           </span>
 
                           <div
-                            className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                            className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center shrink-0 ${
                               isCustom
                                 ? "bg-indigo-50 text-indigo-600 border border-indigo-200/60"
                                 : "bg-slate-100 text-slate-600"
                             }`}
                           >
-                            <IconComp className="w-3.5 h-3.5" />
+                            <IconComp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           </div>
 
-                          <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs font-bold text-slate-800 truncate">
+                          <div className="min-w-0 flex items-center gap-1.5 flex-1">
+                            <span className="text-xs font-bold text-slate-800 truncate" title={catName}>
                               {catName}
                             </span>
                             {isCustom ? (
-                              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
                                 Custom
                               </span>
                             ) : (
-                              <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-500">
+                              <span className="hidden sm:inline-block text-[9px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 shrink-0">
                                 Standard
                               </span>
                             )}
@@ -1616,12 +1618,12 @@ function NewExpenseVoucherForm() {
                         </div>
 
                         {/* Position Badge & Controls */}
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                           {/* Set Default Selection */}
                           <button
                             type="button"
                             onClick={() => handleSetDefaultCategory(catName)}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
+                            className={`px-1.5 sm:px-2 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
                               defaultCategory === catName
                                 ? "bg-emerald-600 text-white shadow-2xs"
                                 : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
@@ -1629,20 +1631,19 @@ function NewExpenseVoucherForm() {
                             title={`Set "${catName}" as default selected category on page open`}
                           >
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
-                            <span>{defaultCategory === catName ? "Default" : "Set Default"}</span>
+                            <span className="hidden sm:inline">{defaultCategory === catName ? "Default" : "Set Default"}</span>
+                            <span className="sm:hidden inline">{defaultCategory === catName ? "Def" : "Set"}</span>
                           </button>
-
-
 
                           {/* Up Arrow */}
                           <button
                             type="button"
                             onClick={() => moveCategory(originalIndex, originalIndex - 1)}
                             disabled={originalIndex === 0}
-                            className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors cursor-pointer"
+                            className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors cursor-pointer"
                             title="Move Up"
                           >
-                            <ArrowUp className="w-3.5 h-3.5" />
+                            <ArrowUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           </button>
 
                           {/* Down Arrow */}
@@ -1650,10 +1651,10 @@ function NewExpenseVoucherForm() {
                             type="button"
                             onClick={() => moveCategory(originalIndex, originalIndex + 1)}
                             disabled={originalIndex === tempOrder.length - 1}
-                            className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors cursor-pointer"
+                            className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors cursor-pointer"
                             title="Move Down"
                           >
-                            <ArrowDown className="w-3.5 h-3.5" />
+                            <ArrowDown className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           </button>
 
                           {/* If custom, allow deletion */}
@@ -1661,7 +1662,7 @@ function NewExpenseVoucherForm() {
                             <button
                               type="button"
                               onClick={() => handleDeleteCustomCategory(catName)}
-                              className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
+                              className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
                               title="Delete custom category"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1675,31 +1676,32 @@ function NewExpenseVoucherForm() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between gap-3">
+            <div className="p-3 sm:p-5 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
               <button
                 type="button"
                 onClick={handleResetOrder}
-                className="text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center justify-center sm:justify-start gap-1.5 transition-colors cursor-pointer py-1"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Reset to Default</span>
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 justify-end">
                 <button
                   type="button"
                   onClick={() => setIsArrangeModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                  className="px-3 sm:px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer flex-1 sm:flex-none text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveOrder}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow-md shadow-blue-500/25 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="px-3.5 sm:px-5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow-md shadow-blue-500/25 flex items-center justify-center gap-1.5 transition-all cursor-pointer flex-1 sm:flex-none"
                 >
                   <Check className="w-4 h-4 stroke-[2.5]" />
-                  <span>Save &amp; Apply Order</span>
+                  <span className="hidden sm:inline">Save &amp; Apply Order</span>
+                  <span className="sm:hidden inline">Apply Order</span>
                 </button>
               </div>
             </div>

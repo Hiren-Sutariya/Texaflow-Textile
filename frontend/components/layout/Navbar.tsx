@@ -178,11 +178,11 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
       {/* Right Section: Quick Controls & Corner Language Selector */}
       <div className="flex items-center gap-2 sm:gap-2.5">
 
-        {/* 3. Fullscreen Toggle Button */}
+        {/* 3. Fullscreen Toggle Button - hidden on mobile screens */}
         <button
           type="button"
           onClick={toggleFullscreen}
-          className="h-9 w-9 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/90 hover:border-slate-300 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95"
+          className="hidden sm:flex h-9 w-9 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/90 hover:border-slate-300 rounded-xl items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
           title={isFullscreen ? "Exit Fullscreen" : "Fullscreen View / ફૂલ સ્ક્રીન"}
         >
           {isFullscreen ? (
@@ -196,10 +196,10 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
         <button 
           type="button"
           onClick={handleRefresh}
-          className="h-9 w-9 bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200/90 hover:border-blue-200 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95"
+          className="h-8.5 w-8.5 sm:h-9 sm:w-9 bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200/90 hover:border-blue-200 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
           title="Smooth Refresh / સ્મૂથ રિફ્રેશ (Cmd+R)"
         >
-          <RefreshCw className={`w-4 h-4 transition-transform duration-500 ${isSpinning ? "animate-spin text-blue-600" : ""}`} />
+          <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-500 ${isSpinning ? "animate-spin text-blue-600" : ""}`} />
         </button>
 
         {/* 5. Notification Bell Button with Interactive Popover */}
@@ -207,19 +207,19 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           <button 
             type="button"
             onClick={() => setIsNotifOpen((prev) => !prev)}
-            className="relative h-9 w-9 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/90 hover:border-slate-300 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95"
+            className="relative h-8.5 w-8.5 sm:h-9 sm:w-9 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/90 hover:border-slate-300 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
             title="Notifications / સૂચનાઓ"
           >
-            <Bell className="w-4 h-4" />
+            <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
           </button>
 
           {isNotifOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="fixed inset-x-3 top-14 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-80 max-w-sm mx-auto sm:mx-0 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-1.5">
                   <Bell className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-bold text-slate-900">Notifications</span>
+                  <span className="text-xs font-bold text-slate-900">{t("Notifications")}</span>
                   <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">2 New</span>
                 </div>
                 <button

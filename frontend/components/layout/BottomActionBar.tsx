@@ -39,23 +39,23 @@ export function BottomActionBar({
 
   return (
     <div
-      className={`fixed bottom-0 left-0 lg:left-[250px] right-0 z-40 h-[57px] bg-white border-t border-slate-200 px-6 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.06)] ${className}`}
+      className={`fixed bottom-0 left-0 lg:left-[250px] right-0 z-40 h-[57px] bg-white border-t border-slate-200 px-3 sm:px-6 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.06)] gap-2 ${className}`}
     >
       {children ? (
         children
       ) : (
         <>
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-bold text-slate-500 shrink-0">
             {showSynced && (
               <>
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
-                <span>{t(syncedText)}</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                <span className="hidden xs:inline truncate text-[11px] sm:text-xs">{t(syncedText)}</span>
               </>
             )}
             {leftContent}
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {rightContent}
           </div>
         </>

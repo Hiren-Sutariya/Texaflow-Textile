@@ -778,13 +778,13 @@ export default function ExpensesPage() {
         {/* Action Controls: Status Pill, Categories, Period, Export Excel, Add Expense */}
         <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-start sm:justify-end text-xs">
           {/* Status Toggle Pill Group: All | Paid | Pending */}
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/90 text-xs shrink-0">
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/90 text-xs shrink-0 w-full sm:w-auto justify-center">
             {(["All", "Paid", "Pending"] as const).map((st) => (
               <button
                 key={st}
                 type="button"
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1 rounded-lg font-extrabold text-xs transition-all cursor-pointer ${
+                className={`px-3 py-1 rounded-lg font-extrabold text-xs transition-all cursor-pointer flex-1 sm:flex-none text-center ${
                   statusFilter === st
                     ? "bg-white text-slate-900 shadow-2xs"
                     : "text-slate-500 hover:text-slate-800"
@@ -796,30 +796,32 @@ export default function ExpensesPage() {
           </div>
 
           {/* Categories Dropdown */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <button
               type="button"
               onClick={() => {
                 setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
                 setIsPeriodDropdownOpen(false);
               }}
-              className={`h-9 px-3.5 bg-white border text-xs font-extrabold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
+              className={`w-full sm:w-auto h-9 px-3.5 bg-white border text-xs font-extrabold rounded-xl flex items-center justify-between sm:justify-start gap-1.5 transition-all shadow-2xs cursor-pointer ${
                 isCategoryDropdownOpen
                   ? "border-2 border-blue-500 ring-2 ring-blue-500/20 text-slate-900"
                   : "border-slate-300 hover:border-slate-400 text-slate-800"
               }`}
             >
-              <Tag className="w-3.5 h-3.5 text-blue-600" />
-              <span className="uppercase tracking-wider">
-                {selectedCategory === "All" ? t("ALL CATEGORIES") : t(selectedCategory)}
-              </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isCategoryDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
+              <div className="flex items-center gap-1.5 truncate">
+                <Tag className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="uppercase tracking-wider truncate">
+                  {selectedCategory === "All" ? t("ALL CATEGORIES") : t(selectedCategory)}
+                </span>
+              </div>
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform shrink-0 ${isCategoryDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
             </button>
 
             {isCategoryDropdownOpen && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setIsCategoryDropdownOpen(false)} />
-                <div className="absolute right-0 sm:left-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 max-h-80 overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 duration-100 font-sans">
+                <div className="absolute left-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 max-h-80 overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 duration-100 font-sans">
                   {/* Option: All Categories */}
                   <button
                     type="button"
@@ -865,32 +867,34 @@ export default function ExpensesPage() {
           </div>
 
           {/* Period Filter Dropdown */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <button
               type="button"
               onClick={() => {
                 setIsPeriodDropdownOpen(!isPeriodDropdownOpen);
                 setIsCategoryDropdownOpen(false);
               }}
-              className={`h-9 px-3.5 bg-white border text-xs font-extrabold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
+              className={`w-full sm:w-auto h-9 px-3.5 bg-white border text-xs font-extrabold rounded-xl flex items-center justify-between sm:justify-start gap-1.5 transition-all shadow-2xs cursor-pointer ${
                 isPeriodDropdownOpen
                   ? "border-2 border-blue-500 ring-2 ring-blue-500/20 text-slate-900"
                   : "border-slate-300 hover:border-slate-400 text-slate-800"
               }`}
             >
-              <Calendar className="w-3.5 h-3.5 text-blue-600" />
-              <span className="uppercase tracking-wider">
-                {periodFilter === "all"
-                  ? t("ALL TIME")
-                  : periodFilter === "this_week"
-                  ? t("THIS WEEK")
-                  : periodFilter === "this_month"
-                  ? t("THIS MONTH")
-                  : periodFilter === "this_year"
-                  ? t("THIS YEAR")
-                  : t("CUSTOM DATES")}
-              </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isPeriodDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
+              <div className="flex items-center gap-1.5 truncate">
+                <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="uppercase tracking-wider truncate">
+                  {periodFilter === "all"
+                    ? t("ALL TIME")
+                    : periodFilter === "this_week"
+                    ? t("THIS WEEK")
+                    : periodFilter === "this_month"
+                    ? t("THIS MONTH")
+                    : periodFilter === "this_year"
+                    ? t("THIS YEAR")
+                    : t("CUSTOM DATES")}
+                </span>
+              </div>
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform shrink-0 ${isPeriodDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
             </button>
 
             {isPeriodDropdownOpen && (
@@ -965,7 +969,7 @@ export default function ExpensesPage() {
           {/* EXCEL EXPORT BUTTON */}
           <button
             onClick={handleExportExcel}
-            className="h-9 px-3.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+            className="h-9 px-3.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer flex-1 sm:flex-none"
             title="Download Excel CSV File"
           >
             <FileSpreadsheet className="w-4 h-4 text-blue-600" />
@@ -975,7 +979,7 @@ export default function ExpensesPage() {
           {/* ADD EXPENSE BUTTON -> NAVIGATES TO /expenses/new */}
           <Link
             href="/expenses/new"
-            className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-98 cursor-pointer"
+            className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-98 cursor-pointer flex-1 sm:flex-none"
           >
             <Plus className="w-4 h-4" />
             <span>{t("Add Expense")}</span>
