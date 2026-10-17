@@ -22,7 +22,9 @@ import {
   UserCheck,
   X,
   Sparkles,
-  KeyRound
+  KeyRound,
+  RefreshCw,
+  Edit2
 } from "lucide-react";
 
 interface LoginScreenProps {
@@ -53,6 +55,29 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
   const [regCity, setRegCity] = useState("");
   const [regGstin, setRegGstin] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
+
+  // Email Verification OTP State
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  const [regOtp, setRegOtp] = useState("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(60);
+  const [otpSentEmail, setOtpSentEmail] = useState("");
+  const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
+  const [otpErrorMsg, setOtpErrorMsg] = useState("");
+
+  // OTP Countdown timer
+  useEffect(() => {
+    let interval: any = null;
+    if (isOtpModalOpen && otpCountdown > 0) {
+      interval = setInterval(() => {
+        setOtpCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isOtpModalOpen, otpCountdown]);
 
   // Forgot password form state
   const [forgotEmail, setForgotEmail] = useState("");
@@ -113,13 +138,10 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
 
     const cleanCompany = regCompanyName.trim();
     const cleanOwner = regOwnerName.trim();
-    const cleanEmail = regEmail.trim();
+    const cleanEmail = regEmail.trim().toLowerCase();
     const cleanUsername = regUsername.trim();
     const cleanPassword = regPassword.trim();
     const cleanConfirmPassword = regConfirmPassword.trim();
-    const cleanPhone = regPhone.trim();
-    const cleanCity = regCity.trim();
-    const cleanGstin = regGstin.trim().toUpperCase();
 
     if (!cleanCompany) {
       setErrorMsg("Please enter Company / Firm Name");
@@ -150,7 +172,92 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
       return;
     }
 
+    setIsSendingOtp(true);
     setIsRegistering(true);
+
+    try {
+      // Step 1: Send Registration OTP & Validate Email Authenticity (Disposable + DNS MX check)
+      const res = await fetch(`${API_BASE_URL}/auth/send-registration-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_name: cleanCompany,
+          owner_name: cleanOwner,
+          email: cleanEmail,
+          username: cleanUsername,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Email validation failed. Please check your email.");
+      }
+
+      // Step 2: Open OTP Verification Modal
+      setOtpSentEmail(cleanEmail);
+      setDevOtpHint(data.dev_otp || null);
+      setRegOtp("");
+      setOtpErrorMsg("");
+      setOtpCountdown(60);
+      setIsOtpModalOpen(true);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to verify email. Please try again.");
+    } finally {
+      setIsSendingOtp(false);
+      setIsRegistering(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (otpCountdown > 0 || isSendingOtp) return;
+    setIsSendingOtp(true);
+    setOtpErrorMsg("");
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/send-registration-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_name: regCompanyName.trim(),
+          owner_name: regOwnerName.trim(),
+          email: regEmail.trim().toLowerCase(),
+          username: regUsername.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Failed to resend OTP. Please try again.");
+      }
+
+      setDevOtpHint(data.dev_otp || null);
+      setOtpCountdown(60);
+    } catch (err: any) {
+      setOtpErrorMsg(err.message || "Failed to resend OTP.");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleConfirmRegistrationWithOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanOtp = regOtp.trim();
+    if (cleanOtp.length !== 6) {
+      setOtpErrorMsg("કૃપા કરીને ૬-અંકનો વેરિફિકેશન OTP દાખલ કરો.");
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+    setOtpErrorMsg("");
+
+    const cleanCompany = regCompanyName.trim();
+    const cleanOwner = regOwnerName.trim();
+    const cleanEmail = regEmail.trim().toLowerCase();
+    const cleanUsername = regUsername.trim();
+    const cleanPassword = regPassword.trim();
+    const cleanPhone = regPhone.trim();
+    const cleanCity = regCity.trim();
+    const cleanGstin = regGstin.trim().toUpperCase();
 
     try {
       const res = await fetch(`${API_BASE_URL}/auth/register-company`, {
@@ -165,15 +272,17 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
           phone: cleanPhone || undefined,
           gstin: cleanGstin || undefined,
           address: cleanCity || undefined,
-          city: cleanCity || undefined
-        })
+          city: cleanCity || undefined,
+          otp: cleanOtp,
+        }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.detail || "Registration failed. Please try again.");
+        throw new Error(data.detail || "Registration failed. Please check the OTP.");
       }
 
+      setIsOtpModalOpen(false);
       const newCid = data?.company?.id || data?.user?.companyId || "comp-003";
 
       // Seed initial tenant settings in localStorage immediately
@@ -187,7 +296,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
           username: cleanUsername,
           address: cleanCity || "",
           gstin: cleanGstin || "",
-          status: "active"
+          status: "active",
         };
         localStorage.setItem(`app_settings_${newCid}`, JSON.stringify(initialSettings));
         localStorage.setItem(`texaflow_login_username_${newCid}`, cleanUsername);
@@ -208,9 +317,9 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
         setEmail(cleanUsername);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to register company. Please try again.");
+      setOtpErrorMsg(err.message || "Failed to complete registration.");
     } finally {
-      setIsRegistering(false);
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -712,13 +821,13 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
 
                 <button
                   type="submit"
-                  disabled={isRegistering}
+                  disabled={isRegistering || isSendingOtp}
                   className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm shadow-blue-600/20 transition-all active:scale-[0.99] cursor-pointer disabled:opacity-70 mt-2"
                 >
-                  {isRegistering ? (
+                  {isSendingOtp ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Creating Tenant Panel...</span>
+                      <span>Verifying Email &amp; Sending OTP...</span>
                     </>
                   ) : (
                     <>
@@ -853,12 +962,162 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
             <span className="text-[11px] sm:text-xs">256-Bit Encrypted Secure Session</span>
           </div>
           <div className="text-[11px] sm:text-xs">
-            Powered & Developed by <strong className="text-slate-700 font-bold">DigiScale Infotech</strong>
+            Powered &amp; Developed by <strong className="text-slate-700 font-bold">DigiScale Infotech</strong>
           </div>
         </div>
       </div>
 
+      {/* ========================================================================= */}
+      {/* 6-DIGIT EMAIL VERIFICATION OTP MODAL */}
+      {/* ========================================================================= */}
+      {isOtpModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-blue-100 space-y-4">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100 shadow-2xs">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    ઈમેલ વેરિફિકેશન (Email OTP)
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    સુરક્ષા ચકાસણી માટે ૬-અંકનો OTP દાખલ કરો
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOtpModalOpen(false);
+                  setRegOtp("");
+                  setOtpErrorMsg("");
+                }}
+                className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
+            {/* Target Email Banner */}
+            <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2 text-blue-900 min-w-0">
+                <Mail className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="font-bold truncate">{otpSentEmail}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOtpModalOpen(false);
+                  setRegOtp("");
+                  setOtpErrorMsg("");
+                }}
+                className="text-[11px] font-bold text-blue-600 hover:underline shrink-0 flex items-center gap-1 cursor-pointer"
+              >
+                <Edit2 className="w-3 h-3" />
+                <span>Change</span>
+              </button>
+            </div>
+
+            {/* Dev Mode OTP Banner (if available during testing) */}
+            {devOtpHint && (
+              <div
+                onClick={() => setRegOtp(devOtpHint)}
+                className="p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs font-semibold flex items-center justify-between cursor-pointer hover:bg-amber-100/60 transition-colors shadow-2xs"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>Test Mode OTP: <strong className="font-mono font-black tracking-wider text-amber-900">{devOtpHint}</strong></span>
+                </div>
+                <span className="text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-md font-bold">
+                  Click to Auto-fill
+                </span>
+              </div>
+            )}
+
+            {/* OTP Input Form */}
+            <form onSubmit={handleConfirmRegistrationWithOtp} className="space-y-4 pt-1">
+              {otpErrorMsg && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>{otpErrorMsg}</span>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span>6-Digit Verification Code *</span>
+                  <span className="text-[11px] text-slate-400 font-normal">Valid for 10 minutes</span>
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={regOtp}
+                  onChange={(e) => setRegOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="000000"
+                  autoFocus
+                  required
+                  className="w-full h-12 text-center text-2xl font-black font-mono tracking-[0.4em] bg-slate-50 border-2 border-slate-300 focus:border-blue-600 focus:bg-white rounded-xl text-slate-900 shadow-2xs transition-colors outline-none"
+                />
+              </div>
+
+              {/* Resend OTP Bar */}
+              <div className="flex items-center justify-between text-xs pt-1">
+                <span className="text-slate-500">Didn&apos;t receive the code?</span>
+                {otpCountdown > 0 ? (
+                  <span className="text-slate-400 font-semibold text-[11px]">
+                    Resend in {otpCountdown}s
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isSendingOtp}
+                    onClick={handleResendOtp}
+                    className="font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isSendingOtp ? "animate-spin" : ""}`} />
+                    <span>Resend OTP</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOtpModalOpen(false);
+                    setRegOtp("");
+                    setOtpErrorMsg("");
+                  }}
+                  className="w-1/3 h-11 border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={regOtp.trim().length !== 6 || isVerifyingOtp}
+                  className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+                >
+                  {isVerifyingOtp ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Verifying &amp; Launching...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Confirm &amp; Launch ERP</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -12,6 +12,14 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db, SessionLocal
 from app.models.user import User
 from app.models.company import Company
+from app.core.email_verifier import validate_email_authenticity
+from app.core.mailer import (
+    store_registration_otp,
+    verify_registration_otp,
+    is_email_verified,
+    clear_verified_otp,
+    send_registration_otp_email,
+)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -777,6 +785,98 @@ def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Dep
         "username": clean_user
     }
 
+class SendRegistrationOtpRequest(BaseModel):
+    company_name: str
+    owner_name: str
+    email: str
+    username: str
+
+class VerifyRegistrationOtpRequest(BaseModel):
+    email: str
+    otp: str
+
+@router.post("/send-registration-otp")
+def send_registration_otp(req: SendRegistrationOtpRequest, db: Session = Depends(get_db)):
+    """
+    Validates company/username/email availability, runs disposable & DNS MX checks,
+    and dispatches a 6-digit OTP to the user's email address.
+    """
+    clean_company = req.company_name.strip()
+    clean_owner = req.owner_name.strip()
+    clean_email = req.email.strip().lower()
+    clean_username = req.username.strip()
+
+    if not clean_company:
+        raise HTTPException(status_code=400, detail="Company / Firm Name is required")
+    if not clean_owner:
+        raise HTTPException(status_code=400, detail="Owner / Director Name is required")
+    if not clean_username:
+        raise HTTPException(status_code=400, detail="Login Username is required")
+    if not clean_email or "@" not in clean_email:
+        raise HTTPException(status_code=400, detail="A valid Email Address is required")
+
+    # 1. Check if username is already taken
+    existing_username = db.query(User).filter(User.username.ilike(clean_username)).first()
+    if existing_username:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Username '{clean_username}' is already taken. Please choose another username."
+        )
+
+    # 2. Check if email is already registered
+    existing_email = db.query(User).filter(User.email.ilike(clean_email)).first()
+    if existing_email:
+        raise HTTPException(
+            status_code=400,
+            detail=f"An account with email '{clean_email}' already exists. Please sign in or use another email."
+        )
+
+    # 3. Multi-layer email authenticity check:
+    #    - Regex syntax
+    #    - Disposable / temporary email blocker (temp-mail, mailinator, etc.)
+    #    - Real-time DNS MX record resolution
+    is_valid_email, email_err = validate_email_authenticity(clean_email)
+    if not is_valid_email:
+        raise HTTPException(status_code=400, detail=email_err)
+
+    # 4. Generate and store OTP (10 min expiry)
+    otp = store_registration_otp(clean_email, clean_company)
+
+    # 5. Dispatch email via SMTP
+    sent_ok, send_msg, dev_otp = send_registration_otp_email(
+        to_email=clean_email,
+        otp=otp,
+        company_name=clean_company,
+        owner_name=clean_owner
+    )
+
+    return {
+        "success": True,
+        "message": send_msg,
+        "email": clean_email,
+        "dev_otp": dev_otp  # available for rapid local development/testing
+    }
+
+@router.post("/verify-registration-otp")
+def verify_registration_otp_endpoint(req: VerifyRegistrationOtpRequest):
+    """Verifies the 6-digit OTP entered by the user."""
+    clean_email = req.email.strip().lower()
+    clean_otp = req.otp.strip()
+
+    if not clean_email or not clean_otp:
+        raise HTTPException(status_code=400, detail="Email and OTP are required")
+
+    is_valid, msg = verify_registration_otp(clean_email, clean_otp)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=msg)
+
+    return {
+        "success": True,
+        "message": msg,
+        "verified": True,
+        "email": clean_email
+    }
+
 class RegisterCompanyRequest(BaseModel):
     company_name: str
     owner_name: str
@@ -788,6 +888,7 @@ class RegisterCompanyRequest(BaseModel):
     gstin: Optional[str] = None
     address: Optional[str] = None
     city: Optional[str] = None
+    otp: Optional[str] = None
 
 @router.post("/register-company", status_code=status.HTTP_201_CREATED)
 def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db)):
@@ -806,6 +907,7 @@ def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db))
 
     clean_username = raw_user or (raw_legacy if "@" not in raw_legacy else raw_legacy.split("@")[0])
     clean_email = raw_email or (raw_legacy if "@" in raw_legacy else "")
+    clean_email = clean_email.lower().strip()
 
     if not clean_username:
         raise HTTPException(status_code=400, detail="Login Username is required")
@@ -829,6 +931,23 @@ def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db))
             status_code=400,
             detail=f"An account with email '{clean_email}' already exists. Please sign in or use another email."
         )
+
+    # Multi-layer Email Authenticity & OTP Verification
+    if req.otp:
+        is_valid_otp, otp_err = verify_registration_otp(clean_email, req.otp)
+        if not is_valid_otp:
+            raise HTTPException(status_code=400, detail=otp_err)
+    else:
+        # Check if already verified via previous step
+        if not is_email_verified(clean_email):
+            # Check format & disposable/MX to give precise rejection reason
+            is_valid_syntax, syntax_err = validate_email_authenticity(clean_email)
+            if not is_valid_syntax:
+                raise HTTPException(status_code=400, detail=syntax_err)
+            raise HTTPException(
+                status_code=400,
+                detail="ઈમેલ વેરિફિકેશન (OTP) ફરજિયાત છે. કૃપા કરીને તમારા ઈમેલ પર આવેલો ૬-અંકનો OTP દાખલ કરો."
+            )
 
     # Generate sequential company_id (comp-002, comp-003, ...)
     all_companies = db.query(Company.id).all()
@@ -900,6 +1019,9 @@ def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db))
         password_hash=new_user.password_hash,
         plain_password=req.password.strip()
     )
+
+    # Clear OTP from memory
+    clear_verified_otp(clean_email)
 
     return {
         "success": True,
