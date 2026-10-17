@@ -174,29 +174,28 @@ export function VoiceTextarea({
   };
 
   return (
-    <div className="relative w-full max-w-xl font-sans">
-      <div className="relative">
-        <textarea
-          rows={rows}
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChangeValue(e.target.value)}
-          className={`p-3 pr-28 max-w-xl w-full bg-white border rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 resize-none transition-all shadow-2xs ${
-            isListening
-              ? "border-rose-400 ring-2 ring-rose-400/20 bg-rose-50/10"
-              : "border-slate-300 focus:border-blue-500 focus:ring-blue-500/20"
-          } ${className}`}
-          {...rest}
-        />
+    <div className="w-full max-w-xl font-sans space-y-1.5">
+      {/* Top Controls Toolbar outside textarea to prevent overlapping text */}
+      <div className="flex items-center justify-between gap-2 px-0.5">
+        <span className="text-[11px] font-medium text-slate-500">
+          {isListening ? (
+            <span className="text-rose-600 font-bold flex items-center gap-1.5 animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-rose-600 inline-block" />
+              માઈક ચાલુ છે — બોલો...
+            </span>
+          ) : (
+            <span>નોંધ / રીમાર્કસ</span>
+          )}
+        </span>
 
-        {/* Floating Voice & Language Controls inside Textarea */}
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
+        {/* Action Buttons: Language Selector & Mic Button */}
+        <div className="flex items-center gap-1.5">
           {/* Language Selector Dropdown */}
           <div className="relative" ref={langMenuRef}>
             <button
               type="button"
               onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-              className="inline-flex items-center gap-1 px-1.5 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 rounded-lg transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 rounded-lg transition-colors cursor-pointer"
               title="અવાજની ભાષા બદલો (Change Voice Language)"
             >
               <Globe className="w-3 h-3 text-slate-500" />
@@ -204,7 +203,7 @@ export function VoiceTextarea({
             </button>
 
             {isLangMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl border border-slate-200 shadow-xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-xl border border-slate-200 shadow-xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                 {[
                   { code: "gu-IN" as const, label: "ગુજરાતી (Gujarati)" },
                   { code: "hi-IN" as const, label: "हिन्दी (Hindi)" },
@@ -264,6 +263,20 @@ export function VoiceTextarea({
           </button>
         </div>
       </div>
+
+      {/* Clean Full-Width Textarea without overlapping buttons */}
+      <textarea
+        rows={rows}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChangeValue(e.target.value)}
+        className={`p-3 max-w-xl w-full bg-white border rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 resize-y min-h-[72px] transition-all shadow-2xs ${
+          isListening
+            ? "border-rose-400 ring-2 ring-rose-400/20 bg-rose-50/10"
+            : "border-slate-300 focus:border-blue-500 focus:ring-blue-500/20"
+        } ${className}`}
+        {...rest}
+      />
 
       {/* Live Audio Listening Bar & Interim Transcription Display */}
       {isListening && (

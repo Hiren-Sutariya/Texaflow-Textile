@@ -190,10 +190,10 @@ export default function SettingsPage() {
   const { user, updateUserSession } = useAuth();
   const [hasMounted, setHasMounted] = useState(false);
 
-  // Active Subtab
+  // Active Subtab (Merged Company & Address with Bank & GST into single "Company" tab)
   const [activeTab, setActiveTab] = useState<
-    "Company & Address" | "Bank & GST" | "Invoice & Bill" | "Login & Password" | "Data & Storage"
-  >("Company & Address");
+    "Company" | "Invoice & Bill" | "Login & Password" | "Data & Storage"
+  >("Company");
 
   // Save states
   const [isSaving, setIsSaving] = useState(false);
@@ -1147,7 +1147,7 @@ export default function SettingsPage() {
   if (!hasMounted) return null;
 
   return (
-    <div className="w-full max-w-4xl font-sans text-slate-800 pb-[57px] space-y-4">
+    <div className="w-full max-w-4xl font-sans text-slate-800 pb-[72px] sm:pb-[60px] space-y-4 px-1 sm:px-0">
       {/* Toast Notification Banner */}
       {saveSuccessMsg && (
         <div className="fixed top-16 right-5 z-50 inline-flex items-center gap-1.5 bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/20 animate-in fade-in slide-in-from-top duration-200">
@@ -1156,40 +1156,24 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Main Settings Card: Seamless Tab Header (Zero Duplicate Heading!) */}
+      {/* Main Settings Card: Seamless Tab Header */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
-        {/* Seamless Navigation Tab Header (Directly at top of card, no redundant stacked header!) */}
-        <div className="flex items-center gap-1 sm:gap-2 px-5 pt-3.5 border-b border-slate-200 bg-slate-50/60 overflow-x-auto no-scrollbar">
+        {/* Seamless Navigation Tab Header (Horizontally scrollable on mobile) */}
+        <div className="flex items-center gap-1 sm:gap-2 px-3 sm:px-5 pt-3.5 border-b border-slate-200 bg-slate-50/60 overflow-x-auto no-scrollbar scroll-smooth whitespace-nowrap">
           <button
             type="button"
             onClick={() => {
-              setActiveTab("Company & Address");
+              setActiveTab("Company");
               setAuthErrorMsg("");
             }}
-            className={`pb-3 px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "Company & Address"
+            className={`pb-3 px-3 sm:px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
+              activeTab === "Company"
                 ? "border-blue-600 text-blue-600 font-extrabold"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>Company & Address</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab("Bank & GST");
-              setAuthErrorMsg("");
-            }}
-            className={`pb-3 px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "Bank & GST"
-                ? "border-blue-600 text-blue-600 font-extrabold"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <Landmark className="w-3.5 h-3.5" />
-            <span>Bank & GST</span>
+            <Building2 className="w-3.5 h-3.5 shrink-0" />
+            <span>Company</span>
           </button>
 
           <button
@@ -1198,13 +1182,13 @@ export default function SettingsPage() {
               setActiveTab("Invoice & Bill");
               setAuthErrorMsg("");
             }}
-            className={`pb-3 px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+            className={`pb-3 px-3 sm:px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
               activeTab === "Invoice & Bill"
                 ? "border-blue-600 text-blue-600 font-extrabold"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <Receipt className="w-3.5 h-3.5" />
+            <Receipt className="w-3.5 h-3.5 shrink-0" />
             <span>Invoice & Bill</span>
           </button>
 
@@ -1214,13 +1198,13 @@ export default function SettingsPage() {
               setActiveTab("Login & Password");
               setAuthErrorMsg("");
             }}
-            className={`pb-3 px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+            className={`pb-3 px-3 sm:px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
               activeTab === "Login & Password"
                 ? "border-blue-600 text-blue-600 font-extrabold"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <KeyRound className="w-3.5 h-3.5" />
+            <KeyRound className="w-3.5 h-3.5 shrink-0" />
             <span>Login & Password</span>
           </button>
 
@@ -1230,13 +1214,13 @@ export default function SettingsPage() {
               setActiveTab("Data & Storage");
               setAuthErrorMsg("");
             }}
-            className={`pb-3 px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+            className={`pb-3 px-3 sm:px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
               activeTab === "Data & Storage"
                 ? "border-blue-600 text-blue-600 font-extrabold"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <Database className="w-3.5 h-3.5" />
+            <Database className="w-3.5 h-3.5 shrink-0" />
             <span>Data & Storage</span>
           </button>
         </div>
@@ -1252,399 +1236,389 @@ export default function SettingsPage() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 1: COMPANY & ADDRESS */}
+          {/* TAB 1: COMPANY (MERGED PROFILE, ADDRESS, BANK & STATUTORY DETAILS) */}
           {/* ========================================================================= */}
-          {activeTab === "Company & Address" && (
-            <div className="space-y-3.5 animate-in fade-in duration-100">
-              {/* Company Legal Name */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Company Legal Name *</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    value={formData.company_name}
-                    onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                    placeholder="e.g. Registered Company Name"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Brand Name / Short Code */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Brand / Short Name</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    value={formData.brand_name}
-                    onChange={(e) => setFormData({ ...formData, brand_name: e.target.value.toUpperCase() })}
-                    placeholder="e.g. BRAND NAME"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                  />
-                </div>
-              </div>
-
-              {/* Tagline / Subtitle */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Tagline / Subtitle</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    value={formData.tagline}
-                    onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
-                    placeholder="e.g. High Precision Multi-Head Embroidery Job Work"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* Phone / Mobile */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Primary Mobile *</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="9978987181"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Email Address */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Billing / Office Email</label>
-                <div className="max-w-md">
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="owner@shivcreation.com"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* Login Username / User ID */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Login Username *</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    value={authData.username}
-                    onChange={(e) => {
-                      isUserEditingRef.current = true;
-                      setAuthData({ ...authData, username: e.target.value });
-                    }}
-                    placeholder="e.g. shivcreation or owner@shivcreation.com"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Factory Address */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Factory Address *</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Plot No. 104-106, GIDC Khatodara / Kadodara"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* City & State / PIN */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">City, State & PIN</label>
-                <div className="max-w-md flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={formData.city_state}
-                    onChange={(e) => setFormData({ ...formData, city_state: e.target.value })}
-                    placeholder="Surat, Gujarat"
-                    className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                  />
-                  <input
-                    type="text"
-                    value={formData.pincode}
-                    onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-                    placeholder="PIN Code"
-                    className="w-28 h-9 px-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* MSME Udyam Registration */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">MSME Udyam Reg. No.</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    value={formData.msme_no}
-                    onChange={(e) => setFormData({ ...formData, msme_no: e.target.value.toUpperCase() })}
-                    placeholder="UDYAM-GJ-24-0091823"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB 2: BANK & GST (WITH QR CODE UPLOAD & GENERATE) */}
-          {/* ========================================================================= */}
-          {activeTab === "Bank & GST" && (
-            <div className="space-y-3.5 animate-in fade-in duration-100">
-              {/* GSTIN */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">GSTIN Number (15 Digits)</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    maxLength={15}
-                    value={formData.gstin}
-                    onChange={(e) => setFormData({ ...formData, gstin: e.target.value.toUpperCase() })}
-                    placeholder="24AAAFA1234A1Z5"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                  />
-                </div>
-              </div>
-
-              {/* PAN */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">PAN Number</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    maxLength={10}
-                    value={formData.pan}
-                    onChange={(e) => setFormData({ ...formData, pan: e.target.value.toUpperCase() })}
-                    placeholder="AAAFA1234A"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                  />
-                </div>
-              </div>
-
-              {/* Bank Name */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Primary Bank Name</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    value={formData.bank_name}
-                    onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                    placeholder="HDFC Bank Ltd"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* Account Holder Name */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Account Holder Name</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    value={formData.account_holder}
-                    onChange={(e) => setFormData({ ...formData, account_holder: e.target.value })}
-                    placeholder="e.g. Account Holder / Legal Firm Name"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* Account Number */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Current Account Number</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    value={formData.account_no}
-                    onChange={(e) => setFormData({ ...formData, account_no: e.target.value })}
-                    placeholder="50200012345678"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* Account Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">Account Type</label>
-                <div className="max-w-md relative" ref={accTypeRef}>
-                  <button
-                    type="button"
-                    onClick={() => setIsAccTypeOpen(!isAccTypeOpen)}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-                  >
-                    <span className="truncate">{formData.account_type}</span>
-                    <ChevronDown
-                      className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${
-                        isAccTypeOpen ? "rotate-180 text-blue-600" : ""
-                      }`}
+          {activeTab === "Company" && (
+            <div className="space-y-6 animate-in fade-in duration-100">
+              {/* SECTION A: COMPANY PROFILE & ADDRESS */}
+              <div className="space-y-3.5">
+                {/* Company Legal Name */}
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                  <label className="font-bold text-slate-600">Company Legal Name *</label>
+                  <div className="max-w-md w-full">
+                    <input
+                      type="text"
+                      value={formData.company_name}
+                      onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                      placeholder="e.g. Registered Company Name"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      required
                     />
-                  </button>
+                  </div>
+                </div>
 
-                  {isAccTypeOpen && (
-                    <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
-                      {ACCOUNT_TYPES.map((type) => {
-                        const isSelected = formData.account_type === type;
-                        return (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => {
-                              setFormData({ ...formData, account_type: type });
-                              setIsAccTypeOpen(false);
-                            }}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                              isSelected
-                                ? "bg-blue-50 text-blue-700 font-bold"
-                                : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-                            }`}
-                          >
-                            <span>{type}</span>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
-                          </button>
-                        );
-                      })}
+                {/* Brand Name / Short Code */}
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                  <label className="font-bold text-slate-600">Brand / Short Name</label>
+                  <div className="max-w-md w-full">
+                    <input
+                      type="text"
+                      value={formData.brand_name}
+                      onChange={(e) => setFormData({ ...formData, brand_name: e.target.value.toUpperCase() })}
+                      placeholder="e.g. BRAND NAME"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
+                    />
+                  </div>
+                </div>
+
+                {/* Tagline / Subtitle */}
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                  <label className="font-bold text-slate-600">Tagline / Subtitle</label>
+                  <div className="max-w-md w-full">
+                    <input
+                      type="text"
+                      value={formData.tagline}
+                      onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
+                      placeholder="e.g. High Precision Multi-Head Embroidery Job Work"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Phone / Mobile */}
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                  <label className="font-bold text-slate-600">Primary Mobile *</label>
+                  <div className="max-w-md w-full">
+                    <input
+                      type="text"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="9978987181"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Email Address */}
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                  <label className="font-bold text-slate-600">Billing / Office Email</label>
+                  <div className="max-w-md w-full">
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="owner@shivcreation.com"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Factory Address */}
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                  <label className="font-bold text-slate-600">Factory Address *</label>
+                  <div className="max-w-md w-full">
+                    <input
+                      type="text"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      placeholder="Plot No. 104-106, GIDC Khatodara / Kadodara"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* City & State / PIN */}
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                  <label className="font-bold text-slate-600">City, State & PIN</label>
+                  <div className="max-w-md w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      type="text"
+                      value={formData.city_state}
+                      onChange={(e) => setFormData({ ...formData, city_state: e.target.value })}
+                      placeholder="Surat, Gujarat"
+                      className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    />
+                    <input
+                      type="text"
+                      value={formData.pincode}
+                      onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                      placeholder="PIN Code"
+                      className="w-full sm:w-28 h-9 px-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* MSME Udyam Registration */}
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                  <label className="font-bold text-slate-600">MSME Udyam Reg. No.</label>
+                  <div className="max-w-md w-full">
+                    <input
+                      type="text"
+                      value={formData.msme_no}
+                      onChange={(e) => setFormData({ ...formData, msme_no: e.target.value.toUpperCase() })}
+                      placeholder="UDYAM-GJ-24-0091823"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION B: BANK & STATUTORY (GST) DETAILS */}
+              <div className="pt-4 border-t border-slate-200">
+                <div className="flex items-center gap-2 pb-3">
+                  <span className="text-xs font-black text-slate-800 tracking-wide uppercase flex items-center gap-1.5">
+                    <Landmark className="w-3.5 h-3.5 text-blue-600" />
+                    Bank & Statutory (GST) Details
+                  </span>
+                </div>
+
+                <div className="space-y-3.5">
+                  {/* GSTIN */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                    <label className="font-bold text-slate-600">GSTIN Number (15 Digits)</label>
+                    <div className="max-w-md w-full">
+                      <input
+                        type="text"
+                        maxLength={15}
+                        value={formData.gstin}
+                        onChange={(e) => setFormData({ ...formData, gstin: e.target.value.toUpperCase() })}
+                        placeholder="24AAAFA1234A1Z5"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
+                      />
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
 
-              {/* IFSC Code & Branch */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">IFSC & Branch Name</label>
-                <div className="max-w-md flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={formData.ifsc}
-                    onChange={(e) => setFormData({ ...formData, ifsc: e.target.value.toUpperCase() })}
-                    placeholder="HDFC0000123"
-                    className="w-36 h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                  />
-                  <input
-                    type="text"
-                    value={formData.branch_name}
-                    onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })}
-                    placeholder="Ring Road Branch, Surat"
-                    className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* UPI ID */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
-                <label className="font-bold text-slate-600">UPI ID (VPA)</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    value={formData.upi_id}
-                    onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
-                    placeholder="omsaienterprise@hdfcbank"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* QR Code Option for Bank Payments (Requested by user!) */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-start text-xs pt-2 border-t border-slate-100">
-                <div className="pt-1">
-                  <label className="font-bold text-slate-700 block">Bank Payment QR Code</label>
-                  <span className="text-[10px] text-slate-400">Prints on bill bottom</span>
-                </div>
-                <div className="max-w-md space-y-3">
-                  {formData.qr_code_image ? (
-                    <div className="flex items-center gap-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                      <div className="w-24 h-24 bg-white p-1.5 rounded-lg border border-slate-200 shrink-0 shadow-2xs flex items-center justify-center">
-                        <img
-                          src={formData.qr_code_image}
-                          alt="Bank UPI QR Code"
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
-                          <Check className="w-3 h-3 text-emerald-600" />
-                          <span>Active on Invoices</span>
-                        </div>
-                        <p className="text-[11px] text-slate-600">
-                          Customers can scan this QR code on physical bill to pay directly.
-                        </p>
-                        <div className="flex items-center gap-2 pt-1">
-                          <label
-                            htmlFor="qr-file-upload"
-                            className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-[10px] font-bold text-slate-700 cursor-pointer transition-colors shadow-2xs"
-                          >
-                            Replace QR
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => setFormData({ ...formData, qr_code_image: "" })}
-                            className="px-2.5 py-1 bg-white border border-red-200 hover:bg-red-50 text-red-600 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
+                  {/* PAN */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                    <label className="font-bold text-slate-600">PAN Number</label>
+                    <div className="max-w-md w-full">
+                      <input
+                        type="text"
+                        maxLength={10}
+                        value={formData.pan}
+                        onChange={(e) => setFormData({ ...formData, pan: e.target.value.toUpperCase() })}
+                        placeholder="AAAFA1234A"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
+                      />
                     </div>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      {/* Upload QR File */}
-                      <label
-                        htmlFor="qr-file-upload"
-                        className="flex-1 border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-3 flex items-center gap-3 bg-slate-50/50 hover:bg-blue-50/20 cursor-pointer transition-colors group"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 group-hover:text-blue-600 shadow-2xs shrink-0">
-                          <Upload className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-800">Upload QR Image</p>
-                          <p className="text-[10px] text-slate-400">PNG, JPG or scanner screenshot</p>
-                        </div>
-                      </label>
+                  </div>
 
-                      {/* Auto-generate from UPI */}
+                  {/* Bank Name */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                    <label className="font-bold text-slate-600">Primary Bank Name</label>
+                    <div className="max-w-md w-full">
+                      <input
+                        type="text"
+                        value={formData.bank_name}
+                        onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                        placeholder="HDFC Bank Ltd"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Account Holder Name */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                    <label className="font-bold text-slate-600">Account Holder Name</label>
+                    <div className="max-w-md w-full">
+                      <input
+                        type="text"
+                        value={formData.account_holder}
+                        onChange={(e) => setFormData({ ...formData, account_holder: e.target.value })}
+                        placeholder="e.g. Account Holder / Legal Firm Name"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Account Number */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                    <label className="font-bold text-slate-600">Current Account Number</label>
+                    <div className="max-w-md w-full">
+                      <input
+                        type="text"
+                        value={formData.account_no}
+                        onChange={(e) => setFormData({ ...formData, account_no: e.target.value })}
+                        placeholder="50200012345678"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Account Type */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                    <label className="font-bold text-slate-600">Account Type</label>
+                    <div className="max-w-md w-full relative" ref={accTypeRef}>
                       <button
                         type="button"
-                        onClick={handleAutoGenerateQr}
-                        className="h-14 px-3 border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-colors shrink-0"
+                        onClick={() => setIsAccTypeOpen(!isAccTypeOpen)}
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Auto-Generate QR</span>
+                        <span className="truncate">{formData.account_type}</span>
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${
+                            isAccTypeOpen ? "rotate-180 text-blue-600" : ""
+                          }`}
+                        />
                       </button>
-                    </div>
-                  )}
 
-                  <input
-                    type="file"
-                    id="qr-file-upload"
-                    accept="image/*"
-                    onChange={handleQrUpload}
-                    className="hidden"
-                  />
+                      {isAccTypeOpen && (
+                        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                          {ACCOUNT_TYPES.map((type) => {
+                            const isSelected = formData.account_type === type;
+                            return (
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => {
+                                  setFormData({ ...formData, account_type: type });
+                                  setIsAccTypeOpen(false);
+                                }}
+                                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                                  isSelected
+                                    ? "bg-blue-50 text-blue-700 font-bold"
+                                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                                }`}
+                              >
+                                <span>{type}</span>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* IFSC Code & Branch */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                    <label className="font-bold text-slate-600">IFSC & Branch Name</label>
+                    <div className="max-w-md w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <input
+                        type="text"
+                        value={formData.ifsc}
+                        onChange={(e) => setFormData({ ...formData, ifsc: e.target.value.toUpperCase() })}
+                        placeholder="HDFC0000123"
+                        className="w-full sm:w-36 h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
+                      />
+                      <input
+                        type="text"
+                        value={formData.branch_name}
+                        onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })}
+                        placeholder="Ring Road Branch, Surat"
+                        className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* UPI ID */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+                    <label className="font-bold text-slate-600">UPI ID (VPA)</label>
+                    <div className="max-w-md w-full">
+                      <input
+                        type="text"
+                        value={formData.upi_id}
+                        onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
+                        placeholder="omsaienterprise@hdfcbank"
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* QR Code Option for Bank Payments */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start text-xs pt-2 border-t border-slate-100">
+                    <div className="pt-1">
+                      <label className="font-bold text-slate-700 block">Bank Payment QR Code</label>
+                      <span className="text-[10px] text-slate-400">Prints on bill bottom</span>
+                    </div>
+                    <div className="max-w-md w-full space-y-3">
+                      {formData.qr_code_image ? (
+                        <div className="flex flex-col sm:flex-row items-center gap-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                          <div className="w-24 h-24 bg-white p-1.5 rounded-lg border border-slate-200 shrink-0 shadow-2xs flex items-center justify-center">
+                            <img
+                              src={formData.qr_code_image}
+                              alt="Bank UPI QR Code"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                          <div className="space-y-1.5 text-center sm:text-left">
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
+                              <Check className="w-3 h-3 text-emerald-600" />
+                              <span>Active on Invoices</span>
+                            </div>
+                            <p className="text-[11px] text-slate-600">
+                              Customers can scan this QR code on physical bill to pay directly.
+                            </p>
+                            <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
+                              <label
+                                htmlFor="qr-file-upload"
+                                className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-[10px] font-bold text-slate-700 cursor-pointer transition-colors shadow-2xs"
+                              >
+                                Replace QR
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, qr_code_image: "" })}
+                                className="px-2.5 py-1 bg-white border border-red-200 hover:bg-red-50 text-red-600 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          {/* Upload QR File */}
+                          <label
+                            htmlFor="qr-file-upload"
+                            className="flex-1 border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-3 flex items-center gap-3 bg-slate-50/50 hover:bg-blue-50/20 cursor-pointer transition-colors group"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 group-hover:text-blue-600 shadow-2xs shrink-0">
+                              <Upload className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-800">Upload QR Image</p>
+                              <p className="text-[10px] text-slate-400">PNG, JPG or scanner screenshot</p>
+                            </div>
+                          </label>
+
+                          {/* Auto-generate from UPI */}
+                          <button
+                            type="button"
+                            onClick={handleAutoGenerateQr}
+                            className="h-14 px-3 border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-colors shrink-0"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Auto-Generate QR</span>
+                          </button>
+                        </div>
+                      )}
+
+                      <input
+                        type="file"
+                        id="qr-file-upload"
+                        accept="image/*"
+                        onChange={handleQrUpload}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 3: INVOICE & BILL */}
+          {/* TAB 2: INVOICE & BILL */}
           {/* ========================================================================= */}
           {activeTab === "Invoice & Bill" && (
             <div className="space-y-3.5 animate-in fade-in duration-100">
               {/* Invoice Title */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Tax Invoice Title</label>
-                <div className="max-w-md">
+                <div className="max-w-md w-full">
                   <input
                     type="text"
                     value={formData.invoice_title}
@@ -1655,9 +1629,9 @@ export default function SettingsPage() {
               </div>
 
               {/* Delivery Challan Title */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Delivery Challan Title</label>
-                <div className="max-w-md">
+                <div className="max-w-md w-full">
                   <input
                     type="text"
                     value={formData.challan_title}
@@ -1668,9 +1642,9 @@ export default function SettingsPage() {
               </div>
 
               {/* Numbering Prefix Series */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Invoice Series & No.</label>
-                <div className="max-w-md flex items-center gap-2">
+                <div className="max-w-md w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <input
                     type="text"
                     value={formData.invoice_prefix}
@@ -1683,15 +1657,15 @@ export default function SettingsPage() {
                     value={formData.next_invoice_no}
                     onChange={(e) => setFormData({ ...formData, next_invoice_no: e.target.value })}
                     placeholder="Next: 101"
-                    className="w-28 h-9 px-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    className="w-full sm:w-28 h-9 px-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                   />
                 </div>
               </div>
 
               {/* Challan Prefix Series */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Challan Series & No.</label>
-                <div className="max-w-md flex items-center gap-2">
+                <div className="max-w-md w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <input
                     type="text"
                     value={formData.challan_prefix}
@@ -1704,15 +1678,15 @@ export default function SettingsPage() {
                     value={formData.next_challan_no}
                     onChange={(e) => setFormData({ ...formData, next_challan_no: e.target.value })}
                     placeholder="Next: 101"
-                    className="w-28 h-9 px-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    className="w-full sm:w-28 h-9 px-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                   />
                 </div>
               </div>
 
               {/* HSN / SAC Code */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">HSN / SAC Code</label>
-                <div className="max-w-md">
+                <div className="max-w-md w-full">
                   <input
                     type="text"
                     value={formData.hsn_sac_code}
@@ -1724,9 +1698,9 @@ export default function SettingsPage() {
               </div>
 
               {/* GST Tax Rate */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Default GST Rate (%)</label>
-                <div className="max-w-md relative" ref={gstRef}>
+                <div className="max-w-md w-full relative" ref={gstRef}>
                   <button
                     type="button"
                     onClick={() => setIsGstOpen(!isGstOpen)}
@@ -1769,9 +1743,9 @@ export default function SettingsPage() {
               </div>
 
               {/* Payment Terms */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Default Payment Terms</label>
-                <div className="max-w-md relative" ref={termsRef}>
+                <div className="max-w-md w-full relative" ref={termsRef}>
                   <button
                     type="button"
                     onClick={() => setIsTermsOpen(!isTermsOpen)}
@@ -1814,9 +1788,9 @@ export default function SettingsPage() {
               </div>
 
               {/* Authorized Signatory Label */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Authorized Signatory</label>
-                <div className="max-w-md">
+                <div className="max-w-md w-full">
                   <input
                     type="text"
                     value={formData.signatory_label}
@@ -1827,15 +1801,15 @@ export default function SettingsPage() {
               </div>
 
               {/* Print QR Code Checkbox */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">QR Code on Invoices</label>
-                <div className="max-w-md flex items-center gap-2">
+                <div className="max-w-md w-full flex items-center gap-2">
                   <input
                     type="checkbox"
                     id="print_qr_toggle"
                     checked={formData.print_qr}
                     onChange={(e) => setFormData({ ...formData, print_qr: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer shrink-0"
                   />
                   <label htmlFor="print_qr_toggle" className="text-xs font-medium text-slate-800 cursor-pointer select-none">
                     Print Bank UPI QR Code automatically on bottom of invoices
@@ -1844,14 +1818,14 @@ export default function SettingsPage() {
               </div>
 
               {/* Terms and Conditions Textarea */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-start text-xs pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start text-xs pt-1">
                 <label className="font-bold text-slate-600 pt-1.5">Terms & Conditions</label>
-                <div className="max-w-md">
+                <div className="max-w-md w-full">
                   <textarea
                     rows={3}
                     value={formData.terms_conditions}
                     onChange={(e) => setFormData({ ...formData, terms_conditions: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs resize-y"
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs resize-y min-h-[70px]"
                   />
                 </div>
               </div>
@@ -1859,37 +1833,14 @@ export default function SettingsPage() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 4: LOGIN & PASSWORD */}
+          {/* TAB 3: LOGIN & PASSWORD (Direct clean inputs without top banner) */}
           {/* ========================================================================= */}
           {activeTab === "Login & Password" && (
             <div className="space-y-4 animate-in fade-in duration-100">
-              {/* Prominent Active Login ID Banner */}
-              <div className="p-4 bg-gradient-to-r from-blue-50/90 to-indigo-50/80 border border-blue-200/90 rounded-2xl flex items-start gap-3.5 shadow-2xs">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <KeyRound className="w-4 h-4" />
-                </div>
-                <div className="space-y-1 w-full">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-blue-900 uppercase tracking-wider">
-                      Current Active Login ID / Username
-                    </span>
-                    <span className="px-2 py-0.5 text-[10px] font-extrabold bg-blue-600 text-white rounded-full uppercase tracking-wider">
-                      ACTIVE USER
-                    </span>
-                  </div>
-                  <div className="text-sm font-black text-slate-900 font-mono tracking-tight bg-white/80 border border-blue-200/70 px-2.5 py-1 rounded-lg w-fit mt-0.5">
-                    {authData.username || "owner@shivcreation.com"}
-                  </div>
-                  <p className="text-[11px] text-blue-800/90 leading-relaxed font-medium pt-0.5">
-                    આ તમારું અધિકૃત Login ID છે. Login પેજ પર આ જ User ID અને પાસવર્ડ દાખલ કરવો. જો તમે નીચેથી User ID બદલીને Save કરશો તો સોફ્ટવેરમાં તે નવા User ID થી જ Login થશે.
-                  </p>
-                </div>
-              </div>
-
               {/* User ID */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Login User ID / Username *</label>
-                <div className="max-w-md">
+                <div className="max-w-md w-full">
                   <input
                     type="text"
                     value={authData.username}
@@ -1905,9 +1856,9 @@ export default function SettingsPage() {
               </div>
 
               {/* Display Name */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Display Name</label>
-                <div className="max-w-md">
+                <div className="max-w-md w-full">
                   <input
                     type="text"
                     value={authData.name}
@@ -1930,9 +1881,9 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Current Password */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                   <label className="font-bold text-slate-600">Current Password</label>
-                  <div className="max-w-md relative">
+                  <div className="max-w-md w-full relative">
                     <input
                       type={showCurrentPassword ? "text" : "password"}
                       value={authData.currentPassword}
@@ -1951,9 +1902,9 @@ export default function SettingsPage() {
                 </div>
 
                 {/* New Password */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                   <label className="font-bold text-slate-600">New Password</label>
-                  <div className="max-w-md relative">
+                  <div className="max-w-md w-full relative">
                     <input
                       type={showNewPassword ? "text" : "password"}
                       value={authData.newPassword}
@@ -1972,9 +1923,9 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Confirm New Password */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5 items-center text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
                   <label className="font-bold text-slate-600">Confirm Password</label>
-                  <div className="max-w-md relative">
+                  <div className="max-w-md w-full relative">
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       value={authData.confirmPassword}
@@ -2018,7 +1969,7 @@ export default function SettingsPage() {
                   type="button"
                   disabled={isExportingExcel}
                   onClick={handleExportExcelBackup}
-                  className="shrink-0 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-xs active:scale-95 disabled:opacity-60"
+                  className="w-full sm:w-auto justify-center shrink-0 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-xs active:scale-95 disabled:opacity-60"
                 >
                   <Download className={`w-3.5 h-3.5 ${isExportingExcel ? "animate-bounce" : ""}`} />
                   <span>{isExportingExcel ? "Exporting Excel..." : "Download Excel Backup"}</span>
@@ -2026,7 +1977,7 @@ export default function SettingsPage() {
               </div>
 
               {/* 2. Clear Temporary Cache Card */}
-              <div className="border border-slate-200 rounded-2xl p-5 bg-white shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 bg-white shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3.5">
                   <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
                     <RefreshCw className="w-5 h-5" />
@@ -2043,7 +1994,7 @@ export default function SettingsPage() {
                   type="button"
                   disabled={isClearingCache}
                   onClick={handleClearCache}
-                  className="shrink-0 px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="w-full sm:w-auto justify-center shrink-0 px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isClearingCache ? "animate-spin" : ""}`} />
                   <span>{isClearingCache ? "Cleaning..." : "Clear Cache Now"}</span>
@@ -2051,7 +2002,7 @@ export default function SettingsPage() {
               </div>
 
               {/* 3. Erase All Data (Factory Reset) Card */}
-              <div className="border border-red-200 bg-red-50/20 rounded-2xl p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="border border-red-200 bg-red-50/20 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3.5">
                   <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100">
                     <AlertTriangle className="w-5 h-5" />
@@ -2070,7 +2021,7 @@ export default function SettingsPage() {
                     setEraseConfirmInput("");
                     setIsEraseModalOpen(true);
                   }}
-                  className="shrink-0 px-4 py-2.5 bg-red-600 text-white hover:bg-red-700 font-extrabold text-xs rounded-xl transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
+                  className="w-full sm:w-auto justify-center shrink-0 px-4 py-2.5 bg-red-600 text-white hover:bg-red-700 font-extrabold text-xs rounded-xl transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Erase All Data</span>
