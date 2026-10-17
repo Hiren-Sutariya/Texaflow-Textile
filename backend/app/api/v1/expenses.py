@@ -63,7 +63,6 @@ def get_expenses(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    renumber_all_expenses(db, company_id)
     query = db.query(Expense).filter(Expense.company_id == company_id)
 
     if category and category != "All":

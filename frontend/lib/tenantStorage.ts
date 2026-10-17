@@ -180,43 +180,79 @@ export function getTenantStorageKey(baseKey: string, companyId?: string): string
 
 export function getTenantItem<T>(baseKey: string, legacyKey?: string): T | null {
   if (typeof window === "undefined") return null;
-  const cid = getStoredCompanyId();
-  const key = `${baseKey}_${cid}`;
-  try {
-    const item = localStorage.getItem(key);
-    if (item !== null) {
-      try {
-        return JSON.parse(item);
-      } catch {
-        return item as unknown as T;
-      }
-    }
-    // Backward compatibility for Om Sai (comp-002) only
-    if (cid === "comp-002" && legacyKey) {
-      const legacy = localStorage.getItem(legacyKey);
-      if (legacy !== null) {
+  const cid = getStoredCompanyId() || "comp-001";
+  const primaryKey = `${baseKey}_${cid}`;
+
+  const tryKeys = [
+    primaryKey,
+    baseKey,
+    legacyKey,
+    `${baseKey}_comp-001`,
+    `${baseKey}_comp-002`
+  ].filter(Boolean) as string[];
+
+  for (const k of tryKeys) {
+    try {
+      const item = localStorage.getItem(k) || sessionStorage.getItem(k);
+      if (item !== null && item !== "" && item !== "undefined" && item !== "null") {
+        let parsed: any;
         try {
-          return JSON.parse(legacy);
+          parsed = JSON.parse(item);
         } catch {
-          return legacy as unknown as T;
+          parsed = item;
+        }
+
+        if (Array.isArray(parsed)) {
+          // If array has items, make sure it has data
+          if (parsed.length > 0) {
+            // Check if items have company_id
+            const hasCompanyId = parsed.some((x: any) => x && typeof x === "object" && x.company_id);
+            if (hasCompanyId) {
+              const matched = parsed.filter((x: any) => !x.company_id || x.company_id === cid);
+              if (matched.length > 0) {
+                // Cache into primaryKey for instant 0ms access next time
+                try {
+                  localStorage.setItem(primaryKey, JSON.stringify(matched));
+                } catch {}
+                return matched as unknown as T;
+              }
+            } else {
+              // Untagged array - return as is and cache to primaryKey
+              try {
+                localStorage.setItem(primaryKey, JSON.stringify(parsed));
+              } catch {}
+              return parsed as unknown as T;
+            }
+          }
+        } else if (parsed && typeof parsed === "object") {
+          return parsed as unknown as T;
+        } else if (parsed !== null && parsed !== undefined) {
+          return parsed as unknown as T;
         }
       }
+    } catch (e) {
+      // Continue to next fallback key
     }
-  } catch (e) {
-    console.error(`Error reading tenant item for key: ${key}`, e);
   }
+
   return null;
 }
 
 export function setTenantItem<T>(baseKey: string, value: T, legacyKey?: string): void {
   if (typeof window === "undefined") return;
-  const cid = getStoredCompanyId();
+  const cid = getStoredCompanyId() || "comp-001";
   const key = `${baseKey}_${cid}`;
   try {
     const serialized = JSON.stringify(value);
     localStorage.setItem(key, serialized);
-    if (cid === "comp-002" && legacyKey) {
-      localStorage.setItem(legacyKey, serialized);
+    // Also save under baseKey for quick fallback if single-tenant/offline
+    try {
+      localStorage.setItem(baseKey, serialized);
+    } catch {}
+    if (legacyKey) {
+      try {
+        localStorage.setItem(legacyKey, serialized);
+      } catch {}
     }
   } catch (e) {
     console.error(`Error saving tenant item for key: ${key}`, e);

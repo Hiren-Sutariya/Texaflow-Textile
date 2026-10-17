@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getCachedApi } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { useLanguage } from "@/context/LanguageContext";
 import {
@@ -81,13 +81,16 @@ export default function PaymentsAndVouchersPage() {
   const [vouchers, setVouchers] = useState<PaymentVoucherItem[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const currentCid = getStoredCompanyId();
-        const saved = getTenantItem<PaymentVoucherItem[]>(
-          "texaflow_vouchers",
-          currentCid === "comp-001" ? "om_sai_vouchers" : undefined
-        );
-        if (Array.isArray(saved)) {
-          return saved.filter((p: any) => (p.company_id || "comp-001") === currentCid);
+        const currentCid = getStoredCompanyId() || "comp-001";
+        const apiCached = getCachedApi<PaymentVoucherItem[]>("/payments");
+        if (Array.isArray(apiCached) && apiCached.length > 0) {
+          const scoped = apiCached.filter((p: any) => (p.company_id || currentCid) === currentCid);
+          if (scoped.length > 0) return scoped;
+        }
+        const saved = getTenantItem<PaymentVoucherItem[]>("texaflow_vouchers", "om_sai_vouchers");
+        if (Array.isArray(saved) && saved.length > 0) {
+          const scoped = saved.filter((p: any) => (p.company_id || currentCid) === currentCid);
+          if (scoped.length > 0) return scoped;
         }
       } catch {}
     }
@@ -114,59 +117,53 @@ export default function PaymentsAndVouchersPage() {
   useEffect(() => {
     setHasMounted(true);
     let isMounted = true;
+    const currentCid = getStoredCompanyId() || "comp-001";
+
+    // Instant 0ms Sync Check on mount
+    try {
+      const immediate = getCachedApi<PaymentVoucherItem[]>("/payments") || 
+        getTenantItem<PaymentVoucherItem[]>("texaflow_vouchers", "om_sai_vouchers");
+      if (immediate && Array.isArray(immediate) && immediate.length > 0) {
+        const scoped = immediate.filter((p: any) => (p.company_id || currentCid) === currentCid);
+        if (scoped.length > 0) {
+          setVouchers(scoped);
+        }
+      }
+    } catch {}
+
     const loadVouchers = async () => {
-      const currentCid = getStoredCompanyId();
       try {
         const live = await fetchApi<any[]>("/payments");
         if (!isMounted) return;
-        if (Array.isArray(live)) {
-          const scoped = live.filter((p: any) => (p.company_id || "comp-001") === currentCid);
+        if (Array.isArray(live) && live.length > 0) {
+          const scoped = live.filter((p: any) => (p.company_id || currentCid) === currentCid);
           const mapped: PaymentVoucherItem[] = scoped.map((p) => ({
             id: p.id,
             voucher_no: p.voucher_no,
             date: p.date,
             party_name: p.party_name,
-            paying_company: currentCid === "comp-001" ? "Om Sai Fabrics (Main Account)" : "Main Factory Account",
+            paying_company: currentCid === "comp-001" ? "Shiv Creation" : "Om Sai Enterprise",
             type: (p.voucher_type as any) || "Payment Out",
             linked_source: "Job Work / Purchase" as any,
             amount: Number(p.amount) || 0,
             mode: p.payment_mode || "Bank Transfer",
             ref_no: p.reference_no || "-",
             bank_details: p.bank_account || "Main Bank A/c",
-            notes: p.remarks || ""
+            notes: p.remarks || "",
+            company_id: p.company_id || currentCid
           }));
-          setVouchers(mapped);
-          try {
-            setTenantItem(
-              "texaflow_vouchers",
-              mapped,
-              currentCid === "comp-001" ? "om_sai_vouchers" : undefined
-            );
-          } catch {}
-          setIsLoading(false);
-          return;
+          if (mapped.length > 0) {
+            setVouchers(mapped);
+            try {
+              setTenantItem("texaflow_vouchers", mapped, "om_sai_vouchers");
+            } catch {}
+          }
         }
       } catch (err) {
-        console.warn("Backend payments load fallback to localStorage", err);
+        console.warn("Backend payments load notice (using instant cached data):", err);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
-
-      if (!isMounted) return;
-      try {
-        const saved = getTenantItem<PaymentVoucherItem[]>(
-          "texaflow_vouchers",
-          currentCid === "comp-001" ? "om_sai_vouchers" : undefined
-        );
-        if (saved && Array.isArray(saved)) {
-          const scoped = saved.filter((p: any) => (p.company_id || "comp-001") === currentCid);
-          setVouchers(scoped);
-          setIsLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error(err);
-      }
-      setVouchers([]);
-      setIsLoading(false);
     };
     loadVouchers();
     const handleRefresh = () => {

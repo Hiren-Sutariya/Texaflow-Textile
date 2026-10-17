@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getCachedApi } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import {
   Plus,
@@ -294,14 +294,18 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const currentCid = getStoredCompanyId();
-        const saved = getTenantItem<ExpenseItem[]>(
-          "texaflow_expenses",
-          currentCid === "comp-002" ? "om_sai_expenses" : undefined
-        );
+        const currentCid = getStoredCompanyId() || "comp-001";
+        // Check API memory/localStorage cache first (0 ms)
+        const apiCached = getCachedApi<ExpenseItem[]>("/expenses");
+        if (Array.isArray(apiCached) && apiCached.length > 0) {
+          const scoped = apiCached.filter((item: any) => (item.company_id || currentCid) === currentCid);
+          if (scoped.length > 0) return normalizeAndRenumberExpenses(scoped);
+        }
+        // Check tenant storage (0 ms)
+        const saved = getTenantItem<ExpenseItem[]>("texaflow_expenses", "om_sai_expenses");
         if (Array.isArray(saved) && saved.length > 0) {
-          const scoped = saved.filter((item: any) => (item.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001")) === currentCid);
-          return normalizeAndRenumberExpenses(scoped);
+          const scoped = saved.filter((item: any) => (item.company_id || currentCid) === currentCid);
+          if (scoped.length > 0) return normalizeAndRenumberExpenses(scoped);
         }
       } catch {}
     }
@@ -354,49 +358,40 @@ export default function ExpensesPage() {
   useEffect(() => {
     setHasMounted(true);
     let isMounted = true;
+    const currentCid = getStoredCompanyId() || "comp-001";
+
+    // Instant 0ms Sync Check on mount
+    try {
+      const immediate = getCachedApi<ExpenseItem[]>("/expenses") || 
+        getTenantItem<ExpenseItem[]>("texaflow_expenses", "om_sai_expenses");
+      if (immediate && Array.isArray(immediate) && immediate.length > 0) {
+        const scoped = immediate.filter((item: any) => (item.company_id || currentCid) === currentCid);
+        if (scoped.length > 0) {
+          setExpenses(normalizeAndRenumberExpenses(scoped));
+        }
+      }
+    } catch {}
 
     async function loadLiveExpenses() {
-      const currentCid = getStoredCompanyId();
       try {
         const live = await fetchApi<ExpenseItem[]>("/expenses");
-        if (isMounted && Array.isArray(live)) {
-          // Strict multi-tenant guard: only show expenses belonging to this company!
+        if (isMounted && Array.isArray(live) && live.length > 0) {
           const scoped = live.filter((item: any) => {
             const itemCid = item.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001");
             return itemCid === currentCid;
           });
-          const cleanList = normalizeAndRenumberExpenses(scoped);
-          setExpenses(cleanList);
-          try {
-            setTenantItem("texaflow_expenses", cleanList, currentCid === "comp-002" ? "om_sai_expenses" : undefined);
-          } catch {}
-          setIsLoading(false);
-          return;
+          if (scoped.length > 0) {
+            const cleanList = normalizeAndRenumberExpenses(scoped);
+            setExpenses(cleanList);
+            try {
+              setTenantItem("texaflow_expenses", cleanList, "om_sai_expenses");
+            } catch {}
+          }
         }
       } catch (err) {
-        console.warn("Backend not running or offline, loading local cache:", err);
-      }
-
-      // Fallback to local storage if API unreachable or empty
-      try {
-        const saved = getTenantItem<ExpenseItem[]>(
-          "texaflow_expenses",
-          currentCid === "comp-002" ? "om_sai_expenses" : undefined
-        );
-        if (saved && isMounted && Array.isArray(saved) && saved.length > 0) {
-          const scoped = saved.filter((item: any) => (item.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001")) === currentCid);
-          const cleanList = normalizeAndRenumberExpenses(scoped);
-          setExpenses(cleanList);
-          setIsLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error("Local storage fallback error:", err);
-      }
-
-      if (isMounted) {
-        setExpenses([]);
-        setIsLoading(false);
+        console.warn("Backend load notice (using instant cached data):", err);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     }
 
