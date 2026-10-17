@@ -94,10 +94,26 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       } else {
         if (originalNodeMap.has(node)) {
           const original = originalNodeMap.get(node);
+          originalNodeMap.delete(node);
           if (original !== undefined) {
+            const trimmedOrig = original.trim();
+            const enFromOrig = getTranslation(trimmedOrig, "en", "");
+            if (enFromOrig && enFromOrig !== trimmedOrig) {
+              const leading = original.match(/^\s*/)?.[0] || "";
+              const trailing = original.match(/\s*$/)?.[0] || "";
+              node.textContent = leading + enFromOrig + trailing;
+              return;
+            }
             node.textContent = original;
-            originalNodeMap.delete(node);
+            return;
           }
+        }
+        // Bidirectional fallback: translate Gujarati text back to English
+        const enMatch = getTranslation(trimmed, "en", "");
+        if (enMatch && enMatch !== trimmed) {
+          const leading = text.match(/^\s*/)?.[0] || "";
+          const trailing = text.match(/\s*$/)?.[0] || "";
+          node.textContent = leading + enMatch + trailing;
         }
       }
     };
@@ -145,6 +161,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
             if (attrs?.placeholder) {
               input.setAttribute("placeholder", attrs.placeholder);
               delete attrs.placeholder;
+            } else {
+              const enPh = getTranslation(trimmedPh, "en", "");
+              if (enPh && enPh !== trimmedPh) {
+                input.setAttribute("placeholder", enPh);
+              }
             }
           }
         }
@@ -180,6 +201,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
             if (attrs?.title) {
               elem.setAttribute("title", attrs.title);
               delete attrs.title;
+            } else {
+              const enT = getTranslation(trimmedT, "en", "");
+              if (enT && enT !== trimmedT) {
+                elem.setAttribute("title", enT);
+              }
             }
           }
         }
@@ -209,19 +235,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // If English, do a single revert pass if needed and exit (0ms overhead)
-    if (language === "en") {
-      isUpdatingDom = true;
-      try {
-        const target = document.querySelector("main") || document.body;
-        translateSubtree(target);
-      } finally {
-        isUpdatingDom = false;
-      }
-      return;
-    }
-
-    // Pass for Gujarati
+    // Universal Translation/Reversion pass on the ENTIRE document (including Sidebar, Navbar, and BottomBar)
     isUpdatingDom = true;
     try {
       translateSubtree(document.body);

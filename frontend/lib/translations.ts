@@ -21,12 +21,23 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "Upcoming": { en: "Upcoming", gu: "ટૂંક સમયમાં" },
   "UPCOMING": { en: "UPCOMING", gu: "ટૂંક સમયમાં" },
   "Create new service": { en: "Create new service", gu: "+ નવું સર્વિસ / એન્ટ્રી" },
+  "+ Create new service": { en: "Create new service", gu: "+ નવું સર્વિસ / એન્ટ્રી" },
   "Synced": { en: "Synced", gu: "ડેટા સિંક" },
+  "Data Synced": { en: "Data Synced", gu: "ડેટા સિંક થયેલ છે" },
   "Proprietor & Director": { en: "Proprietor & Director", gu: "પ્રોપ્રાઇટર અને ડિરેક્ટર" },
+  "Proprietor and Director": { en: "Proprietor & Director", gu: "પ્રોપ્રાઇટર અને ડિરેક્ટર" },
+  "Factory Manager": { en: "Factory Manager", gu: "ફેક્ટરી મેનેજર" },
+  "Accounts Officer": { en: "Accounts Officer", gu: "એકાઉન્ટ્સ ઓફિસર" },
+  "Owner Account": { en: "Owner Account", gu: "ઓનર એકાઉન્ટ" },
+  "Owner": { en: "Owner", gu: "ઓનર (માલિક)" },
+  "Admin": { en: "Admin", gu: "એડમિન" },
   "Unit 1": { en: "Unit 1", gu: "યુનિટ ૧" },
   "Unit 2": { en: "Unit 2", gu: "યુનિટ ૨" },
   "Factory Floor": { en: "Factory Floor", gu: "ફેક્ટરી ફ્લોર" },
   "Log Out": { en: "Log Out", gu: "લોગ આઉટ" },
+  "Logout": { en: "Log Out", gu: "લોગ આઉટ" },
+  "Close Sidebar": { en: "Close Sidebar", gu: "સાઇડબાર બંધ કરો" },
+  "Return to Main Dashboard": { en: "Return to Main Dashboard", gu: "મુખ્ય ડેશબોર્ડ પર પાછા જાઓ" },
 
   // Quick Action Options
   "Company Expense": { en: "Company Expense", gu: "કંપની ખર્ચ" },
@@ -742,14 +753,63 @@ export function transliterateGujlishSentence(sentence: string): string {
  * Cleanly lookup a translation, supporting:
  * 1. Exact match
  * 2. Case-insensitive match
+ */
+
+// Reverse Lookup Table: Gujarati -> English
+export const guToEnMap: Record<string, string> = {};
+for (const [enKey, val] of Object.entries(translations)) {
+  if (val && typeof val === "object") {
+    if (val.gu && typeof val.gu === "string") {
+      const cleanGu = val.gu.trim().toLowerCase();
+      if (cleanGu && !guToEnMap[cleanGu]) {
+        guToEnMap[cleanGu] = val.en || enKey;
+      }
+      // Also register without prefix symbols like '+', '-', '•'
+      const strippedPrefix = cleanGu.replace(/^[+\-•\s]+/, "").trim();
+      if (strippedPrefix && !guToEnMap[strippedPrefix]) {
+        guToEnMap[strippedPrefix] = (val.en || enKey).replace(/^[+\-•\s]+/, "").trim();
+      }
+    }
+  }
+}
+
+/**
+ * Enhanced Universal Translation Engine:
+ * 1. Bidirectional English <-> Gujarati dictionary lookup
+ * 2. Case-insensitive normalization
  * 3. Stripping and re-attaching trailing '*', ':', or whitespace
  * 4. Transliterating phonetic Gujlish sentences in remarks/notes
  */
 export function getTranslation(key: string, lang: Language, fallback?: string): string {
-  if (lang === "en") return fallback || key;
   if (!key) return fallback || key;
 
   const trimmed = key.trim();
+
+  // Handle English: If key is in Gujarati, convert it back to English
+  if (lang === "en") {
+    const lowerKey = trimmed.toLowerCase();
+    if (guToEnMap[lowerKey]) {
+      return guToEnMap[lowerKey];
+    }
+    // Check without prefix like "+ " or "• "
+    const cleanLower = lowerKey.replace(/^[+\-•\s]+/, "").trim();
+    if (guToEnMap[cleanLower]) {
+      return guToEnMap[cleanLower];
+    }
+    const trailingPunctuationMatch = trimmed.match(/(\s*[\*:]+\s*)$/);
+    if (trailingPunctuationMatch) {
+      const punctuation = trailingPunctuationMatch[0];
+      const core = trimmed.slice(0, trimmed.length - punctuation.length).trim().toLowerCase();
+      if (guToEnMap[core]) {
+        return guToEnMap[core] + punctuation.trim();
+      }
+      const coreClean = core.replace(/^[+\-•\s]+/, "").trim();
+      if (guToEnMap[coreClean]) {
+        return guToEnMap[coreClean] + punctuation.trim();
+      }
+    }
+    return fallback || key;
+  }
   const directMatch = translations[trimmed];
   if (directMatch?.gu) return directMatch.gu;
 
