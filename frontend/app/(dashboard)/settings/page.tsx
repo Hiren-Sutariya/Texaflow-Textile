@@ -1236,16 +1236,38 @@ export default function SettingsPage() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 1: COMPANY (MERGED PROFILE, ADDRESS, BANK & STATUTORY DETAILS) */}
+          {/* TAB 1: COMPANY (REDESIGNED 2-SECTION MODERN GRID) */}
           {/* ========================================================================= */}
           {activeTab === "Company" && (
-            <div className="space-y-6 animate-in fade-in duration-100">
-              {/* SECTION A: COMPANY PROFILE & ADDRESS */}
-              <div className="space-y-3.5">
-                {/* Company Legal Name */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Company Legal Name *</label>
-                  <div className="max-w-md w-full">
+            <div className="space-y-5 animate-in fade-in duration-100">
+              {/* CARD 1: COMPANY PROFILE & ADDRESS */}
+              <div className="bg-slate-50/60 border border-slate-200/90 rounded-2xl p-4 sm:p-5 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                        Company Profile & Location
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        તમારી પેઢીનું અધિકૃત નામ, સંપર્ક નંબર અને સરનામું
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                    સામાન્ય વિગતો
+                  </span>
+                </div>
+
+                {/* 2-Column Responsive Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+                  {/* Company Legal Name */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Company Legal Name <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       value={formData.company_name}
@@ -1255,26 +1277,26 @@ export default function SettingsPage() {
                       required
                     />
                   </div>
-                </div>
 
-                {/* Brand Name / Short Code */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Brand / Short Name</label>
-                  <div className="max-w-md w-full">
+                  {/* Brand Name / Short Code */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Brand / Short Name
+                    </label>
                     <input
                       type="text"
                       value={formData.brand_name}
                       onChange={(e) => setFormData({ ...formData, brand_name: e.target.value.toUpperCase() })}
-                      placeholder="e.g. BRAND NAME"
+                      placeholder="e.g. SHIV CREATION"
                       className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
                     />
                   </div>
-                </div>
 
-                {/* Tagline / Subtitle */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Tagline / Subtitle</label>
-                  <div className="max-w-md w-full">
+                  {/* Tagline / Subtitle */}
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Tagline / Subtitle
+                    </label>
                     <input
                       type="text"
                       value={formData.tagline}
@@ -1283,12 +1305,12 @@ export default function SettingsPage() {
                       className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                     />
                   </div>
-                </div>
 
-                {/* Phone / Mobile */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Primary Mobile *</label>
-                  <div className="max-w-md w-full">
+                  {/* Phone / Mobile */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Primary Mobile <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       value={formData.phone}
@@ -1298,12 +1320,12 @@ export default function SettingsPage() {
                       required
                     />
                   </div>
-                </div>
 
-                {/* Email Address */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Billing / Office Email</label>
-                  <div className="max-w-md w-full">
+                  {/* Email Address */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Billing / Office Email
+                    </label>
                     <input
                       type="email"
                       value={formData.email}
@@ -1312,48 +1334,55 @@ export default function SettingsPage() {
                       className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                     />
                   </div>
-                </div>
 
-                {/* Factory Address */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Factory Address *</label>
-                  <div className="max-w-md w-full">
+                  {/* Factory Address */}
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Factory Address <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Plot No. 104-106, GIDC Khatodara / Kadodara"
+                      placeholder="Plot No. 104-106, GIDC Khatodara Industrial Estate"
                       className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                       required
                     />
                   </div>
-                </div>
 
-                {/* City & State / PIN */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">City, State & PIN</label>
-                  <div className="max-w-md w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  {/* City & State */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      City & State
+                    </label>
                     <input
                       type="text"
                       value={formData.city_state}
                       onChange={(e) => setFormData({ ...formData, city_state: e.target.value })}
                       placeholder="Surat, Gujarat"
-                      className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                     />
+                  </div>
+
+                  {/* PIN Code */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      PIN Code
+                    </label>
                     <input
                       type="text"
                       value={formData.pincode}
                       onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-                      placeholder="PIN Code"
-                      className="w-full sm:w-28 h-9 px-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      placeholder="395002"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                     />
                   </div>
-                </div>
 
-                {/* MSME Udyam Registration */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">MSME Udyam Reg. No.</label>
-                  <div className="max-w-md w-full">
+                  {/* MSME Udyam Registration */}
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700">
+                      MSME Udyam Reg. No.
+                    </label>
                     <input
                       type="text"
                       value={formData.msme_no}
@@ -1365,92 +1394,107 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* SECTION B: BANK & STATUTORY (GST) DETAILS */}
-              <div className="pt-4 border-t border-slate-200">
-                <div className="flex items-center gap-2 pb-3">
-                  <span className="text-xs font-black text-slate-800 tracking-wide uppercase flex items-center gap-1.5">
-                    <Landmark className="w-3.5 h-3.5 text-blue-600" />
-                    Bank & Statutory (GST) Details
+              {/* CARD 2: BANK & STATUTORY (GST) DETAILS */}
+              <div className="bg-slate-50/60 border border-slate-200/90 rounded-2xl p-4 sm:p-5 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <Landmark className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                        Bank & Statutory (GST) Details
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        ટેક્સ નંબર (GST/PAN), બેંક ખાતું અને ઇન્વોઇસ QR કોડ
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    ટેક્સ અને પેમેન્ટ
                   </span>
                 </div>
 
-                <div className="space-y-3.5">
+                {/* 2-Column Responsive Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
                   {/* GSTIN */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">GSTIN Number (15 Digits)</label>
-                    <div className="max-w-md w-full">
-                      <input
-                        type="text"
-                        maxLength={15}
-                        value={formData.gstin}
-                        onChange={(e) => setFormData({ ...formData, gstin: e.target.value.toUpperCase() })}
-                        placeholder="24AAAFA1234A1Z5"
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                      />
-                    </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      GSTIN Number (15 Digits)
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={15}
+                      value={formData.gstin}
+                      onChange={(e) => setFormData({ ...formData, gstin: e.target.value.toUpperCase() })}
+                      placeholder="24AAAFA1234A1Z5"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
+                    />
                   </div>
 
                   {/* PAN */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">PAN Number</label>
-                    <div className="max-w-md w-full">
-                      <input
-                        type="text"
-                        maxLength={10}
-                        value={formData.pan}
-                        onChange={(e) => setFormData({ ...formData, pan: e.target.value.toUpperCase() })}
-                        placeholder="AAAFA1234A"
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                      />
-                    </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      PAN Number
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={10}
+                      value={formData.pan}
+                      onChange={(e) => setFormData({ ...formData, pan: e.target.value.toUpperCase() })}
+                      placeholder="AAAFA1234A"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
+                    />
                   </div>
 
                   {/* Bank Name */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">Primary Bank Name</label>
-                    <div className="max-w-md w-full">
-                      <input
-                        type="text"
-                        value={formData.bank_name}
-                        onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                        placeholder="HDFC Bank Ltd"
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      />
-                    </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Primary Bank Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.bank_name}
+                      onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                      placeholder="State Bank of India / HDFC Bank"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    />
                   </div>
 
                   {/* Account Holder Name */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">Account Holder Name</label>
-                    <div className="max-w-md w-full">
-                      <input
-                        type="text"
-                        value={formData.account_holder}
-                        onChange={(e) => setFormData({ ...formData, account_holder: e.target.value })}
-                        placeholder="e.g. Account Holder / Legal Firm Name"
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      />
-                    </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Account Holder Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.account_holder}
+                      onChange={(e) => setFormData({ ...formData, account_holder: e.target.value })}
+                      placeholder="e.g. Shiv Creation"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    />
                   </div>
 
-                  {/* Account Number */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">Current Account Number</label>
-                    <div className="max-w-md w-full">
-                      <input
-                        type="text"
-                        value={formData.account_no}
-                        onChange={(e) => setFormData({ ...formData, account_no: e.target.value })}
-                        placeholder="50200012345678"
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      />
-                    </div>
+                  {/* Current Account Number */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Current Account Number
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.account_no}
+                      onChange={(e) => setFormData({ ...formData, account_no: e.target.value })}
+                      placeholder="50200012345678"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    />
                   </div>
 
                   {/* Account Type */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">Account Type</label>
-                    <div className="max-w-md w-full relative" ref={accTypeRef}>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Account Type
+                    </label>
+                    <div className="relative" ref={accTypeRef}>
                       <button
                         type="button"
                         onClick={() => setIsAccTypeOpen(!isAccTypeOpen)}
@@ -1492,118 +1536,124 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* IFSC Code & Branch */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">IFSC & Branch Name</label>
-                    <div className="max-w-md w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      <input
-                        type="text"
-                        value={formData.ifsc}
-                        onChange={(e) => setFormData({ ...formData, ifsc: e.target.value.toUpperCase() })}
-                        placeholder="HDFC0000123"
-                        className="w-full sm:w-36 h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                      />
-                      <input
-                        type="text"
-                        value={formData.branch_name}
-                        onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })}
-                        placeholder="Ring Road Branch, Surat"
-                        className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      />
-                    </div>
+                  {/* IFSC Code */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      IFSC Code
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.ifsc}
+                      onChange={(e) => setFormData({ ...formData, ifsc: e.target.value.toUpperCase() })}
+                      placeholder="SBIN0001234"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
+                    />
+                  </div>
+
+                  {/* Branch Name */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Branch Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.branch_name}
+                      onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })}
+                      placeholder="Ring Road Branch, Surat"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    />
                   </div>
 
                   {/* UPI ID */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">UPI ID (VPA)</label>
-                    <div className="max-w-md w-full">
-                      <input
-                        type="text"
-                        value={formData.upi_id}
-                        onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
-                        placeholder="omsaienterprise@hdfcbank"
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      />
-                    </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700">
+                      UPI ID (VPA for QR Payments)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.upi_id}
+                      onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
+                      placeholder="omsaienterprise@hdfcbank"
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    />
                   </div>
 
-                  {/* QR Code Option for Bank Payments */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start text-xs pt-2 border-t border-slate-100">
-                    <div className="pt-1">
-                      <label className="font-bold text-slate-700 block">Bank Payment QR Code</label>
-                      <span className="text-[10px] text-slate-400">Prints on bill bottom</span>
+                  {/* Bank Payment QR Code */}
+                  <div className="space-y-2 md:col-span-2 pt-2 border-t border-slate-200/80">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Bank Payment QR Code
+                      </label>
+                      <span className="text-[10px] text-slate-400">ઇન્વોઇસ બિલના છેડે પ્રિન્ટ થશે</span>
                     </div>
-                    <div className="max-w-md w-full space-y-3">
-                      {formData.qr_code_image ? (
-                        <div className="flex flex-col sm:flex-row items-center gap-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                          <div className="w-24 h-24 bg-white p-1.5 rounded-lg border border-slate-200 shrink-0 shadow-2xs flex items-center justify-center">
-                            <img
-                              src={formData.qr_code_image}
-                              alt="Bank UPI QR Code"
-                              className="w-full h-full object-contain"
-                            />
+
+                    {formData.qr_code_image ? (
+                      <div className="flex flex-col sm:flex-row items-center gap-4 p-3.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                        <div className="w-24 h-24 bg-slate-50 p-1.5 rounded-lg border border-slate-200 shrink-0 shadow-2xs flex items-center justify-center">
+                          <img
+                            src={formData.qr_code_image}
+                            alt="Bank UPI QR Code"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="space-y-1.5 text-center sm:text-left flex-1">
+                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span>Active on Invoices</span>
                           </div>
-                          <div className="space-y-1.5 text-center sm:text-left">
-                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
-                              <Check className="w-3 h-3 text-emerald-600" />
-                              <span>Active on Invoices</span>
-                            </div>
-                            <p className="text-[11px] text-slate-600">
-                              Customers can scan this QR code on physical bill to pay directly.
-                            </p>
-                            <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
-                              <label
-                                htmlFor="qr-file-upload"
-                                className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-[10px] font-bold text-slate-700 cursor-pointer transition-colors shadow-2xs"
-                              >
-                                Replace QR
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => setFormData({ ...formData, qr_code_image: "" })}
-                                className="px-2.5 py-1 bg-white border border-red-200 hover:bg-red-50 text-red-600 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
-                              >
-                                Remove
-                              </button>
-                            </div>
+                          <p className="text-[11px] text-slate-600">
+                            ગ્રાહક આ QR કોડ સ્કેન કરીને સીધું તમારા બેંક ખાતામાં પેમેન્ટ કરી શકશે.
+                          </p>
+                          <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
+                            <label
+                              htmlFor="qr-file-upload"
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg text-[10px] font-bold text-slate-700 cursor-pointer transition-colors shadow-2xs"
+                            >
+                              Replace QR
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, qr_code_image: "" })}
+                              className="px-2.5 py-1 bg-white border border-red-200 hover:bg-red-50 text-red-600 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
+                            >
+                              Remove
+                            </button>
                           </div>
                         </div>
-                      ) : (
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                          {/* Upload QR File */}
-                          <label
-                            htmlFor="qr-file-upload"
-                            className="flex-1 border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-3 flex items-center gap-3 bg-slate-50/50 hover:bg-blue-50/20 cursor-pointer transition-colors group"
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 group-hover:text-blue-600 shadow-2xs shrink-0">
-                              <Upload className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <p className="text-xs font-bold text-slate-800">Upload QR Image</p>
-                              <p className="text-[10px] text-slate-400">PNG, JPG or scanner screenshot</p>
-                            </div>
-                          </label>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                        <label
+                          htmlFor="qr-file-upload"
+                          className="flex-1 border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-3.5 flex items-center gap-3 bg-white hover:bg-blue-50/20 cursor-pointer transition-colors group shadow-2xs"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 group-hover:text-blue-600 shadow-2xs shrink-0">
+                            <Upload className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-800">Upload QR Image</p>
+                            <p className="text-[10px] text-slate-400">PNG, JPG અથવા સ્કેનરનો સ્ક્રીનશોટ</p>
+                          </div>
+                        </label>
 
-                          {/* Auto-generate from UPI */}
-                          <button
-                            type="button"
-                            onClick={handleAutoGenerateQr}
-                            className="h-14 px-3 border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-colors shrink-0"
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                            <span>Auto-Generate QR</span>
-                          </button>
-                        </div>
-                      )}
+                        <button
+                          type="button"
+                          onClick={handleAutoGenerateQr}
+                          className="h-14 px-4 border border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-blue-700 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-colors shrink-0 shadow-2xs"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Auto-Generate QR</span>
+                        </button>
+                      </div>
+                    )}
 
-                      <input
-                        type="file"
-                        id="qr-file-upload"
-                        accept="image/*"
-                        onChange={handleQrUpload}
-                        className="hidden"
-                      />
-                    </div>
+                    <input
+                      type="file"
+                      id="qr-file-upload"
+                      accept="image/*"
+                      onChange={handleQrUpload}
+                      className="hidden"
+                    />
                   </div>
                 </div>
               </div>
