@@ -7,6 +7,7 @@ import { fetchApi } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import { VoiceTextarea } from "@/components/ui/VoiceTextarea";
+import { TEXTILE_CREDIT_TERMS, parseCreditDays, calculateDueDate, getDueStatus } from "@/lib/creditTerms";
 import {
   ArrowLeft,
   ChevronDown,
@@ -40,7 +41,8 @@ import {
   Search,
   Star,
   Trash2,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 
 interface CategoryCardItem {
@@ -50,6 +52,11 @@ interface CategoryCardItem {
 }
 
 const defaultCategories: CategoryCardItem[] = [
+  { id: "cat-raw", name: "Raw Material & Fabric", icon: Layers },
+  { id: "cat-yarn", name: "Yarn & Threads", icon: Layers },
+  { id: "cat-zari", name: "Zari & Metallic Trims", icon: Sparkles },
+  { id: "cat-lace", name: "Lace, Borders & Latkan", icon: Tag },
+  { id: "cat-choli", name: "Choli & Garment Trims", icon: Package },
   { id: "cat-1", name: "Packaging Materials", icon: Package },
   { id: "cat-2", name: "Dhaga & Consumables", icon: Layers },
   { id: "cat-3", name: "Machine Maintenance & Repairs", icon: Wrench },
@@ -75,7 +82,10 @@ const paymentModeOptions = [
   "UPI (GPay / PhonePe / Paytm)",
   "Cash",
   "Cheque",
-  "Credit (15 days)"
+  "Credit (45 days)",
+  "Credit (60 days)",
+  "Credit (90 days)",
+  "Credit (100 days)"
 ];
 
 const defaultRegisteredVendors = [
@@ -227,6 +237,44 @@ function NewExpenseVoucherForm() {
   const [remarks, setRemarks] = useState("");
   const [billImage, setBillImage] = useState("");
 
+  // Textile Credit Terms, Due Date & Order Link State
+  const [paymentTerms, setPaymentTerms] = useState<string>("Cash / Immediate");
+  const [creditDays, setCreditDays] = useState<number>(0);
+  const [dueDate, setDueDate] = useState<string>(() => getTodayStr());
+  const [linkedOrder, setLinkedOrder] = useState<string>("");
+  const [rawVendorsData, setRawVendorsData] = useState<any[]>([]);
+
+  // Automatically recalculate Due Date whenever voucherDate or creditDays change
+  useEffect(() => {
+    if (creditDays > 0) {
+      const computed = calculateDueDate(voucherDate, creditDays);
+      setDueDate(computed);
+    } else {
+      setDueDate(voucherDate);
+    }
+  }, [voucherDate, creditDays]);
+
+  // Handle vendor selection and auto-populate vendor default payment terms
+  const handleVendorSelect = (selectedName: string) => {
+    setVendorName(selectedName);
+    setIsVendorSelectOpen(false);
+
+    const matched = rawVendorsData.find((v: any) => {
+      const vName = v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim();
+      return vName.toLowerCase() === selectedName.toLowerCase();
+    });
+
+    if (matched && matched.payment_terms) {
+      const days = parseCreditDays(matched.payment_terms);
+      setCreditDays(days);
+      setPaymentTerms(matched.payment_terms);
+      if (days > 0) {
+        setPaymentStatus("Pending");
+        setPaymentMode(`Credit (${days} days)`);
+      }
+    }
+  };
+
   // Dropdown states
   const [isModeDropdownOpen, setIsModeDropdownOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -248,6 +296,7 @@ function NewExpenseVoucherForm() {
         const live = await fetchApi<any[]>("/vendors");
         if (isMounted && Array.isArray(live)) {
           const scoped = live.filter((v: any) => (v.company_id || "comp-001") === currentCid);
+          setRawVendorsData(scoped);
           const names = scoped
             .map((v: any) => v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim())
             .filter(Boolean);
@@ -266,6 +315,7 @@ function NewExpenseVoucherForm() {
         );
         if (saved && Array.isArray(saved) && saved.length > 0) {
           const scoped = saved.filter((v: any) => (v.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001")) === currentCid);
+          setRawVendorsData(scoped);
           const names = scoped
             .map((v: any) => v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim())
             .filter(Boolean);
@@ -372,6 +422,19 @@ function NewExpenseVoucherForm() {
 
       if (exp.payment_status) {
         setPaymentStatus(exp.payment_status === "Pending" || exp.payment_status === "Unpaid" ? "Pending" : "Paid");
+      }
+
+      if (exp.payment_terms) {
+        setPaymentTerms(exp.payment_terms);
+      }
+      if (exp.credit_days !== undefined && exp.credit_days !== null) {
+        setCreditDays(Number(exp.credit_days));
+      }
+      if (exp.due_date) {
+        setDueDate(exp.due_date);
+      }
+      if (exp.linked_order) {
+        setLinkedOrder(exp.linked_order);
       }
 
       const noteText = exp.notes || exp.title || "";
@@ -644,7 +707,10 @@ function NewExpenseVoucherForm() {
       })();
 
       if (isEditMode && editId) {
-        // UPDATE EXISTING EXPENSE
+        const calculatedDue = paymentStatus === "Pending"
+          ? (dueDate || calculateDueDate(formattedDate, creditDays))
+          : formattedDate;
+
         const updatedExpense = {
           id: editId,
           expense_no: editingExpenseNo || "EB-001",
@@ -655,7 +721,13 @@ function NewExpenseVoucherForm() {
           payment_status: paymentStatus,
           paid_via: paymentMode,
           notes: remarks.trim(),
-          bill_image: billImage
+          bill_image: billImage,
+          payment_terms: paymentStatus === "Pending" ? (paymentTerms || "Net 45") : "Due on Receipt",
+          credit_days: paymentStatus === "Pending" ? creditDays : 0,
+          due_date: calculatedDue,
+          linked_order: linkedOrder.trim() || undefined,
+          balance_amount: paymentStatus === "Pending" ? numericAmount : 0,
+          paid_amount: paymentStatus === "Paid" ? numericAmount : 0
         };
 
         // 1. Update Supabase via FastAPI Backend
@@ -670,7 +742,13 @@ function NewExpenseVoucherForm() {
               payment_status: updatedExpense.payment_status,
               paid_via: updatedExpense.paid_via,
               notes: updatedExpense.notes,
-              bill_image: updatedExpense.bill_image || undefined
+              bill_image: updatedExpense.bill_image || undefined,
+              payment_terms: updatedExpense.payment_terms,
+              credit_days: updatedExpense.credit_days,
+              due_date: updatedExpense.due_date,
+              linked_order: updatedExpense.linked_order,
+              balance_amount: updatedExpense.balance_amount,
+              paid_amount: updatedExpense.paid_amount
             })
           });
         } catch (apiErr) {
@@ -734,6 +812,10 @@ function NewExpenseVoucherForm() {
       const pad = String(nextNum).padStart(3, "0");
       const nextSeqNo = `EB-${pad}`;
 
+      const calculatedDue = paymentStatus === "Pending"
+        ? (dueDate || calculateDueDate(formattedDate, creditDays))
+        : formattedDate;
+
       const newExpense = {
         id: currentCid === "comp-001" ? `exp-${pad}` : `${currentCid}-exp-${pad}`,
         expense_no: nextSeqNo,
@@ -745,6 +827,12 @@ function NewExpenseVoucherForm() {
         paid_via: paymentMode,
         notes: remarks.trim(),
         bill_image: billImage,
+        payment_terms: paymentStatus === "Pending" ? (paymentTerms || "Net 45") : "Due on Receipt",
+        credit_days: paymentStatus === "Pending" ? creditDays : 0,
+        due_date: calculatedDue,
+        linked_order: linkedOrder.trim() || undefined,
+        balance_amount: paymentStatus === "Pending" ? numericAmount : 0,
+        paid_amount: paymentStatus === "Paid" ? numericAmount : 0,
         company_id: currentCid
       };
 
@@ -763,6 +851,12 @@ function NewExpenseVoucherForm() {
             paid_via: newExpense.paid_via,
             notes: newExpense.notes,
             bill_image: newExpense.bill_image || undefined,
+            payment_terms: newExpense.payment_terms,
+            credit_days: newExpense.credit_days,
+            due_date: newExpense.due_date,
+            linked_order: newExpense.linked_order,
+            balance_amount: newExpense.balance_amount,
+            paid_amount: newExpense.paid_amount,
             company_id: currentCid
           })
         });
@@ -1281,10 +1375,7 @@ function NewExpenseVoucherForm() {
                               <button
                                 key={v}
                                 type="button"
-                                onClick={() => {
-                                  setVendorName(v);
-                                  setIsVendorSelectOpen(false);
-                                }}
+                                onClick={() => handleVendorSelect(v)}
                                 className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 text-slate-800 flex items-center justify-between cursor-pointer"
                               >
                                 <span className="truncate">{v}</span>
@@ -1391,7 +1482,11 @@ function NewExpenseVoucherForm() {
             <div className="flex items-center gap-2 max-w-xl w-full">
               <button
                 type="button"
-                onClick={() => setPaymentStatus("Paid")}
+                onClick={() => {
+                  setPaymentStatus("Paid");
+                  setCreditDays(0);
+                  setPaymentTerms("Cash / Immediate");
+                }}
                 className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
                   paymentStatus === "Paid"
                     ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
@@ -1399,11 +1494,18 @@ function NewExpenseVoucherForm() {
                 }`}
               >
                 <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Paid</span>
+                <span>Paid (રોકડા / ચૂકતે)</span>
               </button>
               <button
                 type="button"
-                onClick={() => setPaymentStatus("Pending")}
+                onClick={() => {
+                  setPaymentStatus("Pending");
+                  if (creditDays === 0) {
+                    setCreditDays(45);
+                    setPaymentTerms("Net 45");
+                    setPaymentMode("Credit (45 days)");
+                  }
+                }}
                 className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
                   paymentStatus === "Pending"
                     ? "bg-amber-600 text-white border-amber-600 shadow-2xs"
@@ -1411,10 +1513,124 @@ function NewExpenseVoucherForm() {
                 }`}
               >
                 <Clock className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Pending</span>
+                <span>Pending / Credit (બાકી / શાખ)</span>
               </button>
             </div>
           </div>
+
+          {/* TEXTILE CREDIT TERMS & DUE DATE COMPONENT (મુદત / ઉધાર શરતો) */}
+          {paymentStatus === "Pending" && (
+            <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs pt-1 animate-in fade-in duration-200">
+              <div className="pt-1.5">
+                <label className="font-extrabold text-blue-700 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Credit Terms & Due Date*</span>
+                </label>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  પેમેન્ટ મુદત (45 થી 100 દિવસ)
+                </span>
+              </div>
+
+              <div className="max-w-xl w-full p-4 bg-gradient-to-br from-blue-50/70 via-white to-blue-50/40 border border-blue-200 rounded-2xl space-y-3.5 shadow-2xs">
+                {/* 1. Quick Credit Days Preset Chips */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-slate-800">
+                      Select Credit Period / મુદત પસંદ કરો:
+                    </span>
+                    <span className="text-[10px] text-blue-600 font-extrabold">
+                      {creditDays > 0 ? `${creditDays} Days Credit` : "Immediate / રોકડા"}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {TEXTILE_CREDIT_TERMS.map((term) => {
+                      const isSelected = creditDays === term.days;
+                      return (
+                        <button
+                          key={term.id}
+                          type="button"
+                          onClick={() => {
+                            setCreditDays(term.days);
+                            setPaymentTerms(term.name);
+                            if (term.days > 0) {
+                              setPaymentMode(`Credit (${term.days} days)`);
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
+                            isSelected
+                              ? "bg-blue-600 text-white border-blue-600 shadow-2xs scale-[1.02]"
+                              : "bg-white text-slate-700 border-slate-200 hover:bg-blue-50/80 hover:border-blue-300"
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 stroke-[2.5]" />}
+                          <span>{term.days === 0 ? "રોકડા" : `${term.days} Days`}</span>
+                          {term.isPopular && term.days > 0 && (
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold ${isSelected ? "bg-blue-700 text-blue-100" : "bg-blue-100 text-blue-800"}`}>
+                              મુદત
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Live Due Date Calculation & Indicator */}
+                <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white border border-blue-200 rounded-xl shadow-2xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                        Payment Due Date (ચુકવણી છેલ્લી તારીખ)
+                      </span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-sm font-black text-slate-900 tracking-tight">
+                          {dueDate || calculateDueDate(voucherDate, creditDays)}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          (બિલ તારીખ + {creditDays} દિવસ)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Status Badge */}
+                  <div>
+                    {(() => {
+                      const info = getDueStatus(dueDate || calculateDueDate(voucherDate, creditDays), false);
+                      return (
+                        <span className={`px-2.5 py-1 rounded-full text-[11px] border flex items-center gap-1.5 ${info.badgeClass}`}>
+                          <Clock className="w-3 h-3" />
+                          <span>{info.labelGu}</span>
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* 3. Linked Order / Choli Job Work (Optional) */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Linked Order / Choli Job Work (કયા ઓર્ડર માટે આ મટિરિયલ છે? - વૈકલ્પિક):</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Choli Order #2486 - Hari Har Vepari"
+                    value={linkedOrder}
+                    onChange={(e) => setLinkedOrder(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
+                  />
+                  <span className="text-[10px] text-slate-400 block">
+                    આનાથી તમને ખબર પડશે કે કયા વેપારીના ચોલી ઓર્ડર પાછળ કેટલું મટિરિયલ ઉધાર લીધેલું છે.
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* FIELD 7: REMARKS / DESCRIPTION */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs pt-1">

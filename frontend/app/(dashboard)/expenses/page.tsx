@@ -27,9 +27,12 @@ import {
   Building2,
   HelpCircle,
   CreditCard,
-  Edit3
+  Edit3,
+  AlertTriangle,
+  Clock3
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { getDueStatus } from "@/lib/creditTerms";
 
 interface ExpenseItem {
   id: string;
@@ -42,6 +45,12 @@ interface ExpenseItem {
   paid_via: string;
   notes?: string;
   bill_image?: string;
+  payment_terms?: string;
+  credit_days?: number;
+  due_date?: string;
+  linked_order?: string;
+  paid_amount?: number;
+  balance_amount?: number;
 }
 
 const sampleBillSvg =
@@ -312,7 +321,7 @@ export default function ExpensesPage() {
     return [];
   });
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"All" | "Paid" | "Pending">("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Pending" | "Overdue" | "Paid">("All");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [periodFilter, setPeriodFilter] = useState<"all" | "this_week" | "this_month" | "this_year" | "custom_date">("all");
   const [startDate, setStartDate] = useState("2026-09-01");
@@ -481,6 +490,8 @@ export default function ExpensesPage() {
           ? true
           : statusFilter === "Paid"
           ? item.payment_status === "Paid"
+          : statusFilter === "Overdue"
+          ? ((item.payment_status === "Pending" || item.payment_status === "Unpaid") && getDueStatus(item.due_date, false).status === "Overdue")
           : item.payment_status === "Pending" || item.payment_status === "Unpaid";
 
       const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
@@ -777,20 +788,24 @@ export default function ExpensesPage() {
 
         {/* Action Controls: Status Pill, Categories, Period, Export Excel, Add Expense */}
         <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-start sm:justify-end text-xs">
-          {/* Status Toggle Pill Group: All | Paid | Pending */}
+          {/* Status Toggle Pill Group: All | Pending | Overdue | Paid */}
           <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/90 text-xs shrink-0 w-full sm:w-auto justify-center">
-            {(["All", "Paid", "Pending"] as const).map((st) => (
+            {(["All", "Pending", "Overdue", "Paid"] as const).map((st) => (
               <button
                 key={st}
                 type="button"
                 onClick={() => setStatusFilter(st)}
                 className={`px-3 py-1 rounded-lg font-extrabold text-xs transition-all cursor-pointer flex-1 sm:flex-none text-center ${
                   statusFilter === st
-                    ? "bg-white text-slate-900 shadow-2xs"
+                    ? st === "Overdue"
+                      ? "bg-rose-600 text-white shadow-2xs"
+                      : st === "Pending"
+                      ? "bg-amber-600 text-white shadow-2xs"
+                      : "bg-white text-slate-900 shadow-2xs"
                     : "text-slate-500 hover:text-slate-800"
                 }`}
               >
-                {t(st)}
+                {st === "Overdue" ? t("Overdue") : st === "Pending" ? t("Pending / Credit") : t(st)}
               </button>
             ))}
           </div>
@@ -1099,6 +1114,43 @@ export default function ExpensesPage() {
                   </div>
                 </div>
 
+                {/* Textile Credit Terms & Due Date (Mobile) */}
+                {(item.due_date || item.credit_days || item.linked_order) && (() => {
+                  const dueInfo = item.due_date ? getDueStatus(item.due_date, item.payment_status === "Paid") : null;
+                  return (
+                    <div className="p-2.5 rounded-xl border border-blue-100 bg-blue-50/40 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-blue-500" />
+                          {t("Due Date / મુદત")}:
+                        </span>
+                        {dueInfo ? (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black border ${dueInfo.badgeClass}`}>
+                            {dueInfo.status === "Overdue" ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                            {t(dueInfo.label)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-mono">-</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] font-mono">
+                        <span className="text-slate-700 font-bold">{item.due_date || "-"}</span>
+                        {item.credit_days ? (
+                          <span className="text-blue-700 bg-white px-2 py-0.5 rounded border border-blue-200 font-bold text-[10px]">
+                            {item.credit_days} {t("Days Credit")}
+                          </span>
+                        ) : null}
+                      </div>
+                      {item.linked_order && (
+                        <div className="pt-1 border-t border-blue-100/80 flex items-center gap-1 text-[11px] text-slate-600 font-medium">
+                          <span className="text-slate-400 text-[10px] font-bold">{t("Order")}:</span>
+                          <span className="font-bold text-slate-800">{item.linked_order}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Remarks / Notes */}
                 {item.notes && (
                   <div className="pt-1 border-t border-slate-100">
@@ -1123,6 +1175,7 @@ export default function ExpensesPage() {
                 <th className="py-3.5 px-4">{t("VENDOR / PAYEE")}</th>
                 <th className="py-3.5 px-4">{t("PAYMENT MODE")}</th>
                 <th className="py-3.5 px-4">{t("STATUS")}</th>
+                <th className="py-3.5 px-4">{t("DUE DATE / મુદત")}</th>
                 <th className="py-3.5 px-4">{t("REMARKS / NOTES")}</th>
                 <th className="py-3.5 px-4 text-right">{t("AMOUNT (₹)")}</th>
                 <th className="py-3.5 px-4 text-center w-20">{t("ACTION")}</th>
@@ -1138,6 +1191,7 @@ export default function ExpensesPage() {
                     <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-40" /></td>
                     <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-24" /></td>
                     <td className="py-3.5 px-4"><div className="h-5 bg-slate-200/80 rounded-lg w-16" /></td>
+                    <td className="py-3.5 px-4"><div className="h-5 bg-slate-200/80 rounded-lg w-24" /></td>
                     <td className="py-3.5 px-4"><div className="h-4 bg-slate-200/80 rounded w-48" /></td>
                     <td className="py-3.5 px-4 text-right"><div className="h-4 bg-slate-200/80 rounded w-16 ml-auto" /></td>
                     <td className="py-3.5 px-4 text-center"><div className="h-6 bg-slate-200/80 rounded w-8 mx-auto" /></td>
@@ -1145,7 +1199,7 @@ export default function ExpensesPage() {
                 ))
               ) : filteredExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
+                  <td colSpan={10} className="py-8 text-center text-slate-400 font-medium">
                     No expense records found matching your filters. Click &quot;+ Add Expense&quot; to add a record.
                   </td>
                 </tr>
@@ -1205,6 +1259,47 @@ export default function ExpensesPage() {
                     >
                       {item.payment_status === "Paid" ? t("Paid") : t("Pending")}
                     </span>
+                  </td>
+
+                  {/* 7. DUE DATE / મુદત */}
+                  <td className="py-3.5 px-4 whitespace-nowrap">
+                    {item.payment_status === "Paid" ? (
+                      <span className="text-[11px] font-semibold text-slate-400">
+                        {t("Settled")}
+                      </span>
+                    ) : item.due_date ? (
+                      <div>
+                        <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-800">
+                          <Calendar className="w-3 h-3 text-blue-600 shrink-0" />
+                          <span>{item.due_date}</span>
+                        </div>
+                        <div className="mt-1">
+                          {(() => {
+                            const info = getDueStatus(item.due_date, false);
+                            return (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] border ${info.badgeClass}`}>
+                                <Clock className="w-2.5 h-2.5" />
+                                <span>{info.labelGu}</span>
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        {item.payment_terms && item.payment_terms !== "Due on Receipt" && (
+                          <span className="text-[10px] text-blue-600 font-extrabold block mt-0.5">
+                            {item.payment_terms}
+                          </span>
+                        )}
+                        {item.linked_order && (
+                          <span className="text-[10px] text-slate-500 font-medium block truncate max-w-[140px]" title={item.linked_order}>
+                            📦 {item.linked_order}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        {item.paid_via.includes("Credit") ? item.paid_via : "Due on Receipt"}
+                      </span>
+                    )}
                   </td>
 
                   {/* 7. REMARKS / NOTES */}

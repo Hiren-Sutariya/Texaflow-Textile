@@ -1,4 +1,5 @@
 import Link from "next/link";
+import TextileCreditWidget from "@/components/dashboard/TextileCreditWidget";
 import { 
   Factory, 
   Briefcase, 
@@ -209,6 +210,9 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Textile Raw Material Credit & Due Date Alerts Widget */}
+      <TextileCreditWidget />
 
       {/* Main Grid: Production Snapshot + Operational Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

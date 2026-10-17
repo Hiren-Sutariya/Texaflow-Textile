@@ -13,6 +13,12 @@ class ExpenseBase(BaseModel):
     notes: Optional[str] = None
     amount: float = Field(..., gt=0, description="Amount in INR")
     bill_image: Optional[str] = None
+    payment_terms: Optional[str] = "Due on Receipt"
+    credit_days: Optional[float] = 0.0
+    due_date: Optional[str] = None
+    linked_order: Optional[str] = None
+    paid_amount: Optional[float] = 0.0
+    balance_amount: Optional[float] = 0.0
     company_id: Optional[str] = "comp-001"
 
 class ExpenseCreate(ExpenseBase):
@@ -27,6 +33,12 @@ class ExpenseUpdate(BaseModel):
     notes: Optional[str] = None
     amount: Optional[float] = None
     bill_image: Optional[str] = None
+    payment_terms: Optional[str] = None
+    credit_days: Optional[float] = None
+    due_date: Optional[str] = None
+    linked_order: Optional[str] = None
+    paid_amount: Optional[float] = None
+    balance_amount: Optional[float] = None
 
 class ExpenseResponse(ExpenseBase):
     id: str

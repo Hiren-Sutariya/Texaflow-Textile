@@ -367,6 +367,30 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "Add optional expense description, items purchased or notes...": {
     en: "Add optional expense description, items purchased or notes...",
     gu: "ખર્ચ વિગત અથવા ખરીદેલી વસ્તુઓ અંગે નોંધ લખો..."
+  },
+
+  // Textile Material Credit & Due Date Terms
+  "DUE DATE / મુદત": { en: "DUE DATE", gu: "ચુકવણી મુદત (Due Date)" },
+  "Due Date / મુદત": { en: "Due Date", gu: "ચુકવણી મુદત (Due Date)" },
+  "Due Date": { en: "Due Date", gu: "મુદત તારીખ" },
+  "Credit Terms": { en: "Credit Terms", gu: "શાખ / મુદત શરતો" },
+  "Overdue": { en: "Overdue", gu: "મુદત વીતી ગઈ (ઓવરડ્યુ)" },
+  "Due Today": { en: "Due Today", gu: "આજે મુદત પૂરી થાય છે" },
+  "Settled": { en: "Settled", gu: "ચુકવાઈ ગયું" },
+  "Days Left": { en: "Days Left", gu: "દિવસ બાકી" },
+  "Days Credit": { en: "Days Credit", gu: "દિવસ શાખ" },
+  "Order": { en: "Order", gu: "ઓર્ડર" },
+  "Linked Order": { en: "Linked Order", gu: "લિંક્ડ ઓર્ડર / વેપારી" },
+  "Textile Material Credit Due Alerts": { en: "Textile Material Credit Due Alerts", gu: "કાપડ / મટિરિયલ શાખ મુદત એલર્ટ" },
+  "Material Credit Pending": { en: "Material Credit Pending", gu: "કુલ મટિરિયલ શાખ બાકી" },
+  "Overdue Material Bills": { en: "Overdue Material Bills", gu: "મુદત વીતી ગયેલા બિલ" },
+  "Due Within 7 Days": { en: "Due Within 7 Days", gu: "૭ દિવસમાં ચૂકવવાપાત્ર બિલ" },
+  "Due in 45/90/100 Days": { en: "Due in 45/90/100 Days", gu: "૪૫ / ૯૦ / ૧૦૦ દિવસની મુદતના બિલ" },
+  "View All Credit Bills": { en: "View All Credit Bills", gu: "બધા શાખ બિલ જુઓ" },
+  "Textile Credit & Due Date Tracker": { en: "Textile Credit & Due Date Tracker", gu: "ટેક્સટાઇલ મટિરિયલ શાખ અને મુદત ટ્રેકર" },
+  "Auto-calculates Due Date based on Surat textile trade standards (Rokda, 45, 60, 90, 100 days).": {
+    en: "Auto-calculates Due Date based on Surat textile trade standards (Cash, 45, 60, 90, 100 days).",
+    gu: "સુરત ટેક્સટાઇલ બજાર નિયમ મુજબ મુદતની તારીખ આપોઆપ ગણાય છે (રોકડા, ૪૫, ૬૦, ૯૦, ૧૦૦ દિવસ શાખ)."
   }
 };
 

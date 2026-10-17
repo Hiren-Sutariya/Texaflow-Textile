@@ -97,6 +97,8 @@ def create_expense(
     # 1. Format date to DD-MM-YYYY (e.g., 12-10-2026)
     if expense_data.get("date"):
         expense_data["date"] = format_to_dd_mm_yyyy(expense_data["date"])
+    if expense_data.get("due_date"):
+        expense_data["due_date"] = format_to_dd_mm_yyyy(expense_data["due_date"])
 
     # 2. Synchronized 3-digit zero-padded ID and expense_no scoped to company_id
     existing_records = db.query(Expense.expense_no, Expense.id).filter(Expense.company_id == company_id).all()
@@ -159,6 +161,8 @@ def update_expense(
         update_data["vendor_name"] = None
     if update_data.get("date"):
         update_data["date"] = format_to_dd_mm_yyyy(update_data["date"])
+    if update_data.get("due_date"):
+        update_data["due_date"] = format_to_dd_mm_yyyy(update_data["due_date"])
 
     for field, value in update_data.items():
         setattr(expense, field, value)
