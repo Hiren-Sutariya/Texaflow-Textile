@@ -687,198 +687,65 @@ export default function DesignsPage() {
 
   return (
     <div className="space-y-4 font-sans text-slate-800 pb-16">
-      {/* TOP HEADER & SEARCH TOOLBAR */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-        {selectedFolder ? (
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => setSelectedFolderId(null)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors cursor-pointer border border-slate-200"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back to Designs
-            </button>
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-black text-blue-700 text-sm bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200">
-                {selectedFolder.folder_code}
-              </span>
-              <span className="font-bold text-slate-800 truncate max-w-[200px] sm:max-w-[300px]">
-                {selectedFolder.title}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="relative w-full sm:w-80">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Search Design No, Title, Category, Party..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-9 pl-8 pr-3 bg-white border border-slate-300 rounded-xl font-bold text-xs text-slate-900 placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:border-blue-500 shadow-2xs"
-            />
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          {selectedFolder ? (
-            <>
-              <button
-                type="button"
-                onClick={(e) => handleOpenOrderModal(e, selectedFolder)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-2xs transition-all active:scale-95 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[3]" /> + Create Job Order
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const sampleText = `🎨 *SHIV CREATION - DESIGN CATALOG*\n` +
-                    `📋 *Design Code:* ${selectedFolder.folder_code}\n` +
-                    `👗 *Category:* ${selectedFolder.category} (${selectedFolder.title})\n` +
-                    `🧵 *Stitches:* ${selectedFolder.stitch_count.toLocaleString("en-IN")}\n` +
-                    `💰 *Est. Job Rate:* ₹${calculateRatePerPiece(selectedFolder.stitch_count, selectedFolder.rate_per_1k)} / Piece (@ ₹${selectedFolder.rate_per_1k}/1k)\n` +
-                    `✨ *Work Types:* ${selectedFolder.work_types.join(", ")}\n` +
-                    `Please contact us to place bulk job orders.`;
-                  setWhatsAppText(sampleText);
-                  setWhatsAppTargetMobile("");
-                  setIsWhatsAppModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                title="Share Design Card on WhatsApp"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-green-600" /> WhatsApp Card
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setIsAddingFolderInline(!isAddingFolderInline)}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold shadow-2xs transition-all active:scale-95 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" /> {isAddingFolderInline ? "Close Form" : "Add New Design"}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* INLINE ADD NEW DESIGN MASTER FORM */}
-      {!selectedFolder && isAddingFolderInline && (
-        <form
-          onSubmit={handleSaveDesign}
-          className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-blue-400 shadow-xl space-y-4 animate-in fade-in duration-100 font-sans text-xs"
-        >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2 font-black text-slate-900 text-sm">
-              <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
-                <Palette className="w-4 h-4" />
-              </div>
-              <span>Add New Master Design (નવી ડિઝાઇન એડવાન્સમાં ઉમેરો)</span>
-            </div>
+      {/* IF ADDING NEW DESIGN: SHOW DEDICATED REGISTRATION FORM (EXACTLY MATCHING IMAGE 2) */}
+      {!selectedFolder && isAddingFolderInline ? (
+        <div className="w-full space-y-3.5 select-none pb-20 animate-in fade-in duration-150 text-xs font-sans">
+          {/* 1. TOP HEADER TOOLBAR - MATCHING PURCHASES & PAYMENTS NEW PAGE (IMAGE 2) */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
+            <h2 className="font-extrabold text-slate-800 text-xs tracking-wide uppercase">
+              NEW MASTER DESIGN REGISTRATION (નવી ડિઝાઇન એડવાન્સમાં ઉમેરો)
+            </h2>
             <button
               type="button"
               onClick={() => setIsAddingFolderInline(false)}
-              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-slate-200"
             >
-              <X className="w-4 h-4" />
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Design List</span>
             </button>
           </div>
 
-          {/* 2-COLUMN FORM LAYOUT */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            {/* LEFT COLUMN: PHOTO UPLOAD & WATERMARK PREVIEW (4 cols) */}
-            <div className="lg:col-span-4 space-y-3">
-              <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">
-                Design Sample Photo
-              </label>
-              <div className="relative border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 p-3 flex flex-col items-center justify-center min-h-[220px] hover:border-blue-500 transition-colors group overflow-hidden">
-                {newFolderImage ? (
-                  <div className="relative w-full h-48 rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center">
-                    <img
-                      src={newFolderImage}
-                      alt="Design Preview"
-                      className="w-full h-full object-cover"
-                    />
-                    {showWatermark && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-                        <span className="transform -rotate-25 text-white/40 text-xs sm:text-sm font-black tracking-widest border border-white/30 px-3 py-1 bg-black/30 rounded backdrop-blur-2xs">
-                          SHIV CREATION • SAMPLE ONLY
-                        </span>
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setNewFolderImage("")}
-                      className="absolute top-2 right-2 p-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 shadow-md transition-all cursor-pointer"
-                      title="Remove Photo"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <label
-                    htmlFor="design-photo-upload"
-                    className="flex flex-col items-center justify-center cursor-pointer p-4 text-center w-full h-full"
-                  >
-                    <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl border border-blue-100 group-hover:scale-105 transition-transform">
-                      <ImageIcon className="w-8 h-8" />
-                    </div>
-                    <span className="font-extrabold text-slate-800 text-xs mt-2">Upload Sample Photo</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">JPG / PNG / WebP (Auto-optimized)</span>
-                  </label>
-                )}
-                <input
-                  id="design-photo-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-              </div>
-
-              {/* Watermark Toggle */}
-              <div className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> Show Watermark Overlay
-                </span>
-                <input
-                  type="checkbox"
-                  checked={showWatermark}
-                  onChange={(e) => setShowWatermark(e.target.checked)}
-                  className="w-4 h-4 rounded text-blue-600 cursor-pointer"
-                />
-              </div>
-            </div>
-
-            {/* RIGHT COLUMN: CORE DESIGN & PRICING SPECIFICATIONS (8 cols) */}
-            <div className="lg:col-span-8 space-y-4">
-              {/* Row 1: Code, Title, Category */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Design Code / No *</label>
+          {/* 2. FORM CONTAINER - 2-COLUMN HORIZONTAL GRID MATCHING IMAGE 2 */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 sm:p-6 space-y-5">
+            <form onSubmit={handleSaveDesign} className="space-y-4">
+              
+              {/* ROW 1: DESIGN CODE / NO * */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
+                <label className="font-extrabold text-rose-600">Design Code / No *</label>
+                <div className="max-w-xl w-full">
                   <input
                     type="text"
                     required
                     placeholder="e.g. D-2486"
                     value={newFolderCode}
                     onChange={(e) => setNewFolderCode(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Description / Title</label>
+              </div>
+
+              {/* ROW 2: DESCRIPTION / TITLE */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
+                <label className="font-bold text-slate-700">Description / Title</label>
+                <div className="max-w-xl w-full">
                   <input
                     type="text"
-                    placeholder="e.g. Heavy Sabyasachi Border"
+                    placeholder="e.g. Heavy Sabyasachi Border & Saree Suite"
                     value={newFolderTitle}
                     onChange={(e) => setNewFolderTitle(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Garment Category</label>
+              </div>
+
+              {/* ROW 3: GARMENT CATEGORY * */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
+                <label className="font-extrabold text-rose-600">Garment Category (પ્રકાર)*</label>
+                <div className="max-w-xl w-full">
                   <select
                     value={newFolderCategory}
                     onChange={(e) => setNewFolderCategory(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs cursor-pointer"
                   >
                     {DESIGN_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
@@ -889,16 +756,14 @@ export default function DesignsPage() {
                 </div>
               </div>
 
-              {/* Row 2: Ownership Toggle & Party Selection */}
-              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block">
-                  Design Ownership & Exclusivity
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {/* ROW 4: DESIGN OWNERSHIP & EXCLUSIVITY * */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
+                <label className="font-extrabold text-rose-600">Design Ownership*</label>
+                <div className="max-w-xl w-full grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setNewFolderDesignType("In-House Master")}
-                    className={`py-2 px-3 rounded-xl border font-extrabold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    className={`h-9 px-3 rounded-xl border font-extrabold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                       newFolderDesignType === "In-House Master"
                         ? "bg-purple-600 text-white border-purple-600 shadow-2xs"
                         : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
@@ -909,7 +774,7 @@ export default function DesignsPage() {
                   <button
                     type="button"
                     onClick={() => setNewFolderDesignType("Party Exclusive")}
-                    className={`py-2 px-3 rounded-xl border font-extrabold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    className={`h-9 px-3 rounded-xl border font-extrabold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                       newFolderDesignType === "Party Exclusive"
                         ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
                         : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
@@ -918,127 +783,324 @@ export default function DesignsPage() {
                     <Building2 className="w-3.5 h-3.5" /> Party Exclusive (પાર્ટી સ્પેશિયલ)
                   </button>
                 </div>
+              </div>
 
-                {newFolderDesignType === "Party Exclusive" && (
-                  <div ref={partyDropdownRef} className="relative pt-1 animate-in fade-in duration-100">
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Exclusive Party Name *</label>
-                    <input
-                      type="text"
-                      placeholder="Type party name..."
-                      value={newFolderParty}
-                      onChange={(e) => {
-                        setNewFolderParty(e.target.value);
-                        setIsPartyDropdownOpen(true);
-                      }}
-                      onFocus={() => setIsPartyDropdownOpen(true)}
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs"
-                    />
+              {/* ROW 5: EXCLUSIVE PARTY NAME * (if Party Exclusive) */}
+              {newFolderDesignType === "Party Exclusive" && (
+                <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs animate-in fade-in duration-100">
+                  <label className="font-extrabold text-rose-600">Exclusive Party Name*</label>
+                  <div className="max-w-xl w-full relative" ref={partyDropdownRef}>
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        required={newFolderDesignType === "Party Exclusive"}
+                        placeholder="Type to search or enter party name..."
+                        value={newFolderParty}
+                        onChange={(e) => {
+                          setNewFolderParty(e.target.value);
+                          setIsPartyDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsPartyDropdownOpen(true)}
+                        className="w-full h-9 pl-9 pr-14 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs text-xs"
+                      />
+                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        {newFolderParty && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewFolderParty("");
+                              setIsPartyDropdownOpen(true);
+                            }}
+                            className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                            title="Clear"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setIsPartyDropdownOpen(!isPartyDropdownOpen)}
+                          className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                        >
+                          <ChevronDown className={`w-4 h-4 transition-transform ${isPartyDropdownOpen ? "rotate-180" : ""}`} />
+                        </button>
+                      </div>
+                    </div>
 
-                    {isPartyDropdownOpen && newFolderParty.trim().length > 0 && (
-                      <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto p-1 space-y-0.5">
-                        {registeredParties
-                          .filter((p) => p.name.toLowerCase().includes(newFolderParty.toLowerCase()))
-                          .map((p) => (
-                            <button
-                              key={p.name}
-                              type="button"
-                              onClick={() => {
-                                setNewFolderParty(p.name);
-                                setIsPartyDropdownOpen(false);
-                              }}
-                              className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800 hover:bg-blue-50 hover:text-blue-900 cursor-pointer flex items-center justify-between"
-                            >
-                              <span>{p.name}</span>
-                              <span className="text-[10px] text-slate-400 font-normal">{p.city}</span>
-                            </button>
-                          ))}
+                    {isPartyDropdownOpen && (
+                      <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-1.5 max-h-60 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                        {registeredParties.filter((p) => p.name.toLowerCase().includes(newFolderParty.toLowerCase())).length === 0 ? (
+                          <div className="p-3 text-center text-slate-400 text-xs font-medium">
+                            {newFolderParty ? `No party matching "${newFolderParty}". Custom party name will be used.` : "No registered parties."}
+                          </div>
+                        ) : (
+                          registeredParties
+                            .filter((p) => p.name.toLowerCase().includes(newFolderParty.toLowerCase()))
+                            .map((p) => (
+                              <button
+                                key={p.name}
+                                type="button"
+                                onClick={() => {
+                                  setNewFolderParty(p.name);
+                                  setIsPartyDropdownOpen(false);
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-blue-50/70 rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors"
+                              >
+                                <span className="truncate">{p.name}</span>
+                                <span className="text-[10px] text-slate-400 font-normal shrink-0 ml-2">{p.city}</span>
+                              </button>
+                            ))
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Row 3: Stitches & Costing Calculation */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Total Stitch Count *</label>
+              {/* ROW 6: TOTAL STITCH COUNT * */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
+                <label className="font-extrabold text-rose-600">Total Stitch Count *</label>
+                <div className="max-w-xl w-full">
                   <input
                     type="number"
                     required
                     placeholder="35000"
                     value={newFolderStitches}
                     onChange={(e) => setNewFolderStitches(e.target.value ? Number(e.target.value) : "")}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
                   />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Rate per 1k Stitches (₹) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    placeholder="0.45"
-                    value={newFolderRate}
-                    onChange={(e) => setNewFolderRate(e.target.value ? Number(e.target.value) : "")}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs"
-                  />
-                </div>
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2 text-center h-9 flex flex-col justify-center">
-                  <span className="text-[9px] font-black uppercase text-emerald-800 tracking-wider">
-                    Est. Job Work Rate
-                  </span>
-                  <span className="font-mono font-black text-emerald-950 text-xs">
-                    ₹{calculateRatePerPiece(newFolderStitches, newFolderRate)} / Piece
-                  </span>
                 </div>
               </div>
 
-              {/* Row 4: Work Type Tags */}
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold text-slate-700">
-                  Work Type & Materials (Select all that apply)
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {WORK_TYPE_OPTIONS.map((tag) => {
-                    const isSelected = newFolderWorkTypes.includes(tag);
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => toggleWorkType(tag)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                          isSelected
-                            ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
-                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
-                        }`}
-                      >
-                        {isSelected ? "✓ " : "+ "}
-                        {tag}
-                      </button>
-                    );
-                  })}
+              {/* ROW 7: RATE PER 1K STITCHES * */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
+                <label className="font-extrabold text-rose-600">Rate per 1k Stitches (₹)*</label>
+                <div className="max-w-xl w-full flex items-center gap-3">
+                  <div className="flex-1">
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="0.45"
+                      value={newFolderRate}
+                      onChange={(e) => setNewFolderRate(e.target.value ? Number(e.target.value) : "")}
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
+                    />
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-center shrink-0">
+                    <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wider block">
+                      EST. JOB WORK RATE
+                    </span>
+                    <span className="font-mono font-black text-emerald-950 text-xs">
+                      ₹{calculateRatePerPiece(newFolderStitches, newFolderRate)} / Piece
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              {/* ROW 8: WORK TYPE & MATERIALS */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs">
+                <label className="font-bold text-slate-700 pt-2">Work Type & Materials</label>
+                <div className="max-w-xl w-full">
+                  <div className="flex flex-wrap gap-1.5">
+                    {WORK_TYPE_OPTIONS.map((tag) => {
+                      const isSelected = newFolderWorkTypes.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleWorkType(tag)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                              : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                          }`}
+                        >
+                          {isSelected ? "✓ " : "+ "}
+                          {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* ROW 9: DESIGN SAMPLE PHOTO */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs">
+                <label className="font-bold text-slate-700 pt-2">Design Sample Photo</label>
+                <div className="max-w-xl w-full space-y-2">
+                  <div className="relative border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 p-3 flex flex-col items-center justify-center min-h-[140px] hover:border-blue-500 transition-colors group overflow-hidden">
+                    {newFolderImage ? (
+                      <div className="relative w-full h-48 rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center">
+                        <img
+                          src={newFolderImage}
+                          alt="Design Preview"
+                          className="w-full h-full object-contain"
+                        />
+                        {showWatermark && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                            <span className="transform -rotate-25 text-white/40 text-xs sm:text-sm font-black tracking-widest border border-white/30 px-3 py-1 bg-black/30 rounded backdrop-blur-2xs">
+                              SHIV CREATION • SAMPLE ONLY
+                            </span>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setNewFolderImage("")}
+                          className="absolute top-2 right-2 p-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 shadow-md transition-all cursor-pointer"
+                          title="Remove Photo"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor="design-photo-upload"
+                        className="flex flex-col items-center justify-center cursor-pointer p-4 text-center w-full h-full"
+                      >
+                        <div className="p-2.5 bg-blue-50 text-blue-600 rounded-2xl border border-blue-100 group-hover:scale-105 transition-transform">
+                          <ImageIcon className="w-6 h-6" />
+                        </div>
+                        <span className="font-extrabold text-slate-800 text-xs mt-2">Upload Sample Photo</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">JPG / PNG / WebP (Auto-optimized)</span>
+                      </label>
+                    )}
+                    <input
+                      id="design-photo-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {/* Watermark Toggle */}
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> Show Watermark Overlay
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={showWatermark}
+                      onChange={(e) => setShowWatermark(e.target.checked)}
+                      className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ROW 10: PUNCHING / EMB FILE */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
+                <label className="font-bold text-slate-700">Punching / EMB File</label>
+                <div className="max-w-xl w-full">
+                  <input
+                    type="text"
+                    placeholder="e.g. D2486_FINAL.DST"
+                    value={newFolderEmbFile}
+                    onChange={(e) => setNewFolderEmbFile(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
+                  />
+                </div>
+              </div>
+
+              {/* ROW 11: BUTTONS ROW */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs pt-4 border-t border-slate-100">
+                <div className="hidden sm:block"></div>
+                <div className="max-w-xl w-full flex items-center gap-2">
+                  <button
+                    type="submit"
+                    className="px-6 h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black shadow-2xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    Save Master Design
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingFolderInline(false)}
+                    className="px-4 h-9 border border-slate-300 rounded-xl font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* TOP HEADER & SEARCH TOOLBAR (SHOWN WHEN NOT IN NEW DESIGN REGISTRATION MODE) */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            {selectedFolder ? (
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => setSelectedFolderId(null)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors cursor-pointer border border-slate-200"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back to Designs
+                </button>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-black text-blue-700 text-sm bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200">
+                    {selectedFolder.folder_code}
+                  </span>
+                  <span className="font-bold text-slate-800 truncate max-w-[200px] sm:max-w-[300px]">
+                    {selectedFolder.title}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="relative w-full sm:w-80">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search Design No, Title, Category, Party..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full h-9 pl-8 pr-3 bg-white border border-slate-300 rounded-xl font-bold text-xs text-slate-900 placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:border-blue-500 shadow-2xs"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              {selectedFolder ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenOrderModal(e, selectedFolder)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-2xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[3]" /> + Create Job Order
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const sampleText = `🎨 *SHIV CREATION - DESIGN CATALOG*\n` +
+                        `📋 *Design Code:* ${selectedFolder.folder_code}\n` +
+                        `👗 *Category:* ${selectedFolder.category} (${selectedFolder.title})\n` +
+                        `🧵 *Stitches:* ${selectedFolder.stitch_count.toLocaleString("en-IN")}\n` +
+                        `💰 *Est. Job Rate:* ₹${calculateRatePerPiece(selectedFolder.stitch_count, selectedFolder.rate_per_1k)} / Piece (@ ₹${selectedFolder.rate_per_1k}/1k)\n` +
+                        `✨ *Work Types:* ${selectedFolder.work_types.join(", ")}\n` +
+                        `Please contact us to place bulk job orders.`;
+                      setWhatsAppText(sampleText);
+                      setWhatsAppTargetMobile("");
+                      setIsWhatsAppModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    title="Share Design Card on WhatsApp"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 text-green-600" /> WhatsApp Card
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setIsAddingFolderInline(true)}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold shadow-2xs transition-all active:scale-95 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" /> Add New Design
+                </button>
+              )}
             </div>
           </div>
-
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setIsAddingFolderInline(false)}
-              className="px-4 h-9 border border-slate-300 rounded-xl font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-6 h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black shadow-2xs transition-all active:scale-95 cursor-pointer"
-            >
-              Save Master Design
-            </button>
-          </div>
-        </form>
-      )}
 
       {/* DESIGN CATALOG GRID VIEW (When no folder is selected) */}
       {!selectedFolder && (
@@ -1520,6 +1582,8 @@ export default function DesignsPage() {
             </div>
           )}
         </div>
+      )}
+        </>
       )}
 
       {/* SMART JOB ORDER & CONTRACT MODAL */}
