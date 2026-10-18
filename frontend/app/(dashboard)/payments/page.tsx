@@ -552,24 +552,7 @@ export default function PaymentsAndVouchersPage() {
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
         {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}
         <div className="block md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50">
-          {isLoading ? (
-            [1, 2, 3].map((n) => (
-              <div
-                key={`m-skel-${n}`}
-                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 space-y-3 animate-pulse"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="h-4 bg-slate-200/80 rounded w-36" />
-                  <div className="h-4 bg-slate-200/80 rounded-full w-16" />
-                </div>
-                <div className="flex justify-between items-center pt-1 border-t border-slate-100">
-                  <div className="h-4 bg-slate-200/80 rounded w-44" />
-                  <div className="h-5 bg-slate-200/80 rounded w-20" />
-                </div>
-                <div className="h-10 bg-slate-100 rounded-xl" />
-              </div>
-            ))
-          ) : filteredVouchers.length === 0 ? (
+          {filteredVouchers.length === 0 ? (
             <div className="py-8 text-center text-slate-400 font-medium">
               No payment vouchers found matching your filter criteria.
             </div>
@@ -683,23 +666,7 @@ export default function PaymentsAndVouchersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-              {isLoading ? (
-                [1, 2, 3].map((n) => (
-                  <tr key={`skel-row-${n}`} className="animate-pulse">
-                    <td className="py-4 px-5"><div className="h-4 bg-slate-200/80 rounded w-20" /></td>
-                    <td className="py-4 px-5"><div className="h-4 bg-slate-200/80 rounded w-28" /></td>
-                    <td className="py-4 px-5"><div className="h-5 bg-slate-200/80 rounded-lg w-16" /></td>
-                    <td className="py-4 px-5">
-                      <div className="h-4 bg-slate-200/80 rounded w-48 mb-1.5" />
-                      <div className="h-3 bg-slate-100 rounded w-28" />
-                    </td>
-                    <td className="py-4 px-5"><div className="h-5 bg-slate-200/80 rounded-lg w-28" /></td>
-                    <td className="py-4 px-5"><div className="h-4 bg-slate-200/80 rounded w-24" /></td>
-                    <td className="py-4 px-5 text-right"><div className="h-4 bg-slate-200/80 rounded w-16 ml-auto" /></td>
-                    <td className="py-4 px-5 text-center"><div className="h-6 bg-slate-200/80 rounded-md w-14 mx-auto" /></td>
-                  </tr>
-                ))
-              ) : filteredVouchers.length === 0 ? (
+              {filteredVouchers.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
                     No payment vouchers found matching your filter criteria.

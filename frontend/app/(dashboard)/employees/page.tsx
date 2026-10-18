@@ -211,18 +211,7 @@ export default function EmployeesPage() {
     }
     return [];
   });
-  const [isLoading, setIsLoading] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("app_employees_data");
-        if (saved !== null) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return false;
-        }
-      } catch {}
-    }
-    return true;
-  });
+  const [isLoading, setIsLoading] = useState(false);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>([]);
 
   const loadEmployeesFromApi = async () => {
@@ -1948,14 +1937,7 @@ export default function EmployeesPage() {
 
       {/* 1. MOBILE RESPONSIVE CARD VIEW (NO HORIZONTAL SCROLLING REQUIRED) */}
       <div className="block md:hidden space-y-3">
-        {isLoading && employees.length === 0 ? (
-          [1, 2, 3].map((n) => (
-            <div key={`m-skel-${n}`} className="bg-white rounded-2xl border border-slate-200 p-4 animate-pulse space-y-3">
-              <div className="h-4 bg-slate-100 rounded w-32" />
-              <div className="h-3 bg-slate-100 rounded w-24" />
-            </div>
-          ))
-        ) : filteredEmployees.length === 0 ? (
+        {filteredEmployees.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 py-8 text-center text-slate-400 font-medium text-xs">
             No worker records found matching your filters. Click &quot;+ Add Worker&quot; to add a record.
           </div>
@@ -2087,21 +2069,7 @@ export default function EmployeesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-xs">
-              {isLoading && employees.length === 0 ? (
-                [1, 2, 3, 4].map((n) => (
-                  <tr key={`emp-skel-${n}`} className="animate-pulse">
-                    <td className="px-4 py-4 text-center"><div className="h-4 bg-slate-100 rounded w-6 mx-auto" /></td>
-                    <td className="px-4 py-4"><div className="h-5 bg-slate-100 rounded-lg w-36" /></td>
-                    <td className="px-4 py-4"><div className="h-5 bg-slate-100 rounded w-16" /></td>
-                    <td className="px-4 py-4"><div className="h-5 bg-slate-100 rounded w-24" /></td>
-                    <td className="px-4 py-4"><div className="h-4 bg-slate-100 rounded w-28" /></td>
-                    <td className="px-4 py-4"><div className="h-4 bg-slate-100 rounded w-32" /></td>
-                    <td className="px-4 py-4"><div className="h-4 bg-slate-100 rounded w-20" /></td>
-                    <td className="px-4 py-4 text-center"><div className="h-5 bg-slate-100 rounded w-16 mx-auto" /></td>
-                    <td className="px-4 py-4 text-right"><div className="h-5 bg-slate-100 rounded w-12 ml-auto" /></td>
-                  </tr>
-                ))
-              ) : filteredEmployees.length === 0 ? (
+              {filteredEmployees.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
                     No worker records found matching your filters. Click &quot;+ Add Worker&quot; to add a record.

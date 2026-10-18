@@ -38,7 +38,7 @@ interface PurchaseItem {
 export default function TextileCreditWidget() {
   const { t } = useLanguage();
   const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isLedgerOpen, setIsLedgerOpen] = useState(false);
   const [ledgerVendor, setLedgerVendor] = useState("");
 
@@ -219,11 +219,7 @@ export default function TextileCreditWidget() {
 
       {/* Urgent Material Credit Bills List */}
       <div className="p-3.5 sm:p-4">
-        {loading ? (
-          <div className="p-6 text-center text-xs text-slate-400 animate-pulse font-medium">
-            {t("Loading credit records...")}
-          </div>
-        ) : previewList.length === 0 ? (
+        {previewList.length === 0 ? (
           <div className="p-6 text-center space-y-2">
             <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-200">
               <CheckCircle2 className="w-5 h-5" />

@@ -57,7 +57,7 @@ const defaultSeedPurchases: PurchaseItem[] = [];
 export default function PurchasesPage() {
   const { t } = useLanguage();
   const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Pending" | "Overdue" | "Paid">("All");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
@@ -312,11 +312,7 @@ export default function PurchasesPage() {
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
         {/* Mobile View (< md) */}
         <div className="block md:hidden divide-y divide-slate-100 p-3 space-y-3">
-          {isLoading ? (
-            <div className="p-8 text-center text-xs text-slate-400 animate-pulse font-medium">
-              {t("Loading purchase bills...")}
-            </div>
-          ) : filteredPurchases.length === 0 ? (
+          {filteredPurchases.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-400 font-medium">
               {t("No purchase records found.")}
             </div>
@@ -440,13 +436,7 @@ export default function PurchasesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-              {isLoading ? (
-                [1, 2, 3].map((n) => (
-                  <tr key={`skel-${n}`} className="animate-pulse">
-                    <td colSpan={8} className="py-4 px-4"><div className="h-4 bg-slate-100 rounded w-full" /></td>
-                  </tr>
-                ))
-              ) : filteredPurchases.length === 0 ? (
+              {filteredPurchases.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
                     {t("No purchase bills found matching your filters. Click \"+ New Purchase Bill\" to add.")}
