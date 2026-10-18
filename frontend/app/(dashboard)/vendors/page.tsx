@@ -540,12 +540,42 @@ export default function VendorsPage() {
     setVendors(newList);
     try {
       localStorage.setItem("app_vendors_master", JSON.stringify(newList));
+      localStorage.setItem("texaflow_vendors", JSON.stringify(newList));
+      // Seamlessly sync Customer / Client, Trading Partner, and Job Work to app_parties so Orders & Designs see them immediately
+      const clientParties = newList
+        .filter((v) => v.account_type === "Customer / Client" || v.account_type === "Trading Partner" || v.account_type === "Job Work")
+        .map((v) => ({
+          id: v.id,
+          name: v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim(),
+          account_type: v.account_type,
+          city: v.billing_address?.city || "",
+          mobile: v.mobile || ""
+        }))
+        .filter((p) => p.name);
+      localStorage.setItem("app_parties", JSON.stringify(clientParties));
+      localStorage.setItem("app_parties_list", JSON.stringify(clientParties));
       window.dispatchEvent(new Event("app_data_update"));
     } catch (e) {
       console.error("Error saving app_vendors_master", e);
     }
   };
 
+
+  const getAccountTypeBadgeClass = (type?: string) => {
+    switch (type) {
+      case "Customer / Client":
+        return "text-emerald-800 bg-emerald-50 border-emerald-200";
+      case "Trading Partner":
+        return "text-amber-800 bg-amber-50 border-amber-200";
+      case "Internal Firm":
+        return "text-purple-800 bg-purple-50 border-purple-200";
+      case "Job Work":
+        return "text-indigo-800 bg-indigo-50 border-indigo-200";
+      case "Supplier / Vendor":
+      default:
+        return "text-blue-800 bg-blue-50 border-blue-200";
+    }
+  };
 
   const openPreviewVendor = (v: Vendor) => {
     setPreviewVendor(v);
@@ -2522,8 +2552,8 @@ export default function VendorsPage() {
                       {v.display_name || v.company_name}
                     </h3>
                   </div>
-                  <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs border border-emerald-200 shrink-0">
-                    {v.account_type || "Vendor"}
+                  <span className={`font-mono font-extrabold px-2.5 py-1 rounded-lg text-xs border shrink-0 ${getAccountTypeBadgeClass(v.account_type)}`}>
+                    {v.account_type || "Supplier / Vendor"}
                   </span>
                 </div>
 
@@ -2640,7 +2670,7 @@ export default function VendorsPage() {
                       </span>
                     </td>
                     <td className="py-4 px-4 text-center whitespace-nowrap">
-                      <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs border border-emerald-200 inline-block">
+                      <span className={`font-mono font-extrabold px-2.5 py-1 rounded-lg text-xs border inline-block ${getAccountTypeBadgeClass(v.account_type)}`}>
                         {v.account_type || "Supplier / Vendor"}
                       </span>
                     </td>
@@ -2729,7 +2759,7 @@ export default function VendorsPage() {
                       <h2 className="text-sm sm:text-base font-extrabold text-slate-900 leading-snug">
                         {previewVendor.display_name || previewVendor.company_name}
                       </h2>
-                      <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2.5 py-0.5 rounded-lg text-[11px] border border-emerald-200 shrink-0">
+                      <span className={`font-mono font-extrabold px-2.5 py-0.5 rounded-lg text-[11px] border shrink-0 ${getAccountTypeBadgeClass(previewVendor.account_type)}`}>
                         {previewVendor.account_type}
                       </span>
                       {previewVendor.is_msme && (

@@ -304,13 +304,13 @@ export default function DesignsPage() {
   };
 
   const loadPartiesInDesigns = () => {
+    let partyList: any[] = [];
     try {
       const saved = localStorage.getItem("app_parties");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          // Filter out any legacy test dummy party records
-          const filtered = parsed.filter(
+          partyList = parsed.filter(
             (p: any) =>
               p.name !== "ABC Tex Fabrics" &&
               p.name !== "Royal Fashion House" &&
@@ -319,18 +319,31 @@ export default function DesignsPage() {
               p.id !== "p-102" &&
               p.id !== "p-103"
           );
-          if (filtered.length !== parsed.length) {
-            localStorage.setItem("app_parties", JSON.stringify(filtered));
-            localStorage.setItem("app_parties_list", JSON.stringify(filtered));
-            localStorage.setItem("parties_register_data", JSON.stringify(filtered));
-          }
-          setRegisteredParties(filtered);
-          return;
         }
       }
     } catch (e) {}
 
-    setRegisteredParties([]);
+    // Also incorporate vendors from app_vendors_master
+    try {
+      const savedVendors = localStorage.getItem("app_vendors_master");
+      if (savedVendors) {
+        const parsedV = JSON.parse(savedVendors);
+        if (Array.isArray(parsedV)) {
+          parsedV.forEach((v: any) => {
+            const name = (v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`).trim();
+            if (name && !partyList.some((p) => p.name === name)) {
+              partyList.push({
+                id: v.id,
+                name,
+                account_type: v.account_type || "Customer / Client"
+              });
+            }
+          });
+        }
+      }
+    } catch (e) {}
+
+    setRegisteredParties(partyList);
   };
 
   useEffect(() => {

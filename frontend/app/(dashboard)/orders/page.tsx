@@ -100,6 +100,8 @@ export default function JobOrdersPage() {
   const [isFormPartyOpen, setIsFormPartyOpen] = useState(false);
   const [isFormMachineOpen, setIsFormMachineOpen] = useState(false);
   const [isFormDesignOpen, setIsFormDesignOpen] = useState(false);
+  const [partyTypeMap, setPartyTypeMap] = useState<Record<string, string>>({});
+  const [isCustomPartyInput, setIsCustomPartyInput] = useState(false);
 
   // Track status & machine dropdown positions in viewport space to prevent any table clipping
   const [statusPopoverPos, setStatusPopoverPos] = useState<{ orderId: string; top: number; left: number } | null>(null);
@@ -143,9 +145,11 @@ export default function JobOrdersPage() {
     window.addEventListener("app_data_update", loadMachinesList);
     window.addEventListener("storage", loadMachinesList);
 
-    // Load Parties Register
+    // Load Parties Register & Vendors Master
     const loadPartiesList = () => {
       let combined: string[] = [];
+      const typeMap: Record<string, string> = {};
+
       const keys = ["app_parties", "app_parties_list", "parties_register_data"];
       for (const k of keys) {
         try {
@@ -153,22 +157,48 @@ export default function JobOrdersPage() {
           if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed)) {
-              const names = parsed
-                .map((p: any) => (typeof p === "string" ? p : p.name))
-                .filter(Boolean)
-                .filter(
-                  (n: string) =>
-                    n !== "ABC Tex Fabrics" &&
-                    n !== "Royal Fashion House" &&
-                    n !== "Shree Ram Textiles"
-                );
-              combined = [...combined, ...names];
+              parsed.forEach((p: any) => {
+                const name = (typeof p === "string" ? p : p.name)?.trim();
+                if (
+                  name &&
+                  name !== "ABC Tex Fabrics" &&
+                  name !== "Royal Fashion House" &&
+                  name !== "Shree Ram Textiles"
+                ) {
+                  combined.push(name);
+                  if (typeof p === "object" && p.account_type) {
+                    typeMap[name] = p.account_type;
+                  }
+                }
+              });
             }
           }
         } catch (e) {}
       }
-      const uniqueNames = Array.from(new Set(combined));
+
+      // Also load all registered parties/vendors from app_vendors_master and texaflow_vendors
+      const vendorKeys = ["app_vendors_master", "texaflow_vendors", "om_sai_vendors"];
+      for (const vk of vendorKeys) {
+        try {
+          const saved = localStorage.getItem(vk);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              parsed.forEach((v: any) => {
+                const name = (v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`).trim();
+                if (name) {
+                  combined.push(name);
+                  typeMap[name] = v.account_type || "Customer / Client";
+                }
+              });
+            }
+          }
+        } catch (e) {}
+      }
+
+      const uniqueNames = Array.from(new Set(combined)).filter(Boolean);
       setAvailableParties(uniqueNames);
+      setPartyTypeMap(typeMap);
     };
 
     loadPartiesList();
@@ -803,41 +833,96 @@ export default function JobOrdersPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* Party Select */}
               <div className="relative">
-                <label className="block font-bold text-slate-700 mb-1">Party Name *</label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsFormPartyOpen(!isFormPartyOpen);
-                    setIsFormMachineOpen(false);
-                    setIsFormDesignOpen(false);
-                  }}
-                  className="w-full px-3 h-9 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 text-xs flex items-center justify-between hover:bg-slate-100"
-                >
-                  <span className="truncate">{formData.party_name}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isFormPartyOpen ? "rotate-180" : ""}`} />
-                </button>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">Party Name *</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomPartyInput(!isCustomPartyInput);
+                      setIsFormPartyOpen(false);
+                    }}
+                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 underline"
+                  >
+                    {isCustomPartyInput ? "Select Registered Party" : "+ Type Custom Party"}
+                  </button>
+                </div>
 
-                {isFormPartyOpen && (
+                {isCustomPartyInput ? (
+                  <input
+                    type="text"
+                    value={formData.party_name}
+                    onChange={(e) => setFormData({ ...formData, party_name: e.target.value })}
+                    placeholder="Enter party / client name..."
+                    className="w-full px-3 h-9 bg-white border border-blue-400 rounded-xl font-bold text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                ) : (
                   <>
-                    <div className="fixed inset-0 z-20" onClick={() => setIsFormPartyOpen(false)} />
-                    <div className="absolute left-0 top-16 z-30 w-full bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 space-y-0.5 font-sans max-h-48 overflow-y-auto">
-                      {availableParties.map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => {
-                            setFormData({ ...formData, party_name: p });
-                            setIsFormPartyOpen(false);
-                          }}
-                          className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between ${
-                            formData.party_name === p ? "bg-blue-50 text-blue-700 font-bold" : "text-slate-700 hover:bg-slate-100"
-                          }`}
-                        >
-                          <span className="truncate">{p}</span>
-                          {formData.party_name === p && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
-                        </button>
-                      ))}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsFormPartyOpen(!isFormPartyOpen);
+                        setIsFormMachineOpen(false);
+                        setIsFormDesignOpen(false);
+                      }}
+                      className="w-full px-3 h-9 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 text-xs flex items-center justify-between hover:bg-slate-100"
+                    >
+                      <span className="truncate">{formData.party_name || "Select Party..."}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isFormPartyOpen ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {isFormPartyOpen && (
+                      <>
+                        <div className="fixed inset-0 z-20" onClick={() => setIsFormPartyOpen(false)} />
+                        <div className="absolute left-0 top-16 z-30 w-full min-w-[240px] bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 space-y-1 font-sans max-h-56 overflow-y-auto">
+                          {availableParties.length === 0 ? (
+                            <div className="p-3 text-center text-slate-400 text-xs">
+                              No parties registered yet.
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsCustomPartyInput(true);
+                                  setIsFormPartyOpen(false);
+                                }}
+                                className="block mx-auto mt-1 text-blue-600 font-bold underline"
+                              >
+                                Type name manually
+                              </button>
+                            </div>
+                          ) : (
+                            availableParties.map((p) => {
+                              const accType = partyTypeMap[p] || "Customer / Client";
+                              let badgeColor = "bg-emerald-50 text-emerald-800 border-emerald-200";
+                              if (accType === "Supplier / Vendor") badgeColor = "bg-blue-50 text-blue-800 border-blue-200";
+                              else if (accType === "Trading Partner") badgeColor = "bg-amber-50 text-amber-800 border-amber-200";
+                              else if (accType === "Internal Firm") badgeColor = "bg-purple-50 text-purple-800 border-purple-200";
+                              else if (accType === "Job Work") badgeColor = "bg-indigo-50 text-indigo-800 border-indigo-200";
+
+                              return (
+                                <button
+                                  key={p}
+                                  type="button"
+                                  onClick={() => {
+                                    setFormData({ ...formData, party_name: p });
+                                    setIsFormPartyOpen(false);
+                                  }}
+                                  className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between cursor-pointer ${
+                                    formData.party_name === p ? "bg-blue-50 text-blue-700 font-bold" : "text-slate-700 hover:bg-slate-100"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 truncate">
+                                    <span className="truncate">{p}</span>
+                                    <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${badgeColor}`}>
+                                      {accType}
+                                    </span>
+                                  </div>
+                                  {formData.party_name === p && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>

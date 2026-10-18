@@ -92,7 +92,10 @@ function NewPurchaseContent() {
       } catch {}
 
       try {
-        const saved = getTenantItem<any[]>("texaflow_vendors", currentCid === "comp-001" ? "om_sai_vendors" : undefined);
+        const localMaster = localStorage.getItem("app_vendors_master");
+        const saved = localMaster 
+          ? JSON.parse(localMaster) 
+          : getTenantItem<any[]>("texaflow_vendors", currentCid === "comp-001" ? "om_sai_vendors" : undefined);
         if (Array.isArray(saved) && saved.length > 0) {
           setRawVendors(saved);
           const names = saved
@@ -338,17 +341,34 @@ function NewPurchaseContent() {
                           {t("No vendors found. Type name manually.")}
                         </div>
                       ) : (
-                        vendorsList.map((v) => (
-                          <button
-                            key={v}
-                            type="button"
-                            onClick={() => handleVendorSelect(v)}
-                            className="w-full text-left px-3 py-1.5 hover:bg-blue-50 rounded-lg font-semibold text-slate-800 text-xs flex items-center justify-between cursor-pointer"
-                          >
-                            <span>{v}</span>
-                            {vendorName === v && <Check className="w-3.5 h-3.5 text-blue-600" />}
-                          </button>
-                        ))
+                        vendorsList.map((v) => {
+                          const matchedVen = rawVendors.find(
+                            (rv: any) => (rv.display_name || rv.company_name || `${rv.first_name || ""} ${rv.last_name || ""}`.trim()) === v
+                          );
+                          const accType = matchedVen?.account_type || "Supplier / Vendor";
+                          let badgeClass = "bg-blue-50 text-blue-700 border-blue-200";
+                          if (accType === "Customer / Client") badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                          else if (accType === "Trading Partner") badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
+                          else if (accType === "Internal Firm") badgeClass = "bg-purple-50 text-purple-700 border-purple-200";
+                          else if (accType === "Job Work") badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
+
+                          return (
+                            <button
+                              key={v}
+                              type="button"
+                              onClick={() => handleVendorSelect(v)}
+                              className="w-full text-left px-3 py-1.5 hover:bg-blue-50 rounded-lg font-semibold text-slate-800 text-xs flex items-center justify-between cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                <span>{v}</span>
+                                <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${badgeClass}`}>
+                                  {accType}
+                                </span>
+                              </div>
+                              {vendorName === v && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
+                            </button>
+                          );
+                        })
                       )}
                     </div>
                   )}

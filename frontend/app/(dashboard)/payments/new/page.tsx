@@ -31,6 +31,7 @@ export interface VendorItemState {
   id: string;
   name: string;
   type: "SUPPLIER" | "PARTY";
+  account_type?: string;
   visible: boolean;
 }
 
@@ -118,7 +119,8 @@ export default function NewPaymentVoucherPage() {
             .map((v: any) => ({
               id: v.id || `v-${Math.random()}`,
               name: v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim(),
-              type: "SUPPLIER" as const,
+              type: (v.account_type === "Customer / Client" || v.account_type === "Trading Partner" ? "PARTY" : "SUPPLIER") as "SUPPLIER" | "PARTY",
+              account_type: v.account_type || "Supplier / Vendor",
               visible: true
             }))
             .filter((v) => v.name);
@@ -132,17 +134,21 @@ export default function NewPaymentVoucherPage() {
 
       if (!isMounted) return;
       try {
-        const saved = getTenantItem<any[]>(
-          "texaflow_vendors",
-          currentCid === "comp-001" ? "om_sai_vendors" : undefined
-        );
+        const localMaster = localStorage.getItem("app_vendors_master");
+        const saved = localMaster
+          ? JSON.parse(localMaster)
+          : getTenantItem<any[]>(
+              "texaflow_vendors",
+              currentCid === "comp-001" ? "om_sai_vendors" : undefined
+            );
         if (saved && Array.isArray(saved)) {
           const scoped = saved.filter((v: any) => (v.company_id || "comp-001") === currentCid);
           const mapped: VendorItemState[] = scoped
             .map((v: any) => ({
               id: v.id || `v-${Math.random()}`,
               name: v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim(),
-              type: "SUPPLIER" as const,
+              type: (v.account_type === "Customer / Client" || v.account_type === "Trading Partner" ? "PARTY" : "SUPPLIER") as "SUPPLIER" | "PARTY",
+              account_type: v.account_type || "Supplier / Vendor",
               visible: true
             }))
             .filter((v) => v.name);
@@ -497,6 +503,11 @@ export default function NewPaymentVoucherPage() {
                             type="button"
                             onClick={() => {
                               setSupplierName(opt.name);
+                              if (opt.account_type === "Customer / Client" || opt.account_type === "Trading Partner") {
+                                setFormType("Receipt In");
+                              } else {
+                                setFormType("Payment Out");
+                              }
                               setIsSupplierDropdownOpen(false);
                             }}
                             className={`w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors ${
@@ -507,9 +518,21 @@ export default function NewPaymentVoucherPage() {
                           >
                             <div className="flex flex-col">
                               <span className="font-extrabold text-slate-900">{opt.name}</span>
-                              <span className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider">
-                                {opt.type}
-                              </span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border font-bold ${
+                                  opt.account_type === "Customer / Client"
+                                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                    : opt.account_type === "Trading Partner"
+                                    ? "bg-amber-50 text-amber-800 border-amber-200"
+                                    : opt.account_type === "Internal Firm"
+                                    ? "bg-purple-50 text-purple-800 border-purple-200"
+                                    : opt.account_type === "Job Work"
+                                    ? "bg-indigo-50 text-indigo-800 border-indigo-200"
+                                    : "bg-blue-50 text-blue-800 border-blue-200"
+                                }`}>
+                                  {opt.account_type || "Supplier / Vendor"}
+                                </span>
+                              </div>
                             </div>
                             {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2 stroke-[2.5]" />}
                           </button>

@@ -63,6 +63,7 @@ export interface VendorMaster {
   id: string;
   company_name: string;
   display_name: string;
+  account_type?: string;
   work_phone?: string;
   mobile?: string;
   gstin?: string;
@@ -426,6 +427,23 @@ export default function LedgerPage() {
     });
     return Array.from(set).filter(Boolean).sort();
   }, [purchases, vouchers, vendors]);
+
+  // Lookup map of party account types for distinctive visual badges
+  const partyTypeMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    vendors.forEach((v) => {
+      const name = (v.company_name || v.display_name)?.trim();
+      if (name) {
+        map[name] = v.account_type || "Supplier / Vendor";
+      }
+    });
+    return map;
+  }, [vendors]);
+
+  const currentPartyAccountType = useMemo(() => {
+    if (partyFilter === "All") return null;
+    return partyTypeMap[partyFilter.trim()] || null;
+  }, [partyTypeMap, partyFilter]);
 
   // Matching parties for search bar party autocomplete (only when user has typed)
   const matchingParties = useMemo(() => {
@@ -840,6 +858,21 @@ export default function LedgerPage() {
                       <div className="flex items-center gap-2 truncate">
                         <Building2 className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-blue-600" : "text-slate-400"}`} />
                         <span className="truncate font-bold">{pName}</span>
+                        {partyTypeMap[pName] && (
+                          <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${
+                            partyTypeMap[pName] === "Customer / Client"
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                              : partyTypeMap[pName] === "Trading Partner"
+                              ? "bg-amber-50 text-amber-800 border-amber-200"
+                              : partyTypeMap[pName] === "Internal Firm"
+                              ? "bg-purple-50 text-purple-800 border-purple-200"
+                              : partyTypeMap[pName] === "Job Work"
+                              ? "bg-indigo-50 text-indigo-800 border-indigo-200"
+                              : "bg-blue-50 text-blue-800 border-blue-200"
+                          }`}>
+                            {partyTypeMap[pName]}
+                          </span>
+                        )}
                       </div>
                       {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
                     </button>
@@ -944,8 +977,18 @@ export default function LedgerPage() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-black text-slate-900">{partyFilter}</span>
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 uppercase">
-                  {isGujarati ? "પાર્ટી ખાતાવહી" : "Party Ledger"}
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase border ${
+                  currentPartyAccountType === "Customer / Client"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : currentPartyAccountType === "Trading Partner"
+                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                    : currentPartyAccountType === "Internal Firm"
+                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                    : currentPartyAccountType === "Job Work"
+                    ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                    : "bg-blue-50 text-blue-700 border-blue-200"
+                }`}>
+                  {currentPartyAccountType || (isGujarati ? "પાર્ટી ખાતાવહી" : "Party Ledger")}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium mt-0.5">
