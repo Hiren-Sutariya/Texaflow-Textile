@@ -489,17 +489,9 @@ export default function PurchasesPage() {
 
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenLedger(item.vendor_name)}
-                        className="font-extrabold text-slate-900 text-sm hover:text-blue-600 transition-colors text-left flex items-center gap-1 cursor-pointer"
-                        title={t("View Supplier Ledger")}
-                      >
-                        <span>{item.vendor_name}</span>
-                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                          ખાતાવહી
-                        </span>
-                      </button>
+                      <span className="font-extrabold text-slate-900 text-sm">
+                        {item.vendor_name}
+                      </span>
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                           {item.purchase_no}
@@ -615,19 +607,9 @@ export default function PurchasesPage() {
 
                       {/* 3. SUPPLIER / MILL */}
                       <td className="py-3.5 px-4 whitespace-nowrap align-middle">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenLedger(item.vendor_name)}
-                          className="group inline-flex items-center gap-1.5 text-left font-extrabold text-slate-900 hover:text-blue-600 transition-colors cursor-pointer"
-                          title={t("View Supplier Ledger & Statement")}
-                        >
-                          <span className="text-xs group-hover:underline underline-offset-2">
-                            {item.vendor_name}
-                          </span>
-                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity border border-blue-200">
-                            ખાતાવહી ↗
-                          </span>
-                        </button>
+                        <span className="font-extrabold text-slate-900 text-xs">
+                          {item.vendor_name}
+                        </span>
                       </td>
 
                       {/* 4. DUE DATE / મુદત */}
@@ -678,14 +660,6 @@ export default function PurchasesPage() {
                       {/* 8. ACTION */}
                       <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenLedger(item.vendor_name)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                            title={t("Supplier Ledger (ખાતાવહી)")}
-                          >
-                            <Building2 className="w-3.5 h-3.5" />
-                          </button>
                           <button
                             type="button"
                             onClick={() => setPreviewBill(item)}
