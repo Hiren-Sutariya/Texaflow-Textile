@@ -561,20 +561,8 @@ export default function VendorsPage() {
   };
 
 
-  const getAccountTypeBadgeClass = (type?: string) => {
-    switch (type) {
-      case "Customer / Client":
-        return "text-emerald-800 bg-emerald-50 border-emerald-200";
-      case "Trading Partner":
-        return "text-amber-800 bg-amber-50 border-amber-200";
-      case "Internal Firm":
-        return "text-purple-800 bg-purple-50 border-purple-200";
-      case "Job Work":
-        return "text-indigo-800 bg-indigo-50 border-indigo-200";
-      case "Supplier / Vendor":
-      default:
-        return "text-blue-800 bg-blue-50 border-blue-200";
-    }
+  const getAccountTypeBadgeClass = (_type?: string) => {
+    return "text-blue-800 bg-blue-50 border-blue-200";
   };
 
   const openPreviewVendor = (v: Vendor) => {

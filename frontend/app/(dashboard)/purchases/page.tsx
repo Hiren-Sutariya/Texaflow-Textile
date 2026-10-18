@@ -383,14 +383,11 @@ export default function PurchasesPage() {
                   {item.linked_order && (
                     <div className="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-slate-700">{t("Linked Order")}:</span>
-                      <Link
-                        href={`/orders?q=${encodeURIComponent(item.linked_order.replace(/^📦\s*/, "").trim())}`}
-                        className="font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200 inline-flex items-center gap-1 transition-colors cursor-pointer"
-                        title={t("View in Job Orders")}
+                      <span
+                        className="font-bold text-slate-700 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 inline-flex items-center gap-1"
                       >
                         <span>📦 {item.linked_order}</span>
-                        <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
-                      </Link>
+                      </span>
                     </div>
                   )}
 

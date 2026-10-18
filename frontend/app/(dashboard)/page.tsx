@@ -84,24 +84,17 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Link
-            href="/job-works/new"
+            href="/purchases/new"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all"
           >
             <Plus className="w-3.5 h-3.5" />
-            New Job Work
+            New Purchase
           </Link>
           <Link
-            href="/production"
+            href="/payments/new"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all"
           >
-            <Factory className="w-3.5 h-3.5" />
-            Log Production
-          </Link>
-          <Link
-            href="/payments"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold transition-all border border-slate-200"
-          >
-            <CreditCard className="w-3.5 h-3.5 text-slate-600" />
+            <CreditCard className="w-3.5 h-3.5" />
             Add Payment
           </Link>
         </div>
@@ -223,9 +216,6 @@ export default function DashboardPage() {
               <h3 className="font-bold text-slate-900 text-base">Live Machine & Worker Snapshot</h3>
               <p className="text-xs text-slate-500 mt-0.5">Real-time status across embroidery floor machines</p>
             </div>
-            <Link href="/production" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-              View All Floor →
-            </Link>
           </div>
 
           {/* MOBILE CARD VIEW (< md) - No horizontal scroll */}

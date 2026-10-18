@@ -213,58 +213,7 @@ export default function DesignsPage() {
   };
 
 
-  // Convert Design directly to a Job Order
-  const handleCreateOrderFromDesign = (e: React.MouseEvent, folder: DesignFolder) => {
-    e.stopPropagation();
-    const totalPcs = getTotalPcsForFolder(folder) || 100;
-    const avgRate = folder.items.length > 0 
-      ? (folder.items.reduce((s, i) => s + i.rate_per_1k, 0) / folder.items.length)
-      : 0.45;
 
-    // Clean design code to ensure no '#' prefix
-    const cleanDesignCode = folder.folder_code.replace(/#/g, "").trim();
-
-    // Map colorways with calculated pcs
-    const colorBreakdown = folder.colorways.map((cw) => ({
-      color_name: cw.color_name,
-      pcs: calculateColorPcs(cw, folder)
-    }));
-
-    // Build Job Order object (assigned_machine defaults to Unassigned so user chooses)
-    const newOrder = {
-      id: `ord-${Date.now()}`,
-      order_no: `ORD-2026-${Math.floor(100 + Math.random() * 900)}`,
-      date: new Date().toLocaleDateString("en-GB"),
-      party_name: folder.party_name,
-      main_merchant: "Direct Order",
-      fabric_quality: "Standard Fabric",
-      design_name: folder.title && folder.title !== "-" ? folder.title : "Saree Heavy Design Suite",
-      design_code: cleanDesignCode,
-      assigned_machine: "Unassigned",
-      colorways: colorBreakdown.length > 0 ? colorBreakdown : [{ color_name: "Standard Run", pcs: totalPcs }],
-      total_quantity: totalPcs,
-      unit: "Pcs" as const,
-      rate_per_1k: Number(avgRate.toFixed(2)),
-      target_date: new Date(Date.now() + 7 * 86400000).toLocaleDateString("en-GB"),
-      status: "Pending" as const,
-      notes: ""
-    };
-
-    // Save to localStorage 'app_job_orders'
-    const savedOrders = localStorage.getItem("app_job_orders");
-    let existingOrders: any[] = [];
-    if (savedOrders) {
-      try {
-        existingOrders = JSON.parse(savedOrders);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    localStorage.setItem("app_job_orders", JSON.stringify([newOrder, ...existingOrders]));
-
-    // Navigate to /orders
-    router.push("/orders");
-  };
 
   // INLINE TOGGLES
   const [isAddingFolderInline, setIsAddingFolderInline] = useState(false);
@@ -1584,8 +1533,8 @@ export default function DesignsPage() {
                       </div>
                     </div>
 
-                    {/* Included Parts Badges & Create Order Action */}
-                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                    {/* Included Parts Badges */}
+                    <div className="pt-2 border-t border-slate-100">
                       <div className="flex items-center gap-1 flex-wrap">
                         {f.items.length > 0 ? (
                           f.items.map((item, idx) => (
@@ -1600,15 +1549,6 @@ export default function DesignsPage() {
                           <span className="text-[10px] text-slate-400 italic">No parts added</span>
                         )}
                       </div>
-
-                      <button
-                        type="button"
-                        onClick={(e) => handleCreateOrderFromDesign(e, f)}
-                        className="w-full py-1.5 px-3 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200/80 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-98"
-                      >
-                        <Briefcase className="w-3.5 h-3.5" />
-                        <span>Create Job Order</span>
-                      </button>
                     </div>
                   </div>
                 </div>

@@ -64,11 +64,9 @@ const menuGroups: MenuGroup[] = [
       { name: "Vendors", href: "/vendors", icon: Building2 },
       { name: "Workers & Karigars", href: "/employees", icon: UserCheck },
       { name: "Design Library", href: "/designs", icon: Palette },
-      { name: "Job Orders", href: "/orders", icon: Briefcase },
       { name: "Parties", href: "/parties", icon: Users, isUpcoming: true },
       { name: "Karigar Issue", href: "/job-works", icon: FileText, isUpcoming: true },
     ]
-
   },
   {
     groupTitle: "Finance & Accounts",
@@ -93,10 +91,8 @@ const menuGroups: MenuGroup[] = [
 const quickCreateOptions = [
   { title: "Material Purchase", href: "/purchases/new", icon: ShoppingCart, color: "bg-blue-50 text-blue-600 border-blue-100" },
   { title: "Company Expense", href: "/expenses/new", icon: Receipt, color: "bg-rose-50 text-rose-600 border-rose-100" },
-  { title: "Delivery Challan", href: "/dispatches", icon: Truck, color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
   { title: "Payment Voucher", href: "/payments/new", icon: CreditCard, color: "bg-indigo-50 text-indigo-600 border-indigo-100" },
   { title: "Worker Payout", href: "/worker-payout", icon: Wallet, color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-  { title: "Shift Production", href: "/production", icon: Factory, color: "bg-amber-50 text-amber-700 border-amber-100" },
   { title: "Party / Client", href: "/parties", icon: Users, color: "bg-purple-50 text-purple-600 border-purple-100" }
 ];
 
