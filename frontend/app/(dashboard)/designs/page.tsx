@@ -27,50 +27,108 @@ import {
   CircleDot,
   Briefcase,
   Edit3,
-  Package
+  Package,
+  Image as ImageIcon,
+  MessageSquare,
+  Share2,
+  ExternalLink,
+  Copy,
+  ShieldCheck,
+  CheckCircle2,
+  Clock,
+  Send,
+  Eye,
+  EyeOff
 } from "lucide-react";
 
-interface ThreadItem {
+export interface ThreadItem {
   id: string;
-  needle_no?: number | string; // Needle 1, 2, 3 or "N1"
-  thread_name: string; // e.g. "Rani Pink", "Dull Gold Zari"
-  thread_code?: string; // e.g. "Shade #402", "Zari #108"
-  color_hex?: string; // e.g. "#EC4899"
-  thread_type?: string; // e.g. "Polyester 120D", "Metallic Zari", "Silk Resham"
+  needle_no?: number | string;
+  thread_name: string;
+  thread_code?: string;
+  color_hex?: string;
+  thread_type?: string;
 }
 
-interface ColorTakka {
+export interface ColorTakka {
   id: string;
-  color_name: string; // e.g. "Rani", "Rama"
+  color_name: string;
   color_code?: string;
-  takka_count: number; // e.g. 10 Takka
-  roll_meters?: number[]; // Individual Takka roll meters e.g. [104, 103, 105, 102]
-  override_pcs?: number; // e.g. 872 pcs
-  threads?: ThreadItem[]; // Thread matching details for this fabric color
+  takka_count: number;
+  roll_meters?: number[];
+  override_pcs?: number;
+  threads?: ThreadItem[];
 }
 
-interface DesignItem {
+export interface DesignItem {
   id: string;
-  component_name: string; // e.g. "Front", "Back", "Patta"
+  component_name: string;
   category: string;
   stitch_count: number;
-  rate_per_1k: number; // e.g. 0.45 paise per 1000 stitches
+  rate_per_1k: number;
 }
 
-interface DesignFolder {
+export interface DesignOrderHistoryItem {
   id: string;
-  folder_code: string; // e.g. "Design #2486", "PJD-77-35"
+  order_no: string;
+  order_date: string;
+  party_name: string;
+  party_mobile?: string;
+  fabric_terms: "Party Fabric (Job Work)" | "Our Fabric (With Fabric)";
+  material_terms: "Factory Material" | "Party Supplied Material";
+  total_pcs: number;
+  rate_per_pc: number;
+  total_amount: number;
+  colors: { id: string; color_name: string; pcs: number; takka?: string }[];
+  delivery_date: string;
+  status: "Sample Pending" | "Sample Approved" | "In Production" | "Completed";
+  notes?: string;
+}
+
+export interface DesignFolder {
+  id: string;
+  folder_code: string;
   title: string;
-  party_name: string; // e.g. "ABC Tex Fabrics"
+  party_name: string;
+  design_type: "In-House Master" | "Party Exclusive";
+  category: string;
+  image_url?: string;
+  emb_file_name?: string;
+  stitch_count: number;
+  rate_per_1k: number;
   created_date: string;
   machine_requirement: string;
-  takko_length_meters: number; // Standard 104 meters per Takko fallback
-  cut_length_meters: number;   // Standard 0.93 meters per cut
-  colorways: ColorTakka[];
+  work_types: string[];
   items: DesignItem[];
+  colorways: ColorTakka[];
+  order_history?: DesignOrderHistoryItem[];
+  takko_length_meters?: number;
+  cut_length_meters?: number;
 }
 
-const initialFolders: DesignFolder[] = [];
+const DESIGN_CATEGORIES = [
+  "Saree",
+  "Blouse",
+  "Kurti",
+  "Lehenga",
+  "Dupatta",
+  "Dress / Suit",
+  "Sherwani",
+  "Border / Patta",
+  "Fabric All-Over",
+  "Other"
+];
+
+const WORK_TYPE_OPTIONS = [
+  "Sequins (3mm / 5mm)",
+  "Dull Gold Zari",
+  "Copper Zari",
+  "Silver Zari",
+  "Cording / Dori Work",
+  "Multi-Color Resham",
+  "Thread / Plain Embroidery",
+  "Mending & Finishing"
+];
 
 export default function DesignsPage() {
   const router = useRouter();
@@ -93,10 +151,9 @@ export default function DesignsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [expandedRollMetersColorId, setExpandedRollMetersColorId] = useState<string | null>(null);
-  const [colorwayActiveTab, setColorwayActiveTab] = useState<Record<string, "takka" | "threads">>({});
+  const [activeDetailTab, setActiveDetailTab] = useState<"specs" | "orders">("specs");
 
-  // Load design folders from Supabase & localStorage
+  // Load design folders from backend & localStorage
   useEffect(() => {
     setIsMounted(true);
     const loadDesignsFromApi = async () => {
@@ -113,93 +170,63 @@ export default function DesignsPage() {
           const mapped: DesignFolder[] = live.map((d) => {
             let parsedItems: DesignItem[] = [];
             let parsedColorways: ColorTakka[] = [];
+            let parsedHistory: DesignOrderHistoryItem[] = [];
+            let parsedWorkTypes: string[] = [];
+
             if (d.items) {
               try {
                 const rawItems = typeof d.items === "string" ? JSON.parse(d.items) : d.items;
-                if (Array.isArray(rawItems)) {
-                  parsedItems = rawItems.map((item: any, idx: number) => ({
-                    ...item,
-                    id: item.id || `item-${d.id}-${idx + 1}`
-                  }));
-                }
+                if (Array.isArray(rawItems)) parsedItems = rawItems;
               } catch {}
             }
             if (d.colorways) {
               try {
                 const rawCws = typeof d.colorways === "string" ? JSON.parse(d.colorways) : d.colorways;
-                if (Array.isArray(rawCws)) {
-                  parsedColorways = rawCws.map((cw: any, idx: number) => ({
-                    ...cw,
-                    id: cw.id || `cw-${d.id}-${idx + 1}`,
-                    threads: Array.isArray(cw.threads)
-                      ? cw.threads.map((th: any, thIdx: number) => ({
-                          ...th,
-                          id: th.id || `th-${d.id}-${idx + 1}-${thIdx + 1}`
-                        }))
-                      : []
-                  }));
-                }
+                if (Array.isArray(rawCws)) parsedColorways = rawCws;
               } catch {}
             }
+            if (d.order_history) {
+              try {
+                const rawHist = typeof d.order_history === "string" ? JSON.parse(d.order_history) : d.order_history;
+                if (Array.isArray(rawHist)) parsedHistory = rawHist;
+              } catch {}
+            }
+            if (d.work_types) {
+              try {
+                const rawWt = typeof d.work_types === "string" ? JSON.parse(d.work_types) : d.work_types;
+                if (Array.isArray(rawWt)) parsedWorkTypes = rawWt;
+              } catch {}
+            }
+
             return {
               id: d.id,
               folder_code: d.folder_code,
               title: d.title || "-",
-              party_name: d.party_name || "Direct Party",
+              party_name: d.party_name || "In-House Master",
+              design_type: d.design_type || (d.party_name && d.party_name !== "In-House Master" ? "Party Exclusive" : "In-House Master"),
+              category: d.category || "Saree",
+              image_url: d.image_url || undefined,
+              emb_file_name: d.emb_file_name || undefined,
+              stitch_count: Number(d.stitch_count) || (parsedItems.reduce((s, i) => s + (Number(i.stitch_count) || 0), 0) || 35000),
+              rate_per_1k: Number(d.rate_per_1k) || 0.45,
               created_date: d.created_date || "01-10-2026",
               machine_requirement: d.machine_requirement || "17 Head Multi-Head",
+              work_types: parsedWorkTypes.length > 0 ? parsedWorkTypes : ["Dull Gold Zari", "Multi-Color Resham"],
               takko_length_meters: d.takko_length_meters || 104,
               cut_length_meters: d.cut_length_meters || 0.93,
-              items: Array.isArray(parsedItems) ? parsedItems : [],
-              colorways: Array.isArray(parsedColorways) ? parsedColorways : []
+              items: parsedItems,
+              colorways: parsedColorways,
+              order_history: parsedHistory
             };
           });
+
           setFolders(mapped);
           setTenantItem("app_design_folders", mapped, cid === "comp-001" ? "om_sai_designs_library" : undefined);
           setIsLoading(false);
           return;
         }
       } catch (err) {
-        console.warn("Backend designs load fallback", err);
-      } finally {
-        setIsLoading(false);
-      }
-
-      const cid = getStoredCompanyId();
-      const saved = getTenantItem<any[]>("app_design_folders", cid === "comp-001" ? "om_sai_designs_library" : undefined);
-      if (saved !== null) {
-        try {
-          if (Array.isArray(saved)) {
-            if (saved.length === 0) {
-              setFolders([]);
-              return;
-            }
-            const sanitized = saved.map((d: any) => ({
-              ...d,
-              items: Array.isArray(d.items)
-                ? d.items.map((it: any, idx: number) => ({
-                    ...it,
-                    id: it.id || `item-${d.id}-${idx + 1}`
-                  }))
-                : [],
-              colorways: Array.isArray(d.colorways)
-                ? d.colorways.map((cw: any, idx: number) => ({
-                    ...cw,
-                    id: cw.id || `cw-${d.id}-${idx + 1}`,
-                    threads: Array.isArray(cw.threads)
-                      ? cw.threads.map((th: any, thIdx: number) => ({
-                          ...th,
-                          id: th.id || `th-${d.id}-${idx + 1}-${thIdx + 1}`
-                        }))
-                      : []
-                  }))
-                : []
-            }));
-            setFolders(sanitized);
-          }
-        } catch (e) {
-          console.error("Failed to load design folders from localStorage", e);
-        }
+        console.warn("Could not fetch live designs, reading localStorage fallback", err);
       }
       setIsLoading(false);
     };
@@ -210,69 +237,75 @@ export default function DesignsPage() {
     setFolders(newFolders);
     const cid = getStoredCompanyId();
     setTenantItem("app_design_folders", newFolders, cid === "comp-001" ? "om_sai_designs_library" : undefined);
+    window.dispatchEvent(new Event("app_data_update"));
   };
-
-
-
 
   // INLINE TOGGLES
   const [isAddingFolderInline, setIsAddingFolderInline] = useState(false);
   const [isAddingColorInline, setIsAddingColorInline] = useState(false);
   const [isAddingComponentInline, setIsAddingComponentInline] = useState(false);
 
-  // Form State: New Folder (Clean empty default state)
-  const [newFolderParty, setNewFolderParty] = useState("");
+  // Form State: New Design Master
+  const [newFolderImage, setNewFolderImage] = useState<string>("");
   const [newFolderCode, setNewFolderCode] = useState("");
   const [newFolderTitle, setNewFolderTitle] = useState("");
-  const [newFolderTakka, setNewFolderTakka] = useState<number | "">("");
-  const [newFolderPcs, setNewFolderPcs] = useState<number | "">("");
-  const [newFolderStitches, setNewFolderStitches] = useState<number | "">("");
-  const [newFolderRate, setNewFolderRate] = useState<number | "">("");
-  const [newFolderParts, setNewFolderParts] = useState("");
+  const [newFolderCategory, setNewFolderCategory] = useState("Saree");
+  const [newFolderDesignType, setNewFolderDesignType] = useState<"In-House Master" | "Party Exclusive">("In-House Master");
+  const [newFolderParty, setNewFolderParty] = useState("");
+  const [newFolderStitches, setNewFolderStitches] = useState<number | "">(35000);
+  const [newFolderRate, setNewFolderRate] = useState<number | "">(0.45);
+  const [newFolderWorkTypes, setNewFolderWorkTypes] = useState<string[]>(["Dull Gold Zari"]);
+  const [newFolderEmbFile, setNewFolderEmbFile] = useState("");
+  const [showWatermark, setShowWatermark] = useState(true);
 
-  // Refs for Keyboard Enter Navigation across form fields (Field 0 -> 7)
+  // Party selector dropdown state
+  const [registeredParties, setRegisteredParties] = useState<{ id?: string; name: string; city?: string; mobile?: string }[]>([]);
+  const [isPartyDropdownOpen, setIsPartyDropdownOpen] = useState(false);
+  const [partyHighlightIdx, setPartyHighlightIdx] = useState(0);
+  const partyDropdownRef = useRef<HTMLDivElement>(null);
   const designFormRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Registered Parties list from localStorage (loads full party objects for suggestions)
-  const [registeredParties, setRegisteredParties] = useState<
-    { id: string; srNo: number; name: string; mobile: string; city: string; gstin: string }[]
-  >([]);
+  // Smart Job Order Modal States
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [orderTargetDesign, setOrderTargetDesign] = useState<DesignFolder | null>(null);
+  const [orderPartyName, setOrderPartyName] = useState("");
+  const [orderPartyMobile, setOrderPartyMobile] = useState("");
+  const [orderFabricTerms, setOrderFabricTerms] = useState<"Party Fabric (Job Work)" | "Our Fabric (With Fabric)">("Party Fabric (Job Work)");
+  const [orderMaterialTerms, setOrderMaterialTerms] = useState<"Factory Material" | "Party Supplied Material">("Factory Material");
+  const [orderColorRows, setOrderColorRows] = useState<{ id: string; color_name: string; takka: string; pcs: number | "" }[]>([
+    { id: "col-1", color_name: "Rani", takka: "5", pcs: 150 },
+    { id: "col-2", color_name: "Rama", takka: "5", pcs: 150 }
+  ]);
+  const [orderTargetDate, setOrderTargetDate] = useState(() => {
+    const d = new Date(Date.now() + 7 * 86400000);
+    return `${d.getDate().toString().padStart(2, "0")}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d.getFullYear()}`;
+  });
+  const [orderSampleStatus, setOrderSampleStatus] = useState<"Sample Pending" | "Sample Approved" | "In Production">("Sample Pending");
+  const [orderNotes, setOrderNotes] = useState("");
 
-  const [isPartyDropdownOpen, setIsPartyDropdownOpen] = useState(false);
-  const [partyHighlightIdx, setPartyHighlightIdx] = useState<number>(0);
+  // WhatsApp Confirmation Modal State
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [whatsAppText, setWhatsAppText] = useState("");
+  const [whatsAppTargetMobile, setWhatsAppTargetMobile] = useState("");
+  const [copiedToast, setCopiedToast] = useState(false);
 
-  const getPartySuggestionsList = () => {
-    const clean = newFolderParty.trim().toLowerCase();
-    const matched = registeredParties.filter((p) =>
-      p.name.toLowerCase().includes(clean)
-    );
-    const showNewOption = !registeredParties.some(
-      (p) => p.name.toLowerCase() === clean
-    );
-    return { matched, showNewOption, totalCount: matched.length + (showNewOption ? 1 : 0) };
-  };
-
+  // Load parties for dropdowns
   const loadPartiesInDesigns = () => {
-    let partyList: any[] = [];
+    let partyList: { id?: string; name: string; city?: string; mobile?: string }[] = [];
     try {
       const saved = localStorage.getItem("app_parties");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          partyList = parsed.filter(
-            (p: any) =>
-              p.name !== "ABC Tex Fabrics" &&
-              p.name !== "Royal Fashion House" &&
-              p.name !== "Shree Ram Textiles" &&
-              p.id !== "p-101" &&
-              p.id !== "p-102" &&
-              p.id !== "p-103"
-          );
+          parsed.forEach((p: any) => {
+            if (p.name && !partyList.some((x) => x.name === p.name)) {
+              partyList.push({ id: p.id, name: p.name, city: p.city || "Surat", mobile: p.mobile || "" });
+            }
+          });
         }
       }
     } catch (e) {}
 
-    // Also incorporate vendors from app_vendors_master
     try {
       const savedVendors = localStorage.getItem("app_vendors_master");
       if (savedVendors) {
@@ -284,7 +317,8 @@ export default function DesignsPage() {
               partyList.push({
                 id: v.id,
                 name,
-                account_type: v.account_type || "Customer / Client"
+                city: v.city || "Surat",
+                mobile: v.mobile || v.phone || ""
               });
             }
           });
@@ -306,9 +340,7 @@ export default function DesignsPage() {
     };
   }, []);
 
-  // Ref wrapper for click-outside auto-closing party dropdown
-  const partyDropdownRef = useRef<HTMLDivElement>(null);
-
+  // Click outside listener for party dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (partyDropdownRef.current && !partyDropdownRef.current.contains(event.target as Node)) {
@@ -316,392 +348,117 @@ export default function DesignsPage() {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Direct Add Party without Popup Modal
-  const handleDirectAddParty = (targetName?: string) => {
-    const cleanName = (targetName || newFolderParty).trim();
-    if (!cleanName) {
-      alert("Please enter party name!");
-      return;
-    }
-
-    const exists = registeredParties.some(
-      (p) => p.name.toLowerCase() === cleanName.toLowerCase()
-    );
-
-    let updatedList = [...registeredParties];
-    if (!exists) {
-      const nextSrNo =
-        registeredParties.length > 0
-          ? Math.max(...registeredParties.map((p) => p.srNo || 0)) + 1
-          : 1;
-      const newPartyObj = {
-        id: `p-${Date.now()}`,
-        srNo: nextSrNo,
-        name: cleanName,
-        mobile: "-",
-        city: "Surat",
-        gstin: "-",
-        credit_days: 30,
-        join_date: new Date().toLocaleDateString("en-GB")
-      };
-
-      updatedList = [newPartyObj, ...registeredParties];
-      setRegisteredParties(updatedList);
-
-      // Save to all 3 keys to ensure cross-page consistency everywhere
-      try {
-        localStorage.setItem("app_parties", JSON.stringify(updatedList));
-        localStorage.setItem("app_parties_list", JSON.stringify(updatedList));
-        localStorage.setItem("parties_register_data", JSON.stringify(updatedList));
-        window.dispatchEvent(new Event("app_data_update"));
-      } catch (err) {
-        console.error("Error saving new party:", err);
-      }
-    }
-
-    // Set selected party in design form & close dropdown
-    setNewFolderParty(cleanName);
-    setIsPartyDropdownOpen(false);
-
-    // Focus next input (Design Code)
-    setTimeout(() => {
-      designFormRefs.current[1]?.focus();
-    }, 100);
-  };
-
-  // Form State: Multi-Colorways Support
-  interface DraftThreadRow {
-    needle_no: string;
-    thread_name: string;
-    shade_code: string;
-  }
-
-  interface DraftColorRow {
-    id: string;
-    color_name: string;
-    takka_count: number | "";
-    roll_meters: string;
-    threads: DraftThreadRow[];
-  }
-
-  const [colorDraftRows, setColorDraftRows] = useState<DraftColorRow[]>([
-    {
-      id: "cr-1",
-      color_name: "",
-      takka_count: "",
-      roll_meters: "",
-      threads: []
-    }
-  ]);
-
-  const handleAddColorDraftRow = () => {
-    setColorDraftRows((prev) => [
-      ...prev,
-      {
-        id: `cr-${Date.now()}-${prev.length}`,
-        color_name: "",
-        takka_count: "",
-        roll_meters: "",
-        threads: []
-      }
-    ]);
-  };
-
-  const handleRemoveColorDraftRow = (rowId: string) => {
-    setColorDraftRows((prev) => prev.filter((r) => r.id !== rowId));
-  };
-
-  const handleUpdateColorDraftRow = (
-    rowId: string,
-    field: "color_name" | "takka_count" | "roll_meters",
-    value: any
-  ) => {
-    setColorDraftRows((prev) =>
-      prev.map((r) => (r.id === rowId ? { ...r, [field]: value } : r))
-    );
-  };
-
-  const handleAddThreadToColorRow = (rowId: string) => {
-    setColorDraftRows((prev) =>
-      prev.map((r) => {
-        if (r.id === rowId) {
-          return {
-            ...r,
-            threads: [
-              ...r.threads,
-              { needle_no: `N${r.threads.length + 1}`, thread_name: "", shade_code: "" }
-            ]
-          };
-        }
-        return r;
-      })
-    );
-  };
-
-  const handleRemoveThreadFromColorRow = (rowId: string, threadIdx: number) => {
-    setColorDraftRows((prev) =>
-      prev.map((r) => {
-        if (r.id === rowId) {
-          return {
-            ...r,
-            threads: r.threads.filter((_, idx) => idx !== threadIdx)
-          };
-        }
-        return r;
-      })
-    );
-  };
-
-  const handleUpdateThreadInColorRow = (
-    rowId: string,
-    threadIdx: number,
-    field: "needle_no" | "thread_name" | "shade_code",
-    value: string
-  ) => {
-    setColorDraftRows((prev) =>
-      prev.map((r) => {
-        if (r.id === rowId) {
-          const updatedThreads = r.threads.map((th, idx) =>
-            idx === threadIdx ? { ...th, [field]: value } : th
-          );
-          return { ...r, threads: updatedThreads };
-        }
-        return r;
-      })
-    );
-  };
-
-  // Keyboard navigation across form input fields on Enter
-  const handleColorFormKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const target = e.target as HTMLInputElement;
-      const form = target.form;
-      if (!form) return;
-      const focusable = Array.from(
-        form.querySelectorAll<HTMLInputElement | HTMLButtonElement>(
-          'input:not([type="hidden"]):not([disabled]), button[type="submit"]'
-        )
-      );
-      const index = focusable.indexOf(target);
-      if (index > -1 && index < focusable.length - 1) {
-        (focusable[index + 1] as HTMLElement).focus();
-      } else if (index === focusable.length - 1) {
-        form.requestSubmit();
-      }
-    }
-  };
-
-  // Form State: New Component inside selected folder
-  const [newCompName, setNewCompName] = useState("");
-  const [newCompCategory, setNewCompCategory] = useState<string>("Front");
-  const [isCustomCategory, setIsCustomCategory] = useState(false);
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-  const [categoriesList, setCategoriesList] = useState<string[]>([
-    "Front",
-    "Back",
-    "Patta",
-    "Blouse",
-    "Saree Body",
-    "Dupatta",
-    "Sleeve",
-    "Daman",
-    "Pallu",
-    "Gala"
-  ]);
-  const [newCompStitch, setNewCompStitch] = useState<number | "">("");
-  const [newCompRate, setNewCompRate] = useState<number | "">("");
-
-  // Form State: New Thread Matching Inline inside Fabric Color card
-  const [addingThreadForColorId, setAddingThreadForColorId] = useState<string | null>(null);
-  const [newThreadNeedleNo, setNewThreadNeedleNo] = useState<string>("");
-  const [newThreadName, setNewThreadName] = useState("");
-  const [newThreadCode, setNewThreadCode] = useState("");
-  const [newThreadType, setNewThreadType] = useState("Polyester 120D");
-
-  // State for Editing Thread Matching
-  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
-  const [editThreadNeedle, setEditThreadNeedle] = useState<string>("");
-  const [editThreadName, setEditThreadName] = useState<string>("");
-  const [editThreadCode, setEditThreadCode] = useState<string>("");
-
-  // Track edit roll mode for each colorway (Locked/Read-Only by default)
-  const [isEditingRolls, setIsEditingRolls] = useState<Record<string, boolean>>({});
-
-  const toggleEditRolls = (colorId: string) => {
-    setIsEditingRolls((prev) => ({ ...prev, [colorId]: !prev[colorId] }));
-  };
-
-  // Helper: Calculate total meters for a colorway (defaults to 0 if not entered)
-  const getColorMeters = (cw: ColorTakka, defaultTakkoMeters: number = 0) => {
-    if (cw.roll_meters && cw.roll_meters.length > 0) {
-      return cw.roll_meters.reduce((sum, m) => sum + (Number(m) || 0), 0);
-    }
-    return cw.takka_count * (defaultTakkoMeters || 0);
-  };
-
-  // Helper: Get effective cut size based on components:
-  // - No components added yet: return 0 (0 Pcs)
-  // - Front, Back & Patta (includes Patta): return 0.93m (106 / 0.93 = 114 Pcs)
-  // - Front & Back only (no Patta): return 0.80m (106 / 0.80 = 133 Pcs)
-  const getEffectiveCutLength = (folder: DesignFolder) => {
-    if (!folder.items || folder.items.length === 0) {
-      return 0;
-    }
-    const hasPatta = folder.items.some(
-      (item) =>
-        item.category.toLowerCase().includes("patta") ||
-        item.component_name.toLowerCase().includes("patta")
-    );
-    return hasPatta ? 0.93 : 0.80;
-  };
-
-  // Helper: Calculate Pcs from manual user input in TOTAL PCS box or roll meters
-  const calculateColorPcs = (cw: ColorTakka, folder: DesignFolder) => {
-    if (cw.override_pcs !== undefined && cw.override_pcs > 0) return cw.override_pcs;
-    const totalMeters = getColorMeters(cw, folder.takko_length_meters);
-    const cutLen = getEffectiveCutLength(folder);
-    if (totalMeters > 0 && cutLen > 0) {
-      return Math.round(totalMeters / cutLen);
-    }
-    return 50;
-  };
-
-  // Filter Folders by Search (Party Name, Design Code, Title)
-  const filteredFolders = folders.filter((f) =>
-    f.party_name.toLowerCase().includes(search.toLowerCase()) ||
-    f.folder_code.toLowerCase().includes(search.toLowerCase()) ||
-    f.title.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const selectedFolder = folders.find((f) => f.id === selectedFolderId);
-
-  // Calculate Total Pcs for a folder
-  const getTotalPcsForFolder = (f: DesignFolder) => {
-    return f.colorways.reduce((sum, c) => {
-      return sum + calculateColorPcs(c, f);
-    }, 0);
-  };
-
-  // Calculate Total Meters for a folder
-  const getTotalMetersForFolder = (f: DesignFolder) => {
-    return f.colorways.reduce((sum, c) => {
-      return sum + getColorMeters(c, f.takko_length_meters);
-    }, 0);
-  };
-
-  // Handle Keyboard Navigation across Design Form fields (0 -> 2)
-  const handleDesignFormKeyDown = (e: React.KeyboardEvent, fieldIndex: number) => {
-    // Field 0: Party Name (With Up/Down Arrow & Enter Keyboard Navigation)
-    if (fieldIndex === 0) {
-      const { matched, showNewOption, totalCount } = getPartySuggestionsList();
-
-      if (isPartyDropdownOpen && totalCount > 0) {
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          setPartyHighlightIdx((prev) => (prev + 1) % totalCount);
-          return;
-        }
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          setPartyHighlightIdx((prev) => (prev - 1 + totalCount) % totalCount);
-          return;
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          setIsPartyDropdownOpen(false);
-          return;
-        }
-        if (e.key === "Enter") {
-          e.preventDefault();
-          if (partyHighlightIdx < matched.length) {
-            const selected = matched[partyHighlightIdx];
-            setNewFolderParty(selected.name);
-          } else if (showNewOption) {
-            handleDirectAddParty();
+  // Handle Photo Upload with Auto Canvas Compress (Max 800px)
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (!result) return;
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const maxDim = 800;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
           }
-          setIsPartyDropdownOpen(false);
-          setTimeout(() => {
-            designFormRefs.current[1]?.focus();
-          }, 50);
-          return;
-        }
-      }
-    }
-
-    if (e.key === "Enter") {
-      e.preventDefault();
-
-      // Field 0: Party Name Fallback
-      if (fieldIndex === 0) {
-        setIsPartyDropdownOpen(false);
-        if (!newFolderParty.trim()) {
-          alert("⚠️ Please enter Party Name!");
-          setTimeout(() => {
-            designFormRefs.current[0]?.focus();
-          }, 50);
-          return;
-        }
-        const nextInput = designFormRefs.current[1];
-        if (nextInput) nextInput.focus();
-        return;
-      }
-
-      // Field 1: Design Code
-      if (fieldIndex === 1) {
-        if (!newFolderCode.trim()) {
-          alert("⚠️ Please enter Design Code / No!");
-          setTimeout(() => {
-            designFormRefs.current[1]?.focus();
-          }, 50);
-          return;
-        }
-        const nextInput = designFormRefs.current[2];
-        if (nextInput) nextInput.focus();
-        return;
-      }
-
-      if (fieldIndex < 2) {
-        const nextInput = designFormRefs.current[fieldIndex + 1];
-        if (nextInput) nextInput.focus();
-      } else {
-        // Final field (Description / Title) -> Save Design!
-        handleSaveFolderInline(e);
-      }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL("image/jpeg", 0.85);
+          setNewFolderImage(compressed);
+        };
+        img.src = result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = "";
     }
   };
 
-  // Save New Folder Inline with Manual User Fields (3-field clean creation)
-  const handleSaveFolderInline = async (e: React.FormEvent) => {
+  // Toggle Work Type Tag
+  const toggleWorkType = (tag: string) => {
+    setNewFolderWorkTypes((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  // Calculate Job Work Rate (Stitches * Rate / 1000)
+  const calculateRatePerPiece = (stitches: number | "", rate: number | "") => {
+    const st = Number(stitches) || 0;
+    const rt = Number(rate) || 0;
+    return Number(((st * rt) / 1000).toFixed(2));
+  };
+
+  // Save New Design Folder
+  const handleSaveDesign = async (e: React.FormEvent) => {
     e.preventDefault();
-    const partyClean = newFolderParty.trim();
-    if (!partyClean) {
-      alert("⚠️ Please enter Party Name!");
-      setTimeout(() => {
-        designFormRefs.current[0]?.focus();
-      }, 50);
-      return;
-    }
     if (!newFolderCode.trim()) {
       alert("⚠️ Please enter Design Code / No!");
-      setTimeout(() => {
-        designFormRefs.current[1]?.focus();
-      }, 50);
       return;
     }
 
-    // Auto register party in software list if not already present
-    handleDirectAddParty(partyClean);
-
-    const cleanCode = newFolderCode.trim().startsWith("Design") ? newFolderCode.trim() : `Design ${newFolderCode.trim()}`;
-    const cleanTitle = newFolderTitle.trim() || "-";
+    const cleanCode = newFolderCode.trim().startsWith("Design") || newFolderCode.trim().startsWith("D-")
+      ? newFolderCode.trim()
+      : `D-${newFolderCode.trim()}`;
+    const cleanTitle = newFolderTitle.trim() || `${newFolderCategory} Embroidered Suite`;
+    const partyClean = newFolderDesignType === "Party Exclusive" && newFolderParty.trim()
+      ? newFolderParty.trim()
+      : "In-House Master";
     const dateFormatted = new Date().toLocaleDateString("en-GB").replace(/\//g, "-");
+    const stitchesNum = Number(newFolderStitches) || 35000;
+    const rateNum = Number(newFolderRate) || 0.45;
     let assignedId = `des-${Date.now()}`;
+
+    const newDesignObj: DesignFolder = {
+      id: assignedId,
+      folder_code: cleanCode,
+      title: cleanTitle,
+      party_name: partyClean,
+      design_type: newFolderDesignType,
+      category: newFolderCategory,
+      image_url: newFolderImage || undefined,
+      emb_file_name: newFolderEmbFile.trim() || undefined,
+      stitch_count: stitchesNum,
+      rate_per_1k: rateNum,
+      created_date: dateFormatted,
+      machine_requirement: "17 Head Multi-Head",
+      work_types: newFolderWorkTypes.length > 0 ? newFolderWorkTypes : ["Dull Gold Zari"],
+      takko_length_meters: 104,
+      cut_length_meters: 0.93,
+      items: [
+        {
+          id: `i-${Date.now()}-1`,
+          component_name: "Front Daman & Body",
+          category: "Front",
+          stitch_count: Math.round(stitchesNum * 0.6),
+          rate_per_1k: rateNum
+        },
+        {
+          id: `i-${Date.now()}-2`,
+          component_name: "Back & Patta Border",
+          category: "Back",
+          stitch_count: Math.round(stitchesNum * 0.4),
+          rate_per_1k: rateNum
+        }
+      ],
+      colorways: [],
+      order_history: []
+    };
 
     try {
       const backendRes = await fetchApi<any>("/designs", {
@@ -710,545 +467,311 @@ export default function DesignsPage() {
           folder_code: cleanCode,
           title: cleanTitle,
           party_name: partyClean,
+          design_type: newFolderDesignType,
+          category: newFolderCategory,
+          image_url: newFolderImage || null,
+          stitch_count: stitchesNum,
+          rate_per_1k: rateNum,
+          work_types: JSON.stringify(newFolderWorkTypes),
           created_date: dateFormatted,
           machine_requirement: "17 Head Multi-Head",
-          takko_length_meters: 104,
-          cut_length_meters: 0.93,
-          items: JSON.stringify([]),
+          items: JSON.stringify(newDesignObj.items),
           colorways: JSON.stringify([])
         })
       });
       if (backendRes?.id) {
-        assignedId = backendRes.id;
+        newDesignObj.id = backendRes.id;
       }
     } catch (err) {
       console.warn("Backend design create fallback", err);
     }
 
-    const created: DesignFolder = {
-      id: assignedId,
-      folder_code: cleanCode,
-      title: cleanTitle,
-      party_name: partyClean,
-      created_date: dateFormatted,
-      machine_requirement: "17 Head Multi-Head",
-      takko_length_meters: 104,
-      cut_length_meters: 0.93,
-      colorways: [],
-      items: []
-    };
-
-    const nextFolders = [created, ...folders];
+    const nextFolders = [newDesignObj, ...folders];
     saveDesignFolders(nextFolders);
-    setSelectedFolderId(created.id);
+    setSelectedFolderId(newDesignObj.id);
     setIsAddingFolderInline(false);
-    setNewFolderParty("");
+    setNewFolderImage("");
     setNewFolderCode("");
     setNewFolderTitle("");
-    setNewFolderTakka("");
-    setNewFolderPcs("");
-    setNewFolderStitches("");
-    setNewFolderRate("");
-    setNewFolderParts("");
+    setNewFolderParty("");
+    setNewFolderStitches(35000);
+    setNewFolderRate(0.45);
+    setNewFolderWorkTypes(["Dull Gold Zari"]);
+    setNewFolderEmbFile("");
   };
 
+  // Open Order Modal for a specific design
+  const handleOpenOrderModal = (e: React.MouseEvent, design: DesignFolder) => {
+    e.stopPropagation();
+    setOrderTargetDesign(design);
+    setOrderPartyName(design.design_type === "Party Exclusive" && design.party_name !== "In-House Master" ? design.party_name : "");
+    const matchedParty = registeredParties.find((p) => p.name === design.party_name);
+    setOrderPartyMobile(matchedParty?.mobile || "");
+    setOrderFabricTerms("Party Fabric (Job Work)");
+    setOrderMaterialTerms("Factory Material");
+    setOrderColorRows([
+      { id: "col-1", color_name: "Rani", takka: "5", pcs: 150 },
+      { id: "col-2", color_name: "Rama", takka: "5", pcs: 150 }
+    ]);
+    setOrderSampleStatus("Sample Pending");
+    setOrderNotes("");
+    setIsOrderModalOpen(true);
+  };
 
-  // Save Colorway Inline (Unified Multi-Color Form: Color, Takka & Threads)
-  const handleSaveColorwayInline = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFolderId) return;
-
-    const validRows = colorDraftRows.filter((r) => r.color_name.trim().length > 0);
-    if (validRows.length === 0) {
-      alert("Please enter at least one Color Name!");
-      return;
-    }
-
-    const newColorways: ColorTakka[] = validRows.map((row, idx) => {
-      const parsedRollMeters = row.roll_meters
-        .split(/[\s,]+/)
-        .map((m) => Number(m.trim()))
-        .filter((n) => !isNaN(n) && n > 0);
-
-      const takkaCount = Number(row.takka_count) || (parsedRollMeters.length > 0 ? parsedRollMeters.length : 1);
-
-      const parsedThreads: ThreadItem[] = row.threads
-        .filter((t) => t.thread_name.trim().length > 0)
-        .map((t, tIdx) => ({
-          id: `th-${Date.now()}-${idx}-${tIdx}`,
-          needle_no: Number(t.needle_no.replace(/\D/g, "")) || tIdx + 1,
-          thread_name: t.thread_name.trim(),
-          thread_code: t.shade_code.trim() ? (t.shade_code.trim().toLowerCase().includes("shade") ? t.shade_code.trim() : `Shade ${t.shade_code.trim()}`) : `Shade ${t.thread_name.trim()}`,
-          thread_type: "Polyester 120D"
-        }));
-
-      return {
-        id: `c-${Date.now()}-${idx}`,
-        color_name: row.color_name.trim(),
-        takka_count: takkaCount,
-        roll_meters: parsedRollMeters.length > 0 ? parsedRollMeters : undefined,
-        threads: parsedThreads.length > 0 ? parsedThreads : undefined
-      };
-    });
-
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === selectedFolderId) {
-          return { ...f, colorways: [...f.colorways, ...newColorways] };
-        }
-        return f;
-      })
-    );
-
-    setIsAddingColorInline(false);
-    setColorDraftRows([
-      {
-        id: `cr-${Date.now()}`,
-        color_name: "",
-        takka_count: "",
-        roll_meters: "",
-        threads: []
-      }
+  // Add / Remove Color Row in Order Modal
+  const handleAddOrderColorRow = () => {
+    setOrderColorRows((prev) => [
+      ...prev,
+      { id: `col-${Date.now()}`, color_name: "", takka: "", pcs: "" }
     ]);
   };
 
-  // Update Individual Roll Meter
-  const handleUpdateRollMeter = (folderId: string, colorId: string, rollIdx: number, val: number) => {
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === folderId) {
-          return {
-            ...f,
-            colorways: f.colorways.map((cw) => {
-              if (cw.id === colorId) {
-                const currentMeters = Array.from({ length: cw.takka_count }, (_, i) =>
-                  cw.roll_meters && cw.roll_meters[i] !== undefined ? cw.roll_meters[i] : 0
-                );
-                currentMeters[rollIdx] = val;
-                return {
-                  ...cw,
-                  roll_meters: currentMeters
-                };
-              }
-              return cw;
-            })
-          };
-        }
-        return f;
-      })
+  const handleRemoveOrderColorRow = (id: string) => {
+    if (orderColorRows.length <= 1) return;
+    setOrderColorRows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const handleUpdateOrderColorRow = (id: string, field: "color_name" | "takka" | "pcs", val: any) => {
+    setOrderColorRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: val } : r))
     );
   };
 
-  // Update Override Pcs for a colorway
-  const handleUpdateOverridePcs = (folderId: string, colorId: string, val: number | undefined) => {
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === folderId) {
-          return {
-            ...f,
-            colorways: f.colorways.map((cw) => {
-              if (cw.id === colorId) {
-                return {
-                  ...cw,
-                  override_pcs: val !== undefined && val > 0 ? val : undefined
-                };
-              }
-              return cw;
-            })
-          };
-        }
-        return f;
-      })
-    );
+  // Calculate Order Totals
+  const orderTotalPcs = orderColorRows.reduce((sum, r) => sum + (Number(r.pcs) || 0), 0);
+  const orderRatePerPc = orderTargetDesign ? calculateRatePerPiece(orderTargetDesign.stitch_count, orderTargetDesign.rate_per_1k) : 0;
+  const orderTotalAmount = orderTotalPcs * orderRatePerPc;
+
+  // Build Formatted WhatsApp Message
+  const generateWhatsAppMessage = (order: DesignOrderHistoryItem, design: DesignFolder) => {
+    const colorBreakdownText = order.colors
+      .map((c) => `  • ${c.color_name || "Standard"}: ${c.pcs} pcs${c.takka ? ` (${c.takka} Takka)` : ""}`)
+      .join("\n");
+
+    return `🪡 *SHIV CREATION - ORDER CONFIRMATION*\n` +
+      `━━━━━━━━━━━━━━━━━━━\n` +
+      `📋 *Order No:* #${order.order_no}\n` +
+      `🎨 *Design:* ${design.folder_code} (${design.title})\n` +
+      `👗 *Category:* ${design.category}\n` +
+      `🧵 *Stitches:* ${design.stitch_count.toLocaleString("en-IN")} | *Rate:* ₹${order.rate_per_pc}/pc\n` +
+      `📦 *Fabric Terms:* ${order.fabric_terms}\n` +
+      `✨ *Material Terms:* ${order.material_terms}\n` +
+      `🎯 *Sample Status:* ${order.status}\n` +
+      `📅 *Target Delivery:* ${order.delivery_date}\n` +
+      `━━━━━━━━━━━━━━━━━━━\n` +
+      `🎨 *Colors & Quantities:*\n` +
+      `${colorBreakdownText}\n` +
+      `-----------------------------------\n` +
+      `*Total Quantity:* ${order.total_pcs.toLocaleString("en-IN")} Pcs\n` +
+      `*Total Estimate:* ₹${order.total_amount.toLocaleString("en-IN")}\n` +
+      `━━━━━━━━━━━━━━━━━━━\n` +
+      `Please reply *CONFIRM* to verify this order. Thank you!`;
   };
 
-
-  // Bulk set roll meters string for a colorway
-  const handleBulkUpdateRollMetersStr = (folderId: string, colorId: string, strVal: string) => {
-    const metersArr = strVal
-      .split(",")
-      .map((m) => Number(m.trim()))
-      .filter((n) => !isNaN(n) && n > 0);
-
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === folderId) {
-          return {
-            ...f,
-            colorways: f.colorways.map((cw) => {
-              if (cw.id === colorId) {
-                return {
-                  ...cw,
-                  takka_count: metersArr.length > 0 ? metersArr.length : cw.takka_count,
-                  roll_meters: metersArr.length > 0 ? metersArr : undefined
-                };
-              }
-              return cw;
-            })
-          };
-        }
-        return f;
-      })
-    );
-  };
-
-  // Add a new Takka roll to a colorway
-  const handleAddRollToColorway = (folderId: string, colorId: string) => {
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === folderId) {
-          return {
-            ...f,
-            colorways: f.colorways.map((cw) => {
-              if (cw.id === colorId) {
-                const currentMeters = Array.from({ length: cw.takka_count }, (_, i) =>
-                  cw.roll_meters && cw.roll_meters[i] !== undefined ? cw.roll_meters[i] : 0
-                );
-
-                const newMeters = [...currentMeters, 0];
-
-                return {
-                  ...cw,
-                  takka_count: newMeters.length,
-                  roll_meters: newMeters
-                };
-              }
-              return cw;
-            })
-          };
-        }
-        return f;
-      })
-    );
-  };
-
-  // Remove a specific Takka roll from a colorway
-  const handleRemoveRollFromColorway = (folderId: string, colorId: string, rollIdx: number) => {
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === folderId) {
-          return {
-            ...f,
-            colorways: f.colorways.map((cw) => {
-              if (cw.id === colorId) {
-                const currentMeters = Array.from({ length: cw.takka_count }, (_, i) =>
-                  cw.roll_meters && cw.roll_meters[i] !== undefined ? cw.roll_meters[i] : 0
-                );
-
-                if (currentMeters.length <= 1) return cw;
-
-                const newMeters = currentMeters.filter((_, idx) => idx !== rollIdx);
-
-                return {
-                  ...cw,
-                  takka_count: newMeters.length,
-                  roll_meters: newMeters
-                };
-              }
-              return cw;
-            })
-          };
-        }
-        return f;
-      })
-    );
-  };
-
-  const handleDeleteCategoryOption = (catToDelete: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const updated = categoriesList.filter((c) => c !== catToDelete);
-    setCategoriesList(updated);
-    if (newCompCategory === catToDelete) {
-      setNewCompCategory(updated[0] || "Front");
+  // Save Order & optionally launch WhatsApp
+  const handleSaveOrderBatch = (andLaunchWhatsApp: boolean = false) => {
+    if (!orderTargetDesign) return;
+    if (!orderPartyName.trim()) {
+      alert("⚠️ Please enter Party Name for this order!");
+      return;
     }
-  };
-
-  // Save Component Inline
-  const handleSaveComponentInline = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFolderId) return;
-
-    const finalCategory = newCompCategory.trim() || "Other";
-    if (!categoriesList.includes(finalCategory)) {
-      setCategoriesList([...categoriesList, finalCategory]);
+    if (orderTotalPcs <= 0) {
+      alert("⚠️ Please enter quantity for at least one color!");
+      return;
     }
 
-    const newItem: DesignItem = {
-      id: `i-${Date.now()}`,
-      component_name: newCompName.trim() || finalCategory,
-      category: finalCategory,
-      stitch_count: Number(newCompStitch) || 0,
-      rate_per_1k: Number(newCompRate) || 0.45
+    const orderNo = `ORD-${Math.floor(100 + Math.random() * 900)}`;
+    const orderDate = new Date().toLocaleDateString("en-GB").replace(/\//g, "-");
+
+    const newOrderRecord: DesignOrderHistoryItem = {
+      id: `ord-${Date.now()}`,
+      order_no: orderNo,
+      order_date: orderDate,
+      party_name: orderPartyName.trim(),
+      party_mobile: orderPartyMobile.trim() || undefined,
+      fabric_terms: orderFabricTerms,
+      material_terms: orderMaterialTerms,
+      total_pcs: orderTotalPcs,
+      rate_per_pc: orderRatePerPc,
+      total_amount: orderTotalAmount,
+      colors: orderColorRows.map((r) => ({
+        id: r.id,
+        color_name: r.color_name.trim() || "Standard",
+        pcs: Number(r.pcs) || 0,
+        takka: r.takka.trim() || undefined
+      })),
+      delivery_date: orderTargetDate,
+      status: orderSampleStatus,
+      notes: orderNotes.trim() || undefined
     };
 
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === selectedFolderId) {
-          return { ...f, items: [...f.items, newItem] };
-        }
-        return f;
-      })
-    );
+    // Append to design's order history
+    const updatedFolders = folders.map((f) => {
+      if (f.id === orderTargetDesign.id) {
+        const existingHistory = f.order_history || [];
+        return {
+          ...f,
+          order_history: [newOrderRecord, ...existingHistory]
+        };
+      }
+      return f;
+    });
 
-    setIsAddingComponentInline(false);
-    setNewCompName("");
-    setNewCompCategory(finalCategory);
-    setNewCompStitch("");
-    setNewCompRate("");
-    setIsCustomCategory(false);
+    saveDesignFolders(updatedFolders);
+    setIsOrderModalOpen(false);
+
+    const formattedMessage = generateWhatsAppMessage(newOrderRecord, orderTargetDesign);
+    setWhatsAppText(formattedMessage);
+    setWhatsAppTargetMobile(orderPartyMobile.trim());
+
+    if (andLaunchWhatsApp) {
+      launchWhatsAppWeb(orderPartyMobile.trim(), formattedMessage);
+    } else {
+      setIsWhatsAppModalOpen(true);
+    }
   };
 
-  // Delete Colorway
-  const handleDeleteColorway = (folderId: string, colorId: string) => {
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === folderId) {
-          return { ...f, colorways: f.colorways.filter((c) => c.id !== colorId) };
-        }
-        return f;
-      })
-    );
+  // Launch WhatsApp Web or App
+  const launchWhatsAppWeb = (mobile: string, text: string) => {
+    const cleanNumber = mobile.replace(/\D/g, "");
+    const fullNumber = cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
+    const url = fullNumber
+      ? `https://wa.me/${fullNumber}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
   };
 
-  // Delete Folder
-  const handleDeleteFolder = async (e: React.MouseEvent, folderId: string) => {
+  // Update Status of an Order in History
+  const handleUpdateOrderStatus = (
+    designId: string,
+    orderId: string,
+    newStatus: DesignOrderHistoryItem["status"]
+  ) => {
+    const updated = folders.map((f) => {
+      if (f.id === designId && f.order_history) {
+        return {
+          ...f,
+          order_history: f.order_history.map((o) =>
+            o.id === orderId ? { ...o, status: newStatus } : o
+          )
+        };
+      }
+      return f;
+    });
+    saveDesignFolders(updated);
+  };
+
+  // Delete Design Folder
+  const handleDeleteFolder = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (confirm("Are you sure you want to delete this design folder?")) {
-      try {
-        await fetchApi(`/designs/${folderId}`, { method: "DELETE" });
-      } catch (err) {
-        console.warn("Backend design delete fallback", err);
-      }
-      const nextFolders = folders.filter((f) => f.id !== folderId);
-      saveDesignFolders(nextFolders);
-      if (selectedFolderId === folderId) {
-        setSelectedFolderId(null);
-      }
-    }
+    if (!confirm("Are you sure you want to delete this Design from library?")) return;
+    try {
+      await fetchApi(`/designs/${id}`, { method: "DELETE" });
+    } catch (err) {}
+    const updated = folders.filter((f) => f.id !== id);
+    saveDesignFolders(updated);
+    if (selectedFolderId === id) setSelectedFolderId(null);
   };
 
+  // Filter Folders by Search
+  const filteredFolders = folders.filter((f) =>
+    f.folder_code.toLowerCase().includes(search.toLowerCase()) ||
+    f.title.toLowerCase().includes(search.toLowerCase()) ||
+    f.party_name.toLowerCase().includes(search.toLowerCase()) ||
+    f.category.toLowerCase().includes(search.toLowerCase())
+  );
 
-  // Auto-derive color hex from thread name (No color picker needed)
-  const getAutoColorHex = (str: string) => {
-    if (!str) return "#3B82F6";
-    const s = str.toLowerCase();
-    if (s.includes("rani") || s.includes("pink") || s.includes("rose")) return "#EC4899";
-    if (s.includes("red") || s.includes("maroon") || s.includes("ruby")) return "#EF4444";
-    if (s.includes("blue") || s.includes("navy") || s.includes("royal")) return "#2563EB";
-    if (s.includes("rama") || s.includes("teal") || s.includes("cyan")) return "#06B6D4";
-    if (s.includes("green") || s.includes("emerald") || s.includes("pista")) return "#10B981";
-    if (s.includes("gold") || s.includes("zari") || s.includes("yellow") || s.includes("mustard")) return "#EAB308";
-    if (s.includes("orange") || s.includes("peach")) return "#F97316";
-    if (s.includes("purple") || s.includes("violet") || s.includes("wine")) return "#8B5CF6";
-    if (s.includes("white") || s.includes("milk") || s.includes("offwhite") || s.includes("resham")) return "#F8FAFC";
-    if (s.includes("black") || s.includes("jet")) return "#1E293B";
-    if (s.includes("silver") || s.includes("grey") || s.includes("gray")) return "#94A3B8";
-
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const c = (hash & 0x00ffffff).toString(16).toUpperCase();
-    return `#${"00000".substring(0, 6 - c.length)}${c}`;
-  };
-
-  // Save Thread Matching Inline for a specific colorway
-  const handleSaveThreadInline = (e: React.FormEvent, targetColorId: string) => {
-    e.preventDefault();
-    if (!selectedFolderId || !newThreadName.trim()) return;
-
-    const rawCode = newThreadCode.trim();
-    // Strip leading '#' if user entered '#402'
-    const cleanCode = rawCode.startsWith("#") ? rawCode.substring(1) : rawCode;
-
-    const newThread: ThreadItem = {
-      id: `t-${Date.now()}`,
-      needle_no: newThreadNeedleNo !== "" ? (isNaN(Number(newThreadNeedleNo)) ? newThreadNeedleNo : Number(newThreadNeedleNo)) : undefined,
-      thread_name: newThreadName.trim(),
-      thread_code: cleanCode ? (cleanCode.toLowerCase().includes("shade") || cleanCode.toLowerCase().includes("zari") || cleanCode.toLowerCase().includes("silk") ? cleanCode : `Shade ${cleanCode}`) : undefined,
-      color_hex: getAutoColorHex(newThreadName.trim()),
-      thread_type: newThreadType.trim() || "Polyester 120D"
-    };
-
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === selectedFolderId) {
-          return {
-            ...f,
-            colorways: f.colorways.map((cw) => {
-              if (cw.id === targetColorId) {
-                return {
-                  ...cw,
-                  threads: [...(cw.threads || []), newThread]
-                };
-              }
-              return cw;
-            })
-          };
-        }
-        return f;
-      })
-    );
-
-    setAddingThreadForColorId(null);
-    setNewThreadName("");
-    setNewThreadCode("");
-    setNewThreadNeedleNo("");
-    setNewThreadType("Polyester 120D");
-  };
-
-  // Delete Thread Matching
-  const handleDeleteThread = (folderId: string, colorId: string, threadId: string) => {
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === folderId) {
-          return {
-            ...f,
-            colorways: f.colorways.map((cw) => {
-              if (cw.id === colorId) {
-                return {
-                  ...cw,
-                  threads: (cw.threads || []).filter((t) => t.id !== threadId)
-                };
-              }
-              return cw;
-            })
-          };
-        }
-        return f;
-      })
-    );
-  };
-
-  // Update Existing Thread
-  const handleUpdateThread = (folderId: string, colorId: string, threadId: string) => {
-    if (!editThreadName.trim()) return;
-    const cleanCode = editThreadCode.trim().startsWith("#") ? editThreadCode.trim().substring(1) : editThreadCode.trim();
-
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === folderId) {
-          return {
-            ...f,
-            colorways: f.colorways.map((cw) => {
-              if (cw.id === colorId) {
-                return {
-                  ...cw,
-                  threads: (cw.threads || []).map((t) => {
-                    if (t.id === threadId) {
-                      return {
-                        ...t,
-                        needle_no: editThreadNeedle ? (isNaN(Number(editThreadNeedle)) ? editThreadNeedle : Number(editThreadNeedle)) : t.needle_no,
-                        thread_name: editThreadName.trim(),
-                        thread_code: cleanCode ? (cleanCode.toLowerCase().includes("shade") || cleanCode.toLowerCase().includes("zari") || cleanCode.toLowerCase().includes("silk") ? cleanCode : `Shade ${cleanCode}`) : undefined,
-                      };
-                    }
-                    return t;
-                  })
-                };
-              }
-              return cw;
-            })
-          };
-        }
-        return f;
-      })
-    );
-
-    setEditingThreadId(null);
-    setEditThreadNeedle("");
-    setEditThreadName("");
-    setEditThreadCode("");
-  };
-
-  // Delete Component
-  const handleDeleteComponent = (folderId: string, itemId: string) => {
-    if (confirm("Remove this item?")) {
-      setFolders((prev) =>
-        prev.map((f) => {
-          if (f.id === folderId) {
-            return { ...f, items: f.items.filter((i) => i.id !== itemId) };
-          }
-          return f;
-        })
-      );
-    }
-  };
+  const selectedFolder = folders.find((f) => f.id === selectedFolderId);
 
   if (!isMounted) return null;
 
   return (
-    <div className="space-y-4 font-sans text-slate-800">
-      {/* HEADER TOOLBAR */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-        {selectedFolder ? (() => {
-          const totalPcs = getTotalPcsForFolder(selectedFolder);
-          const totalTakka = selectedFolder.colorways.reduce((s, c) => s + c.takka_count, 0);
-          const totalMeters = getTotalMetersForFolder(selectedFolder);
-
-          return (
-            <div className="flex items-center justify-between w-full flex-wrap gap-2 text-xs">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <button
-                  onClick={() => {
-                    setSelectedFolderId(null);
-                    setExpandedRollMetersColorId(null);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all active:scale-98"
-                >
-                  <ArrowLeft className="w-4 h-4 text-slate-600" /> Back to Designs
-                </button>
-
-                <div className="h-4 w-px bg-slate-200" />
-
-                <span className="px-2.5 py-1 bg-white text-slate-800 border border-slate-200 font-bold rounded-lg shadow-2xs">
-                  Party: {selectedFolder.party_name}
-                </span>
-
-                <span className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200/80 font-mono font-black rounded-lg shadow-2xs">
-                  {selectedFolder.folder_code}
-                </span>
-
-                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold rounded-md">
-                  Active
-                </span>
-              </div>
-
+    <div className="space-y-4 font-sans text-slate-800 pb-16">
+      {/* TOP HEADER & SEARCH TOOLBAR */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        {selectedFolder ? (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => setSelectedFolderId(null)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors cursor-pointer border border-slate-200"
+            >
+              <ArrowLeft className="w-4 h-4" /> Back to Designs
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="font-mono font-black text-blue-700 text-sm bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200">
+                {selectedFolder.folder_code}
+              </span>
+              <span className="font-bold text-slate-800 truncate max-w-[200px] sm:max-w-[300px]">
+                {selectedFolder.title}
+              </span>
             </div>
-          );
-        })() : (
-          <div className="relative flex-1 w-full sm:w-80">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+        ) : (
+          <div className="relative w-full sm:w-80">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Search by party or design code..."
+              placeholder="Search Design No, Title, Category, Party..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+              className="w-full h-9 pl-8 pr-3 bg-white border border-slate-300 rounded-xl font-bold text-xs text-slate-900 placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:border-blue-500 shadow-2xs"
             />
           </div>
         )}
 
-        {!selectedFolder && (
-          <button
-            onClick={() => setIsAddingFolderInline(!isAddingFolderInline)}
-            className="w-full sm:w-auto justify-center inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-2xs transition-all active:scale-98"
-          >
-            <Plus className="w-4 h-4" /> {isAddingFolderInline ? "Close Form" : "Add New Design"}
-          </button>
-        )}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          {selectedFolder ? (
+            <>
+              <button
+                type="button"
+                onClick={(e) => handleOpenOrderModal(e, selectedFolder)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-2xs transition-all active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" /> + Create Job Order
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const sampleText = `🎨 *SHIV CREATION - DESIGN CATALOG*\n` +
+                    `📋 *Design Code:* ${selectedFolder.folder_code}\n` +
+                    `👗 *Category:* ${selectedFolder.category} (${selectedFolder.title})\n` +
+                    `🧵 *Stitches:* ${selectedFolder.stitch_count.toLocaleString("en-IN")}\n` +
+                    `💰 *Est. Job Rate:* ₹${calculateRatePerPiece(selectedFolder.stitch_count, selectedFolder.rate_per_1k)} / Piece (@ ₹${selectedFolder.rate_per_1k}/1k)\n` +
+                    `✨ *Work Types:* ${selectedFolder.work_types.join(", ")}\n` +
+                    `Please contact us to place bulk job orders.`;
+                  setWhatsAppText(sampleText);
+                  setWhatsAppTargetMobile("");
+                  setIsWhatsAppModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                title="Share Design Card on WhatsApp"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-green-600" /> WhatsApp Card
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setIsAddingFolderInline(!isAddingFolderInline)}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold shadow-2xs transition-all active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" /> {isAddingFolderInline ? "Close Form" : "Add New Design"}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* INLINE ADD DESIGN FOLDER FORM */}
+      {/* INLINE ADD NEW DESIGN MASTER FORM */}
       {!selectedFolder && isAddingFolderInline && (
         <form
-          onSubmit={handleSaveFolderInline}
-          className="bg-white p-4 rounded-2xl border border-blue-200 shadow-2xs space-y-3 animate-in fade-in duration-100 font-sans text-xs"
+          onSubmit={handleSaveDesign}
+          className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-blue-400 shadow-xl space-y-4 animate-in fade-in duration-100 font-sans text-xs"
         >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
-              <Folder className="w-4 h-4 text-blue-600" />
-              <span>Add New Design Folder (નવી ડિઝાઇન ઉમેરો)</span>
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2 font-black text-slate-900 text-sm">
+              <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
+                <Palette className="w-4 h-4" />
+              </div>
+              <span>Add New Master Design (નવી ડિઝાઇન એડવાન્સમાં ઉમેરો)</span>
             </div>
             <button
               type="button"
@@ -1259,297 +782,425 @@ export default function DesignsPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div ref={partyDropdownRef} className="relative">
-              <label className="block font-bold text-slate-700 mb-1">Party Name *</label>
-              <input
-                ref={(el) => { designFormRefs.current[0] = el; }}
-                onKeyDown={(e) => handleDesignFormKeyDown(e, 0)}
-                type="text"
-                placeholder="Type party name to search..."
-                value={newFolderParty}
-                onFocus={() => {
-                  if (newFolderParty.trim().length > 0) {
-                    setIsPartyDropdownOpen(true);
-                    setPartyHighlightIdx(0);
-                  }
-                }}
-                onBlur={() => setTimeout(() => setIsPartyDropdownOpen(false), 200)}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setNewFolderParty(val);
-                  setIsPartyDropdownOpen(val.trim().length > 0);
-                  setPartyHighlightIdx(0);
-                }}
-                className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500"
-                required
-                autoFocus
-              />
-
-              {/* Status Badge */}
-              {newFolderParty.trim() !== "" && (() => {
-                const typedClean = newFolderParty.trim().toLowerCase();
-                const matchedParty = registeredParties.find((p) => p.name.toLowerCase() === typedClean);
-                const partialMatches = registeredParties.filter((p) => p.name.toLowerCase().includes(typedClean));
-
-                if (matchedParty) {
-                  return (
-                    <div className="mt-1 flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1">
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        <span>Registered: <strong>{matchedParty.name}</strong> ({matchedParty.city})</span>
-                      </span>
-                    </div>
-                  );
-                } else if (partialMatches.length > 0) {
-                  return (
-                    <div className="mt-1">
-                      <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-flex items-center gap-1">
-                        <Building2 className="w-3 h-3 text-slate-500" />
-                        <span>{partialMatches.length} Registered {partialMatches.length === 1 ? "Party" : "Parties"} Found</span>
-                      </span>
-                    </div>
-                  );
-                } else {
-                  return (
-                    <div className="mt-1">
-                      <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 block">
-                        ⚠️ Party not in directory. Click "+ Register Party" below.
-                      </span>
-                    </div>
-                  );
-                }
-              })()}
-
-              {/* CLEAN & SIMPLE PARTY SUGGESTION DROPDOWN */}
-              {isPartyDropdownOpen && newFolderParty.trim().length > 0 && (() => {
-                const { matched, showNewOption } = getPartySuggestionsList();
-                return (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden text-xs font-sans">
-                    {/* Dropdown Header */}
-                    <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      <span>Party Suggestions</span>
-                      <button
-                        type="button"
-                        onClick={() => setIsPartyDropdownOpen(false)}
-                        className="text-slate-400 hover:text-slate-600 p-0.5"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {/* Suggestions List */}
-                    <div className="max-h-52 overflow-y-auto divide-y divide-slate-100 p-1">
-                      {matched.map((p, idx) => {
-                        const isHighlighted = partyHighlightIdx === idx;
-                        const isSelected = newFolderParty.trim().toLowerCase() === p.name.toLowerCase();
-                        return (
-                          <button
-                            key={p.id || p.name}
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setNewFolderParty(p.name);
-                              setIsPartyDropdownOpen(false);
-                              designFormRefs.current[1]?.focus();
-                            }}
-                            onMouseEnter={() => setPartyHighlightIdx(idx)}
-                            className={`w-full text-left px-3 py-2 rounded-lg transition-all flex items-center justify-between cursor-pointer ${
-                              isHighlighted
-                                ? "bg-blue-50/90 border border-blue-200 font-extrabold text-blue-900 shadow-2xs"
-                                : isSelected
-                                ? "bg-slate-100 font-extrabold text-slate-900"
-                                : "hover:bg-slate-50 font-semibold text-slate-800"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className={`w-6 h-6 rounded flex items-center justify-center font-bold text-[11px] shrink-0 uppercase ${
-                                isHighlighted ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-700"
-                              }`}>
-                                {p.name.charAt(0)}
-                              </span>
-                              <div className="truncate">
-                                <span className="text-xs font-bold text-slate-900">{p.name}</span>
-                                {p.city && (
-                                  <span className="text-[10px] text-slate-400 font-medium ml-1.5">• {p.city}</span>
-                                )}
-                              </div>
-                            </div>
-
-                            <span className={`text-[11px] font-bold ${isHighlighted ? "text-blue-700" : "text-blue-600"} hover:underline shrink-0`}>
-                              Select
-                            </span>
-                          </button>
-                        );
-                      })}
-
-                      {/* REGISTER NEW PARTY OPTION */}
-                      {showNewOption && (
-                        <div className="pt-1">
-                          <button
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              handleDirectAddParty();
-                              setIsPartyDropdownOpen(false);
-                              designFormRefs.current[1]?.focus();
-                            }}
-                            onMouseEnter={() => setPartyHighlightIdx(matched.length)}
-                            className={`w-full text-left px-3 py-2 font-bold rounded-lg border transition-all flex items-center justify-between cursor-pointer ${
-                              partyHighlightIdx === matched.length
-                                ? "bg-blue-100/90 border-blue-300 text-blue-950 shadow-2xs"
-                                : "bg-slate-50 hover:bg-slate-100 text-slate-900 border-slate-200"
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5 truncate">
-                              <Plus className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                              <span className="text-xs">Register "{newFolderParty.trim()}" as New Party</span>
-                            </div>
-                            <span className="px-2 py-0.5 bg-blue-600 text-white rounded text-[10px] font-extrabold shrink-0">
-                              + Add
-                            </span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
+          {/* 2-COLUMN FORM LAYOUT */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* LEFT COLUMN: PHOTO UPLOAD & WATERMARK PREVIEW (4 cols) */}
+            <div className="lg:col-span-4 space-y-3">
+              <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">
+                Design Sample Photo
+              </label>
+              <div className="relative border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 p-3 flex flex-col items-center justify-center min-h-[220px] hover:border-blue-500 transition-colors group overflow-hidden">
+                {newFolderImage ? (
+                  <div className="relative w-full h-48 rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center">
+                    <img
+                      src={newFolderImage}
+                      alt="Design Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    {showWatermark && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                        <span className="transform -rotate-25 text-white/40 text-xs sm:text-sm font-black tracking-widest border border-white/30 px-3 py-1 bg-black/30 rounded backdrop-blur-2xs">
+                          SHIV CREATION • SAMPLE ONLY
+                        </span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setNewFolderImage("")}
+                      className="absolute top-2 right-2 p-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 shadow-md transition-all cursor-pointer"
+                      title="Remove Photo"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                );
-              })()}
+                ) : (
+                  <label
+                    htmlFor="design-photo-upload"
+                    className="flex flex-col items-center justify-center cursor-pointer p-4 text-center w-full h-full"
+                  >
+                    <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl border border-blue-100 group-hover:scale-105 transition-transform">
+                      <ImageIcon className="w-8 h-8" />
+                    </div>
+                    <span className="font-extrabold text-slate-800 text-xs mt-2">Upload Sample Photo</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">JPG / PNG / WebP (Auto-optimized)</span>
+                  </label>
+                )}
+                <input
+                  id="design-photo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+              </div>
+
+              {/* Watermark Toggle */}
+              <div className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> Show Watermark Overlay
+                </span>
+                <input
+                  type="checkbox"
+                  checked={showWatermark}
+                  onChange={(e) => setShowWatermark(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Design Code / No *</label>
-              <input
-                ref={(el) => { designFormRefs.current[1] = el; }}
-                onKeyDown={(e) => handleDesignFormKeyDown(e, 1)}
-                onFocus={() => setIsPartyDropdownOpen(false)}
-                type="text"
-                placeholder="e.g. Design 2486"
-                value={newFolderCode}
-                onChange={(e) => setNewFolderCode(e.target.value)}
-                className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500"
-                required
-              />
-            </div>
+            {/* RIGHT COLUMN: CORE DESIGN & PRICING SPECIFICATIONS (8 cols) */}
+            <div className="lg:col-span-8 space-y-4">
+              {/* Row 1: Code, Title, Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Design Code / No *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. D-2486"
+                    value={newFolderCode}
+                    onChange={(e) => setNewFolderCode(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Description / Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Heavy Sabyasachi Border"
+                    value={newFolderTitle}
+                    onChange={(e) => setNewFolderTitle(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Garment Category</label>
+                  <select
+                    value={newFolderCategory}
+                    onChange={(e) => setNewFolderCategory(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+                  >
+                    {DESIGN_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Description / Title</label>
-              <input
-                ref={(el) => { designFormRefs.current[2] = el; }}
-                onKeyDown={(e) => handleDesignFormKeyDown(e, 2)}
-                onFocus={() => setIsPartyDropdownOpen(false)}
-                type="text"
-                placeholder="e.g. Heavy Rani & Rama Saree Suite"
-                value={newFolderTitle}
-                onChange={(e) => setNewFolderTitle(e.target.value)}
-                className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500"
-              />
+              {/* Row 2: Ownership Toggle & Party Selection */}
+              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block">
+                  Design Ownership & Exclusivity
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewFolderDesignType("In-House Master")}
+                    className={`py-2 px-3 rounded-xl border font-extrabold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      newFolderDesignType === "In-House Master"
+                        ? "bg-purple-600 text-white border-purple-600 shadow-2xs"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" /> In-House Master (પોતાનું સેમ્પલ)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewFolderDesignType("Party Exclusive")}
+                    className={`py-2 px-3 rounded-xl border font-extrabold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      newFolderDesignType === "Party Exclusive"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Building2 className="w-3.5 h-3.5" /> Party Exclusive (પાર્ટી સ્પેશિયલ)
+                  </button>
+                </div>
+
+                {newFolderDesignType === "Party Exclusive" && (
+                  <div ref={partyDropdownRef} className="relative pt-1 animate-in fade-in duration-100">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Exclusive Party Name *</label>
+                    <input
+                      type="text"
+                      placeholder="Type party name..."
+                      value={newFolderParty}
+                      onChange={(e) => {
+                        setNewFolderParty(e.target.value);
+                        setIsPartyDropdownOpen(true);
+                      }}
+                      onFocus={() => setIsPartyDropdownOpen(true)}
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs"
+                    />
+
+                    {isPartyDropdownOpen && newFolderParty.trim().length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto p-1 space-y-0.5">
+                        {registeredParties
+                          .filter((p) => p.name.toLowerCase().includes(newFolderParty.toLowerCase()))
+                          .map((p) => (
+                            <button
+                              key={p.name}
+                              type="button"
+                              onClick={() => {
+                                setNewFolderParty(p.name);
+                                setIsPartyDropdownOpen(false);
+                              }}
+                              className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800 hover:bg-blue-50 hover:text-blue-900 cursor-pointer flex items-center justify-between"
+                            >
+                              <span>{p.name}</span>
+                              <span className="text-[10px] text-slate-400 font-normal">{p.city}</span>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Row 3: Stitches & Costing Calculation */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Total Stitch Count *</label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="35000"
+                    value={newFolderStitches}
+                    onChange={(e) => setNewFolderStitches(e.target.value ? Number(e.target.value) : "")}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Rate per 1k Stitches (₹) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="0.45"
+                    value={newFolderRate}
+                    onChange={(e) => setNewFolderRate(e.target.value ? Number(e.target.value) : "")}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs"
+                  />
+                </div>
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2 text-center h-9 flex flex-col justify-center">
+                  <span className="text-[9px] font-black uppercase text-emerald-800 tracking-wider">
+                    Est. Job Work Rate
+                  </span>
+                  <span className="font-mono font-black text-emerald-950 text-xs">
+                    ₹{calculateRatePerPiece(newFolderStitches, newFolderRate)} / Piece
+                  </span>
+                </div>
+              </div>
+
+              {/* Row 4: Work Type Tags */}
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-slate-700">
+                  Work Type & Materials (Select all that apply)
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {WORK_TYPE_OPTIONS.map((tag) => {
+                    const isSelected = newFolderWorkTypes.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => toggleWorkType(tag)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {isSelected ? "✓ " : "+ "}
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={() => setIsAddingFolderInline(false)}
-              className="px-4 h-9 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-100"
+              className="px-4 h-9 border border-slate-300 rounded-xl font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-2xs transition-all active:scale-98"
+              className="px-6 h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black shadow-2xs transition-all active:scale-95 cursor-pointer"
             >
-              Save Design
+              Save Master Design
             </button>
           </div>
         </form>
       )}
 
-      {/* CLEAN ENTERPRISE DESIGN FOLDER CARDS GRID */}
+      {/* DESIGN CATALOG GRID VIEW (When no folder is selected) */}
       {!selectedFolder && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredFolders.length === 0 ? (
-            <div className="col-span-full py-8 px-4 text-center bg-white rounded-2xl border border-slate-200">
-              <p className="text-xs font-medium text-slate-400">
-                {search.trim()
-                  ? `No design records found matching "${search}".`
-                  : 'No design records found matching your filters. Click "+ Add New Design" to add a record.'}
+            <div className="col-span-full py-12 px-4 text-center bg-white rounded-2xl border border-slate-200">
+              <Palette className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-xs font-bold text-slate-600">
+                {search.trim() ? `No design records matching "${search}".` : "No master designs in library yet."}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Click "+ Add New Design" to upload sample photo, stitches, and store designs in advance.
               </p>
             </div>
           ) : (
             filteredFolders.map((f) => {
-              const totalPcs = getTotalPcsForFolder(f);
-              const totalTakka = f.colorways.reduce((s, c) => s + c.takka_count, 0);
+              const ratePerPiece = calculateRatePerPiece(f.stitch_count, f.rate_per_1k);
+              const orderCount = f.order_history?.length || 0;
+              const totalPiecesOrdered = f.order_history?.reduce((sum, o) => sum + o.total_pcs, 0) || 0;
 
               return (
                 <div
                   key={f.id}
                   onClick={() => setSelectedFolderId(f.id)}
-                  className="group bg-white rounded-xl border border-slate-200 shadow-2xs hover:shadow-md hover:border-blue-500 transition-all p-3.5 cursor-pointer flex flex-col justify-between space-y-3"
+                  className="group bg-white rounded-2xl border border-slate-200 shadow-2xs hover:shadow-lg hover:border-blue-400 transition-all cursor-pointer flex flex-col justify-between overflow-hidden"
                 >
-                  {/* Header Preview Box */}
-                  <div className="bg-slate-50/90 p-3 rounded-lg border border-slate-200/80 space-y-2 relative">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2 py-0.5 bg-white border border-slate-200 text-blue-700 rounded text-[10px] font-bold shadow-2xs">
-                        {f.party_name}
+                  {/* Photo / Sample Banner */}
+                  <div className="relative w-full h-44 bg-slate-100 overflow-hidden border-b border-slate-100 flex items-center justify-center">
+                    {f.image_url ? (
+                      <>
+                        <img
+                          src={f.image_url}
+                          alt={f.folder_code}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                          <span className="transform -rotate-25 text-white/30 text-[10px] font-black tracking-widest border border-white/20 px-2 py-0.5 bg-black/20 rounded">
+                            SHIV CREATION
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-slate-400 p-4 text-center">
+                        <Palette className="w-8 h-8 opacity-40 mb-1" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">No Photo</span>
+                      </div>
+                    )}
+
+                    {/* Category & Ownership Badges */}
+                    <div className="absolute top-2 left-2 flex items-center gap-1">
+                      <span className="px-2 py-0.5 bg-white/95 backdrop-blur-xs text-blue-700 rounded-md text-[10px] font-black shadow-2xs border border-blue-100">
+                        {f.category}
+                      </span>
+                    </div>
+
+                    <div className="absolute top-2 right-2 flex items-center gap-1">
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold shadow-2xs border ${
+                          f.design_type === "In-House Master"
+                            ? "bg-purple-50 text-purple-800 border-purple-200"
+                            : "bg-blue-50 text-blue-800 border-blue-200"
+                        }`}
+                      >
+                        {f.design_type === "In-House Master" ? "In-House" : f.party_name}
                       </span>
                       <button
+                        type="button"
                         onClick={(e) => handleDeleteFolder(e, f.id)}
-                        className="p-1 text-slate-400 hover:text-red-600 hover:bg-white rounded transition-colors"
-                        title="Delete Design Folder"
+                        className="p-1 bg-white/90 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-md transition-colors"
+                        title="Delete Design"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-
-                    <div className="flex items-start gap-2 pt-0.5">
-                      <div className="p-1.5 bg-blue-600 text-white rounded-md shrink-0 mt-0.5">
-                        <Folder className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-mono font-bold text-slate-900 text-xs group-hover:text-blue-600 transition-colors truncate">
-                          {f.folder_code}
-                        </h3>
-                        {f.title && f.title !== "-" && (
-                          <p className="text-[11px] font-medium text-slate-600 truncate mt-0.5" title={f.title}>
-                            {f.title}
-                          </p>
-                        )}
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Card Details Body */}
-                  <div className="space-y-2 text-xs">
-                    {/* Metric Pills */}
-                    <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      <div className="bg-amber-50/80 border border-amber-200/70 p-1.5 rounded-md text-center">
-                        <span className="text-amber-800 block text-[9px] font-semibold uppercase tracking-wider">Fabric Roll</span>
-                        <strong className="text-slate-900 font-bold">{totalTakka} Takka</strong>
+                  {/* Body Specs */}
+                  <div className="p-3.5 space-y-2.5">
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-black text-slate-900 text-xs tracking-tight">
+                          {f.folder_code}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400">{f.created_date}</span>
                       </div>
-                      <div className="bg-emerald-50/80 border border-emerald-200/70 p-1.5 rounded-md text-center">
-                        <span className="text-emerald-800 block text-[9px] font-semibold uppercase tracking-wider">Production</span>
-                        <strong className="text-slate-900 font-bold">{totalPcs.toLocaleString()} Pcs</strong>
+                      <h3 className="font-bold text-slate-800 text-xs truncate mt-0.5" title={f.title}>
+                        {f.title}
+                      </h3>
+                    </div>
+
+                    {/* Stitches & Rate Metric Chips */}
+                    <div className="grid grid-cols-2 gap-2 text-center text-[10px] bg-slate-50 p-2 rounded-xl border border-slate-200/70">
+                      <div>
+                        <span className="text-slate-400 block font-semibold uppercase tracking-wider">Stitches</span>
+                        <span className="font-mono font-black text-slate-800 text-[11px]">
+                          {f.stitch_count.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block font-semibold uppercase tracking-wider">Job Rate</span>
+                        <span className="font-mono font-black text-emerald-700 text-[11px]">
+                          ₹{ratePerPiece} / Pc
+                        </span>
                       </div>
                     </div>
 
-                    {/* Included Parts Badges */}
-                    <div className="pt-2 border-t border-slate-100">
+                    {/* Work Types Preview Chips */}
+                    {f.work_types && f.work_types.length > 0 && (
                       <div className="flex items-center gap-1 flex-wrap">
-                        {f.items.length > 0 ? (
-                          f.items.map((item, idx) => (
-                            <span
-                              key={item.id || `item-${f.id}-${idx}`}
-                              className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-medium text-[10px] rounded border border-slate-200"
-                            >
-                              {item.category}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-[10px] text-slate-400 italic">No parts added</span>
+                        {f.work_types.slice(0, 3).map((w) => (
+                          <span
+                            key={w}
+                            className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200"
+                          >
+                            {w}
+                          </span>
+                        ))}
+                        {f.work_types.length > 3 && (
+                          <span className="text-[9px] font-bold text-slate-400">
+                            +{f.work_types.length - 3}
+                          </span>
                         )}
                       </div>
-                    </div>
+                    )}
+
+                    {/* Order Count Badge */}
+                    {orderCount > 0 && (
+                      <div className="text-[10px] font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 flex items-center justify-between">
+                        <span>Orders Placed:</span>
+                        <span>{orderCount} batches ({totalPiecesOrdered} Pcs)</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div className="p-2.5 pt-0 grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenOrderModal(e, f)}
+                      className="py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-black flex items-center justify-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3 stroke-[3]" /> Order
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const sampleText = `🎨 *SHIV CREATION - DESIGN CATALOG*\n` +
+                          `📋 *Design Code:* ${f.folder_code}\n` +
+                          `👗 *Category:* ${f.category} (${f.title})\n` +
+                          `🧵 *Stitches:* ${f.stitch_count.toLocaleString("en-IN")}\n` +
+                          `💰 *Job Work Rate:* ₹${ratePerPiece} / Piece (@ ₹${f.rate_per_1k}/1k)\n` +
+                          `✨ *Work Types:* ${f.work_types.join(", ")}\n` +
+                          `Reply to place job order.`;
+                        setWhatsAppText(sampleText);
+                        setWhatsAppTargetMobile(f.design_type === "Party Exclusive" ? registeredParties.find((p) => p.name === f.party_name)?.mobile || "" : "");
+                        setIsWhatsAppModalOpen(true);
+                      }}
+                      className="py-1.5 px-2 bg-green-50 hover:bg-green-100 text-green-800 border border-green-200 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    >
+                      <MessageSquare className="w-3 h-3 text-green-600" /> Share
+                    </button>
                   </div>
                 </div>
               );
@@ -1558,841 +1209,638 @@ export default function DesignsPage() {
         </div>
       )}
 
-      {/* PROFESSIONAL ENTERPRISE 2-COLUMN SPLIT LAYOUT FOR DESIGN DETAILS */}
-      {selectedFolder && (() => {
-        const totalPcs = getTotalPcsForFolder(selectedFolder);
-        const totalTakka = selectedFolder.colorways.reduce((s, c) => s + c.takka_count, 0);
-        const totalMeters = getTotalMetersForFolder(selectedFolder);
-        const totalStitches = selectedFolder.items.reduce((s, i) => s + i.stitch_count, 0);
+      {/* SELECTED DESIGN DETAILS VIEW */}
+      {selectedFolder && (
+        <div className="space-y-4 animate-in fade-in duration-150">
+          {/* Top Banner Card with Photo & High Level Stats */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 relative flex items-center justify-center">
+                {selectedFolder.image_url ? (
+                  <img
+                    src={selectedFolder.image_url}
+                    alt={selectedFolder.folder_code}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Palette className="w-8 h-8 text-slate-300" />
+                )}
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-black text-blue-700 text-base">
+                    {selectedFolder.folder_code}
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-50 text-blue-800 border border-blue-200">
+                    {selectedFolder.category}
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200">
+                    {selectedFolder.design_type === "In-House Master" ? "In-House Collection" : selectedFolder.party_name}
+                  </span>
+                </div>
+                <h2 className="text-sm font-bold text-slate-900">{selectedFolder.title}</h2>
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <span>Stitches: <strong className="text-slate-800">{selectedFolder.stitch_count.toLocaleString("en-IN")}</strong></span>
+                  <span>•</span>
+                  <span>Rate: <strong className="text-emerald-700 font-mono">₹{calculateRatePerPiece(selectedFolder.stitch_count, selectedFolder.rate_per_1k)} / Pc</strong></span>
+                </div>
+              </div>
+            </div>
 
-        return (
-          <div className="space-y-4 animate-in fade-in duration-150">
+            {/* Quick Action Button */}
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+              <button
+                type="button"
+                onClick={(e) => handleOpenOrderModal(e, selectedFolder)}
+                className="flex-1 md:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" /> + Create Job Order
+              </button>
+            </div>
+          </div>
 
+          {/* Sub Navigation Tabs */}
+          <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+            <button
+              type="button"
+              onClick={() => setActiveDetailTab("specs")}
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                activeDetailTab === "specs"
+                  ? "bg-blue-600 text-white shadow-2xs"
+                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+              }`}
+            >
+              📐 Design Specs & Components ({selectedFolder.items.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveDetailTab("orders")}
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeDetailTab === "orders"
+                  ? "bg-blue-600 text-white shadow-2xs"
+                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+              }`}
+            >
+              <Briefcase className="w-3.5 h-3.5" />
+              <span>Job Orders & WhatsApp Batches ({selectedFolder.order_history?.length || 0})</span>
+            </button>
+          </div>
 
-            {/* SPLIT 2-COLUMN CONTAINER (Equal 50-50 Split) */}
+          {/* TAB 1: DESIGN SPECS & GARMENT COMPONENTS */}
+          {activeDetailTab === "specs" && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* LEFT COLUMN: FABRIC COLORS & TAKKA LIST (50% Width) */}
-              <div className="space-y-3">
-                <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-                  {/* Card Header */}
-                  <div className="bg-slate-50/80 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Palette className="w-4 h-4 text-slate-600" />
-                      <span className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
-                        Fabric Colors & Takka Details ({selectedFolder.colorways.length})
-                        {totalPcs > 0 && (
-                          <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md normal-case">
-                            Total: {totalPcs.toLocaleString()} Pcs
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setIsAddingColorInline(!isAddingColorInline)}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-slate-500" /> Add Details
-                    </button>
+              {/* Left Column: Photo Preview & Work Types */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h3 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-blue-600" /> Sample Image & Punching
+                  </h3>
+                  <div className="flex items-center gap-1 text-[11px] font-bold text-slate-600">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> Watermark Active
                   </div>
-                  {/* UNIFIED FLAT MULTI-COLOR ADD FORM */}
-                  {isAddingColorInline && (
-                    <div className="p-3 bg-slate-50/90 border-b border-slate-200 animate-in fade-in duration-100">
-                      <form onSubmit={handleSaveColorwayInline} className="space-y-3">
-                        {colorDraftRows.map((row, rIdx) => (
-                          <div key={row.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-bold text-slate-800">
-                                Color #{rIdx + 1} Details
-                              </span>
-                              {colorDraftRows.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveColorDraftRow(row.id)}
-                                  className="text-slate-400 hover:text-red-600 text-[11px] font-bold inline-flex items-center gap-1"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" /> Remove Color
-                                </button>
-                              )}
-                            </div>
+                </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Color Name *</label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. Rani Color"
-                                  value={row.color_name}
-                                  onKeyDown={handleColorFormKeyDown}
-                                  onChange={(e) => handleUpdateColorDraftRow(row.id, "color_name", e.target.value)}
-                                  className="w-full h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500"
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Takka Count *</label>
-                                <input
-                                  type="number"
-                                  placeholder="e.g. 10"
-                                  value={row.takka_count}
-                                  onKeyDown={handleColorFormKeyDown}
-                                  onChange={(e) => handleUpdateColorDraftRow(row.id, "takka_count", e.target.value !== "" ? Number(e.target.value) : "")}
-                                  className="w-full h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Roll Meters (Optional)</label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. 104, 103, 105"
-                                  value={row.roll_meters}
-                                  onKeyDown={handleColorFormKeyDown}
-                                  onChange={(e) => handleUpdateColorDraftRow(row.id, "roll_meters", e.target.value)}
-                                  className="w-full h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500"
-                                />
-                              </div>
-                            </div>
-
-                            {/* OPTIONAL THREAD MATCHING SECTION (NO DUMMY DEFAULTS) */}
-                            <div className="pt-2 border-t border-slate-100 space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
-                                  <Layers className="w-3 h-3 text-indigo-500" /> Thread Matching Details (Optional)
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleAddThreadToColorRow(row.id)}
-                                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 inline-flex items-center gap-1"
-                                >
-                                  <Plus className="w-3 h-3" /> Add Thread Row
-                                </button>
-                              </div>
-
-                              {row.threads.map((th, tIdx) => (
-                                <div key={tIdx} className="grid grid-cols-12 gap-2 items-center">
-                                  <div className="col-span-3 sm:col-span-2">
-                                    <input
-                                      type="text"
-                                      placeholder="N1"
-                                      value={th.needle_no}
-                                      onKeyDown={handleColorFormKeyDown}
-                                      onChange={(e) => handleUpdateThreadInColorRow(row.id, tIdx, "needle_no", e.target.value)}
-                                      className="w-full h-7 px-2 bg-slate-50 border border-slate-200 rounded text-xs font-bold text-center text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
-                                    />
-                                  </div>
-                                  <div className="col-span-5 sm:col-span-6">
-                                    <input
-                                      type="text"
-                                      placeholder="Thread Name / Color (e.g. Rani Pink)"
-                                      value={th.thread_name}
-                                      onKeyDown={handleColorFormKeyDown}
-                                      onChange={(e) => handleUpdateThreadInColorRow(row.id, tIdx, "thread_name", e.target.value)}
-                                      className="w-full h-7 px-2 bg-slate-50 border border-slate-200 rounded text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
-                                    />
-                                  </div>
-                                  <div className="col-span-3 sm:col-span-3">
-                                    <input
-                                      type="text"
-                                      placeholder="Shade (e.g. 402)"
-                                      value={th.shade_code}
-                                      onKeyDown={handleColorFormKeyDown}
-                                      onChange={(e) => handleUpdateThreadInColorRow(row.id, tIdx, "shade_code", e.target.value)}
-                                      className="w-full h-7 px-2 bg-slate-50 border border-slate-200 rounded text-xs font-mono text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
-                                    />
-                                  </div>
-                                  <div className="col-span-1 text-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveThreadFromColorRow(row.id, tIdx)}
-                                      className="text-slate-400 hover:text-red-600 p-0.5"
-                                      title="Remove Thread"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-
-                        {/* ACTION BAR: ADD ANOTHER COLOR + CANCEL/SAVE */}
-                        <div className="flex items-center justify-between pt-1">
-                          <button
-                            type="button"
-                            onClick={handleAddColorDraftRow}
-                            className="h-8 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
-                          >
-                            <Plus className="w-3.5 h-3.5" /> Add Another Color
-                          </button>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setIsAddingColorInline(false)}
-                              className="h-8 px-3 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 font-bold text-xs"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="submit"
-                              className="h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-2xs text-xs"
-                            >
-                              Save Details
-                            </button>
-                          </div>
-                        </div>
-                      </form>
-                    </div>
-                  )}
-
-                  {/* CLEAN FULL-WIDTH FABRIC COLORS LIST */}
-                  {selectedFolder.colorways.length > 0 ? (
-                    <div className="divide-y divide-slate-100 text-xs">
-                      {selectedFolder.colorways.map((cw, cwIdx) => {
-                        const colorMeters = getColorMeters(cw, 0);
-                        const calculatedPcs = calculateColorPcs(cw, selectedFolder);
-                        const effectiveCut = getEffectiveCutLength(selectedFolder);
-                        const isExpanded = expandedRollMetersColorId === cw.id;
-                        const activeTab = colorwayActiveTab[cw.id] || "takka";
-                        const rollMetersArr = Array.from({ length: cw.takka_count }, (_, i) =>
-                          cw.roll_meters && cw.roll_meters[i] !== undefined ? cw.roll_meters[i] : 0
-                        );
-
-                        const setSubTab = (tab: "takka" | "threads") => {
-                          setColorwayActiveTab((prev) => ({ ...prev, [cw.id]: tab }));
-                        };
-
-                        return (
-                          <div key={cw.id || `cw-${selectedFolder.id}-${cwIdx}`} className="bg-white hover:bg-slate-50/80 transition-colors">
-                            {/* CLEAN MINIMAL ROW SUMMARY */}
-                            <div className="px-4 py-3 flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                <span
-                                  className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0 shadow-2xs"
-                                  style={{ backgroundColor: cw.color_code || "#3B82F6" }}
-                                />
-                                <span className="font-bold text-slate-900 text-xs">{cw.color_name}</span>
-                                {calculatedPcs > 0 && (
-                                  <span className="text-[10px] font-black text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md shadow-2xs">
-                                    {calculatedPcs.toLocaleString()} Pcs
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-2 text-xs">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (isExpanded && activeTab === "takka") {
-                                      setExpandedRollMetersColorId(null);
-                                    } else {
-                                      setExpandedRollMetersColorId(cw.id);
-                                      setSubTab("takka");
-                                    }
-                                  }}
-                                  className={`h-8 px-3 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-2xs ${
-                                    isExpanded && activeTab === "takka"
-                                      ? "bg-amber-100 text-amber-900 border border-amber-300 ring-1 ring-amber-300/50"
-                                      : "bg-slate-100 hover:bg-slate-200/80 text-slate-800 border border-slate-200/90"
-                                  }`}
-                                  title="Click to view Takka roll meters"
-                                >
-                                  <Ruler className="w-3.5 h-3.5 text-amber-600" />
-                                  <span>{cw.takka_count} Takka ({colorMeters}m)</span>
-                                  <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-150 ${isExpanded && activeTab === "takka" ? "rotate-180" : ""}`} />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (isExpanded && activeTab === "threads") {
-                                      setExpandedRollMetersColorId(null);
-                                    } else {
-                                      setExpandedRollMetersColorId(cw.id);
-                                      setSubTab("threads");
-                                    }
-                                  }}
-                                  className={`h-8 px-3 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-2xs ${
-                                    isExpanded && activeTab === "threads"
-                                      ? "bg-indigo-100 text-indigo-900 border border-indigo-300 ring-1 ring-indigo-300/50"
-                                      : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80"
-                                  }`}
-                                  title="Click to view Thread matching"
-                                >
-                                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
-                                  <span>{(cw.threads || []).length} Threads</span>
-                                  <ChevronDown className={`w-3.5 h-3.5 text-indigo-500 transition-transform duration-150 ${isExpanded && activeTab === "threads" ? "rotate-180" : ""}`} />
-                                </button>
-
-                                <button
-                                  onClick={() => handleDeleteColorway(selectedFolder.id, cw.id)}
-                                  className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center shrink-0"
-                                  title="Delete Colorway"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* REDESIGNED MINIMAL EXPANDED DRAWER */}
-                            {isExpanded && (
-                              <div className="bg-slate-50/70 p-3.5 border-t border-slate-200/80 space-y-3 animate-in fade-in duration-100">
-
-                                {/* SUB-TAB 1: TAKKA ROLL METERS & MANAGEMENT */}
-                                {activeTab === "takka" && (
-                                  <div className="space-y-3 animate-in fade-in duration-100">
-                                    <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 pb-2.5">
-                                      {/* Simple Neutral Total Pcs Field */}
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">Total Pcs:</span>
-                                        <div className="flex items-center gap-1">
-                                          <input
-                                            type="number"
-                                            min="0"
-                                            placeholder=""
-                                            value={cw.override_pcs !== undefined ? cw.override_pcs : ""}
-                                            onChange={(e) => {
-                                              const val = e.target.value !== "" ? Number(e.target.value) : undefined;
-                                              handleUpdateOverridePcs(selectedFolder.id, cw.id, val);
-                                            }}
-                                            className="w-16 text-center font-bold text-xs text-slate-900 bg-white border border-slate-300 rounded-lg px-2 py-1 shadow-2xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
-                                            title="Total Pcs for this color. Type here to set/override Pcs."
-                                          />
-                                          <span className="text-xs font-bold text-slate-500">Pcs</span>
-                                          {cw.override_pcs !== undefined && (
-                                            <button
-                                              type="button"
-                                              onClick={() => handleUpdateOverridePcs(selectedFolder.id, cw.id, undefined)}
-                                              className="text-slate-400 hover:text-red-600 text-xs ml-0.5 font-bold transition-colors"
-                                              title="Reset to calculated Pcs"
-                                            >
-                                              ✕
-                                            </button>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      {/* Action Button: Add Takka */}
-                                      <button
-                                        type="button"
-                                        onClick={() => handleAddRollToColorway(selectedFolder.id, cw.id)}
-                                        className="h-7 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300/80 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-colors shadow-2xs cursor-pointer shrink-0"
-                                        title="Add a new Takka roll"
-                                      >
-                                        <Plus className="w-3.5 h-3.5 text-amber-700" />
-                                        <span>Add Takka</span>
-                                      </button>
-                                    </div>
-
-                                    {/* Roll Cards Grid with Editable Meters & Delete Action */}
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                                      {rollMetersArr.map((meterVal, rIdx) => {
-                                        return (
-                                          <div key={rIdx} className="bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs text-center space-y-1.5 relative group hover:border-amber-300 transition-colors">
-                                            <div className="flex items-center justify-between gap-1">
-                                              <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">ROLL #{rIdx + 1}</span>
-                                              {rollMetersArr.length > 1 && (
-                                                <button
-                                                  type="button"
-                                                  onClick={() => handleRemoveRollFromColorway(selectedFolder.id, cw.id, rIdx)}
-                                                  className="text-slate-300 hover:text-red-600 p-0.5 rounded transition-colors"
-                                                  title="Delete this Takka roll"
-                                                >
-                                                  <Trash2 className="w-3 h-3" />
-                                                </button>
-                                              )}
-                                            </div>
-
-                                            {/* Editable Meter Input */}
-                                            <div className="flex items-center justify-center gap-0.5">
-                                              <input
-                                                id={`roll-input-${cw.id}-${rIdx}`}
-                                                type="number"
-                                                min="0"
-                                                value={meterVal || ""}
-                                                onChange={(e) => {
-                                                  const val = e.target.value !== "" ? Number(e.target.value) : 0;
-                                                  handleUpdateRollMeter(selectedFolder.id, cw.id, rIdx, val);
-                                                }}
-                                                onKeyDown={(e) => {
-                                                  if (e.key === "Enter") {
-                                                    e.preventDefault();
-                                                    const nextInput = document.getElementById(`roll-input-${cw.id}-${rIdx + 1}`);
-                                                    if (nextInput) {
-                                                      nextInput.focus();
-                                                      (nextInput as HTMLInputElement).select();
-                                                    }
-                                                  }
-                                                }}
-                                                className="w-16 text-center font-extrabold text-sm text-slate-900 font-mono bg-slate-50 border border-slate-200 rounded px-1 py-0.5 focus:bg-white focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                                title="Click to edit meter value, press Enter to move to next roll"
-                                              />
-                                              <span className="text-xs font-bold text-slate-400">m</span>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* SUB-TAB 2: THREAD MATCHING */}
-                                {activeTab === "threads" && (
-                                  <div className="space-y-3 animate-in fade-in duration-100">
-                                    {/* Top Action Bar */}
-                                    <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 pb-2">
-                                      <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
-                                        Thread Matching Details
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setAddingThreadForColorId(cw.id);
-                                          setNewThreadNeedleNo("");
-                                          setNewThreadName("");
-                                          setNewThreadCode("");
-                                        }}
-                                        className="h-7 px-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-colors shadow-2xs cursor-pointer shrink-0"
-                                      >
-                                        <Plus className="w-3.5 h-3.5 text-indigo-700" />
-                                        <span>Add Thread</span>
-                                      </button>
-                                    </div>
-
-                                    {/* INLINE ADD THREAD FORM */}
-                                    {addingThreadForColorId === cw.id && (
-                                      <form
-                                        onSubmit={(e) => handleSaveThreadInline(e, cw.id)}
-                                        className="bg-white p-3 rounded-xl border border-indigo-200 shadow-2xs space-y-2 text-xs animate-in fade-in duration-100"
-                                      >
-                                        <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5 font-bold text-slate-800 text-xs">
-                                          <span>Add New Thread Matching</span>
-                                          <button
-                                            type="button"
-                                            onClick={() => setAddingThreadForColorId(null)}
-                                            className="text-slate-400 hover:text-slate-600"
-                                          >
-                                            <X className="w-3.5 h-3.5" />
-                                          </button>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                                          <div className="col-span-3 sm:col-span-2">
-                                            <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Needle No</label>
-                                            <input
-                                              type="text"
-                                              placeholder="N1"
-                                              value={newThreadNeedleNo}
-                                              onChange={(e) => setNewThreadNeedleNo(e.target.value)}
-                                              className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs font-bold text-center"
-                                            />
-                                          </div>
-                                          <div className="col-span-5 sm:col-span-6">
-                                            <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Thread Name *</label>
-                                            <input
-                                              type="text"
-                                              placeholder="e.g. Rani Silk, Gold Zari"
-                                              value={newThreadName}
-                                              onChange={(e) => setNewThreadName(e.target.value)}
-                                              required
-                                              className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs font-bold"
-                                            />
-                                          </div>
-                                          <div className="col-span-4 sm:col-span-4">
-                                            <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Shade Code</label>
-                                            <input
-                                              type="text"
-                                              placeholder="e.g. 104, Shade #402"
-                                              value={newThreadCode}
-                                              onChange={(e) => setNewThreadCode(e.target.value)}
-                                              className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs font-mono"
-                                            />
-                                          </div>
-                                        </div>
-
-                                        <div className="flex justify-end gap-2 pt-1">
-                                          <button
-                                            type="button"
-                                            onClick={() => setAddingThreadForColorId(null)}
-                                            className="px-2.5 py-1 text-slate-600 font-semibold text-[11px]"
-                                          >
-                                            Cancel
-                                          </button>
-                                          <button
-                                            type="submit"
-                                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded text-[11px] shadow-2xs"
-                                          >
-                                            Save Thread
-                                          </button>
-                                        </div>
-                                      </form>
-                                    )}
-
-                                    {/* THREAD CARDS GRID */}
-                                    {(cw.threads && cw.threads.length > 0) ? (
-                                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                                        {cw.threads.map((th, thIdx) => {
-                                          const threadKey = th.id || `th-${cw.id || "c"}-${thIdx}`;
-                                          const isEditingThisThread = editingThreadId === th.id;
-
-                                          const formattedCode = th.thread_code
-                                            ? th.thread_code.startsWith("#")
-                                              ? th.thread_code.substring(1)
-                                              : th.thread_code
-                                            : "";
-
-                                          const needleLabel = th.needle_no
-                                            ? (th.needle_no.toString().toUpperCase().startsWith("N") ? th.needle_no.toString().toUpperCase() : `N${th.needle_no}`)
-                                            : null;
-
-                                          if (isEditingThisThread) {
-                                            return (
-                                              <div key={threadKey} className="bg-white p-2.5 rounded-xl border border-indigo-400 shadow-2xs space-y-1.5 text-xs text-left">
-                                                <div className="flex items-center justify-between gap-1 border-b border-indigo-100 pb-1">
-                                                  <input
-                                                    type="text"
-                                                    placeholder="N1"
-                                                    value={editThreadNeedle}
-                                                    onChange={(e) => setEditThreadNeedle(e.target.value)}
-                                                    className="w-10 px-1 py-0.5 bg-indigo-50 text-indigo-700 font-extrabold text-[10px] rounded border border-indigo-200 text-center"
-                                                  />
-                                                  <div className="flex items-center gap-1">
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => handleUpdateThread(selectedFolder.id, cw.id, th.id)}
-                                                      className="text-emerald-600 hover:text-emerald-700 p-0.5 rounded"
-                                                      title="Save thread"
-                                                    >
-                                                      <Check className="w-3.5 h-3.5" />
-                                                    </button>
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => setEditingThreadId(null)}
-                                                      className="text-slate-400 hover:text-slate-600 p-0.5 rounded"
-                                                      title="Cancel"
-                                                    >
-                                                      <X className="w-3.5 h-3.5" />
-                                                    </button>
-                                                  </div>
-                                                </div>
-                                                <input
-                                                  type="text"
-                                                  value={editThreadName}
-                                                  onChange={(e) => setEditThreadName(e.target.value)}
-                                                  placeholder="Thread Name"
-                                                  className="w-full px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs font-bold text-slate-900"
-                                                />
-                                                <input
-                                                  type="text"
-                                                  value={editThreadCode}
-                                                  onChange={(e) => setEditThreadCode(e.target.value)}
-                                                  placeholder="Shade #"
-                                                  className="w-full px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded text-[10px] font-mono text-indigo-700"
-                                                />
-                                              </div>
-                                            );
-                                          }
-
-                                          return (
-                                            <div key={threadKey} className="relative bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs text-center space-y-1.5 flex flex-col justify-between group hover:border-indigo-300 transition-all">
-                                              <div className="flex items-center justify-between gap-1">
-                                                <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-extrabold rounded border border-indigo-100">
-                                                  {needleLabel ? needleLabel : "THREAD"}
-                                                </span>
-                                                <div className="flex items-center gap-1">
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                      setEditingThreadId(th.id);
-                                                      setEditThreadNeedle(th.needle_no ? th.needle_no.toString() : "");
-                                                      setEditThreadName(th.thread_name || "");
-                                                      setEditThreadCode(th.thread_code || "");
-                                                    }}
-                                                    className="text-slate-300 hover:text-indigo-600 p-0.5 rounded transition-colors"
-                                                    title="Edit thread"
-                                                  >
-                                                    <Pencil className="w-3 h-3" />
-                                                  </button>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => handleDeleteThread(selectedFolder.id, cw.id, th.id)}
-                                                    className="text-slate-300 hover:text-red-600 p-0.5 rounded transition-colors"
-                                                    title="Remove thread"
-                                                  >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                  </button>
-                                                </div>
-                                              </div>
-                                              <div className="py-0.5">
-                                                <span className="font-extrabold text-xs text-slate-800 leading-tight block text-center break-words">
-                                                  {th.thread_name}
-                                                </span>
-                                              </div>
-                                              <div className="flex items-center justify-center gap-1 flex-wrap pt-0.5">
-                                                {formattedCode && (
-                                                  <span className="text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50/90 px-1.5 py-0.5 rounded border border-indigo-100">
-                                                    {formattedCode.toLowerCase().includes("shade") || formattedCode.toLowerCase().includes("zari") || formattedCode.toLowerCase().includes("silk") ? formattedCode : `Shade #${formattedCode}`}
-                                                  </span>
-                                                )}
-                                                {th.thread_type && (
-                                                  <span className="text-[9px] text-slate-500 font-medium bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/80 truncate max-w-[80px]">
-                                                    {th.thread_type}
-                                                  </span>
-                                                )}
-                                              </div>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    ) : (
-                                      <div className="p-4 bg-white rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-400 space-y-1">
-                                        <p>No thread & shade matching added for this colorway yet.</p>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setAddingThreadForColorId(cw.id);
-                                            setNewThreadNeedleNo(`N${(cw.threads || []).length + 1}`);
-                                            setNewThreadName("");
-                                            setNewThreadCode("");
-                                          }}
-                                          className="text-indigo-600 hover:underline font-bold text-xs"
-                                        >
-                                          + Add First Thread
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                <div className="relative w-full h-64 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center">
+                  {selectedFolder.image_url ? (
+                    <>
+                      <img
+                        src={selectedFolder.image_url}
+                        alt="Design Full Preview"
+                        className="w-full h-full object-contain"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                        <span className="transform -rotate-25 text-white/40 text-sm font-black tracking-widest border border-white/30 px-3 py-1 bg-black/30 rounded backdrop-blur-2xs">
+                          SHIV CREATION • SAMPLE ONLY
+                        </span>
+                      </div>
+                    </>
                   ) : (
-                    <div className="p-6 text-center bg-slate-50/60 text-slate-500 space-y-2">
-                      <Palette className="w-7 h-7 text-slate-300 mx-auto" />
-                      <p className="text-xs font-bold text-slate-700">No Fabric Colors / Takka Added</p>
-                      <p className="text-[11px] text-slate-500">Click "+ Add Details" above to add colorways and Takka roll details.</p>
+                    <div className="text-center text-slate-400">
+                      <ImageIcon className="w-10 h-10 mx-auto mb-1 opacity-40" />
+                      <p className="text-xs font-bold">No photo attached to this master design.</p>
                     </div>
                   )}
+                </div>
 
-
+                {/* Work Type Tags */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                    Applied Work Types
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedFolder.work_types?.map((wt) => (
+                      <span
+                        key={wt}
+                        className="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-lg text-xs font-bold border border-slate-200"
+                      >
+                        ✓ {wt}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* RIGHT COLUMN: GARMENT COMPONENTS (FRONT, BACK, PATTA) (50% Width - No Prices) */}
-              <div className="space-y-3">
-                <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-visible">
-                  {/* Card Header */}
-                  <div className="bg-slate-50/80 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Scissors className="w-4 h-4 text-slate-600" />
-                      <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                        Garment Components ({selectedFolder.items.length})
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setIsAddingComponentInline(!isAddingComponentInline)}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 transition-colors"
+              {/* Right Column: Garment Components Table */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h3 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Scissors className="w-4 h-4 text-blue-600" /> Garment Components ({selectedFolder.items.length})
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingComponentInline(!isAddingComponentInline)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> + Add Part
+                  </button>
+                </div>
+
+                {/* Component List */}
+                <div className="space-y-2">
+                  {selectedFolder.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs"
                     >
-                      <Plus className="w-3.5 h-3.5 text-slate-500" /> Add Part
-                    </button>
-                  </div>
-
-                  {/* INLINE ADD COMPONENT FORM */}
-                  {isAddingComponentInline && (
-                    <div className="p-3.5 bg-slate-50 border-b border-slate-200">
-                      <form
-                        onSubmit={handleSaveComponentInline}
-                        className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex items-center gap-2 flex-wrap text-xs animate-in fade-in duration-100 relative z-30"
-                      >
-                        {/* CUSTOM DESIGNED CATEGORY SELECTOR */}
-                        {isCustomCategory ? (
-                          <div className="relative flex items-center w-40 h-9">
-                            <input
-                              type="text"
-                              placeholder="Category *"
-                              value={newCompCategory}
-                              onChange={(e) => setNewCompCategory(e.target.value)}
-                              className="w-full h-9 pl-3 pr-8 bg-white border border-blue-500 rounded-lg font-semibold text-slate-900 focus:outline-none text-xs shadow-2xs"
-                              autoFocus
-                              required
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsCustomCategory(false);
-                                setNewCompCategory("Front");
-                              }}
-                              className="absolute right-1 text-slate-400 hover:text-slate-600 p-1"
-                              title="Back to dropdown"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="relative w-40">
-                            <button
-                              type="button"
-                              onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                              className="w-full h-9 px-3 bg-white border border-slate-200 hover:border-blue-400 rounded-lg font-semibold text-slate-900 text-xs flex items-center justify-between gap-1 shadow-2xs transition-colors"
-                            >
-                              <span className="truncate">{newCompCategory || "Select Category"}</span>
-                              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isCategoryOpen ? "rotate-180" : ""}`} />
-                            </button>
-
-                            {isCategoryOpen && (
-                              <>
-                                <div className="fixed inset-0 z-20" onClick={() => setIsCategoryOpen(false)} />
-                                <div className="absolute left-0 top-10 z-30 w-52 bg-white rounded-xl border border-slate-200 shadow-2xl p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-100">
-                                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 pt-0.5">
-                                    Select Category
-                                  </div>
-
-                                  {/* Add Custom Category button pinned at TOP */}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setIsCustomCategory(true);
-                                      setNewCompCategory("");
-                                      setIsCategoryOpen(false);
-                                    }}
-                                    className="w-full px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors border border-blue-200/80"
-                                  >
-                                    <Plus className="w-3.5 h-3.5 text-blue-600" />
-                                    <span>Add Custom Category...</span>
-                                  </button>
-
-                                  <div className="h-px bg-slate-100 my-1" />
-
-                                  <div className="max-h-44 overflow-y-auto space-y-0.5 no-scrollbar">
-                                    {categoriesList.map((cat) => (
-                                      <div
-                                        key={cat}
-                                        onClick={() => {
-                                          setNewCompCategory(cat);
-                                          setIsCategoryOpen(false);
-                                        }}
-                                        className={`group w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
-                                          newCompCategory === cat
-                                            ? "bg-blue-50 text-blue-700 font-bold"
-                                            : "text-slate-700 hover:bg-slate-100"
-                                        }`}
-                                      >
-                                        <span className="truncate pr-2">{cat}</span>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                          {newCompCategory === cat && <Check className="w-3.5 h-3.5 text-blue-600" />}
-                                          <button
-                                            type="button"
-                                            onClick={(e) => handleDeleteCategoryOption(cat, e)}
-                                            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-600 p-0.5 rounded transition-opacity"
-                                            title={`Delete ${cat} category`}
-                                          >
-                                            <Trash2 className="w-3 h-3" />
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        <input
-                          type="text"
-                          placeholder="Additional Note"
-                          value={newCompName}
-                          onChange={(e) => setNewCompName(e.target.value)}
-                          className="w-44 h-9 px-2.5 bg-white border border-slate-200 rounded-md font-medium text-slate-900 focus:outline-none text-xs"
-                        />
-                        <input
-                          type="number"
-                          placeholder="Stitches"
-                          value={newCompStitch}
-                          onChange={(e) => setNewCompStitch(e.target.value !== "" ? parseInt(e.target.value) : "")}
-                          className="w-28 h-9 px-2 bg-white border border-slate-200 rounded-md font-semibold text-slate-900 text-center focus:outline-none text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                        <button type="submit" className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md shadow-2xs text-xs flex items-center justify-center">
-                          Save
-                        </button>
-                        <button type="button" onClick={() => setIsAddingComponentInline(false)} className="h-9 w-9 bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 flex items-center justify-center">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </form>
+                      <div>
+                        <span className="font-mono font-bold px-2 py-0.5 bg-white border border-slate-200 text-blue-700 rounded text-[10px] mr-2">
+                          {item.category}
+                        </span>
+                        <strong className="text-slate-800">{item.component_name}</strong>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono font-black text-slate-900 block">
+                          {item.stitch_count.toLocaleString("en-IN")} Stitches
+                        </span>
+                        <span className="text-[10px] text-slate-400">@ ₹{item.rate_per_1k}/1k</span>
+                      </div>
                     </div>
-                  )}
+                  ))}
 
-                  {/* CLEAN STRUCTURED TABLE / ROWS (NO PRICE COLUMNS) */}
-                  {selectedFolder.items.length > 0 ? (
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                          <th className="py-2.5 px-4">Component</th>
-                          <th className="py-2.5 px-4 text-right">Stitch Count</th>
-                          <th className="py-2.5 px-3 text-center w-12">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                        {selectedFolder.items.map((item, itemIdx) => {
-                          return (
-                            <tr key={item.id || `item-${selectedFolder.id}-${itemIdx}`} className="hover:bg-blue-50/50 transition-colors">
-                              <td className="py-2.5 px-4">
-                                <div className="flex items-center gap-2">
-                                  <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold text-[10px] rounded border border-slate-200">
-                                    {item.category}
-                                  </span>
-                                  <span className="font-bold text-slate-900">{item.component_name}</span>
-                                </div>
-                              </td>
-                              <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-900">
-                                <span className="inline-block w-24 text-right font-extrabold">{item.stitch_count.toLocaleString()}</span>
-                                <span className="inline-block w-16 text-left pl-1.5 font-sans text-[11px] font-normal text-slate-500">Stitches</span>
-                              </td>
-                              <td className="py-2.5 px-3 text-center">
-                                <button
-                                  onClick={() => handleDeleteComponent(selectedFolder.id, item.id)}
-                                  className="text-slate-400 hover:text-red-600 p-1 rounded transition-colors"
-                                  title="Delete Component"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-emerald-50/80 border-t-2 border-slate-900 text-xs font-bold">
-                          <td className="py-2.5 px-4 text-emerald-950 uppercase tracking-wider text-[11px] font-extrabold">
-                            Total Garment Stitch Count:
-                          </td>
-                          <td className="py-2.5 px-4 text-right font-mono text-xs font-black text-emerald-950">
-                            <span className="inline-block w-24 text-right font-black text-emerald-950 text-sm">{totalStitches.toLocaleString()}</span>
-                            <span className="inline-block w-16 text-left pl-1.5 font-sans text-[11px] font-extrabold text-emerald-950">Stitches</span>
-                          </td>
-                          <td className="py-2.5 px-3"></td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  ) : (
-                    <div className="p-6 text-center bg-slate-50/60 border-t border-b border-slate-200 space-y-2">
-                      <Scissors className="w-7 h-7 text-slate-300 mx-auto" />
-                      <p className="text-xs font-bold text-slate-700">No Garment Components Added</p>
-                      <p className="text-[11px] text-slate-500">Click "+ Add Part" above to add Front, Back, Patta stitch details.</p>
-                    </div>
+                  {selectedFolder.items.length === 0 && (
+                    <p className="text-center text-xs text-slate-400 py-6">
+                      No separate components added. Main design stitch count applies.
+                    </p>
                   )}
                 </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          )}
 
+          {/* TAB 2: JOB ORDERS & WHATSAPP BATCHES */}
+          {activeDetailTab === "orders" && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">
+                    Past & Active Production Batches
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Orders received from parties for {selectedFolder.folder_code}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => handleOpenOrderModal(e, selectedFolder)}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" /> + Create Job Order
+                </button>
+              </div>
+
+              {/* Order Cards List */}
+              <div className="space-y-3">
+                {(!selectedFolder.order_history || selectedFolder.order_history.length === 0) ? (
+                  <div className="py-12 text-center text-slate-400">
+                    <Briefcase className="w-10 h-10 mx-auto mb-2 opacity-40 text-slate-400" />
+                    <p className="text-xs font-bold text-slate-600">No orders placed for this design yet.</p>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Click "+ Create Job Order" to record party orders with dynamic colors and send WhatsApp confirmation.
+                    </p>
+                  </div>
+                ) : (
+                  selectedFolder.order_history.map((ord) => (
+                    <div
+                      key={ord.id}
+                      className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200 shadow-2xs space-y-3 hover:border-blue-300 transition-all"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 text-xs">
+                            #{ord.order_no}
+                          </span>
+                          <strong className="text-slate-900 text-sm">{ord.party_name}</strong>
+                          {ord.party_mobile && (
+                            <span className="text-[11px] text-slate-500 font-mono">({ord.party_mobile})</span>
+                          )}
+                        </div>
+
+                        {/* Status Selector Dropdown */}
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={ord.status}
+                            onChange={(e) =>
+                              handleUpdateOrderStatus(selectedFolder.id, ord.id, e.target.value as any)
+                            }
+                            className={`text-[11px] font-black px-2.5 py-1 rounded-lg border cursor-pointer ${
+                              ord.status === "Sample Approved" || ord.status === "Completed"
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                                : ord.status === "In Production"
+                                ? "bg-blue-50 text-blue-800 border-blue-300"
+                                : "bg-amber-50 text-amber-800 border-amber-300"
+                            }`}
+                          >
+                            <option value="Sample Pending">⏳ Sample Pending</option>
+                            <option value="Sample Approved">✓ Sample Approved</option>
+                            <option value="In Production">⚙️ In Production</option>
+                            <option value="Completed">✓ Completed</option>
+                          </select>
+
+                          {/* WhatsApp Resend Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const msg = generateWhatsAppMessage(ord, selectedFolder);
+                              setWhatsAppText(msg);
+                              setWhatsAppTargetMobile(ord.party_mobile || "");
+                              setIsWhatsAppModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer active:scale-95"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Terms Badges & Summary */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                          <span className="text-[10px] text-slate-400 block font-bold uppercase">Fabric Supply</span>
+                          <strong className="text-slate-800 text-[11px]">{ord.fabric_terms}</strong>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                          <span className="text-[10px] text-slate-400 block font-bold uppercase">Material Supply</span>
+                          <strong className="text-slate-800 text-[11px]">{ord.material_terms}</strong>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                          <span className="text-[10px] text-slate-400 block font-bold uppercase">Delivery Date</span>
+                          <strong className="text-slate-800 text-[11px]">{ord.delivery_date}</strong>
+                        </div>
+                      </div>
+
+                      {/* Colors Table */}
+                      <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 text-xs">
+                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                          Colorways & Quantity Breakdown
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {ord.colors.map((c, cIdx) => (
+                            <div
+                              key={cIdx}
+                              className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex items-center gap-1.5"
+                            >
+                              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                              <span>{c.color_name}:</span>
+                              <strong className="font-mono text-blue-900">{c.pcs} Pcs</strong>
+                              {c.takka && <span className="text-[10px] text-slate-400">({c.takka} Takka)</span>}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
+                          <span className="text-slate-500">Total Quantity:</span>
+                          <span className="text-emerald-700 font-mono text-sm">
+                            {ord.total_pcs.toLocaleString("en-IN")} Pcs • Total: ₹{ord.total_amount.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SMART JOB ORDER & CONTRACT MODAL */}
+      {isOrderModalOpen && orderTargetDesign && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl p-5 space-y-4 text-xs font-sans">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200">
+                  <Briefcase className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-slate-900">
+                    Create Job Order for {orderTargetDesign.folder_code}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Rate: ₹{orderRatePerPc} / Pc • {orderTargetDesign.stitch_count.toLocaleString("en-IN")} Stitches
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOrderModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Party & Contact */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Party / Client Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Surat Silk Mills"
+                  value={orderPartyName}
+                  onChange={(e) => setOrderPartyName(e.target.value)}
+                  className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">WhatsApp Mobile Number</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 9825100000"
+                  value={orderPartyMobile}
+                  onChange={(e) => setOrderPartyMobile(e.target.value)}
+                  className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Terms Toggles: Fabric & Material */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                  1. Fabric Supply Condition
+                </span>
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200 cursor-pointer font-bold text-slate-800 text-[11px]">
+                    <input
+                      type="radio"
+                      name="fabricTerms"
+                      checked={orderFabricTerms === "Party Fabric (Job Work)"}
+                      onChange={() => setOrderFabricTerms("Party Fabric (Job Work)")}
+                      className="text-blue-600"
+                    />
+                    <span>Party નું કાપડ (Job Work Only)</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200 cursor-pointer font-bold text-slate-800 text-[11px]">
+                    <input
+                      type="radio"
+                      name="fabricTerms"
+                      checked={orderFabricTerms === "Our Fabric (With Fabric)"}
+                      onChange={() => setOrderFabricTerms("Our Fabric (With Fabric)")}
+                      className="text-blue-600"
+                    />
+                    <span>આપણું પોતાનું કાપડ (With Fabric)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                  2. Material / Thread Supply
+                </span>
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200 cursor-pointer font-bold text-slate-800 text-[11px]">
+                    <input
+                      type="radio"
+                      name="materialTerms"
+                      checked={orderMaterialTerms === "Factory Material"}
+                      onChange={() => setOrderMaterialTerms("Factory Material")}
+                      className="text-blue-600"
+                    />
+                    <span>આપણી ફેક્ટરીનું મટીરીયલ (With Material)</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200 cursor-pointer font-bold text-slate-800 text-[11px]">
+                    <input
+                      type="radio"
+                      name="materialTerms"
+                      checked={orderMaterialTerms === "Party Supplied Material"}
+                      onChange={() => setOrderMaterialTerms("Party Supplied Material")}
+                      className="text-blue-600"
+                    />
+                    <span>Party નું મટીરીયલ (Party Zari/Sequence)</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Dynamic Colors & Quantities Table */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-slate-800 text-xs">
+                  Colors & Quantities (જેટલા કલર આવ્યા હોય તેટલા ઉમેરો)
+                </span>
+                <button
+                  type="button"
+                  onClick={handleAddOrderColorRow}
+                  className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg font-bold text-[11px] border border-blue-200 cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" /> Add Color
+                </button>
+              </div>
+
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {orderColorRows.map((row, idx) => (
+                  <div key={row.id} className="grid grid-cols-12 gap-2 items-center">
+                    <div className="col-span-5">
+                      <input
+                        type="text"
+                        placeholder="Color Name (e.g. Rani)"
+                        value={row.color_name}
+                        onChange={(e) => handleUpdateOrderColorRow(row.id, "color_name", e.target.value)}
+                        className="w-full h-8 px-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-900 focus:bg-white focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <input
+                        type="text"
+                        placeholder="Takka (e.g. 5)"
+                        value={row.takka}
+                        onChange={(e) => handleUpdateOrderColorRow(row.id, "takka", e.target.value)}
+                        className="w-full h-8 px-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:bg-white focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <input
+                        type="number"
+                        placeholder="Pieces *"
+                        value={row.pcs}
+                        onChange={(e) => handleUpdateOrderColorRow(row.id, "pcs", e.target.value ? Number(e.target.value) : "")}
+                        className="w-full h-8 px-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-black text-slate-900 focus:bg-white focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="col-span-1 text-right">
+                      {orderColorRows.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOrderColorRow(row.id)}
+                          className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total Calculation Box */}
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between font-bold text-xs">
+                <span className="text-emerald-900">
+                  Total Order Volume: <strong>{orderTotalPcs} Pcs</strong>
+                </span>
+                <span className="font-mono text-emerald-950 font-black text-sm">
+                  Total Estimate: ₹{orderTotalAmount.toLocaleString("en-IN")}
+                </span>
+              </div>
+            </div>
+
+            {/* Target Delivery & Sample Status */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Target Delivery Date</label>
+                <input
+                  type="text"
+                  placeholder="DD-MM-YYYY"
+                  value={orderTargetDate}
+                  onChange={(e) => setOrderTargetDate(e.target.value)}
+                  className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Initial Sample Status</label>
+                <select
+                  value={orderSampleStatus}
+                  onChange={(e) => setOrderSampleStatus(e.target.value as any)}
+                  className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 cursor-pointer"
+                >
+                  <option value="Sample Pending">⏳ Sample Approval Pending</option>
+                  <option value="Sample Approved">✓ Sample Passed & Approved</option>
+                  <option value="In Production">⚙️ Direct in Bulk Production</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsOrderModalOpen(false)}
+                className="px-4 h-9 border border-slate-300 rounded-xl font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveOrderBatch(false)}
+                className="px-4 h-9 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-2xs transition-all cursor-pointer"
+              >
+                Save Order
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveOrderBatch(true)}
+                className="px-5 h-9 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <MessageSquare className="w-3.5 h-3.5" /> Save & Send WhatsApp 📲
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WHATSAPP CONFIRMATION PREVIEW MODAL */}
+      {isWhatsAppModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg p-5 space-y-4 text-xs font-sans">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-green-50 text-green-700 rounded-xl border border-green-200">
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-slate-900">WhatsApp Order Confirmation</h3>
+                  <p className="text-[11px] text-slate-500">Preview message before sending to party</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWhatsAppModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Recipient Mobile Number</label>
+              <input
+                type="text"
+                placeholder="Party WhatsApp Mobile (e.g. 9825100000)"
+                value={whatsAppTargetMobile}
+                onChange={(e) => setWhatsAppTargetMobile(e.target.value)}
+                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-green-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block font-bold text-slate-700">Message Preview</label>
+              <textarea
+                rows={9}
+                value={whatsAppText}
+                onChange={(e) => setWhatsAppText(e.target.value)}
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-[11px] leading-relaxed text-slate-900 focus:bg-white focus:outline-none focus:border-green-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(whatsAppText);
+                  setCopiedToast(true);
+                  setTimeout(() => setCopiedToast(false), 2000);
+                }}
+                className="px-3.5 h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>{copiedToast ? "Copied!" : "Copy Text"}</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsWhatsAppModalOpen(false)}
+                  className="px-4 h-9 border border-slate-300 rounded-xl font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    launchWhatsAppWeb(whatsAppTargetMobile, whatsAppText);
+                    setIsWhatsAppModalOpen(false);
+                  }}
+                  className="px-5 h-9 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Open WhatsApp 📲</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

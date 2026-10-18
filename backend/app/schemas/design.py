@@ -13,6 +13,13 @@ class DesignBase(BaseModel):
     cut_length_meters: float = 0.93
     items: Optional[str] = None
     colorways: Optional[str] = None
+    image_url: Optional[str] = None
+    category: Optional[str] = None
+    design_type: Optional[str] = "In-House Master"
+    stitch_count: Optional[float] = 0.0
+    rate_per_1k: Optional[float] = 0.45
+    work_types: Optional[str] = None
+    order_history: Optional[str] = None
     company_id: Optional[str] = "comp-001"
 
 class DesignCreate(DesignBase):
@@ -28,6 +35,13 @@ class DesignUpdate(BaseModel):
     cut_length_meters: Optional[float] = None
     items: Optional[str] = None
     colorways: Optional[str] = None
+    image_url: Optional[str] = None
+    category: Optional[str] = None
+    design_type: Optional[str] = None
+    stitch_count: Optional[float] = None
+    rate_per_1k: Optional[float] = None
+    work_types: Optional[str] = None
+    order_history: Optional[str] = None
 
 class DesignResponse(DesignBase):
     created_at: Optional[datetime] = None
