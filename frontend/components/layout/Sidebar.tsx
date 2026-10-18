@@ -63,7 +63,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { name: "Vendors", href: "/vendors", icon: Building2 },
       { name: "Workers & Karigars", href: "/employees", icon: UserCheck },
-      { name: "Design Library", href: "/designs", icon: Palette },
+      { name: "Design Library", href: "/designs", icon: Palette, isUpcoming: true },
       { name: "Parties", href: "/parties", icon: Users, isUpcoming: true },
       { name: "Karigar Issue", href: "/job-works", icon: FileText, isUpcoming: true },
     ]
