@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Plus,
   Search,
@@ -101,7 +101,14 @@ export default function JobOrdersPage() {
   const [isFormMachineOpen, setIsFormMachineOpen] = useState(false);
   const [isFormDesignOpen, setIsFormDesignOpen] = useState(false);
   const [partyTypeMap, setPartyTypeMap] = useState<Record<string, string>>({});
+  const [partySearchQuery, setPartySearchQuery] = useState("");
   const [isCustomPartyInput, setIsCustomPartyInput] = useState(false);
+
+  const filteredFormParties = useMemo(() => {
+    const q = partySearchQuery.toLowerCase().trim();
+    if (!q) return availableParties;
+    return availableParties.filter((p) => p.toLowerCase().includes(q));
+  }, [availableParties, partySearchQuery]);
 
   // Track status & machine dropdown positions in viewport space to prevent any table clipping
   const [statusPopoverPos, setStatusPopoverPos] = useState<{ orderId: string; top: number; left: number } | null>(null);
@@ -861,6 +868,7 @@ export default function JobOrdersPage() {
                       type="button"
                       onClick={() => {
                         setIsFormPartyOpen(!isFormPartyOpen);
+                        setPartySearchQuery("");
                         setIsFormMachineOpen(false);
                         setIsFormDesignOpen(false);
                       }}
@@ -873,53 +881,90 @@ export default function JobOrdersPage() {
                     {isFormPartyOpen && (
                       <>
                         <div className="fixed inset-0 z-20" onClick={() => setIsFormPartyOpen(false)} />
-                        <div className="absolute left-0 top-16 z-30 w-full min-w-[240px] bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 space-y-1 font-sans max-h-56 overflow-y-auto">
-                          {availableParties.length === 0 ? (
-                            <div className="p-3 text-center text-slate-400 text-xs">
-                              No parties registered yet.
+                        <div className="absolute left-0 top-16 z-30 w-full min-w-[280px] bg-white rounded-2xl border border-slate-200 shadow-2xl p-2 font-sans">
+                          {/* SEARCH INPUT INSIDE DROPDOWN */}
+                          <div className="relative mb-2">
+                            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              value={partySearchQuery}
+                              onChange={(e) => setPartySearchQuery(e.target.value)}
+                              placeholder="Search 30-40+ parties..."
+                              autoFocus
+                              className="w-full h-8 pl-8 pr-7 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all shadow-2xs"
+                            />
+                            {partySearchQuery && (
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setIsCustomPartyInput(true);
-                                  setIsFormPartyOpen(false);
-                                }}
-                                className="block mx-auto mt-1 text-blue-600 font-bold underline"
+                                onClick={() => setPartySearchQuery("")}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
                               >
-                                Type name manually
+                                <X className="w-3.5 h-3.5" />
                               </button>
-                            </div>
-                          ) : (
-                            availableParties.map((p) => {
-                              const accType = partyTypeMap[p] || "Customer / Client";
-                              let badgeColor = "bg-emerald-50 text-emerald-800 border-emerald-200";
-                              if (accType === "Supplier / Vendor") badgeColor = "bg-blue-50 text-blue-800 border-blue-200";
-                              else if (accType === "Trading Partner") badgeColor = "bg-amber-50 text-amber-800 border-amber-200";
-                              else if (accType === "Internal Firm") badgeColor = "bg-purple-50 text-purple-800 border-purple-200";
-                              else if (accType === "Job Work") badgeColor = "bg-indigo-50 text-indigo-800 border-indigo-200";
+                            )}
+                          </div>
 
-                              return (
-                                <button
-                                  key={p}
-                                  type="button"
-                                  onClick={() => {
-                                    setFormData({ ...formData, party_name: p });
-                                    setIsFormPartyOpen(false);
-                                  }}
-                                  className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between cursor-pointer ${
-                                    formData.party_name === p ? "bg-blue-50 text-blue-700 font-bold" : "text-slate-700 hover:bg-slate-100"
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2 truncate">
-                                    <span className="truncate">{p}</span>
-                                    <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${badgeColor}`}>
-                                      {accType}
-                                    </span>
-                                  </div>
-                                  {formData.party_name === p && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
-                                </button>
-                              );
-                            })
-                          )}
+                          <div className="max-h-52 overflow-y-auto space-y-1 pr-0.5">
+                            {filteredFormParties.length === 0 ? (
+                              <div className="p-3 text-center text-slate-400 text-xs">
+                                {partySearchQuery ? `No party matching "${partySearchQuery}"` : "No parties registered yet."}
+                                {partySearchQuery ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setFormData({ ...formData, party_name: partySearchQuery.trim() });
+                                      setIsFormPartyOpen(false);
+                                    }}
+                                    className="block mx-auto mt-1 text-blue-600 font-bold underline cursor-pointer"
+                                  >
+                                    Use &quot;{partySearchQuery.trim()}&quot;
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsCustomPartyInput(true);
+                                      setIsFormPartyOpen(false);
+                                    }}
+                                    className="block mx-auto mt-1 text-blue-600 font-bold underline cursor-pointer"
+                                  >
+                                    Type name manually
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              filteredFormParties.map((p) => {
+                                const accType = partyTypeMap[p] || "Customer / Client";
+                                let badgeColor = "bg-emerald-50 text-emerald-800 border-emerald-200";
+                                if (accType === "Supplier / Vendor") badgeColor = "bg-blue-50 text-blue-800 border-blue-200";
+                                else if (accType === "Trading Partner") badgeColor = "bg-amber-50 text-amber-800 border-amber-200";
+                                else if (accType === "Internal Firm") badgeColor = "bg-purple-50 text-purple-800 border-purple-200";
+                                else if (accType === "Job Work") badgeColor = "bg-indigo-50 text-indigo-800 border-indigo-200";
+
+                                return (
+                                  <button
+                                    key={p}
+                                    type="button"
+                                    onClick={() => {
+                                      setFormData({ ...formData, party_name: p });
+                                      setIsFormPartyOpen(false);
+                                    }}
+                                    className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between cursor-pointer ${
+                                      formData.party_name === p ? "bg-blue-50 text-blue-700 font-bold" : "text-slate-700 hover:bg-slate-100"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 truncate">
+                                      <span className="truncate">{p}</span>
+                                      <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${badgeColor}`}>
+                                        {accType}
+                                      </span>
+                                    </div>
+                                    {formData.party_name === p && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
                         </div>
                       </>
                     )}

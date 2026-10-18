@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, Suspense } from "react";
+import { useState, useRef, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { fetchApi } from "@/lib/api";
@@ -25,6 +25,7 @@ import {
   Tag,
   Building2,
   FileText,
+  Search,
   X,
   ShoppingCart
 } from "lucide-react";
@@ -63,7 +64,27 @@ function NewPurchaseContent() {
   const [vendorsList, setVendorsList] = useState<string[]>([]);
   const [rawVendors, setRawVendors] = useState<any[]>([]);
   const [isVendorDropdownOpen, setIsVendorDropdownOpen] = useState(false);
+  const [vendorSearchQuery, setVendorSearchQuery] = useState("");
   const [customVendorMode, setCustomVendorMode] = useState(false);
+  const vendorDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target as Node)) {
+        setIsVendorDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Filter vendors based on search query
+  const filteredVendors = useMemo(() => {
+    const q = vendorSearchQuery.toLowerCase().trim();
+    if (!q) return vendorsList;
+    return vendorsList.filter((v) => v.toLowerCase().includes(q));
+  }, [vendorsList, vendorSearchQuery]);
 
   // Recalculate Due Date automatically
   useEffect(() => {
@@ -322,54 +343,117 @@ function NewPurchaseContent() {
                   required
                 />
               ) : (
-                <div className="relative">
+                <div className="relative" ref={vendorDropdownRef}>
                   <button
                     type="button"
-                    onClick={() => setIsVendorDropdownOpen(!isVendorDropdownOpen)}
+                    onClick={() => {
+                      setIsVendorDropdownOpen(!isVendorDropdownOpen);
+                      setVendorSearchQuery("");
+                    }}
                     className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 flex items-center justify-between focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs cursor-pointer"
                   >
                     <span className={vendorName ? "text-slate-900" : "text-slate-400 font-normal"}>
                       {vendorName || t("Select registered supplier / vendor...")}
                     </span>
-                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isVendorDropdownOpen ? "rotate-180" : ""}`} />
                   </button>
 
                   {isVendorDropdownOpen && (
-                    <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-full bg-white border border-slate-200 rounded-xl shadow-xl p-1 max-h-52 overflow-y-auto">
-                      {vendorsList.length === 0 ? (
-                        <div className="p-3 text-center text-slate-400 text-xs">
-                          {t("No vendors found. Type name manually.")}
-                        </div>
-                      ) : (
-                        vendorsList.map((v) => {
-                          const matchedVen = rawVendors.find(
-                            (rv: any) => (rv.display_name || rv.company_name || `${rv.first_name || ""} ${rv.last_name || ""}`.trim()) === v
-                          );
-                          const accType = matchedVen?.account_type || "Supplier / Vendor";
-                          let badgeClass = "bg-blue-50 text-blue-700 border-blue-200";
-                          if (accType === "Customer / Client") badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                          else if (accType === "Trading Partner") badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
-                          else if (accType === "Internal Firm") badgeClass = "bg-purple-50 text-purple-700 border-purple-200";
-                          else if (accType === "Job Work") badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
+                    <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-full min-w-[280px] sm:min-w-[340px] bg-white border border-slate-200 rounded-2xl shadow-2xl p-2.5">
+                      {/* IN-DROPDOWN SEARCH BAR */}
+                      <div className="relative mb-2">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={vendorSearchQuery}
+                          onChange={(e) => setVendorSearchQuery(e.target.value)}
+                          placeholder="Search 30-40+ vendors by name..."
+                          autoFocus
+                          className="w-full h-8 pl-8 pr-7 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all shadow-2xs"
+                        />
+                        {vendorSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setVendorSearchQuery("")}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
 
-                          return (
-                            <button
-                              key={v}
-                              type="button"
-                              onClick={() => handleVendorSelect(v)}
-                              className="w-full text-left px-3 py-1.5 hover:bg-blue-50 rounded-lg font-semibold text-slate-800 text-xs flex items-center justify-between cursor-pointer"
-                            >
-                              <div className="flex items-center gap-2 truncate">
-                                <span>{v}</span>
-                                <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${badgeClass}`}>
-                                  {accType}
-                                </span>
-                              </div>
-                              {vendorName === v && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
-                            </button>
-                          );
-                        })
-                      )}
+                      {/* VENDORS SCROLLABLE LIST */}
+                      <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+                        {filteredVendors.length === 0 ? (
+                          <div className="p-4 text-center">
+                            <p className="text-slate-400 text-xs font-medium">
+                              {vendorSearchQuery ? `No vendor matching "${vendorSearchQuery}"` : t("No vendors found.")}
+                            </p>
+                            {vendorSearchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleVendorSelect(vendorSearchQuery.trim());
+                                  setIsVendorDropdownOpen(false);
+                                }}
+                                className="mt-2 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <Plus className="w-3 h-3 stroke-[2.5]" />
+                                Use &quot;{vendorSearchQuery.trim()}&quot;
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          filteredVendors.map((v) => {
+                            const matchedVen = rawVendors.find(
+                              (rv: any) => (rv.display_name || rv.company_name || `${rv.first_name || ""} ${rv.last_name || ""}`.trim()) === v
+                            );
+                            const accType = matchedVen?.account_type || "Supplier / Vendor";
+                            let badgeClass = "bg-blue-50 text-blue-700 border-blue-200";
+                            if (accType === "Customer / Client") badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                            else if (accType === "Trading Partner") badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
+                            else if (accType === "Internal Firm") badgeClass = "bg-purple-50 text-purple-700 border-purple-200";
+                            else if (accType === "Job Work") badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
+
+                            return (
+                              <button
+                                key={v}
+                                type="button"
+                                onClick={() => {
+                                  handleVendorSelect(v);
+                                  setIsVendorDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-2.5 py-2 hover:bg-blue-50/70 rounded-xl font-semibold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                                  vendorName === v ? "bg-blue-50 text-blue-900 font-extrabold" : ""
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <span className="truncate">{v}</span>
+                                  <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${badgeClass}`}>
+                                    {accType}
+                                  </span>
+                                </div>
+                                {vendorName === v && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* FOOTER SHORTCUT */}
+                      <div className="pt-2 mt-1.5 border-t border-slate-100 flex items-center justify-between px-1 text-[11px]">
+                        <span className="text-slate-400 font-medium">
+                          {filteredVendors.length} {filteredVendors.length === 1 ? "party" : "parties"}
+                        </span>
+                        <Link
+                          href="/vendors?action=new"
+                          onClick={() => setIsVendorDropdownOpen(false)}
+                          className="text-blue-600 hover:text-blue-800 font-bold inline-flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3 stroke-[2.5]" />
+                          + Register New
+                        </Link>
+                      </div>
                     </div>
                   )}
                 </div>
