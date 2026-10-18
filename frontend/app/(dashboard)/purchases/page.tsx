@@ -119,6 +119,96 @@ function CustomSelect({
   );
 }
 
+type ParsedMaterial =
+  | { isBreakdown: true; total: string | null; items: Array<{ shade: string; qty: string }> }
+  | { isBreakdown: false; raw: string };
+
+function parseMaterialDescription(desc?: string): ParsedMaterial | null {
+  if (!desc || !desc.trim()) return null;
+  let trimmed = desc.trim();
+  if (trimmed.startsWith("(") && trimmed.endsWith(")")) {
+    trimmed = trimmed.slice(1, -1).trim();
+  }
+
+  // Pattern like: "370 - 14 box, 351 - 17 box, 6074 - 9 box = 40 box"
+  if (trimmed.includes("=") && trimmed.includes("-")) {
+    const [left, right] = trimmed.split("=");
+    const total = right?.trim() || null;
+    const parts = left.split(",").map((p) => p.trim()).filter(Boolean);
+    const items = parts.map((part) => {
+      const segs = part.split("-");
+      if (segs.length >= 2) {
+        return {
+          shade: segs[0].trim(),
+          qty: segs.slice(1).join("-").trim()
+        };
+      }
+      return { shade: part, qty: "" };
+    });
+    return { isBreakdown: true, total, items };
+  }
+
+  // Pattern with comma-separated items like "370 - 14 box, 351 - 17 box" (without =)
+  if (trimmed.includes(",") && trimmed.includes("-")) {
+    const parts = trimmed.split(",").map((p) => p.trim()).filter(Boolean);
+    const hasShades = parts.every((p) => p.includes("-"));
+    if (hasShades && parts.length > 1) {
+      const items = parts.map((part) => {
+        const segs = part.split("-");
+        return {
+          shade: segs[0].trim(),
+          qty: segs.slice(1).join("-").trim()
+        };
+      });
+      return { isBreakdown: true, total: null, items };
+    }
+  }
+
+  return { isBreakdown: false, raw: trimmed };
+}
+
+function MaterialDescriptionCell({ category, description }: { category: string; description?: string }) {
+  if (!description || !description.trim()) {
+    return <span className="font-bold text-slate-800">{category}</span>;
+  }
+
+  const parsed = parseMaterialDescription(description);
+
+  if (!parsed || !parsed.isBreakdown) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs flex-wrap">
+        <span className="font-bold text-slate-800">{category}</span>
+        <span className="text-slate-500 font-medium">({description})</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1 py-0.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="font-extrabold text-slate-900 text-xs">{category}</span>
+        {parsed.total && (
+          <span className="font-mono font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 text-[10px]">
+            Total: {parsed.total}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {parsed.items.map((sub, idx) => (
+          <span
+            key={idx}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-xs shadow-2xs"
+          >
+            <span className="font-mono font-extrabold text-slate-800">{sub.shade}</span>
+            <span className="text-slate-400 font-bold">:</span>
+            <span className="font-mono font-bold text-blue-700 text-[11px]">{sub.qty}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export interface PurchaseItem {
   id: string;
   purchase_no: string;
@@ -425,7 +515,9 @@ export default function PurchasesPage() {
                   </div>
 
                   {item.items_description && (
-                    <p className="text-xs text-slate-600 italic">{item.items_description}</p>
+                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-200">
+                      <MaterialDescriptionCell category={t(item.category)} description={item.items_description} />
+                    </div>
                   )}
 
                   {/* Due Date Info */}
@@ -560,16 +652,9 @@ export default function PurchasesPage() {
                         )}
                       </td>
 
-                      {/* 5. MATERIAL & ITEMS - NATURAL FULL TEXT */}
+                      {/* 5. MATERIAL & ITEMS - FORMATTED CHIPS & TOTAL BADGE */}
                       <td className="py-3.5 px-4 whitespace-nowrap align-middle">
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <span className="font-bold text-slate-800">{t(item.category)}</span>
-                          {item.items_description && (
-                            <span className="text-slate-500 font-medium">
-                              ({item.items_description})
-                            </span>
-                          )}
-                        </div>
+                        <MaterialDescriptionCell category={t(item.category)} description={item.items_description} />
                       </td>
 
                       {/* 6. AMOUNT (₹) */}

@@ -316,6 +316,72 @@ function CustomDatePicker({
   );
 }
 
+interface ShadeRow {
+  id: string;
+  shade: string;
+  qty: string;
+  unit: string;
+}
+
+function parseShadeRowsFromText(text: string): ShadeRow[] | null {
+  if (!text) return null;
+  let clean = text.trim();
+  if (clean.startsWith("(") && clean.endsWith(")")) {
+    clean = clean.slice(1, -1).trim();
+  }
+  if (!clean.includes("-")) return null;
+
+  const beforeEquals = clean.includes("=") ? clean.split("=")[0].trim() : clean;
+  const parts = beforeEquals.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 0) return null;
+
+  const rows: ShadeRow[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    const segs = part.split("-");
+    if (segs.length >= 2) {
+      const shade = segs[0].trim();
+      const rest = segs.slice(1).join("-").trim();
+      const match = rest.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
+      if (match) {
+        rows.push({
+          id: `shade-${Date.now()}-${i}`,
+          shade,
+          qty: match[1],
+          unit: match[2] ? match[2].trim() : "box"
+        });
+      } else {
+        rows.push({
+          id: `shade-${Date.now()}-${i}`,
+          shade,
+          qty: rest,
+          unit: "box"
+        });
+      }
+    }
+  }
+  return rows.length > 0 ? rows : null;
+}
+
+function compileShadeDescription(rows: ShadeRow[]): string {
+  const valid = rows.filter((r) => r.shade.trim() || r.qty.trim());
+  if (valid.length === 0) return "";
+
+  let totalQty = 0;
+  let commonUnit = "box";
+  const parts = valid.map((r) => {
+    const qNum = Number(r.qty) || 0;
+    totalQty += qNum;
+    if (r.unit) commonUnit = r.unit;
+    return `${r.shade.trim()} - ${r.qty.trim()} ${r.unit.trim() || "box"}`;
+  });
+
+  if (valid.length > 1 || totalQty > 0) {
+    return `${parts.join(", ")} = ${totalQty} ${commonUnit}`;
+  }
+  return parts.join(", ");
+}
+
 function NewPurchaseContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -329,6 +395,10 @@ function NewPurchaseContent() {
   const [vendorName, setVendorName] = useState("");
   const [category, setCategory] = useState("Raw Material & Fabric");
   const [itemsDescription, setItemsDescription] = useState("");
+  const [entryMode, setEntryMode] = useState<"breakdown" | "text">("breakdown");
+  const [shadeRows, setShadeRows] = useState<ShadeRow[]>([
+    { id: "1", shade: "", qty: "", unit: "box" }
+  ]);
   const [amount, setAmount] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<"Paid" | "Pending">("Pending");
   const [paymentTerms, setPaymentTerms] = useState("Net 45");
@@ -441,7 +511,15 @@ function NewPurchaseContent() {
         setBillDate(matched.date || getTodayStr());
         setVendorName(matched.vendor_name || "");
         setCategory(matched.category || "Raw Material & Fabric");
-        setItemsDescription(matched.items_description || "");
+        const desc = matched.items_description || "";
+        setItemsDescription(desc);
+        const parsed = parseShadeRowsFromText(desc);
+        if (parsed && parsed.length > 0) {
+          setShadeRows(parsed);
+          setEntryMode("breakdown");
+        } else if (desc.trim()) {
+          setEntryMode("text");
+        }
         setAmount(String(matched.amount || ""));
         setPaymentStatus(matched.payment_status === "Paid" ? "Paid" : "Pending");
         setPaymentTerms(matched.payment_terms || "Net 45");
@@ -686,17 +764,171 @@ function NewPurchaseContent() {
             </div>
           </div>
 
-          {/* ROW 5: ITEMS DESCRIPTION / QUANTITY */}
-          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-bold text-slate-700">{t("Items / Description (વિગત)")}</label>
-            <div className="max-w-xl w-full">
-              <input
-                type="text"
-                placeholder={t("e.g. 500 Meters Satin Grey, 20 Boxes Dhaga, Zari Reals")}
-                value={itemsDescription}
-                onChange={(e) => setItemsDescription(e.target.value)}
-                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
-              />
+          {/* ROW 5: ITEMS DESCRIPTION / SHADE BREAKDOWN */}
+          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs">
+            <div className="flex flex-col pt-1">
+              <label className="font-bold text-slate-700">{t("Items / Description (વિગત)")}</label>
+              <span className="text-[10px] text-slate-400 font-normal">દોરા / ઝરી / શેડ વિગત</span>
+            </div>
+
+            <div className="max-w-xl w-full space-y-2.5">
+              {/* Mode Toggle Header */}
+              <div className="flex items-center justify-between gap-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setEntryMode("breakdown")}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    entryMode === "breakdown"
+                      ? "bg-white text-blue-900 shadow-2xs font-extrabold"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5 text-blue-600" />
+                  <span>શેડ / બોક્સ વિગત (Shade Breakdown)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEntryMode("text")}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    entryMode === "text"
+                      ? "bg-white text-blue-900 shadow-2xs font-extrabold"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+                  <span>સાદી વિગત (Simple Text)</span>
+                </button>
+              </div>
+
+              {entryMode === "breakdown" ? (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2.5 animate-in fade-in duration-100">
+                  {/* Rows Header */}
+                  <div className="grid grid-cols-12 gap-2 text-[10px] font-black uppercase text-slate-400 px-1">
+                    <span className="col-span-5">Shade / Item No. (શેડ નં.)</span>
+                    <span className="col-span-3">Qty (જથ્થો)</span>
+                    <span className="col-span-3">Unit (એકમ)</span>
+                    <span className="col-span-1 text-center"></span>
+                  </div>
+
+                  {/* Rows */}
+                  <div className="space-y-1.5">
+                    {shadeRows.map((row) => (
+                      <div key={row.id} className="grid grid-cols-12 gap-2 items-center">
+                        <div className="col-span-5">
+                          <input
+                            type="text"
+                            placeholder="દા.ત. 370"
+                            value={row.shade}
+                            onChange={(e) => {
+                              const updated = shadeRows.map((r) => (r.id === row.id ? { ...r, shade: e.target.value } : r));
+                              setShadeRows(updated);
+                              setItemsDescription(compileShadeDescription(updated));
+                            }}
+                            className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 text-xs focus:outline-none focus:border-blue-500 shadow-2xs"
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="14"
+                            value={row.qty}
+                            onChange={(e) => {
+                              const updated = shadeRows.map((r) => (r.id === row.id ? { ...r, qty: e.target.value } : r));
+                              setShadeRows(updated);
+                              setItemsDescription(compileShadeDescription(updated));
+                            }}
+                            className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-xl font-mono font-black text-slate-900 text-xs focus:outline-none focus:border-blue-500 shadow-2xs"
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <select
+                            value={row.unit}
+                            onChange={(e) => {
+                              const updated = shadeRows.map((r) => (r.id === row.id ? { ...r, unit: e.target.value } : r));
+                              setShadeRows(updated);
+                              setItemsDescription(compileShadeDescription(updated));
+                            }}
+                            className="w-full h-8 px-2 bg-white border border-slate-300 rounded-xl font-bold text-slate-800 text-xs focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+                          >
+                            <option value="box">box (બોક્સ)</option>
+                            <option value="cone">cone (કોન)</option>
+                            <option value="mtr">mtr (મીટર)</option>
+                            <option value="kg">kg (કિલો)</option>
+                            <option value="reel">reel (રીલ)</option>
+                            <option value="than">than (તાકા)</option>
+                          </select>
+                        </div>
+                        <div className="col-span-1 flex justify-center">
+                          {shadeRows.length > 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = shadeRows.filter((r) => r.id !== row.id);
+                                setShadeRows(updated);
+                                setItemsDescription(compileShadeDescription(updated));
+                              }}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white transition-colors cursor-pointer"
+                              title="Delete Row"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add Row Button & Auto Summary Bar */}
+                  <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const lastUnit = shadeRows[shadeRows.length - 1]?.unit || "box";
+                        setShadeRows((prev) => [...prev, { id: `shade-${Date.now()}`, shade: "", qty: "", unit: lastUnit }]);
+                      }}
+                      className="px-3 py-1.5 bg-white hover:bg-slate-100 text-blue-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>+ શેડ ઉમેરો (Add Shade)</span>
+                    </button>
+
+                    {itemsDescription && (
+                      <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-xl text-xs">
+                        <span className="font-extrabold text-blue-900">Total:</span>
+                        <span className="font-mono font-black text-blue-700">
+                          {(() => {
+                            const tot = shadeRows.reduce((sum, r) => sum + (Number(r.qty) || 0), 0);
+                            const u = shadeRows[0]?.unit || "box";
+                            return `${tot} ${u}`;
+                          })()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Formatted Preview */}
+                  {itemsDescription && (
+                    <div className="bg-white p-2 rounded-xl border border-slate-200 text-[11px] font-mono text-slate-700 flex items-center gap-1.5 overflow-hidden">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Auto-Format:</span>
+                      <span className="truncate font-semibold">{itemsDescription}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <input
+                    type="text"
+                    placeholder="દા.ત. 370 - 14 box, 351 - 17 box = 40 box અથવા 500 Meters Satin Grey"
+                    value={itemsDescription}
+                    onChange={(e) => setItemsDescription(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
+                  />
+                  <p className="text-[10px] text-slate-400">
+                    તમે સીધું લખાણ પણ લખી શકો છો અથવા ઉપરથી શેડ વાઇઝ બ્રેકડાઉન સિલેક્ટ કરી શકો છો.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
