@@ -110,6 +110,13 @@ export default function JobOrdersPage() {
   // Load from localStorage app_job_orders & parties_register_data & app_design_folders & app_machines
   useEffect(() => {
     setHasMounted(true);
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const query = sp.get("q") || sp.get("search");
+      if (query) {
+        setSearch(query);
+      }
+    }
     // Load Machines List
     const loadMachinesList = () => {
       let defaults = ["Machine 1", "Machine 2", "Machine 3", "Machine 4"];

@@ -58,6 +58,17 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "Create New Job Work Order": { en: "Create New Job Work Order", gu: "નવો જોબ વર્ક ઓર્ડર" },
   "Production Floor & Daily Shift Entry": { en: "Production Floor & Daily Shift Entry", gu: "પ્રોડક્શન ફ્લોર અને દૈનિક શિફ્ટ એન્ટ્રી" },
   "Company vs Party Stock Ledger": { en: "Company vs Party Stock Ledger", gu: "કંપની વિ. પાર્ટી સ્ટોક લેજર" },
+  "Ledger & Accounts": { en: "Ledger & Accounts", gu: "ખાતાવહી અને હિસાબ" },
+  "Ledgers & Statements": { en: "Ledgers & Statements", gu: "ખાતાવહી અને સ્ટેટમેન્ટ" },
+  "Supplier / Mill Ledger & Statement": { en: "Supplier / Mill Ledger & Statement", gu: "સપ્લાયર / મિલ ખાતાવહી સ્ટેટમેન્ટ" },
+  "View Supplier Ledger & Statement": { en: "View Supplier Ledger & Statement", gu: "સપ્લાયર ખાતાવહી સ્ટેટમેન્ટ જુઓ" },
+  "View Supplier Ledger": { en: "View Supplier Ledger", gu: "સપ્લાયર ખાતાવહી જુઓ" },
+  "View Supplier Ledgers & Statements": { en: "View Supplier Ledgers & Statements", gu: "સપ્લાયર ખાતાવહી અને હિસાબ જુઓ" },
+  "View Supplier Ledgers & Running Statements": { en: "View Supplier Ledgers & Running Statements", gu: "સપ્લાયર રનિંગ ખાતાવહી સ્ટેટમેન્ટ જુઓ" },
+  "ખાતાવહી (Ledgers)": { en: "Ledgers", gu: "ખાતાવહી (Ledgers)" },
+  "ખાતાવહી (Ledger)": { en: "Ledger", gu: "ખાતાવહી" },
+  "ખાતાવહી": { en: "Ledger", gu: "ખાતાવહી" },
+  "Supplier Ledger (ખાતાવહી)": { en: "Supplier Ledger", gu: "સપ્લાયર ખાતાવહી" },
   "Purchase Orders & Stock Shortage": { en: "Purchase Orders & Stock Shortage", gu: "પરચેઝ ઓર્ડર અને સ્ટોક શોર્ટેજ" },
   "Dispatches & Gate Passes": { en: "Dispatches & Gate Passes", gu: "ડિસ્પેચ અને ગેટ પાસ" },
   "Orders Directory": { en: "Orders Directory", gu: "ઓર્ડર્સ ડિરેક્ટરી" },
@@ -391,7 +402,48 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "Auto-calculates Due Date based on Surat textile trade standards (Rokda, 45, 60, 90, 100 days).": {
     en: "Auto-calculates Due Date based on Surat textile trade standards (Cash, 45, 60, 90, 100 days).",
     gu: "સુરત ટેક્સટાઇલ બજાર નિયમ મુજબ મુદતની તારીખ આપોઆપ ગણાય છે (રોકડા, ૪૫, ૬૦, ૯૦, ૧૦૦ દિવસ શાખ)."
-  }
+  },
+
+  // Purchases & Material Inward
+  "Purchases": { en: "Purchases", gu: "મટિરિયલ ખરીદી" },
+  "Material Purchase": { en: "Material Purchase", gu: "મટિરિયલ ખરીદી" },
+  "Raw Material Purchases": { en: "Raw Material Purchases", gu: "કાચો માલ / મટિરિયલ ખરીદી" },
+  "+ New Purchase Bill": { en: "+ New Purchase Bill", gu: "+ નવું ખરીદી બિલ" },
+  "TOTAL PURCHASES": { en: "TOTAL PURCHASES", gu: "કુલ ખરીદી" },
+  "PENDING CREDIT (શાખ)": { en: "PENDING CREDIT (શાખ)", gu: "બાકી શાખ (Credit)" },
+  "OVERDUE BILLS (ઓવરડ્યુ)": { en: "OVERDUE BILLS (ઓવરડ્યુ)", gu: "મુદત વીતેલા બિલ" },
+  "PAID / SETTLED": { en: "PAID / SETTLED", gu: "ચૂકતે / પેઇડ" },
+  "Pay via Voucher": { en: "Pay via Voucher", gu: "વાઉચરથી ચૂકવણી" },
+  "Pay Voucher": { en: "Pay Voucher", gu: "વાઉચર બનાવો" },
+  "PURCHASE NO": { en: "PURCHASE NO", gu: "બિલ નં." },
+  "ITEMS / DESCRIPTION": { en: "ITEMS / DESCRIPTION", gu: "આઇટમ / વિગત" },
+  "TERMS / CREDIT": { en: "TERMS / CREDIT", gu: "શરત / મુદત" },
+  "New Raw Material Purchase": { en: "New Raw Material Purchase", gu: "નવું કાચા માલ ખરીદી બિલ" },
+  "Edit Purchase Bill": { en: "Edit Purchase Bill", gu: "ખરીદી બિલ સુધારો" },
+  "Track raw material inward (Fabric, Dhaga, Zari, Laces) with Surat credit terms (45-100 days).": {
+    en: "Track raw material inward (Fabric, Dhaga, Zari, Laces) with Surat credit terms (45-100 days).",
+    gu: "સુરત ટેક્સટાઇલ શાખ નિયમ (૪૫-૧૦૦ દિવસ) સાથે કાચા માલ (કાપડ, દોરા, ઝરી, લેસ) ની નોંધ."
+  },
+  "Raw Material / Item Description": { en: "Raw Material / Item Description", gu: "કાચો માલ / આઇટમ વિગત" },
+  "e.g. 500 Meters Satin Grey, 20 Boxes Dhaga, Zari Reals": {
+    en: "e.g. 500 Meters Satin Grey, 20 Boxes Dhaga, Zari Reals",
+    gu: "દા.ત. ૫૦૦ મીટર સાટીન ગ્રે, ૨૦ બોક્સ દોરા, ઝરી રીલ"
+  },
+  "Linked Choli Job Work / Merchant Order": { en: "Linked Choli Job Work / Merchant Order", gu: "લિંક્ડ ચોલી જોબ વર્ક / વેપારી ઓર્ડર" },
+  "Save Purchase Bill": { en: "Save Purchase Bill", gu: "ખરીદી બિલ સાચવો" },
+  "Raw Material & Fabric": { en: "Raw Material & Fabric", gu: "કાચો માલ અને કાપડ" },
+  "Yarn & Threads": { en: "Yarn & Threads", gu: "યાર્ન અને દોરા (ધાગા)" },
+  "Zari & Metallic Trims": { en: "Zari & Metallic Trims", gu: "ઝરી અને મેટાલિક ટ્રીમ્સ" },
+  "Lace, Borders & Latkan": { en: "Lace, Borders & Latkan", gu: "લેસ, બોર્ડર અને લટકણ" },
+  "Choli & Garment Trims": { en: "Choli & Garment Trims", gu: "ચોલી અને ગારમેન્ટ ટ્રીમ્સ" },
+  "Purchase Bill Slip": { en: "Purchase Bill Slip", gu: "કાચા માલનું ખરીદી બિલ સ્લિપ" },
+  "Raw Material Purchase Inward": { en: "Raw Material Purchase Inward", gu: "કાચો માલ ખરીદી આવક (ઇનવર્ડ)" },
+  "Create Payment Voucher": { en: "Create Payment Voucher", gu: "પેમેન્ટ વાઉચર બનાવો" },
+  "Items / Material Details": { en: "Items / Material Details", gu: "આઇટમ / મટીરીયલ વિગતો" },
+  "Due Date / Mudat": { en: "Due Date / Mudat", gu: "મુદત તારીખ / દિવસો" },
+  "Total Bill Amount": { en: "Total Bill Amount", gu: "કુલ બિલ રકમ" },
+  "View Bill Slip": { en: "View Bill Slip", gu: "બિલ સ્લિપ જુઓ" },
+  "Pay Now": { en: "Pay Now", gu: "ચૂકવો" }
 };
 
 export const gujlishWords: Record<string, string> = {

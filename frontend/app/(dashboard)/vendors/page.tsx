@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { fetchApi } from "@/lib/api";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
+import { SupplierLedgerModal } from "@/components/purchases/SupplierLedgerModal";
 import {
   Building2,
   Plus,
@@ -300,6 +301,8 @@ export default function VendorsPage() {
   const [previewVendor, setPreviewVendor] = useState<Vendor | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [showPreviewAccNo, setShowPreviewAccNo] = useState(false);
+  const [isLedgerOpen, setIsLedgerOpen] = useState(false);
+  const [ledgerVendorName, setLedgerVendorName] = useState("");
 
   // Action Menu State (Three Dots Filter & Options matching screenshots)
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
@@ -2698,6 +2701,17 @@ export default function VendorsPage() {
                       <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
+                          onClick={() => {
+                            setLedgerVendorName(v.company_name || v.display_name);
+                            setIsLedgerOpen(true);
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                          title="સપ્લાયર ખાતાવહી સ્ટેટમેન્ટ (Ledger)"
+                        >
+                          <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => openPreviewVendor(v)}
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                           title="Preview Vendor Details"
@@ -2761,8 +2775,20 @@ export default function VendorsPage() {
                   </div>
                 </div>
 
-                {/* Top Actions: Edit (Desktop) and Close (All) */}
+                {/* Top Actions: Ledger, Edit and Close */}
                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLedgerVendorName(previewVendor.company_name || previewVendor.display_name);
+                      setIsLedgerOpen(true);
+                    }}
+                    className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs inline-flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                    title="સપ્લાયર ખાતાવહી સ્ટેટમેન્ટ"
+                  >
+                    <Building2 className="w-3.5 h-3.5 text-blue-400" />
+                    <span>ખાતાવહી (Ledger)</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -3008,6 +3034,13 @@ export default function VendorsPage() {
           </div>
         </div>
       )}
+
+      {/* REUSABLE SUPPLIER / MILL LEDGER MODAL */}
+      <SupplierLedgerModal
+        isOpen={isLedgerOpen}
+        onClose={() => setIsLedgerOpen(false)}
+        initialVendorName={ledgerVendorName}
+      />
     </div>
   );
 }

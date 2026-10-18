@@ -35,44 +35,7 @@ export interface PaymentVoucherItem {
   notes: string;
 }
 
-const SEED_VOUCHERS: PaymentVoucherItem[] = [
-  {
-    id: "pay-3",
-    voucher_no: "VOU-2026-103",
-    date: "08-10-2026",
-    party_name: "Vardhman Textile Machinery & Spares",
-    type: "Payment Out",
-    linked_source: "Job Work / Purchase",
-    amount: 12000,
-    mode: "Cheque",
-    ref_no: "CHQ-449012",
-    notes: "Laser machine spare parts maintenance"
-  },
-  {
-    id: "pay-2",
-    voucher_no: "VOU-2026-102",
-    date: "05-10-2026",
-    party_name: "Ambica Embroidery & Cutting Works",
-    type: "Payment Out",
-    linked_source: "Job Work / Purchase",
-    amount: 18500,
-    mode: "UPI / Immediate",
-    ref_no: "UPI772183",
-    notes: "Job work cutting payment settlement"
-  },
-  {
-    id: "pay-1",
-    voucher_no: "VOU-2026-101",
-    date: "02-10-2026",
-    party_name: "Shree Ram Yarns & Zari Mills",
-    type: "Payment Out",
-    linked_source: "Job Work / Purchase",
-    amount: 45000,
-    mode: "RTGS / NEFT",
-    ref_no: "HDFC982310",
-    notes: "Advance payment for metallic zari purchase"
-  }
-];
+const SEED_VOUCHERS: PaymentVoucherItem[] = [];
 
 export default function PaymentsAndVouchersPage() {
   const { t } = useLanguage();

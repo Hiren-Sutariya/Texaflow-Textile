@@ -54,6 +54,7 @@ def init_db():
         from app.models.design import Design
         from app.models.payment import PaymentVoucher
         from app.models.expense import Expense
+        from app.models.purchase import Purchase
         from app.models.user import User
 
         active_tables = [
@@ -63,6 +64,7 @@ def init_db():
             Design.__table__,
             PaymentVoucher.__table__,
             Expense.__table__,
+            Purchase.__table__,
             User.__table__,
         ]
         Base.metadata.create_all(bind=engine, tables=active_tables)

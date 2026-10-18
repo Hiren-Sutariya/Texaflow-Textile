@@ -32,7 +32,8 @@ import {
   Wallet,
   TrendingUp,
   Coins,
-  LogOut
+  LogOut,
+  BookOpen
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -71,7 +72,9 @@ const menuGroups: MenuGroup[] = [
   {
     groupTitle: "Finance & Accounts",
     items: [
+      { name: "Purchases", href: "/purchases", icon: ShoppingCart },
       { name: "Payments & Vouchers", href: "/payments", icon: CreditCard },
+      { name: "Ledger & Accounts", href: "/ledger", icon: BookOpen },
       { name: "Expenses", href: "/expenses", icon: Receipt },
       { name: "Worker Payout", href: "/worker-payout", icon: Wallet, isUpcoming: true },
       { name: "OMS Performance", href: "/oms-performance", icon: TrendingUp, isUpcoming: true },
@@ -87,9 +90,10 @@ const menuGroups: MenuGroup[] = [
 ];
 
 const quickCreateOptions = [
-  { title: "Company Expense", href: "/expenses", icon: Receipt, color: "bg-rose-50 text-rose-600 border-rose-100" },
+  { title: "Material Purchase", href: "/purchases/new", icon: ShoppingCart, color: "bg-blue-50 text-blue-600 border-blue-100" },
+  { title: "Company Expense", href: "/expenses/new", icon: Receipt, color: "bg-rose-50 text-rose-600 border-rose-100" },
   { title: "Delivery Challan", href: "/dispatches", icon: Truck, color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
-  { title: "Payment Voucher", href: "/payments", icon: CreditCard, color: "bg-indigo-50 text-indigo-600 border-indigo-100" },
+  { title: "Payment Voucher", href: "/payments/new", icon: CreditCard, color: "bg-indigo-50 text-indigo-600 border-indigo-100" },
   { title: "Worker Payout", href: "/worker-payout", icon: Wallet, color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
   { title: "Shift Production", href: "/production", icon: Factory, color: "bg-amber-50 text-amber-700 border-amber-100" },
   { title: "Party / Client", href: "/parties", icon: Users, color: "bg-purple-50 text-purple-600 border-purple-100" }

@@ -39,6 +39,30 @@ export function DashboardShell({
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
+      if (!localStorage.getItem("texaflow_dummy_cleaned_v2")) {
+        const keysToRemove = [
+          "om_sai_purchases",
+          "texaflow_purchases",
+          "om_sai_vouchers",
+          "texaflow_vouchers",
+          "texaflow_ledger_opening_balances",
+          "app_vendors_master",
+          "om_sai_vendors",
+          "texaflow_expenses",
+          "om_sai_expenses"
+        ];
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+        const toDelete: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith("api_cache_") || key.includes("dummy"))) {
+            toDelete.push(key);
+          }
+        }
+        toDelete.forEach((k) => localStorage.removeItem(k));
+        localStorage.setItem("texaflow_dummy_cleaned_v2", "true");
+      }
+
       const dummyPartyNames = ["abc tex fabrics", "royal fashion house", "shree ram textiles"];
       const dummyPartyIds = ["p-101", "p-102", "p-103"];
       let hasChanges = false;

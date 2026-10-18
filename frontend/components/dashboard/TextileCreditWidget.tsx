@@ -17,54 +17,51 @@ import { fetchApi, getCachedApi } from "@/lib/api";
 import { getTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { useLanguage } from "@/context/LanguageContext";
 import { getDueStatus } from "@/lib/creditTerms";
+import { SupplierLedgerModal } from "@/components/purchases/SupplierLedgerModal";
 
-interface ExpenseItem {
+interface PurchaseItem {
   id: string;
-  expense_no: string;
+  purchase_no: string;
   date: string;
   category: string;
   vendor_name: string;
   amount: number;
   payment_status: "Paid" | "Pending" | "Unpaid";
-  paid_via: string;
+  paid_via?: string;
   notes?: string;
   payment_terms?: string;
   credit_days?: number;
   due_date?: string;
   linked_order?: string;
-  paid_amount?: number;
-  balance_amount?: number;
 }
 
 export default function TextileCreditWidget() {
   const { t } = useLanguage();
-  const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
+  const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLedgerOpen, setIsLedgerOpen] = useState(false);
+  const [ledgerVendor, setLedgerVendor] = useState("");
 
   useEffect(() => {
     let isMounted = true;
     const currentCid = getStoredCompanyId() || "comp-001";
 
     try {
-      const cached = getCachedApi<ExpenseItem[]>("/expenses") || 
-        getTenantItem<ExpenseItem[]>("texaflow_expenses", "om_sai_expenses");
+      const cached = getCachedApi<PurchaseItem[]>("/purchases") || 
+        getTenantItem<PurchaseItem[]>("texaflow_purchases", currentCid === "comp-001" ? "om_sai_purchases" : undefined);
       if (cached && Array.isArray(cached) && cached.length > 0) {
-        const scoped = cached.filter((item: any) => (item.company_id || currentCid) === currentCid);
-        if (scoped.length > 0) {
-          setExpenses(scoped);
-        }
+        setPurchases(cached);
       }
     } catch {}
 
     async function loadData() {
       try {
-        const live = await fetchApi<ExpenseItem[]>("/expenses");
+        const live = await fetchApi<PurchaseItem[]>("/purchases");
         if (isMounted && Array.isArray(live) && live.length > 0) {
-          const scoped = live.filter((item: any) => (item.company_id || currentCid) === currentCid);
-          setExpenses(scoped);
+          setPurchases(live);
         }
       } catch (err) {
-        console.warn("Could not fetch live expenses for widget:", err);
+        console.warn("Could not fetch live purchases for widget:", err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -83,9 +80,9 @@ export default function TextileCreditWidget() {
     };
   }, []);
 
-  // Filter pending / credit expenses
-  const pendingBills = expenses.filter(
-    (exp) => exp.payment_status === "Pending" || exp.payment_status === "Unpaid"
+  // Filter pending / credit purchases
+  const pendingBills = purchases.filter(
+    (pur) => pur.payment_status === "Pending" || pur.payment_status === "Unpaid"
   );
 
   const totalPendingAmount = pendingBills.reduce((acc, curr) => acc + (curr.amount || 0), 0);
@@ -144,17 +141,28 @@ export default function TextileCreditWidget() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              setLedgerVendor("");
+              setIsLedgerOpen(true);
+            }}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer"
+            title={t("View Supplier Ledgers & Statements")}
+          >
+            <span>📊 {t("ખાતાવહી (Ledger)")}</span>
+          </button>
           <Link
-            href="/expenses/new"
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 shadow-2xs transition-all"
+            href="/purchases/new"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 shadow-2xs transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>{t("Add Expense")}</span>
+            <span>{t("+ New Purchase Bill")}</span>
           </Link>
           <Link
-            href="/expenses?status=Pending"
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-2xs transition-all"
+            href="/purchases?status=Pending"
+            className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer"
           >
             <span>{t("View All Credit Bills")}</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -248,11 +256,19 @@ export default function TextileCreditWidget() {
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h5 className="font-extrabold text-slate-900 text-xs truncate">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLedgerVendor(bill.vendor_name);
+                              setIsLedgerOpen(true);
+                            }}
+                            className="font-extrabold text-slate-900 text-xs truncate hover:text-blue-600 transition-colors text-left cursor-pointer hover:underline"
+                            title={t("View Supplier Ledger")}
+                          >
                             {bill.vendor_name || "Unknown Supplier"}
-                          </h5>
+                          </button>
                           <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
-                            {bill.expense_no}
+                            {bill.purchase_no}
                           </span>
                           {bill.linked_order && (
                             <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
@@ -290,12 +306,32 @@ export default function TextileCreditWidget() {
                         <div className="font-mono font-black text-slate-900 text-sm">
                           ₹{bill.amount.toLocaleString("en-IN")}
                         </div>
-                        <Link
-                          href={`/expenses/new?edit=${bill.id}`}
-                          className="text-[10px] font-bold text-blue-600 hover:text-blue-800 underline inline-block"
-                        >
-                          {t("Settle / Edit")} →
-                        </Link>
+                        <div className="flex items-center justify-end gap-2 mt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLedgerVendor(bill.vendor_name);
+                              setIsLedgerOpen(true);
+                            }}
+                            className="text-[10px] font-bold text-blue-700 hover:text-blue-900 underline cursor-pointer"
+                          >
+                            {t("ખાતાવહી")}
+                          </button>
+                          <span className="text-slate-300">•</span>
+                          <Link
+                            href={`/purchases/new?edit=${bill.id}`}
+                            className="text-[10px] font-bold text-slate-500 hover:text-slate-800 underline"
+                          >
+                            {t("Edit")}
+                          </Link>
+                          <span className="text-slate-300">•</span>
+                          <Link
+                            href={`/payments/new?vendor=${encodeURIComponent(bill.vendor_name)}&amount=${bill.amount}&source=Material+Inward+Bill&ref=${encodeURIComponent(bill.purchase_no)}`}
+                            className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800 underline"
+                          >
+                            {t("Pay Voucher")} →
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -305,6 +341,14 @@ export default function TextileCreditWidget() {
           </div>
         )}
       </div>
+
+      {/* REUSABLE SUPPLIER LEDGER MODAL */}
+      <SupplierLedgerModal
+        isOpen={isLedgerOpen}
+        onClose={() => setIsLedgerOpen(false)}
+        initialVendorName={ledgerVendor}
+        initialPurchases={purchases}
+      />
     </div>
   );
 }
