@@ -39,7 +39,7 @@ export function DashboardShell({
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      if (!localStorage.getItem("texaflow_dummy_cleaned_v2")) {
+      if (!localStorage.getItem("texaflow_all_data_wiped_v3")) {
         const keysToRemove = [
           "om_sai_purchases",
           "texaflow_purchases",
@@ -49,19 +49,42 @@ export function DashboardShell({
           "app_vendors_master",
           "om_sai_vendors",
           "texaflow_expenses",
-          "om_sai_expenses"
+          "om_sai_expenses",
+          "app_employees_data",
+          "app_attendance_data",
+          "app_tasks_data",
+          "app_inventory_stock",
+          "app_documents_data",
+          "app_production_logs",
+          "app_finished_designs",
+          "app_orders_data",
+          "app_parties",
+          "app_parties_list",
+          "parties_register_data",
+          "app_design_folders",
+          "om_sai_designs_library",
+          "app_machines_unit_1",
+          "app_machines_unit_2"
         ];
         keysToRemove.forEach((k) => localStorage.removeItem(k));
         const toDelete: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
-          if (key && (key.startsWith("api_cache_") || key.includes("dummy"))) {
+          if (
+            key &&
+            !key.includes("auth") &&
+            !key.includes("token") &&
+            !key.includes("user") &&
+            (key.startsWith("api_cache_") || key.includes("dummy") || key.startsWith("texaflow_") || key.startsWith("om_sai_"))
+          ) {
             toDelete.push(key);
           }
         }
         toDelete.forEach((k) => localStorage.removeItem(k));
-        localStorage.setItem("texaflow_dummy_cleaned_v2", "true");
+        localStorage.setItem("texaflow_all_data_wiped_v3", "true");
+        window.dispatchEvent(new Event("app_data_update"));
       }
+
 
       const dummyPartyNames = ["abc tex fabrics", "royal fashion house", "shree ram textiles"];
       const dummyPartyIds = ["p-101", "p-102", "p-103"];

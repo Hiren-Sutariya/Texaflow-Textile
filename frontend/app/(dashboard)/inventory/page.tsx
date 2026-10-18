@@ -3,47 +3,22 @@
 import { useState } from "react";
 import { Package, Search, ShieldAlert } from "lucide-react";
 
-const mockStock = [
-  {
-    id: "s-101",
-    material_code: "MAT-101",
-    material_name: "Red Viscose Thread",
-    category: "Thread",
-    unit: "kg",
-    warehouse: "Raw Material",
-    ownership_type: "Company",
-    party_name: null,
-    current_stock: 15.5,
-    min_alert: 5.0,
-    status: "Normal"
-  },
-  {
-    id: "s-102",
-    material_code: "MAT-102",
-    material_name: "Black Viscose Thread",
-    category: "Thread",
-    unit: "kg",
-    warehouse: "Raw Material",
-    ownership_type: "Company",
-    party_name: null,
-    current_stock: 8.0,
-    min_alert: 5.0,
-    status: "Normal"
-  },
-  {
-    id: "s-103",
-    material_code: "MAT-103",
-    material_name: "Gold Metallic Jari 250D",
-    category: "Jari",
-    unit: "kg",
-    warehouse: "Raw Material",
-    ownership_type: "Company",
-    party_name: null,
-    current_stock: 4.0,
-    min_alert: 10.0,
-    status: "Low_Stock"
-  }
-];
+interface StockItem {
+  id: string;
+  material_code: string;
+  material_name: string;
+  category: string;
+  unit: string;
+  warehouse: string;
+  ownership_type: string;
+  party_name: string | null;
+  current_stock: number;
+  min_alert: number;
+  status: string;
+}
+
+const mockStock: StockItem[] = [];
+
 
 export default function InventoryPage() {
   const [stock, setStock] = useState(mockStock);

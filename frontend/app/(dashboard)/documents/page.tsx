@@ -3,48 +3,19 @@
 import { useState } from "react";
 import { Upload, Search, Filter, FileText, Image as ImageIcon, Shield, Download, Trash2, Calendar, FileCheck } from "lucide-react";
 
-const initialDocuments = [
-  {
-    id: "doc-101",
-    title: "GST Registration Certificate",
-    category: "Legal & GST",
-    file_type: "PDF Document",
-    file_size: "1.4 MB",
-    upload_date: "2026-01-15",
-    uploaded_by: "Owner (Antigravity)",
-    ref_code: "GST-24AAAFA1234A1Z5"
-  },
-  {
-    id: "doc-102",
-    title: "DSG-9021 Punching Artwork (.DST / .EMB)",
-    category: "Design Files",
-    file_type: "Embroidery Design File",
-    file_size: "4.8 MB",
-    upload_date: "2026-09-18",
-    uploaded_by: "Punching Master (Ketan)",
-    ref_code: "DSG-9021"
-  },
-  {
-    id: "doc-103",
-    title: "ABC Tex Job Work Agreement & Rate Contract",
-    category: "Party Contracts",
-    file_type: "PDF Document",
-    file_size: "2.1 MB",
-    upload_date: "2026-08-01",
-    uploaded_by: "Owner",
-    ref_code: "CON-2026-01"
-  },
-  {
-    id: "doc-104",
-    title: "DGVCL Power Tariff Sanction Copy",
-    category: "Factory Utility",
-    file_type: "PDF Document",
-    file_size: "850 KB",
-    upload_date: "2026-03-10",
-    uploaded_by: "Supervisor",
-    ref_code: "UTIL-DGVCL"
-  }
-];
+interface DocumentItem {
+  id: string;
+  title: string;
+  category: string;
+  file_type: string;
+  file_size: string;
+  upload_date: string;
+  uploaded_by: string;
+  ref_code: string;
+}
+
+const initialDocuments: DocumentItem[] = [];
+
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState(initialDocuments);
