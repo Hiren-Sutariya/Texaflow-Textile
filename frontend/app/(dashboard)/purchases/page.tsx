@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { fetchApi, getCachedApi } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
@@ -33,6 +33,91 @@ import {
   Building2
 } from "lucide-react";
 import { SupplierLedgerModal } from "@/components/purchases/SupplierLedgerModal";
+
+interface CustomSelectOption {
+  value: string;
+  label: string;
+}
+
+interface CustomSelectProps {
+  value: string;
+  onChange: (val: string) => void;
+  options: CustomSelectOption[];
+  placeholder?: string;
+  className?: string;
+}
+
+function CustomSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Select an option",
+  className = ""
+}: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((opt) => opt.value === value);
+
+  return (
+    <div ref={containerRef} className={`relative inline-block w-full text-xs select-none ${className}`}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${
+          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
+        }`}
+      >
+        <span className={`truncate font-bold ${selectedOption ? "text-slate-900" : "text-slate-400"}`}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${
+            isOpen ? "rotate-180 text-blue-600" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 left-0 min-w-full sm:min-w-[210px] mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+          <div className="max-h-60 overflow-y-auto no-scrollbar space-y-1">
+            {options.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
+                    isSelected
+                      ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
+                      : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
+                  }`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export interface PurchaseItem {
   id: string;
@@ -249,61 +334,39 @@ export default function PurchasesPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Status Pills */}
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/90 text-xs shrink-0">
-            {(["All", "Pending", "Overdue", "Paid"] as const).map((st) => (
-              <button
-                key={st}
-                type="button"
-                onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                  statusFilter === st
-                    ? st === "Overdue"
-                      ? "bg-rose-600 text-white shadow-2xs"
-                      : st === "Pending"
-                      ? "bg-amber-600 text-white shadow-2xs"
-                      : "bg-white text-slate-900 shadow-2xs"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                {st === "Pending" ? t("Pending / Credit (શાખ)") : st === "Overdue" ? t("Overdue") : t(st)}
-              </button>
-            ))}
+          {/* Status Dropdown (Matching Image 3) */}
+          <div className="w-48 shrink-0">
+            <CustomSelect
+              value={statusFilter}
+              onChange={(val) => setStatusFilter(val as any)}
+              options={[
+                { value: "All", label: t("All Status") },
+                { value: "Pending", label: t("Pending / Credit (શાખ)") },
+                { value: "Overdue", label: t("Overdue") },
+                { value: "Paid", label: t("Paid") },
+              ]}
+            />
           </div>
 
-          {/* Category Dropdown */}
-          <div className="relative">
-            <select
+          {/* Category Dropdown (Matching Image 3) */}
+          <div className="w-52 shrink-0">
+            <CustomSelect
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
-            >
-              {purchaseCategories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat === "All" ? t("All Categories") : t(cat)}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedCategory(val)}
+              options={purchaseCategories.map((cat) => ({
+                value: cat,
+                label: cat === "All" ? t("All Categories") : t(cat),
+              }))}
+            />
           </div>
 
-          {/* Supplier Ledger Statement Button */}
-          <button
-            type="button"
-            onClick={() => handleOpenLedger()}
-            className="h-9 px-3.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
-            title={t("View Supplier Ledgers & Statements")}
-          >
-            <Building2 className="w-3.5 h-3.5 text-blue-400 stroke-[2.5]" />
-            <span>{t("ખાતાવહી (Ledgers)")}</span>
-          </button>
-
-          {/* New Purchase Bill Button */}
+          {/* New Purchase Bill Button (Single + Icon) */}
           <Link
             href="/purchases/new"
             className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>{t("+ New Purchase Bill")}</span>
+            <span>{t("New Purchase Bill")}</span>
           </Link>
         </div>
       </div>
