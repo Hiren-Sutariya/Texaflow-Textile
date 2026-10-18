@@ -383,60 +383,15 @@ export default function NewPaymentVoucherPage() {
 
           {/* ROW 2: PAYING COMPANY / INTERNAL FIRM * */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <div className="flex flex-col">
-              <label className="font-bold text-slate-700">Paying Company*</label>
-              <span className="text-[10px] text-slate-400 font-normal">Type manually or select</span>
-            </div>
-            <div ref={companyRef} className="relative max-w-xl w-full">
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  placeholder="e.g. Main Factory Account"
-                  value={payingCompany}
-                  onChange={(e) => setPayingCompany(e.target.value)}
-                  className="w-full h-9 px-3 pr-8 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs placeholder:font-normal placeholder:text-slate-400"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCompanyDropdownOpen((prev) => !prev);
-                    setIsSupplierDropdownOpen(false);
-                    setIsSourceDropdownOpen(false);
-                    setIsModeDropdownOpen(false);
-                    setIsDatePickerOpen(false);
-                  }}
-                  className="absolute right-2 p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                  title="Toggle company accounts"
-                >
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isCompanyDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
-                </button>
-              </div>
-
-              {isCompanyDropdownOpen && (
-                <div className="absolute left-0 top-[calc(100%+4px)] z-50 min-w-full w-full bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 space-y-0.5 max-h-52 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
-                  {payingCompanyOptions.map((comp) => {
-                    const isSelected = payingCompany === comp;
-                    return (
-                      <button
-                        key={comp}
-                        type="button"
-                        onClick={() => {
-                          setPayingCompany(comp);
-                          setIsCompanyDropdownOpen(false);
-                        }}
-                        className={`w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                          isSelected
-                            ? "bg-blue-50 text-blue-900 font-extrabold"
-                            : "text-slate-700 hover:bg-slate-50 font-semibold"
-                        }`}
-                      >
-                        <span className="truncate">{comp}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2 stroke-[2.5]" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+            <label className="font-bold text-slate-700">Paying Company*</label>
+            <div className="max-w-xl w-full">
+              <input
+                type="text"
+                value={payingCompany}
+                onChange={(e) => setPayingCompany(e.target.value)}
+                placeholder="Company Name"
+                className="w-full h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 shadow-2xs focus:outline-none focus:border-blue-500"
+              />
             </div>
           </div>
 
@@ -510,30 +465,13 @@ export default function NewPaymentVoucherPage() {
                               }
                               setIsSupplierDropdownOpen(false);
                             }}
-                            className={`w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                            className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors ${
                               isSelected
                                 ? "bg-blue-50 text-blue-900 font-extrabold"
-                                : "text-slate-700 hover:bg-slate-50 font-semibold"
+                                : "text-slate-800 hover:bg-slate-50 font-bold"
                             }`}
                           >
-                            <div className="flex flex-col">
-                              <span className="font-extrabold text-slate-900">{opt.name}</span>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border font-bold ${
-                                  opt.account_type === "Customer / Client"
-                                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                                    : opt.account_type === "Trading Partner"
-                                    ? "bg-amber-50 text-amber-800 border-amber-200"
-                                    : opt.account_type === "Internal Firm"
-                                    ? "bg-purple-50 text-purple-800 border-purple-200"
-                                    : opt.account_type === "Job Work"
-                                    ? "bg-indigo-50 text-indigo-800 border-indigo-200"
-                                    : "bg-blue-50 text-blue-800 border-blue-200"
-                                }`}>
-                                  {opt.account_type || "Supplier / Vendor"}
-                                </span>
-                              </div>
-                            </div>
+                            <span className="font-bold text-slate-900 truncate">{opt.name}</span>
                             {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2 stroke-[2.5]" />}
                           </button>
                         );
