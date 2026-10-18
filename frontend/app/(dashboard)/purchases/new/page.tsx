@@ -12,6 +12,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import {
   ArrowLeft,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Check,
   Save,
   Plus,
@@ -37,6 +39,282 @@ const getTodayStr = () => {
   const year = d.getFullYear();
   return `${day}-${month}-${year}`;
 };
+
+interface CustomSelectOption {
+  value: string;
+  label: string;
+}
+
+interface CustomSelectProps {
+  value: string;
+  onChange: (val: string) => void;
+  options: CustomSelectOption[];
+  placeholder?: string;
+  className?: string;
+}
+
+function CustomSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Select an option",
+  className = ""
+}: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((opt) => opt.value === value);
+
+  return (
+    <div ref={containerRef} className={`relative inline-block w-full text-xs select-none ${className}`}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${
+          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
+        }`}
+      >
+        <span className={`truncate font-bold ${selectedOption ? "text-slate-900" : "text-slate-400"}`}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${
+            isOpen ? "rotate-180 text-blue-600" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 left-0 min-w-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+          <div className="max-h-60 overflow-y-auto no-scrollbar space-y-1">
+            {options.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
+                    isSelected
+                      ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
+                      : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
+                  }`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface CustomDatePickerProps {
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  className?: string;
+}
+
+function CustomDatePicker({
+  value,
+  onChange,
+  placeholder = "DD-MM-YYYY",
+  className = ""
+}: CustomDatePickerProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const initialDate = useMemo(() => {
+    return parseAnyDate(value) || new Date();
+  }, [value]);
+
+  const [viewYear, setViewYear] = useState(() => initialDate.getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => initialDate.getMonth());
+
+  useEffect(() => {
+    const parsed = parseAnyDate(value);
+    if (parsed) {
+      setViewYear(parsed.getFullYear());
+      setViewMonth(parsed.getMonth());
+    }
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const formattedDisplay = useMemo(() => {
+    const parsed = parseAnyDate(value);
+    if (!parsed) return "";
+    const d = String(parsed.getDate()).padStart(2, "0");
+    const m = String(parsed.getMonth() + 1).padStart(2, "0");
+    const y = parsed.getFullYear();
+    return `${d}-${m}-${y}`;
+  }, [value]);
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  return (
+    <div ref={containerRef} className={`relative inline-block w-full text-xs select-none ${className}`}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${
+          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
+        }`}
+      >
+        <span className={`font-mono font-bold text-xs ${formattedDisplay ? "text-slate-900" : "text-slate-400"}`}>
+          {formattedDisplay || placeholder}
+        </span>
+        <Calendar className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 left-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 w-64 space-y-2 animate-in fade-in zoom-in-95 duration-100">
+          <div className="flex items-center justify-between text-xs font-extrabold text-slate-800 pb-1.5 border-b border-slate-100">
+            <button
+              type="button"
+              onClick={() => {
+                if (viewMonth === 0) {
+                  setViewMonth(11);
+                  setViewYear(viewYear - 1);
+                } else {
+                  setViewMonth(viewMonth - 1);
+                }
+              }}
+              className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="tracking-wide font-extrabold">
+              {monthNames[viewMonth]} {viewYear}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                if (viewMonth === 11) {
+                  setViewMonth(0);
+                  setViewYear(viewYear + 1);
+                } else {
+                  setViewMonth(viewMonth + 1);
+                }
+              }}
+              className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors cursor-pointer"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-extrabold text-slate-400 uppercase">
+            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+              <span key={day}>{day}</span>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1">
+            {(() => {
+              const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+              const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+              const items = [];
+
+              for (let i = 0; i < firstDay; i++) {
+                items.push(<div key={`empty-${i}`} className="h-7" />);
+              }
+
+              const parsedVal = parseAnyDate(value);
+              const today = new Date();
+              const todayStr = `${String(today.getDate()).padStart(2, "0")}-${String(today.getMonth() + 1).padStart(2, "0")}-${today.getFullYear()}`;
+
+              for (let day = 1; day <= daysInMonth; day++) {
+                const dStr = String(day).padStart(2, "0");
+                const mStr = String(viewMonth + 1).padStart(2, "0");
+                const cellDateStr = `${dStr}-${mStr}-${viewYear}`;
+
+                const isSelected = parsedVal
+                  ? parsedVal.getDate() === day &&
+                    parsedVal.getMonth() === viewMonth &&
+                    parsedVal.getFullYear() === viewYear
+                  : false;
+
+                const isToday = cellDateStr === todayStr;
+
+                items.push(
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => {
+                      onChange(cellDateStr);
+                      setIsOpen(false);
+                    }}
+                    className={`h-7 rounded-lg text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-blue-600 text-white shadow-2xs font-extrabold ring-2 ring-blue-500/20"
+                        : isToday
+                        ? "bg-blue-50 text-blue-700 font-extrabold border border-blue-200"
+                        : "text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {day}
+                  </button>
+                );
+              }
+              return items;
+            })()}
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => {
+                const now = new Date();
+                const d = String(now.getDate()).padStart(2, "0");
+                const m = String(now.getMonth() + 1).padStart(2, "0");
+                const y = now.getFullYear();
+                onChange(`${d}-${m}-${y}`);
+                setViewYear(y);
+                setViewMonth(now.getMonth());
+                setIsOpen(false);
+              }}
+              className="text-[11px] font-extrabold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+            >
+              Select Today
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="text-[11px] font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function NewPurchaseContent() {
   const router = useRouter();
@@ -311,13 +589,10 @@ function NewPurchaseContent() {
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
             <label className="font-extrabold text-rose-600">{t("Bill / Inward Date*")}</label>
             <div className="max-w-xl w-full">
-              <input
-                type="text"
+              <CustomDatePicker
                 value={billDate}
-                onChange={(e) => setBillDate(e.target.value)}
+                onChange={(newDate) => setBillDate(newDate)}
                 placeholder="DD-MM-YYYY"
-                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
-                required
               />
             </div>
           </div>
@@ -400,15 +675,14 @@ function NewPurchaseContent() {
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
             <label className="font-bold text-slate-700">{t("Material Category (પ્રકાર)*")}</label>
             <div className="max-w-xl w-full">
-              <select
+              <CustomSelect
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs cursor-pointer"
-              >
-                {categories.map((c) => (
-                  <option key={c} value={c}>{t(c)}</option>
-                ))}
-              </select>
+                onChange={(val) => setCategory(val)}
+                options={categories.map((c) => ({
+                  value: c,
+                  label: t(c)
+                }))}
+              />
             </div>
           </div>
 
@@ -535,29 +809,24 @@ function NewPurchaseContent() {
             <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
               <label className="font-bold text-slate-700">{t("Due Date (છેલ્લી તારીખ)")}</label>
               <div className="flex items-center gap-3 max-w-xl w-full">
-                <input
-                  type="date"
-                  value={(() => {
-                    const d = parseAnyDate(dueDate || calculateDueDate(billDate, creditDays));
-                    return d ? d.toISOString().split("T")[0] : "";
-                  })()}
-                  onChange={(e) => {
-                    if (!e.target.value) return;
-                    const [y, m, d] = e.target.value.split("-");
-                    const formatted = `${d}-${m}-${y}`;
-                    setDueDate(formatted);
-                    const billD = parseAnyDate(billDate);
-                    const dueD = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
-                    if (billD && dueD) {
-                      const diff = Math.round((dueD.getTime() - billD.getTime()) / (1000 * 60 * 60 * 24));
-                      if (diff > 0) {
-                        setCreditDays(diff);
-                        setPaymentTerms(`Net ${diff}`);
+                <div className="flex-1">
+                  <CustomDatePicker
+                    value={dueDate || calculateDueDate(billDate, creditDays)}
+                    onChange={(newDate) => {
+                      setDueDate(newDate);
+                      const billD = parseAnyDate(billDate);
+                      const dueD = parseAnyDate(newDate);
+                      if (billD && dueD) {
+                        const diff = Math.round((dueD.getTime() - billD.getTime()) / (1000 * 60 * 60 * 24));
+                        if (diff > 0) {
+                          setCreditDays(diff);
+                          setPaymentTerms(`Net ${diff}`);
+                        }
                       }
-                    }
-                  }}
-                  className="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs cursor-pointer flex-1"
-                />
+                    }}
+                    placeholder="DD-MM-YYYY"
+                  />
+                </div>
                 {(() => {
                   const info = getDueStatus(dueDate || calculateDueDate(billDate, creditDays), false);
                   return (
