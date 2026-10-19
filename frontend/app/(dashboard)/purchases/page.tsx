@@ -327,7 +327,8 @@ export default function PurchasesPage() {
         (item.vendor_name && item.vendor_name.toLowerCase().includes(q)) ||
         (item.category && item.category.toLowerCase().includes(q)) ||
         (item.items_description && item.items_description.toLowerCase().includes(q)) ||
-        (item.linked_order && item.linked_order.toLowerCase().includes(q));
+        (item.linked_order && item.linked_order.toLowerCase().includes(q)) ||
+        (item.notes && item.notes.toLowerCase().includes(q));
 
       const isUnpaid = item.payment_status === "Pending" || item.payment_status === "Unpaid";
       const dueInfo = item.due_date ? getDueStatus(item.due_date, !isUnpaid) : null;
@@ -538,6 +539,13 @@ export default function PurchasesPage() {
                     </div>
                   )}
 
+                  {item.notes && (
+                    <div className="p-2 bg-slate-50/80 rounded-lg border border-slate-200/80 text-[11px] text-slate-600 flex items-start gap-1.5">
+                      <span className="font-bold text-slate-400 uppercase text-[10px] shrink-0">{t("Remarks")}:</span>
+                      <span className="font-medium text-slate-700">{item.notes}</span>
+                    </div>
+                  )}
+
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                     {isUnpaid ? (
                       <Link
@@ -574,6 +582,7 @@ export default function PurchasesPage() {
                 <th className="py-3 px-4">{t("SUPPLIER / MILL")}</th>
                 <th className="py-3 px-4">{t("DUE DATE / મુદત")}</th>
                 <th className="py-3 px-4">{t("MATERIAL & ITEMS")}</th>
+                <th className="py-3 px-4">{t("REMARKS / નોંધ")}</th>
                 <th className="py-3 px-4 text-right">{t("AMOUNT (₹)")}</th>
                 <th className="py-3 px-4 text-center">{t("STATUS")}</th>
                 <th className="py-3 px-4 text-center w-24">{t("ACTION")}</th>
@@ -582,7 +591,7 @@ export default function PurchasesPage() {
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
               {filteredPurchases.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
+                  <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
                     {t("No purchase bills found matching your filters. Click \"+ New Purchase Bill\" to add.")}
                   </td>
                 </tr>
@@ -639,7 +648,18 @@ export default function PurchasesPage() {
                         <MaterialDescriptionCell category={t(item.category)} description={item.items_description} />
                       </td>
 
-                      {/* 6. AMOUNT (₹) */}
+                      {/* 6. REMARKS / નોંધ */}
+                      <td className="py-3.5 px-4 max-w-[200px] text-xs align-middle" title={item.notes}>
+                        {item.notes ? (
+                          <span className="truncate block font-medium text-slate-700 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-lg text-[11px]">
+                            {item.notes}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 italic">-</span>
+                        )}
+                      </td>
+
+                      {/* 7. AMOUNT (₹) */}
                       <td className="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono font-black text-slate-900 text-sm">
                         ₹{item.amount.toLocaleString("en-IN")}
                       </td>
@@ -767,6 +787,12 @@ export default function PurchasesPage() {
                   <span className="text-xs font-black text-slate-700 uppercase">{t("Total Bill Amount")}</span>
                   <span className="text-base font-black font-mono text-slate-900">₹{previewBill.amount.toLocaleString("en-IN")}</span>
                 </div>
+                {previewBill.notes && (
+                  <div className="p-3 flex flex-col gap-1 bg-white border-t border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">{t("Remarks / Notes (નોંધ)")}</span>
+                    <span className="font-medium text-slate-700 text-xs">{previewBill.notes}</span>
+                  </div>
+                )}
               </div>
             </div>
 
