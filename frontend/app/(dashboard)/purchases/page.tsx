@@ -540,7 +540,7 @@ export default function PurchasesPage() {
                   )}
 
                   {item.notes && (
-                    <div className="p-2 bg-slate-50/80 rounded-lg border border-slate-200/80 text-[11px] text-slate-600 flex items-start gap-1.5">
+                    <div className="text-[11px] text-slate-600 flex items-start gap-1.5">
                       <span className="font-bold text-slate-400 uppercase text-[10px] shrink-0">{t("Remarks")}:</span>
                       <span className="font-medium text-slate-700">{item.notes}</span>
                     </div>
@@ -649,9 +649,9 @@ export default function PurchasesPage() {
                       </td>
 
                       {/* 6. REMARKS / નોંધ */}
-                      <td className="py-3.5 px-4 max-w-[200px] text-xs align-middle" title={item.notes}>
+                      <td className="py-3.5 px-4 max-w-[200px] whitespace-nowrap align-middle" title={item.notes}>
                         {item.notes ? (
-                          <span className="truncate block font-medium text-slate-700 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-lg text-[11px]">
+                          <span className="truncate block font-medium text-slate-700 text-xs">
                             {item.notes}
                           </span>
                         ) : (
