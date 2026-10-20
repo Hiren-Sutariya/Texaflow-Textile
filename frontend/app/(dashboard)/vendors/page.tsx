@@ -354,15 +354,15 @@ export default function VendorsPage() {
   const [formEnablePortal, setFormEnablePortal] = useState(false);
 
   const [paymentTermsOptions, setPaymentTermsOptions] = useState([
-    { id: "1", name: "Due on Receipt (Cash)", days: "0", discount: "0", isDefault: true },
-    { id: "2", name: "Net 15 (15 Days Credit)", days: "15", discount: "0", isDefault: false },
-    { id: "3", name: "Net 30 (30 Days Credit)", days: "30", discount: "0", isDefault: false },
-    { id: "4", name: "Net 45 (45 Days - Textile Terms)", days: "45", discount: "0", isDefault: false },
-    { id: "5", name: "Net 60 (60 Days Credit)", days: "60", discount: "0", isDefault: false },
-    { id: "6", name: "Net 90 (90 Days - Fabric Market)", days: "90", discount: "0", isDefault: false },
-    { id: "7", name: "Net 100 (100 Days Credit)", days: "100", discount: "0", isDefault: false },
-    { id: "8", name: "Net 120 (120 Days Credit)", days: "120", discount: "0", isDefault: false },
-    { id: "9", name: "Due end of the month", days: "N/A", discount: "0", isDefault: false }
+    { id: "1", name: "Due on Receipt", days: "0", discount: "0", isDefault: true },
+    { id: "2", name: "Net 15", days: "15", discount: "0", isDefault: false },
+    { id: "3", name: "Net 30", days: "30", discount: "0", isDefault: false },
+    { id: "4", name: "Net 45", days: "45", discount: "0", isDefault: false },
+    { id: "5", name: "Net 60", days: "60", discount: "0", isDefault: false },
+    { id: "6", name: "Net 90", days: "90", discount: "0", isDefault: false },
+    { id: "7", name: "Net 100", days: "100", discount: "0", isDefault: false },
+    { id: "8", name: "Net 120", days: "120", discount: "0", isDefault: false },
+    { id: "9", name: "End of Month", days: "N/A", discount: "0", isDefault: false }
   ]);
   const [isConfigureTermsOpen, setIsConfigureTermsOpen] = useState(false);
   const [editingTerms, setEditingTerms] = useState(paymentTermsOptions);
