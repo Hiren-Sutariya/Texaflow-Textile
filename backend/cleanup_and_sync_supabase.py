@@ -44,7 +44,7 @@ def cleanup_and_sync():
         # 2. Create tables for active modules in sidebar sequence
         print("🏗️ Creating/Verifying tables for active modules...")
         Base.metadata.create_all(bind=engine)
-        print("  ✅ Tables verified: 01_vendors, 02_workers_karigars, 03_design_library, 04_payments_vouchers, 05_expenses")
+        print("  ✅ Tables verified: 01_parties, 02_workers, 03_expenses, 04_purchases, 05_payments, 06_categories, 07_design_library")
 
 
         # 3. Seed Vendors if empty

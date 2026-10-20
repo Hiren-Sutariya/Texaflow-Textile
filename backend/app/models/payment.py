@@ -4,7 +4,7 @@ from app.models.base import TimestampMixin
 import uuid
 
 class PaymentVoucher(Base, TimestampMixin):
-    __tablename__ = "04_payments_vouchers"
+    __tablename__ = "05_payments"
 
 
     id = Column(String(64), primary_key=True, default=lambda: f"pay-{uuid.uuid4().hex[:12]}")

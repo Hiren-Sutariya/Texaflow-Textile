@@ -3,7 +3,7 @@ from app.core.database import Base
 from app.models.base import TimestampMixin
 
 class Vendor(Base, TimestampMixin):
-    __tablename__ = "01_vendors"
+    __tablename__ = "01_parties"
 
 
     id = Column(String(64), primary_key=True)

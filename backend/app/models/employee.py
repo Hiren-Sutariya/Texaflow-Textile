@@ -3,7 +3,7 @@ from app.core.database import Base
 from app.models.base import TimestampMixin
 
 class Employee(Base, TimestampMixin):
-    __tablename__ = "02_workers_karigars"
+    __tablename__ = "02_workers"
 
     id = Column(String(64), primary_key=True)
     code = Column(String(64), nullable=True, index=True) # Khata No e.g. KAR-001, STF-002

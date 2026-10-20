@@ -3,7 +3,7 @@ from datetime import datetime
 from app.core.database import Base
 
 class Purchase(Base):
-    __tablename__ = "purchases"
+    __tablename__ = "04_purchases"
 
     id = Column(String(50), primary_key=True, index=True)
     company_id = Column(String(50), nullable=False, default="comp-001", index=True)

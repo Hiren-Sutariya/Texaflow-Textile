@@ -3,7 +3,7 @@ from app.core.database import Base
 from app.models.base import TimestampMixin
 
 class Design(Base, TimestampMixin):
-    __tablename__ = "03_design_library"
+    __tablename__ = "07_design_library"
 
 
     id = Column(String(64), primary_key=True)

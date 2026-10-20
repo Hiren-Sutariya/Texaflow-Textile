@@ -4,7 +4,7 @@ from app.models.base import TimestampMixin
 import uuid
 
 class Expense(Base, TimestampMixin):
-    __tablename__ = "05_expenses"
+    __tablename__ = "03_expenses"
 
     id = Column(String(64), primary_key=True, default=lambda: f"exp-{uuid.uuid4().hex[:12]}")
     expense_no = Column(String(64), nullable=False, index=True)
