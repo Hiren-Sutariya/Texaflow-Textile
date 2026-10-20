@@ -693,7 +693,7 @@ export default function DesignsPage() {
           {/* 1. TOP HEADER TOOLBAR - MATCHING PURCHASES & PAYMENTS NEW PAGE (IMAGE 2) */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
             <h2 className="font-extrabold text-slate-800 text-xs tracking-wide uppercase">
-              NEW MASTER DESIGN REGISTRATION (નવી ડિઝાઇન એડવાન્સમાં ઉમેરો)
+              NEW MASTER DESIGN REGISTRATION
             </h2>
             <button
               type="button"
@@ -740,7 +740,7 @@ export default function DesignsPage() {
 
               {/* ROW 3: GARMENT CATEGORY * */}
               <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-                <label className="font-extrabold text-rose-600">Garment Category (પ્રકાર)*</label>
+                <label className="font-extrabold text-rose-600">Garment Category*</label>
                 <div className="max-w-xl w-full">
                   <select
                     value={newFolderCategory}
@@ -769,7 +769,7 @@ export default function DesignsPage() {
                         : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                     }`}
                   >
-                    <Sparkles className="w-3.5 h-3.5" /> In-House Master (પોતાનું સેમ્પલ)
+                    <Sparkles className="w-3.5 h-3.5" /> In-House Master
                   </button>
                   <button
                     type="button"
@@ -780,7 +780,7 @@ export default function DesignsPage() {
                         : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                     }`}
                   >
-                    <Building2 className="w-3.5 h-3.5" /> Party Exclusive (પાર્ટી સ્પેશિયલ)
+                    <Building2 className="w-3.5 h-3.5" /> Party Exclusive
                   </button>
                 </div>
               </div>
@@ -1654,7 +1654,7 @@ export default function DesignsPage() {
                       onChange={() => setOrderFabricTerms("Party Fabric (Job Work)")}
                       className="text-blue-600"
                     />
-                    <span>Party નું કાપડ (Job Work Only)</span>
+                    <span>Party Fabric (Job Work Only)</span>
                   </label>
                   <label className="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200 cursor-pointer font-bold text-slate-800 text-[11px]">
                     <input
@@ -1664,7 +1664,7 @@ export default function DesignsPage() {
                       onChange={() => setOrderFabricTerms("Our Fabric (With Fabric)")}
                       className="text-blue-600"
                     />
-                    <span>આપણું પોતાનું કાપડ (With Fabric)</span>
+                    <span>In-House Fabric (With Fabric)</span>
                   </label>
                 </div>
               </div>
@@ -1682,7 +1682,7 @@ export default function DesignsPage() {
                       onChange={() => setOrderMaterialTerms("Factory Material")}
                       className="text-blue-600"
                     />
-                    <span>આપણી ફેક્ટરીનું મટીરીયલ (With Material)</span>
+                    <span>Factory Material (With Material)</span>
                   </label>
                   <label className="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200 cursor-pointer font-bold text-slate-800 text-[11px]">
                     <input
@@ -1692,7 +1692,7 @@ export default function DesignsPage() {
                       onChange={() => setOrderMaterialTerms("Party Supplied Material")}
                       className="text-blue-600"
                     />
-                    <span>Party નું મટીરીયલ (Party Zari/Sequence)</span>
+                    <span>Party Material (Party Zari/Sequins)</span>
                   </label>
                 </div>
               </div>
@@ -1702,7 +1702,7 @@ export default function DesignsPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-extrabold text-slate-800 text-xs">
-                  Colors & Quantities (જેટલા કલર આવ્યા હોય તેટલા ઉમેરો)
+                  Colors & Quantities
                 </span>
                 <button
                   type="button"

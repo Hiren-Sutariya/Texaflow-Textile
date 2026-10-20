@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import Link from "next/link";
 import { fetchApi } from "@/lib/api";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
-import { SupplierLedgerModal } from "@/components/purchases/SupplierLedgerModal";
 import {
   Building2,
   Plus,
@@ -33,7 +33,9 @@ import {
   Download,
   Sliders,
   RefreshCw,
-  ChevronRight
+  ChevronRight,
+  BookOpen,
+  MessageCircle
 } from "lucide-react";
 
 interface CustomSelectOption {
@@ -197,7 +199,7 @@ export interface BankDetail {
 export interface Vendor {
   id: string;
   srNo: number;
-  account_type: "Supplier / Vendor" | "Customer / Client" | "Trading Partner" | "Internal Firm" | "Job Work";
+  account_type: "Supplier / Vendor" | "Customer / Client" | "Dyeing & Printing Mill" | "Job Work" | "Broker / Dalal" | "Trading Partner" | "Internal Firm";
   salutation: string;
   first_name: string;
   last_name: string;
@@ -290,8 +292,6 @@ export default function VendorsPage() {
   const [previewVendor, setPreviewVendor] = useState<Vendor | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [showPreviewAccNo, setShowPreviewAccNo] = useState(false);
-  const [isLedgerOpen, setIsLedgerOpen] = useState(false);
-  const [ledgerVendorName, setLedgerVendorName] = useState("");
 
   // Action Menu State (Three Dots Filter & Options matching screenshots)
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
@@ -354,14 +354,14 @@ export default function VendorsPage() {
   const [formEnablePortal, setFormEnablePortal] = useState(false);
 
   const [paymentTermsOptions, setPaymentTermsOptions] = useState([
-    { id: "1", name: "Due on Receipt (રોકડા / Cash)", days: "0", discount: "0", isDefault: true },
-    { id: "2", name: "Net 15 (૧૫ દિવસ શાખ)", days: "15", discount: "0", isDefault: false },
-    { id: "3", name: "Net 30 (૩૦ દિવસ શાખ)", days: "30", discount: "0", isDefault: false },
-    { id: "4", name: "Net 45 (૪૫ દિવસ શાખ - ટેક્સટાઇલ મુદત)", days: "45", discount: "0", isDefault: false },
-    { id: "5", name: "Net 60 (૬૦ દિવસ શાખ)", days: "60", discount: "0", isDefault: false },
-    { id: "6", name: "Net 90 (૯૦ દિવસ શાખ - કાપડ બજાર)", days: "90", discount: "0", isDefault: false },
-    { id: "7", name: "Net 100 (૧૦૦ દિવસ શાખ)", days: "100", discount: "0", isDefault: false },
-    { id: "8", name: "Net 120 (૧૨૦ દિવસ શાખ)", days: "120", discount: "0", isDefault: false },
+    { id: "1", name: "Due on Receipt (Cash)", days: "0", discount: "0", isDefault: true },
+    { id: "2", name: "Net 15 (15 Days Credit)", days: "15", discount: "0", isDefault: false },
+    { id: "3", name: "Net 30 (30 Days Credit)", days: "30", discount: "0", isDefault: false },
+    { id: "4", name: "Net 45 (45 Days - Textile Terms)", days: "45", discount: "0", isDefault: false },
+    { id: "5", name: "Net 60 (60 Days Credit)", days: "60", discount: "0", isDefault: false },
+    { id: "6", name: "Net 90 (90 Days - Fabric Market)", days: "90", discount: "0", isDefault: false },
+    { id: "7", name: "Net 100 (100 Days Credit)", days: "100", discount: "0", isDefault: false },
+    { id: "8", name: "Net 120 (120 Days Credit)", days: "120", discount: "0", isDefault: false },
     { id: "9", name: "Due end of the month", days: "N/A", discount: "0", isDefault: false }
   ]);
   const [isConfigureTermsOpen, setIsConfigureTermsOpen] = useState(false);
@@ -1046,9 +1046,11 @@ export default function VendorsPage() {
                   {[
                     "Supplier / Vendor",
                     "Customer / Client",
+                    "Dyeing & Printing Mill",
+                    "Job Work",
+                    "Broker / Dalal",
                     "Trading Partner",
-                    "Internal Firm",
-                    "Job Work"
+                    "Internal Firm"
                   ].map((type) => (
                     <label key={type} className="flex items-center gap-1.5 cursor-pointer select-none">
                       <input
@@ -2113,11 +2115,13 @@ export default function VendorsPage() {
                 onChange={(val) => setFilterAccountType(val)}
                 options={[
                   { value: "ALL", label: "All Account Types" },
+                  { value: "Customer / Client", label: "Customer / Client (Vepari)" },
                   { value: "Supplier / Vendor", label: "Supplier / Vendor" },
-                  { value: "Customer / Client", label: "Customer / Client" },
+                  { value: "Dyeing & Printing Mill", label: "Dyeing & Printing Mill" },
+                  { value: "Job Work", label: "Job Work / Karigar" },
+                  { value: "Broker / Dalal", label: "Broker / Dalal" },
                   { value: "Trading Partner", label: "Trading Partner" },
-                  { value: "Internal Firm", label: "Internal Firm" },
-                  { value: "Job Work", label: "Job Work" }
+                  { value: "Internal Firm", label: "Internal Firm" }
                 ]}
               />
             </div>
@@ -2144,7 +2148,7 @@ export default function VendorsPage() {
               className="flex-1 sm:flex-none h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>New Vendor</span>
+              <span>New Party / Vendor</span>
             </button>
 
             {/* Action Menu (Three Dots Button matching screenshots) */}
@@ -2593,14 +2597,6 @@ export default function VendorsPage() {
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
-                      onClick={() => openPreviewVendor(v)}
-                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                      title="Preview"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => openEditVendorForm(v)}
                       className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                       title="Edit"
@@ -2658,8 +2654,17 @@ export default function VendorsPage() {
                       </span>
                     </td>
                     <td className="py-4 px-4 text-center whitespace-nowrap">
-                      <span className={`font-mono font-extrabold px-2.5 py-1 rounded-lg text-xs border inline-block ${getAccountTypeBadgeClass(v.account_type)}`}>
-                        {v.account_type || "Supplier / Vendor"}
+                      <span className="text-xs font-bold text-slate-800 inline-flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          v.account_type === "Customer / Client"
+                            ? "bg-emerald-500"
+                            : v.account_type === "Dyeing & Printing Mill"
+                            ? "bg-purple-500"
+                            : v.account_type === "Job Work"
+                            ? "bg-amber-500"
+                            : "bg-blue-500"
+                        }`} />
+                        <span>{v.account_type || "Supplier / Vendor"}</span>
                       </span>
                     </td>
                     <td className="py-4 px-4 font-bold text-slate-800 whitespace-nowrap">
@@ -2674,52 +2679,33 @@ export default function VendorsPage() {
                     <td className="py-4 px-4 font-mono whitespace-nowrap">
                       <span className="font-bold text-slate-700">{v.gstin || v.pan || "-"}</span>
                       {v.is_msme && (
-                        <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 font-extrabold rounded text-[9px] border border-emerald-200 ml-1.5">
-                          MSME
+                        <span className="text-emerald-700 font-extrabold text-[10px] ml-1.5">
+                          • MSME
                         </span>
                       )}
                     </td>
                     <td className="py-4 px-4 text-center whitespace-nowrap">
-                      <span className="font-mono font-extrabold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs border border-emerald-200 inline-block">
+                      <span className="font-mono text-xs font-semibold text-slate-700">
                         {v.payment_terms || "Due on Receipt"}
                       </span>
                     </td>
                     <td className="py-4 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLedgerVendorName(v.company_name || v.display_name);
-                            setIsLedgerOpen(true);
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                          title="સપ્લાયર ખાતાવહી સ્ટેટમેન્ટ (Ledger)"
-                        >
-                          <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openPreviewVendor(v)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                          title="Preview Vendor Details"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
+                      <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => openEditVendorForm(v)}
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                          title="Edit Vendor Details"
+                          title="Edit Details"
                         >
-                          <Edit3 className="w-3.5 h-3.5" />
+                          <Edit3 className="w-4 h-4" />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteVendor(v.id)}
                           className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                          title="Delete Vendor Record"
+                          title="Delete Record"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -2762,31 +2748,8 @@ export default function VendorsPage() {
                   </div>
                 </div>
 
-                {/* Top Actions: Ledger, Edit and Close */}
+                {/* Top Actions: Close */}
                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLedgerVendorName(previewVendor.company_name || previewVendor.display_name);
-                      setIsLedgerOpen(true);
-                    }}
-                    className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs inline-flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                    title="સપ્લાયર ખાતાવહી સ્ટેટમેન્ટ"
-                  >
-                    <Building2 className="w-3.5 h-3.5 text-blue-400" />
-                    <span>ખાતાવહી (Ledger)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsPreviewOpen(false);
-                      openEditVendorForm(previewVendor);
-                    }}
-                    className="hidden sm:inline-flex px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Edit Record</span>
-                  </button>
                   <button
                     type="button"
                     onClick={() => setIsPreviewOpen(false)}
@@ -2998,22 +2961,11 @@ export default function VendorsPage() {
             </div>
 
             {/* Footer */}
-            <div className="px-4 sm:px-6 py-3 sm:py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between sm:justify-end gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsPreviewOpen(false);
-                  openEditVendorForm(previewVendor);
-                }}
-                className="sm:hidden flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Edit Record</span>
-              </button>
+            <div className="px-4 sm:px-6 py-3 sm:py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsPreviewOpen(false)}
-                className="flex-1 sm:flex-none px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer text-center"
+                className="w-full sm:w-auto px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer text-center"
               >
                 Close Preview
               </button>
@@ -3021,13 +2973,6 @@ export default function VendorsPage() {
           </div>
         </div>
       )}
-
-      {/* REUSABLE SUPPLIER / MILL LEDGER MODAL */}
-      <SupplierLedgerModal
-        isOpen={isLedgerOpen}
-        onClose={() => setIsLedgerOpen(false)}
-        initialVendorName={ledgerVendorName}
-      />
     </div>
   );
 }

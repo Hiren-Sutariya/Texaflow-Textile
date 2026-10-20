@@ -243,7 +243,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
     e.preventDefault();
     const cleanOtp = regOtp.trim();
     if (cleanOtp.length !== 6) {
-      setOtpErrorMsg("કૃપા કરીને ૬-અંકનો વેરિફિકેશન OTP દાખલ કરો.");
+      setOtpErrorMsg("Please enter the 6-digit verification OTP.");
       return;
     }
 
@@ -981,10 +981,10 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900">
-                    ઈમેલ વેરિફિકેશન (Email OTP)
+                    Email Verification (OTP)
                   </h3>
                   <p className="text-xs text-slate-500 font-medium">
-                    સુરક્ષા ચકાસણી માટે ૬-અંકનો OTP દાખલ કરો
+                    Enter the 6-digit verification code sent to your email
                   </p>
                 </div>
               </div>

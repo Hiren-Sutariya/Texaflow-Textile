@@ -349,8 +349,8 @@ export function SupplierLedgerModal({
         rawDate: parseDateEpoch(p.date),
         type: "BILL",
         refNo: p.purchase_no,
-        description: p.items_description || p.category || "કાપડ / મટિરિયલ ખરીદી બિલ",
-        modeOrTerms: p.payment_terms || p.paid_via || "શાખ મુદત",
+        description: p.items_description || p.category || (isGujarati ? "કાપડ / મટિરિયલ ખરીદી બિલ" : "Fabric / Material Inward Bill"),
+        modeOrTerms: p.payment_terms || p.paid_via || (isGujarati ? "શાખ મુદત" : "Credit Terms"),
         debit: Number(p.amount) || 0,
         credit: 0,
         status: p.payment_status,
@@ -369,7 +369,7 @@ export function SupplierLedgerModal({
         rawDate: parseDateEpoch(v.date),
         type: "PAYMENT",
         refNo: v.voucher_no,
-        description: v.notes || (v.ref_no ? `Ref: ${v.ref_no}` : "પેમેન્ટ ચૂકવણી વાઉચર"),
+        description: v.notes || (v.ref_no ? `Ref: ${v.ref_no}` : (isGujarati ? "પેમેન્ટ ચૂકવણી વાઉચર" : "Payment Voucher")),
         modeOrTerms: v.mode || "RTGS / NEFT",
         debit: 0,
         credit: Number(v.amount) || 0,
@@ -462,7 +462,7 @@ export function SupplierLedgerModal({
       year: "numeric"
     });
 
-    const lines = [
+    const lines = isGujarati ? [
       `*🏛️ ઓમ સાઈ ટેક્સટાઇલ - સપ્લાયર ખાતાવહી સ્ટેટમેન્ટ*`,
       `-----------------------------------------`,
       `📅 તારીખ: ${todayStr}`,
@@ -478,19 +478,40 @@ export function SupplierLedgerModal({
         : `✅ મુદત બાકી: તમામ બિલ સમયસર છે`,
       ``,
       `📑 *છેલ્લા વ્યવહારો (Recent Ledger Entries):*`
+    ].filter(Boolean) : [
+      `*🏛️ Om Sai Textiles - Supplier Statement of Account*`,
+      `-----------------------------------------`,
+      `📅 Date: ${todayStr}`,
+      `🏢 Supplier / Mill: *${selectedVendor}*`,
+      currentVendorData?.gstin ? `📄 GSTIN: ${currentVendorData.gstin}` : "",
+      ``,
+      `📊 *Statement Summary:*`,
+      `• Total Inward Bills (${kpiSummary.totalBillsCount}): ₹${kpiSummary.totalBillsAmount.toLocaleString("en-IN")}`,
+      `• Total Payments Out (${kpiSummary.totalPaymentsCount}): ₹${kpiSummary.totalPaidAmount.toLocaleString("en-IN")}`,
+      `• *Net Outstanding Balance: ₹${kpiSummary.netBalance.toLocaleString("en-IN")}*`,
+      kpiSummary.overdueAmount > 0
+        ? `⚠️ *Overdue Mudat: ₹${kpiSummary.overdueAmount.toLocaleString("en-IN")}*`
+        : `✅ Mudat Status: All bills on schedule`,
+      ``,
+      `📑 *Recent Transactions:*`
     ].filter(Boolean);
 
     transactions.slice(0, 5).forEach((tx, idx) => {
-      const sign = tx.type === "BILL" ? "🔴 બિલ (Dr)" : "🟢 પેમેન્ટ (Cr)";
+      const sign = isGujarati 
+        ? (tx.type === "BILL" ? "🔴 બિલ (Dr)" : "🟢 પેમેન્ટ (Cr)")
+        : (tx.type === "BILL" ? "🔴 Bill (Dr)" : "🟢 Payment (Cr)");
       const amt = tx.type === "BILL" ? tx.debit : tx.credit;
+      const balLabel = isGujarati ? "બાકી" : "Bal";
       lines.push(
-        `${idx + 1}. ${tx.date} | ${tx.refNo} | ${sign}: ₹${amt.toLocaleString("en-IN")} | બાકી: ₹${tx.runningBalance.toLocaleString("en-IN")}`
+        `${idx + 1}. ${tx.date} | ${tx.refNo} | ${sign}: ₹${amt.toLocaleString("en-IN")} | ${balLabel}: ₹${tx.runningBalance.toLocaleString("en-IN")}`
       );
     });
 
     lines.push(
       ``,
-      `_વિગતવાર હિસાબ અથવા ચકાસણી માટે સંપર્ક કરો: ઓમ સાઈ ટેક્સટાઇલ, સુરત._`
+      isGujarati 
+        ? `_વિગતવાર હિસાબ અથવા ચકાસણી માટે સંપર્ક કરો: ઓમ સાઈ ટેક્સટાઇલ, સુરત._`
+        : `_For detailed account reconciliation, contact: Om Sai Textiles, Surat._`
     );
 
     const message = lines.join("\n");
@@ -853,13 +874,12 @@ export function SupplierLedgerModal({
                 <th className="py-3 px-4 text-right text-rose-700">{isGujarati ? "ઉધાર / બિલ (DR)" : "DEBIT (DR)"}</th>
                 <th className="py-3 px-4 text-right text-emerald-700">{isGujarati ? "જમા / પેમેન્ટ (CR)" : "CREDIT (CR)"}</th>
                 <th className="py-3 px-4 text-right font-black text-slate-900">{isGujarati ? "રનિંગ બાકી (₹)" : "NET BALANCE"}</th>
-                <th className="py-3 px-4 text-center">{isGujarati ? "સ્ટેટસ" : "STATUS"}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
               {displayedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-14 text-center text-slate-400">
+                  <td colSpan={8} className="py-14 text-center text-slate-400">
                     <FileText className="w-8 h-8 mx-auto mb-2 opacity-40 text-slate-400" />
                     <p className="font-bold text-slate-700 text-xs">
                       {isGujarati ? "આ સપ્લાયર માટે કોઈ વ્યવહાર મળ્યો નથી" : "No transactions found for this supplier"}
@@ -919,7 +939,7 @@ export function SupplierLedgerModal({
                         {isBill ? (
                           <div className="flex flex-col gap-0.5">
                             <span className="text-slate-800 font-bold text-xs">
-                              {tx.modeOrTerms || "શાખ મુદત"}
+                              {tx.modeOrTerms || (isGujarati ? "શાખ મુદત" : "Credit Terms")}
                             </span>
                             {tx.dueDate && (
                               <div className="flex items-center gap-1 text-[11px] text-slate-500">
@@ -959,29 +979,6 @@ export function SupplierLedgerModal({
                           ₹{tx.runningBalance.toLocaleString("en-IN")}
                         </span>
                       </td>
-
-                      {/* Status */}
-                      <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
-                        {isBill ? (
-                          tx.status === "Paid" ? (
-                            <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50/90 px-2.5 py-1 rounded-lg border border-emerald-200 inline-block">
-                              {t("Paid")}
-                            </span>
-                          ) : tx.isOverdue ? (
-                            <span className="font-mono text-xs font-bold text-rose-700 bg-rose-50/90 px-2.5 py-1 rounded-lg border border-rose-200 inline-block">
-                              {t("Overdue")}
-                            </span>
-                          ) : (
-                            <span className="font-mono text-xs font-bold text-amber-700 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200 inline-block">
-                              {t("Pending")}
-                            </span>
-                          )
-                        ) : (
-                          <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50/90 px-2.5 py-1 rounded-lg border border-emerald-200 inline-block">
-                            {t("Paid")}
-                          </span>
-                        )}
-                      </td>
                     </tr>
                   );
                 })
@@ -1011,7 +1008,7 @@ export function SupplierLedgerModal({
               type="button"
               className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold transition shadow-2xs cursor-pointer"
             >
-              {isGujarati ? "બંધ કરો (Close)" : "Close"}
+              {isGujarati ? "બંધ કરો" : "Close"}
             </button>
             <button
               onClick={handleRecordPayment}

@@ -1,7 +1,7 @@
 "use client";
 
-import { UpcomingModule } from "@/components/ui/UpcomingModule";
+import VendorsPage from "../vendors/page";
 
 export default function PartiesPage() {
-  return <UpcomingModule />;
+  return <VendorsPage />;
 }

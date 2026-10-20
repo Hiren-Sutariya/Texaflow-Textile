@@ -180,7 +180,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           type="button"
           onClick={toggleFullscreen}
           className="hidden sm:flex h-9 w-9 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/90 hover:border-slate-300 rounded-xl items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
-          title={isFullscreen ? "Exit Fullscreen" : "Fullscreen View / ફૂલ સ્ક્રીન"}
+          title={isFullscreen ? (language === "gu" ? "ફૂલ સ્ક્રીનમાંથી બહાર નીકળો" : "Exit Fullscreen") : (language === "gu" ? "ફૂલ સ્ક્રીન વ્યુ" : "Fullscreen View")}
         >
           {isFullscreen ? (
             <Minimize2 className="w-4 h-4 text-slate-700" />
@@ -194,7 +194,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           type="button"
           onClick={handleRefresh}
           className="h-8.5 w-8.5 sm:h-9 sm:w-9 bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200/90 hover:border-blue-200 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
-          title="Smooth Refresh / સ્મૂથ રિફ્રેશ (Cmd+R)"
+          title={language === "gu" ? "સ્મૂથ રિફ્રેશ (Cmd+R)" : "Smooth Refresh (Cmd+R)"}
         >
           <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-500 ${isSpinning ? "animate-spin text-blue-600" : ""}`} />
         </button>
@@ -205,7 +205,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
             type="button"
             onClick={() => setIsNotifOpen((prev) => !prev)}
             className="relative h-8.5 w-8.5 sm:h-9 sm:w-9 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/90 hover:border-slate-300 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
-            title="Notifications / સૂચનાઓ"
+            title={language === "gu" ? "સૂચનાઓ" : "Notifications"}
           >
             <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
@@ -286,7 +286,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           {isLangOpen && (
             <div className="absolute right-0 mt-2 w-40 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
-                {language === "gu" ? "ભાષા પસંદગી" : "Language / ભાષા"}
+                {language === "gu" ? "ભાષા પસંદગી" : "Language"}
               </div>
               <button
                 type="button"

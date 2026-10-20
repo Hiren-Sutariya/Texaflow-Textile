@@ -39,7 +39,7 @@ export function DashboardShell({
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      if (!localStorage.getItem("texaflow_all_data_wiped_v3")) {
+      if (!localStorage.getItem("texaflow_all_data_wiped_v5")) {
         const keysToRemove = [
           "om_sai_purchases",
           "texaflow_purchases",
@@ -81,7 +81,7 @@ export function DashboardShell({
           }
         }
         toDelete.forEach((k) => localStorage.removeItem(k));
-        localStorage.setItem("texaflow_all_data_wiped_v3", "true");
+        localStorage.setItem("texaflow_all_data_wiped_v5", "true");
         window.dispatchEvent(new Event("app_data_update"));
       }
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Mic, MicOff, Volume2, Globe, Check, AlertCircle } from "lucide-react";
 import { transliterateGujlishSentence } from "@/lib/translations";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface VoiceTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   value: string;
@@ -13,14 +14,18 @@ interface VoiceTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaEl
 export function VoiceTextarea({
   value,
   onChangeValue,
-  defaultLang = "gu-IN",
+  defaultLang,
   placeholder = "Add optional expense description, items purchased or notes...",
   rows = 3,
   className = "",
   ...rest
 }: VoiceTextareaProps) {
+  const { language } = useLanguage();
+  const isGujarati = language === "gu";
   const [isListening, setIsListening] = useState(false);
-  const [speechLang, setSpeechLang] = useState<"gu-IN" | "en-IN" | "hi-IN">(defaultLang);
+  const [speechLang, setSpeechLang] = useState<"gu-IN" | "en-IN" | "hi-IN">(
+    defaultLang || (isGujarati ? "gu-IN" : "en-IN")
+  );
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -96,9 +101,9 @@ export function VoiceTextarea({
     recognition.onerror = (event: any) => {
       console.warn("Speech Recognition Event:", event.error);
       if (event.error === "not-allowed") {
-        setErrorMsg("કૃપા કરીને બ્રાઉઝરમાં માઇક્રોફોન મંજૂરી (Allow Mic) આપો.");
+        setErrorMsg(isGujarati ? "કૃપા કરીને બ્રાઉઝરમાં માઇક્રોફોન મંજૂરી (Allow Mic) આપો." : "Please allow microphone access in your browser.");
       } else if (event.error !== "no-speech") {
-        setErrorMsg("અવાજ ઓળખવામાં ક્ષતિ આવી. ફરી પ્રયાસ કરો.");
+        setErrorMsg(isGujarati ? "અવાજ ઓળખવામાં ક્ષતિ આવી. ફરી પ્રયાસ કરો." : "Speech recognition error. Please try again.");
       }
       setIsListening(false);
       setInterimTranscript("");
@@ -135,7 +140,7 @@ export function VoiceTextarea({
       const SpeechRecognition =
         (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        alert("તમારા બ્રાઉઝરમાં સ્પીચ-ટુ-ટેક્સ્ટ સપોર્ટ નથી. કૃપા કરીને Google Chrome અથવા Safari વાપરો.");
+        alert(isGujarati ? "તમારા બ્રાઉઝરમાં સ્પીચ-ટુ-ટેક્સ્ટ સપોર્ટ નથી. કૃપા કરીને Google Chrome અથવા Safari વાપરો." : "Speech-to-text is not supported in your browser. Please use Google Chrome or Safari.");
         return;
       }
     }
@@ -165,9 +170,9 @@ export function VoiceTextarea({
   const getLangBadge = () => {
     switch (speechLang) {
       case "gu-IN":
-        return "ગુજરાતી";
+        return isGujarati ? "ગુજરાતી" : "Gujarati";
       case "hi-IN":
-        return "हिन्दी";
+        return isGujarati ? "હિन्दी" : "Hindi";
       case "en-IN":
         return "English";
     }
@@ -181,10 +186,10 @@ export function VoiceTextarea({
           {isListening ? (
             <span className="text-rose-600 font-bold flex items-center gap-1.5 animate-pulse">
               <span className="w-2 h-2 rounded-full bg-rose-600 inline-block" />
-              માઈક ચાલુ છે — બોલો...
+              {isGujarati ? "માઈક ચાલુ છે — બોલો..." : "Mic active — Speak now..."}
             </span>
           ) : (
-            <span>નોંધ / રીમાર્કસ</span>
+            <span>{isGujarati ? "નોંધ / રીમાર્કસ" : "Notes / Remarks"}</span>
           )}
         </span>
 
@@ -196,7 +201,7 @@ export function VoiceTextarea({
               type="button"
               onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
               className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 rounded-lg transition-colors cursor-pointer"
-              title="અવાજની ભાષા બદલો (Change Voice Language)"
+              title={isGujarati ? "અવાજની ભાષા બદલો" : "Change Voice Language"}
             >
               <Globe className="w-3 h-3 text-slate-500" />
               <span>{getLangBadge()}</span>
@@ -246,18 +251,18 @@ export function VoiceTextarea({
                 ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 ring-2 ring-rose-400/30 animate-pulse"
                 : "bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 hover:border-blue-300"
             }`}
-            title={isListening ? "બોલવાનું બંધ કરો (Stop Recording)" : "બોલીને નોંધ લખો (Speak to Write Remark)"}
+            title={isListening ? (isGujarati ? "બોલવાનું બંધ કરો" : "Stop Recording") : (isGujarati ? "બોલીને નોંધ લખો" : "Speak to Write Notes")}
           >
             {isListening ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
                 <MicOff className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                <span className="text-[11px]">બંધ કરો</span>
+                <span className="text-[11px]">{isGujarati ? "બંધ કરો" : "Stop"}</span>
               </>
             ) : (
               <>
                 <Mic className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span className="text-[11px]">બોલો (Mic)</span>
+                <span className="text-[11px]">{isGujarati ? "બોલો (Mic)" : "Speak (Mic)"}</span>
               </>
             )}
           </button>
@@ -289,10 +294,10 @@ export function VoiceTextarea({
             </div>
             <div className="min-w-0">
               <span className="text-[10px] font-extrabold text-rose-700 uppercase tracking-wider block">
-                સાંભળી રહ્યું છે ({getLangBadge()})
+                {isGujarati ? "સાંભળી રહ્યું છે" : "Listening"} ({getLangBadge()})
               </span>
               <p className="text-xs font-semibold text-slate-800 truncate">
-                {interimTranscript || "હવે તમે બોલી શકો છો..."}
+                {interimTranscript || (isGujarati ? "હવે તમે બોલી શકો છો..." : "Speak now...")}
               </p>
             </div>
           </div>
@@ -301,7 +306,7 @@ export function VoiceTextarea({
             onClick={toggleListening}
             className="px-2 py-0.5 text-[10px] font-extrabold text-rose-700 bg-white border border-rose-200 rounded-md shadow-2xs hover:bg-rose-50 cursor-pointer shrink-0"
           >
-            થોભો
+            {isGujarati ? "થોભો" : "Stop"}
           </button>
         </div>
       )}

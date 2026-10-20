@@ -1490,7 +1490,7 @@ function NewExpenseVoucherForm() {
                 }`}
               >
                 <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Paid (રોકડા / ચૂકતે)</span>
+                <span>Paid</span>
               </button>
               <button
                 type="button"
@@ -1502,7 +1502,7 @@ function NewExpenseVoucherForm() {
                 }`}
               >
                 <Clock className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Pending / Unpaid (બાકી)</span>
+                <span>Pending / Unpaid</span>
               </button>
             </div>
           </div>

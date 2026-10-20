@@ -2,10 +2,10 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
-import { fetchApi, getCachedApi } from "@/lib/api";
+import { fetchApi, getCachedApi, invalidateApiCache } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { useLanguage } from "@/context/LanguageContext";
-import { getDueStatus } from "@/lib/creditTerms";
+import { getDueStatus, calculateDueDate } from "@/lib/creditTerms";
 import {
   Plus,
   Search,
@@ -28,11 +28,8 @@ import {
   TrendingUp,
   FileSpreadsheet,
   ExternalLink,
-  CheckCircle2,
-  Eye,
-  Building2
+  CheckCircle2
 } from "lucide-react";
-import { SupplierLedgerModal } from "@/components/purchases/SupplierLedgerModal";
 
 interface CustomSelectOption {
   value: string;
@@ -230,7 +227,7 @@ export interface PurchaseItem {
 const defaultSeedPurchases: PurchaseItem[] = [];
 
 export default function PurchasesPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -238,13 +235,6 @@ export default function PurchasesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedBillImage, setSelectedBillImage] = useState<{ image: string; purchase_no: string; notes?: string } | null>(null);
   const [previewBill, setPreviewBill] = useState<PurchaseItem | null>(null);
-  const [isLedgerOpen, setIsLedgerOpen] = useState(false);
-  const [ledgerVendor, setLedgerVendor] = useState("");
-
-  const handleOpenLedger = (vendorName?: string) => {
-    setLedgerVendor(vendorName || "");
-    setIsLedgerOpen(true);
-  };
 
   const purchaseCategories = [
     "All",
@@ -260,25 +250,46 @@ export default function PurchasesPage() {
     let isMounted = true;
     const currentCid = getStoredCompanyId() || "comp-001";
 
-    try {
-      const cached = getCachedApi<PurchaseItem[]>("/purchases") ||
-        getTenantItem<PurchaseItem[]>("texaflow_purchases", currentCid === "comp-001" ? "om_sai_purchases" : undefined);
-      if (cached && Array.isArray(cached) && cached.length > 0) {
-        setPurchases(cached);
-      } else {
+    const loadLocal = () => {
+      try {
+        const stored = getTenantItem<PurchaseItem[]>("texaflow_purchases", currentCid === "comp-001" ? "om_sai_purchases" : undefined);
+        if (stored && Array.isArray(stored) && stored.length > 0) {
+          setPurchases(stored);
+          return stored;
+        } else {
+          const cached = getCachedApi<PurchaseItem[]>("/purchases");
+          if (cached && Array.isArray(cached) && cached.length > 0) {
+            setPurchases(cached);
+            return cached;
+          } else {
+            setPurchases(defaultSeedPurchases);
+            return defaultSeedPurchases;
+          }
+        }
+      } catch {
         setPurchases(defaultSeedPurchases);
+        return defaultSeedPurchases;
       }
-    } catch {
-      setPurchases(defaultSeedPurchases);
-    }
+    };
+
+    loadLocal();
 
     async function loadLive() {
       try {
         const live = await fetchApi<PurchaseItem[]>("/purchases");
         if (isMounted && Array.isArray(live) && live.length > 0) {
-          setPurchases(live);
+          // Preserve local payment_status overrides so a paid bill is never reset to pending by stale backend
+          const currentLocal = getTenantItem<PurchaseItem[]>("texaflow_purchases", currentCid === "comp-001" ? "om_sai_purchases" : undefined) || [];
+          const localStatusMap = new Map(currentLocal.map((p) => [p.purchase_no || p.id, p.payment_status]));
+
+          const merged = live.map((p) => ({
+            ...p,
+            payment_status: localStatusMap.get(p.purchase_no || p.id) || p.payment_status
+          }));
+
+          setPurchases(merged);
           try {
-            setTenantItem("texaflow_purchases", live, currentCid === "comp-001" ? "om_sai_purchases" : undefined);
+            setTenantItem("texaflow_purchases", merged, currentCid === "comp-001" ? "om_sai_purchases" : undefined);
           } catch {}
         }
       } catch (err) {
@@ -290,16 +301,25 @@ export default function PurchasesPage() {
 
     loadLive();
 
-    const refresh = () => loadLive();
-    window.addEventListener("app_data_update", refresh);
-    window.addEventListener("app_refresh_content", refresh);
+    const handleRefresh = () => {
+      loadLocal();
+      loadLive();
+    };
+
+    window.addEventListener("app_data_update", handleRefresh);
+    window.addEventListener("texaflow_purchases_updated", handleRefresh);
+    window.addEventListener("storage", handleRefresh);
+    window.addEventListener("app_refresh_content", handleRefresh);
 
     return () => {
       isMounted = false;
-      window.removeEventListener("app_data_update", refresh);
-      window.removeEventListener("app_refresh_content", refresh);
+      window.removeEventListener("app_data_update", handleRefresh);
+      window.removeEventListener("texaflow_purchases_updated", handleRefresh);
+      window.removeEventListener("storage", handleRefresh);
+      window.removeEventListener("app_refresh_content", handleRefresh);
     };
   }, []);
+
 
   const handleDeletePurchase = async (id: string) => {
     if (!confirm(t("Are you sure you want to delete this purchase bill?"))) return;
@@ -309,6 +329,9 @@ export default function PurchasesPage() {
     setPurchases(updated);
     try {
       setTenantItem("texaflow_purchases", updated, currentCid === "comp-001" ? "om_sai_purchases" : undefined);
+      invalidateApiCache("/purchases");
+      window.dispatchEvent(new CustomEvent("texaflow_purchases_updated"));
+      window.dispatchEvent(new Event("app_data_update"));
     } catch {}
 
     try {
@@ -376,7 +399,7 @@ export default function PurchasesPage() {
 
         <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs">
           <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-wider block">
-            {t("PENDING CREDIT (શાખ)")}
+            {t("PENDING CREDIT")}
           </span>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className="text-xl sm:text-2xl font-black font-mono text-amber-600">
@@ -388,7 +411,7 @@ export default function PurchasesPage() {
 
         <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs">
           <span className="text-[10px] font-extrabold text-rose-600 uppercase tracking-wider block">
-            {t("OVERDUE BILLS (ઓવરડ્યુ)")}
+            {t("OVERDUE BILLS")}
           </span>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className={`text-xl sm:text-2xl font-black font-mono ${overdueCount > 0 ? "text-rose-600" : "text-slate-900"}`}>
@@ -432,7 +455,7 @@ export default function PurchasesPage() {
               onChange={(val) => setStatusFilter(val as any)}
               options={[
                 { value: "All", label: t("All Status") },
-                { value: "Pending", label: t("Pending / Credit (શાખ)") },
+                { value: "Pending", label: t("Pending / Credit") },
                 { value: "Overdue", label: t("Overdue") },
                 { value: "Paid", label: t("Paid") },
               ]}
@@ -484,7 +507,7 @@ export default function PurchasesPage() {
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                         : "bg-amber-50 text-amber-700 border-amber-200"
                     }`}>
-                      {item.payment_status === "Paid" ? t("Paid") : t("Pending / શાખ")}
+                      {item.payment_status === "Paid" ? t("Paid") : t("Pending / Credit")}
                     </span>
                   </div>
 
@@ -522,7 +545,7 @@ export default function PurchasesPage() {
                       </span>
                       {dueInfo && (
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${dueInfo.badgeClass}`}>
-                          {dueInfo.labelGu}
+                          {language === "gu" ? dueInfo.labelGu : dueInfo.label}
                         </span>
                       )}
                     </div>
@@ -572,20 +595,29 @@ export default function PurchasesPage() {
           )}
         </div>
 
-        {/* Desktop Table View (>= md) - Balanced, Harmonious Spacing */}
+        {/* Desktop Table View (>= md) - Balanced, Stable Space Allocation */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full text-left border-collapse text-xs min-w-[1180px]">
             <thead>
               <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                <th className="py-3 px-4">{t("DATE")}</th>
-                <th className="py-3 px-4">{t("BILL NO")}</th>
-                <th className="py-3 px-4">{t("SUPPLIER / MILL")}</th>
-                <th className="py-3 px-4">{t("DUE DATE / મુદત")}</th>
-                <th className="py-3 px-4">{t("MATERIAL & ITEMS")}</th>
-                <th className="py-3 px-4">{t("REMARKS / નોંધ")}</th>
-                <th className="py-3 px-4 text-right">{t("AMOUNT (₹)")}</th>
-                <th className="py-3 px-4 text-center">{t("STATUS")}</th>
-                <th className="py-3 px-4 text-center w-24">{t("ACTION")}</th>
+                {/* 1. DATE */}
+                <th className="py-3 px-3 w-[105px] min-w-[105px]">{t("DATE")}</th>
+                {/* 2. BILL NO */}
+                <th className="py-3 px-3 w-[105px] min-w-[105px]">{t("BILL NO")}</th>
+                {/* 3. SUPPLIER / MILL */}
+                <th className="py-3 px-3 w-[190px] min-w-[190px] max-w-[190px]">{t("SUPPLIER / MILL")}</th>
+                {/* 4. MATERIAL & ITEMS */}
+                <th className="py-3 px-3 w-[230px] min-w-[230px] max-w-[230px]">{t("MATERIAL & ITEMS")}</th>
+                {/* 5. REMARKS */}
+                <th className="py-3 px-3 w-[240px] min-w-[240px] max-w-[240px]">{t("REMARKS")}</th>
+                {/* 6. AMOUNT (₹) */}
+                <th className="py-3 px-3 text-right w-[110px] min-w-[110px]">{t("AMOUNT (₹)")}</th>
+                {/* 7. DUE (DAYS) */}
+                <th className="py-3 px-3 text-center w-[110px] min-w-[110px]">{t("DUE (DAYS)")}</th>
+                {/* 8. STATUS */}
+                <th className="py-3 px-3 text-center w-[100px] min-w-[100px]">{t("STATUS")}</th>
+                {/* 9. ACTION */}
+                <th className="py-3 px-3 text-center w-[90px] min-w-[90px]">{t("ACTION")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -597,97 +629,84 @@ export default function PurchasesPage() {
                 </tr>
               ) : (
                 filteredPurchases.map((item) => {
-                  const isUnpaid = item.payment_status === "Pending" || item.payment_status === "Unpaid";
-                  const dueInfo = item.due_date ? getDueStatus(item.due_date, !isUnpaid) : null;
-
                   return (
-                    <tr key={item.id} className="hover:bg-blue-50/40 transition-colors">
+                    <tr
+                      key={item.id}
+                      onClick={() => setPreviewBill(item)}
+                      className="hover:bg-slate-50/70 transition-colors cursor-pointer group"
+                    >
                       {/* 1. DATE */}
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-700 whitespace-nowrap align-middle">
+                      <td className="py-3.5 px-3 font-mono font-bold text-slate-700 whitespace-nowrap align-middle w-[105px] min-w-[105px]">
                         {item.date}
                       </td>
 
                       {/* 2. BILL NO */}
-                      <td className="py-3.5 px-4 whitespace-nowrap align-middle">
-                        <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50/90 px-2.5 py-1 rounded-lg border border-blue-200">
+                      <td className="py-3.5 px-3 whitespace-nowrap align-middle w-[105px] min-w-[105px]">
+                        <span className="font-mono text-xs font-bold text-slate-800">
                           {item.purchase_no}
                         </span>
                       </td>
 
                       {/* 3. SUPPLIER / MILL */}
-                      <td className="py-3.5 px-4 whitespace-nowrap align-middle">
-                        <span className="font-extrabold text-slate-900 text-xs">
+                      <td className="py-3.5 px-3 align-middle w-[190px] min-w-[190px] max-w-[190px]">
+                        <span className="font-extrabold text-slate-900 text-xs block truncate" title={item.vendor_name}>
                           {item.vendor_name}
                         </span>
                       </td>
 
-                      {/* 4. DUE DATE / મુદત */}
-                      <td className="py-3.5 px-4 whitespace-nowrap align-middle font-mono text-xs">
-                        {item.payment_status === "Paid" ? (
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 inline-flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>{t("Settled")}</span>
-                          </span>
-                        ) : item.due_date ? (
-                          <div className="inline-flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                            <span className="font-bold text-slate-900">{item.due_date}</span>
-                            {item.credit_days ? (
-                              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                                {item.credit_days}d
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-
-                      {/* 5. MATERIAL & ITEMS - FORMATTED CHIPS & TOTAL BADGE */}
-                      <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                      {/* 4. MATERIAL & ITEMS */}
+                      <td className="py-3.5 px-3 align-middle w-[230px] min-w-[230px] max-w-[230px]">
                         <MaterialDescriptionCell category={t(item.category)} description={item.items_description} />
                       </td>
 
-                      {/* 6. REMARKS / નોંધ */}
-                      <td className="py-3.5 px-4 max-w-[200px] whitespace-nowrap align-middle" title={item.notes}>
+                      {/* 5. REMARKS */}
+                      <td className="py-3.5 px-3 text-xs align-middle w-[240px] min-w-[240px] max-w-[240px] whitespace-normal">
                         {item.notes ? (
-                          <span className="truncate block font-medium text-slate-700 text-xs">
+                          <p className="font-medium text-slate-700 text-xs break-words whitespace-normal leading-relaxed">
                             {item.notes}
-                          </span>
+                          </p>
                         ) : (
                           <span className="text-slate-300 italic">-</span>
                         )}
                       </td>
 
-                      {/* 7. AMOUNT (₹) */}
-                      <td className="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono font-black text-slate-900 text-sm">
+                      {/* 6. AMOUNT (₹) */}
+                      <td className="py-3.5 px-3 text-right align-middle whitespace-nowrap font-mono font-black text-slate-900 text-sm w-[110px] min-w-[110px]">
                         ₹{item.amount.toLocaleString("en-IN")}
                       </td>
 
-                      {/* 7. STATUS - MATCHING BILL NO BOX */}
-                      <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
+                      {/* 7. DUE (DAYS) - ONLY DAYS */}
+                      <td className="py-3.5 px-3 text-center align-middle whitespace-nowrap w-[110px] min-w-[110px]">
                         {item.payment_status === "Paid" ? (
-                          <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50/90 px-2.5 py-1 rounded-lg border border-emerald-200 inline-block">
-                            {t("Paid")}
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>{t("Settled")}</span>
                           </span>
                         ) : (
-                          <span className="font-mono text-xs font-bold text-amber-700 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200 inline-block">
-                            {t("Pending")}
+                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50/90 px-2.5 py-1 rounded-lg border border-blue-200 inline-block">
+                            {item.credit_days ? `${item.credit_days} Days` : "0 Days"}
                           </span>
                         )}
                       </td>
 
-                      {/* 8. ACTION */}
-                      <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setPreviewBill(item)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                            title={t("View Bill Slip")}
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
+                      {/* 8. STATUS */}
+                      <td className="py-3.5 px-3 text-center align-middle whitespace-nowrap w-[100px] min-w-[100px]">
+                        {item.payment_status === "Paid" ? (
+                          <span className="text-xs font-bold text-emerald-700 flex items-center justify-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span>{t("Paid")}</span>
+                          </span>
+                        ) : (
+                          <span className="text-xs font-bold text-amber-600 flex items-center justify-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            <span>{t("Pending")}</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 9. ACTION */}
+                      <td className="py-3.5 px-3 text-center align-middle whitespace-nowrap w-[90px] min-w-[90px]">
+                        <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                           <Link
                             href={`/purchases/new?edit=${item.id}`}
                             className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
@@ -744,7 +763,7 @@ export default function PurchasesPage() {
                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                     : "bg-amber-50 text-amber-700 border-amber-200"
                 }`}>
-                  {previewBill.payment_status === "Paid" ? t("Paid") : t("Pending / શાખ")}
+                  {previewBill.payment_status === "Paid" ? t("Paid") : t("Pending / Credit")}
                 </span>
               </div>
 
@@ -789,56 +808,40 @@ export default function PurchasesPage() {
                 </div>
                 {previewBill.notes && (
                   <div className="p-3 flex flex-col gap-1 bg-white border-t border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">{t("Remarks / Notes (નોંધ)")}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">{t("Remarks / Notes")}</span>
                     <span className="font-medium text-slate-700 text-xs">{previewBill.notes}</span>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2 pt-1">
+            {/* Modal Actions - Balanced 2 Buttons without Ledger */}
+            <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setPreviewBill(null)}
-                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                className="w-28 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-extrabold transition-colors cursor-pointer text-center"
               >
                 {t("Close")}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const vName = previewBill.vendor_name;
-                  setPreviewBill(null);
-                  handleOpenLedger(vName);
-                }}
-                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                title={t("View Supplier Ledger")}
-              >
-                <Building2 className="w-3.5 h-3.5 text-blue-400" />
-                <span>{t("ખાતાવહી (Ledger)")}</span>
-              </button>
-              {(previewBill.payment_status === "Pending" || previewBill.payment_status === "Unpaid") && (
+              {(previewBill.payment_status === "Pending" || previewBill.payment_status === "Unpaid") ? (
                 <Link
-                  href={`/payments/new?vendor=${encodeURIComponent(previewBill.vendor_name)}&amount=${previewBill.amount}&source=Material+Inward+Bill&ref=${previewBill.purchase_no}`}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  href={`/payments/new?vendor=${encodeURIComponent(previewBill.vendor_name)}&amount=${previewBill.amount}&source=Purchase+Bill&ref=${previewBill.purchase_no}`}
+                  className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <CreditCard className="w-3.5 h-3.5" />
+                  <CreditCard className="w-4 h-4" />
                   <span>{t("Create Payment Voucher")}</span>
                 </Link>
+              ) : (
+                <div className="flex-1 py-2.5 px-4 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-extrabold border border-emerald-200 flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>{t("Bill Paid & Settled")}</span>
+                </div>
               )}
             </div>
           </div>
         </div>
       )}
-
-      {/* 5. REUSABLE SUPPLIER / MILL LEDGER MODAL */}
-      <SupplierLedgerModal
-        isOpen={isLedgerOpen}
-        onClose={() => setIsLedgerOpen(false)}
-        initialVendorName={ledgerVendor}
-        initialPurchases={purchases}
-      />
     </div>
   );
 }

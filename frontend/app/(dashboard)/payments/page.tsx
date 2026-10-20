@@ -27,15 +27,63 @@ export interface PaymentVoucherItem {
   voucher_no: string;
   date: string;
   party_name: string;
+  payer_person?: string;
+  design_no?: string;
+  linked_challan?: string;
+  kasar_amount?: number;
+  paying_company?: string;
   type: "Payment Out" | "Receipt In";
-  linked_source: "Job Process Challan" | "Material Inward Bill" | "On-Account / General Payment" | "Job Work / Purchase" | string;
+  linked_source?: "Job Process Challan" | "Material Inward Bill" | "On-Account / General Payment" | "Job Work / Purchase" | string;
   amount: number;
   mode: string;
   ref_no: string;
+  bank_details?: string;
   notes: string;
+  company_id?: string;
 }
 
-const SEED_VOUCHERS: PaymentVoucherItem[] = [];
+export const SEED_VOUCHERS: PaymentVoucherItem[] = [];
+
+export function formatShortVoucherNo(vNo: string) {
+  if (!vNo) return "-";
+  // Convert REC-2026-084 -> REC-084, PAY-2026-102 -> PAY-102, VOU-2026-877 -> VOU-877
+  return vNo.replace(/-(?:20\d{2})-/, "-");
+}
+
+function renderPaymentModeSimple(mode: string, refNo?: string) {
+  const m = (mode || "").toLowerCase();
+  let label = "Cash";
+  let textColor = "text-slate-800";
+
+  if (m.includes("angadia")) {
+    label = "Angadia";
+    textColor = "text-purple-700";
+  } else if (m.includes("bank") || m.includes("neft") || m.includes("rtgs") || m.includes("imps") || m.includes("transfer")) {
+    label = "Bank / RTGS";
+    textColor = "text-blue-700";
+  } else if (m.includes("cheque")) {
+    label = "Cheque";
+    textColor = "text-amber-700";
+  } else if (m.includes("upi")) {
+    label = "UPI";
+    textColor = "text-teal-700";
+  }
+
+  const cleanRef = refNo && refNo !== "-" && refNo !== "N/A" && !refNo.toLowerCase().startsWith("cash") ? refNo : null;
+
+  return (
+    <div className="flex flex-col items-start leading-tight">
+      <span className={`text-xs font-semibold ${textColor} whitespace-nowrap`}>
+        {label}
+      </span>
+      {cleanRef && (
+        <span className="text-[10px] font-mono text-slate-400 truncate max-w-[120px]" title={cleanRef}>
+          {cleanRef}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export default function PaymentsAndVouchersPage() {
   const { t } = useLanguage();
@@ -45,15 +93,29 @@ export default function PaymentsAndVouchersPage() {
     if (typeof window !== "undefined") {
       try {
         const currentCid = getStoredCompanyId() || "comp-001";
+        const seedForTenant = SEED_VOUCHERS.map((s) => ({ ...s, company_id: currentCid }));
         const apiCached = getCachedApi<PaymentVoucherItem[]>("/payments");
         if (Array.isArray(apiCached) && apiCached.length > 0) {
           const scoped = apiCached.filter((p: any) => (p.company_id || currentCid) === currentCid);
+          const hasDummy = scoped.some((p: any) => p.voucher_no === "REC-2026-084" || p.voucher_no === "REC-084");
+          if (!hasDummy) {
+            return [...seedForTenant, ...scoped];
+          }
           if (scoped.length > 0) return scoped;
         }
         const saved = getTenantItem<PaymentVoucherItem[]>("texaflow_vouchers", "om_sai_vouchers");
         if (Array.isArray(saved) && saved.length > 0) {
           const scoped = saved.filter((p: any) => (p.company_id || currentCid) === currentCid);
+          const hasDummy = scoped.some((p: any) => p.voucher_no === "REC-2026-084" || p.voucher_no === "REC-084");
+          if (!hasDummy && seedForTenant.length > 0) {
+            const merged = [...seedForTenant, ...saved];
+            setTenantItem("texaflow_vouchers", merged, "om_sai_vouchers");
+            return [...seedForTenant, ...scoped];
+          }
           if (scoped.length > 0) return scoped;
+        } else if (seedForTenant.length > 0) {
+          setTenantItem("texaflow_vouchers", seedForTenant, "om_sai_vouchers");
+          return seedForTenant;
         }
       } catch {}
     }
@@ -81,16 +143,19 @@ export default function PaymentsAndVouchersPage() {
     setHasMounted(true);
     let isMounted = true;
     const currentCid = getStoredCompanyId() || "comp-001";
+    const seedForTenant = SEED_VOUCHERS.map((s) => ({ ...s, company_id: currentCid }));
 
     // Instant 0ms Sync Check on mount
     try {
-      const immediate = getCachedApi<PaymentVoucherItem[]>("/payments") || 
-        getTenantItem<PaymentVoucherItem[]>("texaflow_vouchers", "om_sai_vouchers");
-      if (immediate && Array.isArray(immediate) && immediate.length > 0) {
-        const scoped = immediate.filter((p: any) => (p.company_id || currentCid) === currentCid);
-        if (scoped.length > 0) {
-          setVouchers(scoped);
-        }
+      const saved = getTenantItem<PaymentVoucherItem[]>("texaflow_vouchers", "om_sai_vouchers");
+      let list = Array.isArray(saved) ? saved : [];
+      if (!list.some((p: any) => (p.company_id || currentCid) === currentCid && (p.voucher_no === "REC-2026-084" || p.voucher_no === "REC-084")) && seedForTenant.length > 0) {
+        list = [...seedForTenant, ...list];
+        setTenantItem("texaflow_vouchers", list, "om_sai_vouchers");
+      }
+      const scoped = list.filter((p: any) => (p.company_id || currentCid) === currentCid);
+      if (scoped.length > 0) {
+        setVouchers(scoped);
       }
     } catch {}
 
@@ -100,25 +165,31 @@ export default function PaymentsAndVouchersPage() {
         if (!isMounted) return;
         if (Array.isArray(live) && live.length > 0) {
           const scoped = live.filter((p: any) => (p.company_id || currentCid) === currentCid);
-          const mapped: PaymentVoucherItem[] = scoped.map((p) => ({
+          const mapped: PaymentVoucherItem[] = scoped.map((p: any) => ({
             id: p.id,
-            voucher_no: p.voucher_no,
-            date: p.date,
-            party_name: p.party_name,
+            voucher_no: p.voucher_no || "-",
+            date: p.date || "",
+            party_name: p.party_name || "-",
+            payer_person: p.payer_person || undefined,
+            design_no: p.design_no || p.linked_challan || undefined,
+            linked_challan: p.linked_challan || p.design_no || undefined,
+            kasar_amount: Number(p.kasar_amount) || 0,
             paying_company: currentCid === "comp-001" ? "Shiv Creation" : "Om Sai Enterprise",
-            type: (p.voucher_type as any) || "Payment Out",
-            linked_source: "Job Work / Purchase" as any,
+            type: (p.voucher_type as any) || p.type || "Payment Out",
+            linked_source: p.linked_source || ("Job Work / Purchase" as any),
             amount: Number(p.amount) || 0,
-            mode: p.payment_mode || "Bank Transfer",
-            ref_no: p.reference_no || "-",
-            bank_details: p.bank_account || "Main Bank A/c",
-            notes: p.remarks || "",
+            mode: p.mode || p.payment_mode || "Cash",
+            ref_no: p.ref_no || p.reference_no || "-",
+            bank_details: p.bank_details || p.bank_account || "Main Bank A/c",
+            notes: p.notes || p.remarks || "",
             company_id: p.company_id || currentCid
           }));
           if (mapped.length > 0) {
-            setVouchers(mapped);
+            const hasDummy = mapped.some((m) => m.voucher_no === "REC-2026-084" || m.voucher_no === "REC-084");
+            const finalMerged = hasDummy ? mapped : [...seedForTenant, ...mapped];
+            setVouchers(finalMerged);
             try {
-              setTenantItem("texaflow_vouchers", mapped, "om_sai_vouchers");
+              setTenantItem("texaflow_vouchers", finalMerged, "om_sai_vouchers");
             } catch {}
           }
         }
@@ -172,10 +243,12 @@ export default function PaymentsAndVouchersPage() {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
-          v.party_name.toLowerCase().includes(q) ||
-          v.voucher_no.toLowerCase().includes(q) ||
-          v.ref_no.toLowerCase().includes(q) ||
-          v.notes.toLowerCase().includes(q)
+          (v.party_name || "").toLowerCase().includes(q) ||
+          (v.payer_person || "").toLowerCase().includes(q) ||
+          (v.design_no || "").toLowerCase().includes(q) ||
+          (v.voucher_no || "").toLowerCase().includes(q) ||
+          (v.ref_no || "").toLowerCase().includes(q) ||
+          (v.notes || "").toLowerCase().includes(q)
         );
       }
       return true;
@@ -557,187 +630,260 @@ export default function PaymentsAndVouchersPage() {
               No payment vouchers found matching your filter criteria.
             </div>
           ) : (
-            filteredVouchers.map((v) => (
-              <div
-                key={v.id}
-                onClick={() => setPreviewVoucher(v)}
-                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 space-y-3 active:scale-[0.99] transition-all cursor-pointer hover:border-blue-300"
-              >
-                {/* Top Row: Date, Voucher No, Type */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
-                      {v.date}
-                    </span>
-                    <span className="font-mono font-extrabold text-slate-900 text-sm">
-                      {v.voucher_no}
-                    </span>
-                  </div>
-                  {v.type === "Receipt In" ? (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
-                      Received In
-                    </span>
-                  ) : (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
-                      Paid Out
-                    </span>
-                  )}
-                </div>
-
-                {/* Party & Amount Display */}
-                <div className="flex items-start justify-between gap-3 pt-1 border-t border-slate-100">
-                  <div className="min-w-0">
-                    <div className="font-extrabold text-slate-900 text-sm truncate">
-                      {v.party_name}
+            filteredVouchers.map((v) => {
+              const totalSettled = (v.amount || 0) + (v.kasar_amount || 0);
+              return (
+                <div
+                  key={v.id}
+                  onClick={() => setPreviewVoucher(v)}
+                  className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 space-y-2.5 active:scale-[0.99] transition-all cursor-pointer hover:border-blue-300"
+                >
+                  {/* Top Row: Date, Voucher No (Short, Clean), Type */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-slate-800">
+                        {formatShortVoucherNo(v.voucher_no)}
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        {v.date}
+                      </span>
                     </div>
-                    {v.notes && (
-                      <div className="text-[11px] text-slate-400 truncate max-w-[220px]">
-                        {v.notes}
+                    {v.type === "Receipt In" ? (
+                      <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        Payment In
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold text-rose-600 flex items-center gap-1.5 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                        Payment Out
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Party & Payer Person Display (Simple Clean Text) */}
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-slate-900 text-xs truncate">
+                        {v.party_name}
                       </div>
+                      {v.notes && (
+                        <div className="text-[11px] text-slate-400 truncate max-w-[220px]">
+                          {v.notes}
+                        </div>
+                      )}
+                    </div>
+                    {v.payer_person && (
+                      <span className="text-xs text-slate-700 shrink-0 font-medium">
+                        Payer: <strong className="text-slate-900 font-semibold">{v.payer_person}</strong>
+                      </span>
                     )}
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className={`text-base font-black ${v.type === "Receipt In" ? "text-blue-600" : "text-rose-700"}`}>
-                      {v.type === "Receipt In" ? "+" : "-"}₹{v.amount.toLocaleString("en-IN")}
+
+                  {/* Details Grid: Design No (DN) & Mode (Simple Clean Text) */}
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Design No (DN)</span>
+                      <span className="font-mono font-medium text-slate-800 text-xs inline-block mt-0.5">
+                        {v.design_no || v.linked_challan || "-"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Mode</span>
+                      <div className="mt-0.5">
+                        {renderPaymentModeSimple(v.mode, v.ref_no)}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Details Grid: Source & Mode */}
-                <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">{t("Linked Source")}</span>
-                    <span className="font-bold text-slate-700 inline-block mt-0.5">
-                      {t(v.linked_source)}
-                    </span>
+                  {/* Amount, Discount & Total Settled Grid */}
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Amount (₹)</span>
+                      <span className={`font-bold text-xs ${v.type === "Receipt In" ? "text-emerald-700" : "text-rose-700"}`}>
+                        {v.type === "Receipt In" ? "+" : "-"}₹{v.amount.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Discount (₹)</span>
+                      {Boolean(v.kasar_amount && v.kasar_amount > 0) ? (
+                        <span className="text-xs font-semibold text-amber-600">
+                          ₹{Number(v.kasar_amount).toLocaleString("en-IN")}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300 font-medium">-</span>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Settled</span>
+                      <span className="text-xs font-bold text-slate-900">
+                        ₹{totalSettled.toLocaleString("en-IN")}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">{t("Payment Mode")}</span>
-                    <span className="font-bold text-slate-800 inline-block mt-0.5">
-                      {t(v.mode)}
-                    </span>
-                    {v.mode.toLowerCase() !== "cash" &&
-                      v.ref_no &&
-                      v.ref_no !== "-" &&
-                      v.ref_no !== "N/A" &&
-                      !v.ref_no.toLowerCase().startsWith("cash") && (
-                        <div className="text-[10px] font-mono text-slate-400 truncate">{v.ref_no}</div>
-                    )}
-                  </div>
-                </div>
 
-                {/* Card Actions */}
-                <div className="flex items-center justify-between pt-1 gap-2" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewVoucher(v)}
-                    className="flex-1 py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-blue-600" />
-                    <span>View Slip</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteVoucher(v.id)}
-                    className="p-2 text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer"
-                    title="Delete Voucher"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {/* Card Actions */}
+                  <div className="flex items-center justify-between pt-1 gap-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewVoucher(v)}
+                      className="flex-1 py-1.5 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-slate-500" />
+                      <span>View Slip</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteVoucher(v.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"
+                      title="Delete Voucher"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
-        {/* DESKTOP TABLE VIEW (>= md) */}
+        {/* DESKTOP TABLE VIEW (>= md) - Clean Simple Text, No Heavy Boxes */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse min-w-[850px]">
-            <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+          <table className="w-full text-left text-xs border-collapse min-w-[1020px]">
+            <thead className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
               <tr>
-                <th className="py-3.5 px-5">{t("Date")}</th>
-                <th className="py-3.5 px-5">{t("Voucher No")}</th>
-                <th className="py-3.5 px-5">{t("Type")}</th>
-                <th className="py-3.5 px-5">{t("Party / Vendor")}</th>
-                <th className="py-3.5 px-5">{t("Linked Source")}</th>
-                <th className="py-3.5 px-5">{t("Payment Mode")}</th>
-                <th className="py-3.5 px-5 text-right">{t("Amount (₹)")}</th>
-                <th className="py-3.5 px-5 text-center">{t("Action")}</th>
+                <th className="py-3 px-3.5">{t("Date")}</th>
+                <th className="py-3 px-3.5">{t("Voucher No")}</th>
+                <th className="py-3 px-3">{t("Type")}</th>
+                <th className="py-3 px-4">{t("Party Name")}</th>
+                <th className="py-3 px-3.5">{t("Person / Payer")}</th>
+                <th className="py-3 px-3.5">{t("Design No (DN)")}</th>
+                <th className="py-3 px-3.5">{t("Mode")}</th>
+                <th className="py-3 px-3.5 text-right">{t("Amount (₹)")}</th>
+                <th className="py-3 px-3.5 text-right">{t("Discount (₹)")}</th>
+                <th className="py-3 px-3.5 text-right">{t("Total Settled (₹)")}</th>
+                <th className="py-3 px-3 text-center">{t("Action")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+            <tbody className="divide-y divide-slate-100 text-slate-700">
               {filteredVouchers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
+                  <td colSpan={11} className="py-8 text-center text-slate-400 font-medium">
                     No payment vouchers found matching your filter criteria.
                   </td>
                 </tr>
               ) : (
-                filteredVouchers.map((v) => (
-                  <tr key={v.id} className="hover:bg-blue-50/50 transition-colors animate-in fade-in duration-150">
-                    <td className="py-4 px-5 text-slate-600 font-bold whitespace-nowrap">
-                      {v.date}
-                    </td>
-                    <td className="py-4 px-5 font-extrabold text-slate-900 whitespace-nowrap">
-                      {v.voucher_no}
-                    </td>
-                    <td className="py-4 px-5 whitespace-nowrap">
-                      {v.type === "Receipt In" ? (
-                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 inline-block">
-                          {t("Receipt In")}
+                filteredVouchers.map((v) => {
+                  const totalSettled = (v.amount || 0) + (v.kasar_amount || 0);
+                  return (
+                    <tr key={v.id} className="hover:bg-slate-50/70 transition-colors animate-in fade-in duration-150">
+                      {/* 1. DATE (SIMPLE TEXT) */}
+                      <td className="py-3 px-3.5 text-slate-600 font-medium text-xs whitespace-nowrap">
+                        {v.date}
+                      </td>
+
+                      {/* 2. VOUCHER NO (SHORT, SIMPLE MONOSPACE TEXT - NO BOX) */}
+                      <td className="py-3 px-3.5 whitespace-nowrap">
+                        <span className="font-mono text-xs font-bold text-slate-800">
+                          {formatShortVoucherNo(v.voucher_no)}
                         </span>
-                      ) : (
-                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 inline-block">
-                          {t("Payment Out")}
+                      </td>
+
+                      {/* 3. TYPE (CLEAN TEXT + DOT - NO BOX) */}
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        {v.type === "Receipt In" ? (
+                          <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Payment In
+                          </span>
+                        ) : (
+                          <span className="text-xs font-bold text-rose-600 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                            Payment Out
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 4. PARTY NAME (REGISTERED PARTY) */}
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-slate-900 text-xs truncate max-w-[170px]" title={v.party_name}>
+                          {v.party_name}
+                        </div>
+                        {v.notes && (
+                          <div className="text-[11px] text-slate-400 truncate max-w-[170px] font-normal" title={v.notes}>
+                            {v.notes}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* 5. PERSON / PAYER (SIMPLE CLEAN TEXT - NO BOX) */}
+                      <td className="py-3 px-3.5 whitespace-nowrap">
+                        <span className="text-xs font-medium text-slate-800">
+                          {v.payer_person || "-"}
                         </span>
-                      )}
-                    </td>
-                    <td className="py-4 px-5">
-                      <div className="font-extrabold text-slate-900">{t(v.party_name)}</div>
-                      {v.notes && <div className="text-[10px] text-slate-400 truncate max-w-xs font-medium">{t(v.notes)}</div>}
-                    </td>
-                    <td className="py-4 px-5 whitespace-nowrap">
-                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                        {t(v.linked_source)}
-                      </span>
-                    </td>
-                    <td className="py-4 px-5">
-                      <div className="text-slate-800 font-bold">{t(v.mode)}</div>
-                      {v.mode.toLowerCase() !== "cash" &&
-                       v.ref_no &&
-                       v.ref_no !== "-" &&
-                       v.ref_no !== "N/A" &&
-                       !v.ref_no.toLowerCase().startsWith("cash") && (
-                        <div className="text-[10px] font-mono text-slate-400">{v.ref_no}</div>
-                      )}
-                    </td>
-                    <td className="py-4 px-5 text-right font-black text-sm whitespace-nowrap">
-                      <span className={v.type === "Receipt In" ? "text-blue-600" : "text-rose-700"}>
-                        {v.type === "Receipt In" ? "+" : "-"}₹{v.amount.toLocaleString("en-IN")}
-                      </span>
-                    </td>
-                    <td className="py-4 px-5 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setPreviewVoucher(v)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                          title="View Voucher Slip"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteVoucher(v.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                          title="Delete Voucher"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+
+                      {/* 6. DESIGN NO (DN) (SIMPLE CLEAN TEXT - NO BOX) */}
+                      <td className="py-3 px-3.5 whitespace-nowrap">
+                        <span className="font-mono text-xs font-medium text-slate-700">
+                          {v.design_no || v.linked_challan || "-"}
+                        </span>
+                      </td>
+
+                      {/* 7. PAYMENT MODE (SIMPLE CLEAN TEXT - NO BOX) */}
+                      <td className="py-3 px-3.5 whitespace-nowrap">
+                        {renderPaymentModeSimple(v.mode, v.ref_no)}
+                      </td>
+
+                      {/* 8. AMOUNT (₹) */}
+                      <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                        <span className={`font-bold text-xs ${v.type === "Receipt In" ? "text-emerald-700" : "text-rose-700"}`}>
+                          {v.type === "Receipt In" ? "+" : "-"}₹{v.amount.toLocaleString("en-IN")}
+                        </span>
+                      </td>
+
+                      {/* 9. DISCOUNT / KASAR (₹) (SIMPLE CLEAN TEXT - NO BOX) */}
+                      <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                        {Boolean(v.kasar_amount && v.kasar_amount > 0) ? (
+                          <span className="text-xs font-semibold text-amber-600">
+                            ₹{Number(v.kasar_amount).toLocaleString("en-IN")}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 font-medium">-</span>
+                        )}
+                      </td>
+
+                      {/* 10. TOTAL SETTLED (₹) (NEW DEDICATED COLUMN) */}
+                      <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                        <span className="text-xs font-bold text-slate-900">
+                          ₹{totalSettled.toLocaleString("en-IN")}
+                        </span>
+                      </td>
+
+                      {/* 11. ACTION */}
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewVoucher(v)}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                            title="View Voucher Slip"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteVoucher(v.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="Delete Voucher"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -786,7 +932,7 @@ export default function PaymentsAndVouchersPage() {
                 {/* VOUCHER NO */}
                 <div className="p-3 flex items-center justify-between">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Voucher No</span>
-                  <span className="font-extrabold font-mono text-slate-900">{previewVoucher.voucher_no}</span>
+                  <span className="font-extrabold font-mono text-slate-900">{formatShortVoucherNo(previewVoucher.voucher_no)}</span>
                 </div>
 
                 {/* DATE */}
@@ -797,33 +943,53 @@ export default function PaymentsAndVouchersPage() {
 
                 {/* PARTY / VENDOR */}
                 <div className="p-3 flex items-center justify-between gap-4">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Party Name</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">
+                    {previewVoucher.type === "Receipt In" ? "Party Name" : "Supplier / Vendor"}
+                  </span>
                   <span className="font-extrabold text-slate-900 text-right">{previewVoucher.party_name}</span>
                 </div>
 
-                {/* LINKED SOURCE */}
-                <div className="p-3 flex items-center justify-between gap-4">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Linked Source</span>
-                  <span className="font-extrabold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg text-[11px] border border-slate-200">
-                    {previewVoucher.linked_source}
-                  </span>
-                </div>
+                {/* PAYER / PERSON */}
+                {previewVoucher.payer_person && (
+                  <div className="p-3 flex items-center justify-between gap-4 bg-blue-50/50">
+                    <span className="text-[10px] font-bold text-blue-700 uppercase shrink-0">Payer / Person</span>
+                    <span className="font-extrabold text-blue-950 text-right">{previewVoucher.payer_person}</span>
+                  </div>
+                )}
+
+                {/* DESIGN NO (DN) */}
+                {(previewVoucher.design_no || previewVoucher.linked_challan) && (
+                  <div className="p-3 flex items-center justify-between gap-4">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Design No (DN)</span>
+                    <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg text-[11px] border border-indigo-200">
+                      {previewVoucher.design_no || previewVoucher.linked_challan}
+                    </span>
+                  </div>
+                )}
 
                 {/* PAYMENT MODE */}
                 <div className="p-3 flex items-center justify-between gap-4">
                   <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Payment Mode</span>
-                  <span className="font-extrabold text-slate-900 text-right">{previewVoucher.mode}</span>
+                  <span className="font-extrabold text-slate-900 text-right">{previewVoucher.mode || "Cash"}</span>
                 </div>
 
                 {/* REF / UTR NO (Shown only if not Cash and present) */}
-                {previewVoucher.mode.toLowerCase() !== "cash" &&
+                {(previewVoucher.mode || "").toLowerCase() !== "cash" &&
                  previewVoucher.ref_no &&
                  previewVoucher.ref_no !== "-" &&
                  previewVoucher.ref_no !== "N/A" &&
-                 !previewVoucher.ref_no.toLowerCase().startsWith("cash") && (
+                 !(previewVoucher.ref_no || "").toLowerCase().startsWith("cash") && (
                   <div className="p-3 flex items-center justify-between gap-4">
                     <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Ref / Txn No</span>
                     <span className="font-mono font-bold text-slate-700 text-right">{previewVoucher.ref_no}</span>
+                  </div>
+                )}
+
+                {/* KASAR / DISCOUNT (IF ANY) */}
+                {Boolean(previewVoucher.kasar_amount && previewVoucher.kasar_amount > 0) && (
+                  <div className="p-3 flex items-center justify-between gap-4 bg-amber-50/60">
+                    <span className="text-[10px] font-bold text-amber-800 uppercase shrink-0">Kasar / Discount</span>
+                    <span className="font-mono font-extrabold text-amber-900 text-right">₹{previewVoucher.kasar_amount?.toLocaleString("en-IN")}</span>
                   </div>
                 )}
 
@@ -838,9 +1004,16 @@ export default function PaymentsAndVouchersPage() {
 
               {/* Total Amount Box - Simple & Clean */}
               <div className="p-3.5 bg-slate-100/80 border border-slate-200/90 rounded-xl flex items-center justify-between shadow-2xs">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
-                  {previewVoucher.type === "Receipt In" ? "Total Amount Received" : "Total Amount Paid"}
-                </span>
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 block">
+                    {previewVoucher.type === "Receipt In" ? "Total Amount Received" : "Total Amount Paid"}
+                  </span>
+                  {Boolean(previewVoucher.kasar_amount && previewVoucher.kasar_amount > 0) && (
+                    <span className="text-[10px] text-emerald-700 font-bold">
+                      Settled: ₹{(previewVoucher.amount + (previewVoucher.kasar_amount || 0)).toLocaleString("en-IN")} (With Kasar)
+                    </span>
+                  )}
+                </div>
                 <span className={`text-xl font-black tracking-tight ${
                   previewVoucher.type === "Receipt In" ? "text-blue-700" : "text-slate-900"
                 }`}>

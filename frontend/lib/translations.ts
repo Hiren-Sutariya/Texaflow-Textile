@@ -9,6 +9,9 @@ export const translations: Record<string, { en: string; gu: string }> = {
   // Sidebar Menu Items
   "Vendors": { en: "Vendors", gu: "વેન્ડર્સ (વેપારીઓ)" },
   "Workers & Karigars": { en: "Workers & Karigars", gu: "કારીગરો અને વર્કર્સ" },
+  "Categories Master": { en: "Categories Master", gu: "કેટેગરી માસ્ટર" },
+  "Categories": { en: "Categories", gu: "કેટેગરી માસ્ટર" },
+  "Category Master": { en: "Category Master", gu: "કેટેગરી માસ્ટર" },
   "Design Library": { en: "Design Library", gu: "ડિઝાઇન લાઇબ્રેરી" },
   "Parties": { en: "Parties", gu: "પાર્ટીઓ (ગ્રાહકો)" },
   "Karigar Issue": { en: "Karigar Issue", gu: "કારીગર જોબ વર્ક" },

@@ -999,7 +999,7 @@ export default function SettingsPage() {
           setSaveSuccessMsg(
             isChangingPassword
               ? "Login User ID, Name & Password updated successfully!"
-              : "Login User ID & Profile updated successfully! હવેથી આ નવા User ID થી Login થશે."
+              : "Login User ID & Profile updated successfully! You can now log in with this new User ID."
           );
           setAuthData((prev) => ({
             ...prev,
@@ -1876,7 +1876,7 @@ export default function SettingsPage() {
               <div className="pt-3 border-t border-slate-100 space-y-3">
                 <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80">
                   <p className="text-[11px] font-bold text-slate-500">
-                    🔑 Password Change (Optional) — જો ફક્ત User ID કે Name બદલવું હોય તો પાસવર્ડ ખાલી રાખી શકો છો.
+                    🔑 Password Change (Optional) — Leave password fields blank if you only want to update User ID or Name.
                   </p>
                 </div>
 

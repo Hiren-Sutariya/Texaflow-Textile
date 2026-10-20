@@ -24,12 +24,12 @@ import {
 
 const destinationModules = [
   {
-    title: "Party Master",
-    description: "Register Vepari clients, vendors, brokers & party ledgers",
-    href: "/parties",
+    title: "Parties & Vendors",
+    description: "Register Vepari clients, suppliers, dyeing mills, job workers & brokers",
+    href: "/vendors",
     icon: Users,
     color: "bg-cyan-50 text-cyan-600 border-cyan-100",
-    isUpcoming: true
+    isUpcoming: false
   },
   {
     title: "Design Library",

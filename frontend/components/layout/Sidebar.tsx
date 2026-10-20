@@ -33,7 +33,8 @@ import {
   TrendingUp,
   Coins,
   LogOut,
-  BookOpen
+  BookOpen,
+  Tags
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -61,10 +62,10 @@ const menuGroups: MenuGroup[] = [
   {
     groupTitle: "Masters",
     items: [
-      { name: "Vendors", href: "/vendors", icon: Building2 },
+      { name: "Parties & Vendors", href: "/vendors", icon: Users },
       { name: "Workers & Karigars", href: "/employees", icon: UserCheck },
+      { name: "Categories Master", href: "/categories", icon: Tags },
       { name: "Design Library", href: "/designs", icon: Palette, isUpcoming: true },
-      { name: "Parties", href: "/parties", icon: Users, isUpcoming: true },
       { name: "Karigar Issue", href: "/job-works", icon: FileText, isUpcoming: true },
     ]
   },
@@ -93,7 +94,7 @@ const quickCreateOptions = [
   { title: "Company Expense", href: "/expenses/new", icon: Receipt, color: "bg-rose-50 text-rose-600 border-rose-100" },
   { title: "Payment Voucher", href: "/payments/new", icon: CreditCard, color: "bg-indigo-50 text-indigo-600 border-indigo-100" },
   { title: "Worker Payout", href: "/worker-payout", icon: Wallet, color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-  { title: "Party / Client", href: "/parties", icon: Users, color: "bg-purple-50 text-purple-600 border-purple-100" }
+  { title: "Party / Vendor", href: "/vendors", icon: Users, color: "bg-purple-50 text-purple-600 border-purple-100" }
 ];
 
 import { setTenantCookie } from "@/lib/cookieStorage";

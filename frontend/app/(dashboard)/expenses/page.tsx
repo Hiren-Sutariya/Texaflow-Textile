@@ -1036,7 +1036,7 @@ export default function ExpensesPage() {
                   {/* 2. EXPENSE / BILL */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     <div className="inline-flex items-center gap-1.5">
-                      <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                      <span className="font-mono text-xs font-bold text-slate-800">
                         {item.expense_no || "-"}
                       </span>
                       {item.bill_image && (
@@ -1055,7 +1055,7 @@ export default function ExpensesPage() {
 
                   {/* 3. CATEGORY */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
-                    <span className="px-2.5 py-1 bg-blue-50/70 text-blue-900 border border-blue-200/80 rounded-lg text-[11px] font-bold inline-block">
+                    <span className="text-xs font-semibold text-slate-800">
                       {t(item.category)}
                     </span>
                   </td>
@@ -1072,15 +1072,17 @@ export default function ExpensesPage() {
 
                   {/* 6. STATUS */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
-                    <span
-                      className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-extrabold border ${
-                        item.payment_status === "Paid"
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : "bg-amber-50 text-amber-700 border-amber-200"
-                      }`}
-                    >
-                      {item.payment_status === "Paid" ? t("Paid") : t("Pending")}
-                    </span>
+                    {item.payment_status === "Paid" ? (
+                      <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span>{t("Paid")}</span>
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                        <span>{t("Pending")}</span>
+                      </span>
+                    )}
                   </td>
 
                   {/* 7. REMARKS / NOTES */}

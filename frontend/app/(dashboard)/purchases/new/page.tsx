@@ -27,7 +27,9 @@ import {
   Building2,
   Search,
   X,
-  ShoppingCart
+  ShoppingCart,
+  Trash2,
+  Settings
 } from "lucide-react";
 
 const getTodayStr = () => {
@@ -38,90 +40,7 @@ const getTodayStr = () => {
   return `${day}-${month}-${year}`;
 };
 
-interface CustomSelectOption {
-  value: string;
-  label: string;
-}
 
-interface CustomSelectProps {
-  value: string;
-  onChange: (val: string) => void;
-  options: CustomSelectOption[];
-  placeholder?: string;
-  className?: string;
-}
-
-function CustomSelect({
-  value,
-  onChange,
-  options,
-  placeholder = "Select an option",
-  className = ""
-}: CustomSelectProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const selectedOption = options.find((opt) => opt.value === value);
-
-  return (
-    <div ref={containerRef} className={`relative inline-block w-full text-xs select-none ${className}`}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${
-          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
-        }`}
-      >
-        <span className={`truncate font-bold ${selectedOption ? "text-slate-900" : "text-slate-400"}`}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </span>
-        <ChevronDown
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${
-            isOpen ? "rotate-180 text-blue-600" : ""
-          }`}
-        />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-50 left-0 min-w-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
-          <div className="max-h-60 overflow-y-auto no-scrollbar space-y-1">
-            {options.map((opt) => {
-              const isSelected = opt.value === value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => {
-                    onChange(opt.value);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
-                    isSelected
-                      ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
-                      : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
-                  }`}
-                >
-                  <span className="truncate">{opt.label}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 interface CustomDatePickerProps {
   value: string;
@@ -324,14 +243,28 @@ function NewPurchaseContent() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [billDate, setBillDate] = useState(() => getTodayStr());
-  const [purchaseNo, setPurchaseNo] = useState("PB-001");
+  const [purchaseNo, setPurchaseNo] = useState("");
   const [vendorName, setVendorName] = useState("");
-  const [category, setCategory] = useState("Raw Material & Fabric");
+  const DEFAULT_CATEGORIES = [
+    "Raw Material & Fabric",
+    "Yarn & Threads",
+    "Zari & Metallic Trims",
+    "Lace, Borders & Latkan",
+    "Choli & Garment Trims",
+    "Packaging Materials"
+  ];
+
+  const [category, setCategory] = useState("");
+  const [categoriesList, setCategoriesList] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+
   const [itemsDescription, setItemsDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [paymentStatus, setPaymentStatus] = useState<"Paid" | "Pending">("Pending");
-  const [paymentTerms, setPaymentTerms] = useState("Net 45");
-  const [creditDays, setCreditDays] = useState(45);
+  const [paymentStatus, setPaymentStatus] = useState<"Paid" | "Pending">("Paid");
+  const [paymentTerms, setPaymentTerms] = useState("Cash / Immediate");
+  const [creditDays, setCreditDays] = useState(0);
   const [dueDate, setDueDate] = useState("");
   const [linkedOrder, setLinkedOrder] = useState("");
   const [billImage, setBillImage] = useState("");
@@ -343,16 +276,88 @@ function NewPurchaseContent() {
   const [isVendorDropdownOpen, setIsVendorDropdownOpen] = useState(false);
   const vendorDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target as Node)) {
         setIsVendorDropdownOpen(false);
       }
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Function to refresh categories from tenant storage
+  const loadStoredCategories = () => {
+    const currentCid = getStoredCompanyId() || "comp-001";
+    try {
+      const stored = getTenantItem<string[]>("texaflow_material_categories", currentCid === "comp-001" ? "om_sai_material_categories" : undefined);
+      if (Array.isArray(stored) && stored.length > 0) {
+        setCategoriesList(Array.from(new Set([...DEFAULT_CATEGORIES, ...stored])));
+      } else {
+        setCategoriesList(DEFAULT_CATEGORIES);
+      }
+    } catch {}
+  };
+
+  // Load custom categories from tenant storage on mount and when event fires
+  useEffect(() => {
+    loadStoredCategories();
+    const handleCategoryUpdate = () => loadStoredCategories();
+    window.addEventListener("texaflow_material_categories_changed", handleCategoryUpdate);
+    window.addEventListener("storage", handleCategoryUpdate);
+    return () => {
+      window.removeEventListener("texaflow_material_categories_changed", handleCategoryUpdate);
+      window.removeEventListener("storage", handleCategoryUpdate);
+    };
+  }, []);
+
+  // Filter categories by search
+  const filteredCategories = useMemo(() => {
+    const q = (categorySearch || "").toLowerCase().trim();
+    if (!q) return categoriesList;
+    const matches = categoriesList.filter((c) => c.toLowerCase().includes(q));
+    if (matches.length === 1 && matches[0].toLowerCase() === q && categoriesList.length > 1) {
+      return categoriesList;
+    }
+    return matches;
+  }, [categoriesList, categorySearch]);
+
+  const handleCategorySelect = (cName: string) => {
+    setCategory(cName);
+    setCategorySearch(cName);
+    setIsCategoryDropdownOpen(false);
+  };
+
+  const handleAddNewCategory = (newCatName: string) => {
+    const trimmed = newCatName.trim();
+    if (!trimmed) return;
+    const currentCid = getStoredCompanyId() || "comp-001";
+    const updated = Array.from(new Set([trimmed, ...categoriesList]));
+    setCategoriesList(updated);
+    setTenantItem("texaflow_material_categories", updated, currentCid === "comp-001" ? "om_sai_material_categories" : undefined);
+    window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
+    setCategory(trimmed);
+    setCategorySearch(trimmed);
+    setIsCategoryDropdownOpen(false);
+  };
+
+  const handleDeleteCategory = (catToDelete: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to remove "${catToDelete}"?`)) return;
+    const currentCid = getStoredCompanyId() || "comp-001";
+    const updated = categoriesList.filter((c) => c !== catToDelete);
+    setCategoriesList(updated);
+    setTenantItem("texaflow_material_categories", updated, currentCid === "comp-001" ? "om_sai_material_categories" : undefined);
+    window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
+    if (category === catToDelete) {
+      setCategory("");
+      setCategorySearch("");
+    }
+  };
 
   // Filter vendors based on typed vendor name
   const filteredVendors = useMemo(() => {
@@ -408,26 +413,7 @@ function NewPurchaseContent() {
     loadVendors();
   }, []);
 
-  // Compute next sequential bill number
-  useEffect(() => {
-    if (!isEditMode) {
-      const currentCid = getStoredCompanyId() || "comp-001";
-      try {
-        const saved = getTenantItem<any[]>("texaflow_purchases", currentCid === "comp-001" ? "om_sai_purchases" : undefined) || [];
-        let maxSeq = 0;
-        saved.forEach((item: any) => {
-          if (item.purchase_no) {
-            const m = item.purchase_no.match(/PB-(\d+)/i);
-            if (m) {
-              const num = parseInt(m[1], 10);
-              if (num > maxSeq) maxSeq = num;
-            }
-          }
-        });
-        setPurchaseNo(`PB-${String(maxSeq + 1).padStart(3, "0")}`);
-      } catch {}
-    }
-  }, [isEditMode]);
+
 
   // Load record for edit mode
   useEffect(() => {
@@ -440,11 +426,12 @@ function NewPurchaseContent() {
         setBillDate(matched.date || getTodayStr());
         setVendorName(matched.vendor_name || "");
         setCategory(matched.category || "Raw Material & Fabric");
+        setCategorySearch(matched.category || "Raw Material & Fabric");
         setItemsDescription(matched.items_description || "");
         setAmount(String(matched.amount || ""));
-        setPaymentStatus(matched.payment_status === "Paid" ? "Paid" : "Pending");
-        setPaymentTerms(matched.payment_terms || "Net 45");
-        setCreditDays(matched.credit_days !== undefined ? matched.credit_days : 45);
+        setPaymentStatus(matched.payment_status === "Pending" ? "Pending" : "Paid");
+        setPaymentTerms(matched.payment_terms || (matched.payment_status === "Pending" ? "Net 45" : "Cash / Immediate"));
+        setCreditDays(matched.credit_days !== undefined ? matched.credit_days : (matched.payment_status === "Pending" ? 45 : 0));
         setDueDate(matched.due_date || "");
         setLinkedOrder(matched.linked_order || "");
         setBillImage(matched.bill_image || "");
@@ -479,6 +466,11 @@ function NewPurchaseContent() {
     e.preventDefault();
     if (isSaving) return;
 
+    if (!purchaseNo.trim()) {
+      alert(t("Please enter Purchase Bill No."));
+      return;
+    }
+
     if (!vendorName.trim()) {
       alert(t("Please select or enter supplier/vendor name."));
       return;
@@ -496,7 +488,7 @@ function NewPurchaseContent() {
     const purchasePayload = {
       id: recordId,
       company_id: currentCid,
-      purchase_no: purchaseNo,
+      purchase_no: purchaseNo.trim(),
       date: billDate,
       vendor_name: vendorName.trim(),
       category,
@@ -504,9 +496,9 @@ function NewPurchaseContent() {
       amount: numAmount,
       payment_status: paymentStatus,
       paid_via: paymentStatus === "Paid" ? "Cash / Immediate" : `Credit (${creditDays} days)`,
-      payment_terms: paymentTerms,
-      credit_days: creditDays,
-      due_date: dueDate || calculateDueDate(billDate, creditDays),
+      payment_terms: paymentStatus === "Paid" ? "Cash / Immediate" : paymentTerms,
+      credit_days: paymentStatus === "Paid" ? 0 : creditDays,
+      due_date: paymentStatus === "Paid" ? billDate : calculateDueDate(billDate, creditDays),
       linked_order: linkedOrder.trim(),
       bill_image: billImage,
       notes: notes.trim()
@@ -540,14 +532,7 @@ function NewPurchaseContent() {
     router.push("/purchases");
   };
 
-  const categories = [
-    "Raw Material & Fabric",
-    "Yarn & Threads",
-    "Zari & Metallic Trims",
-    "Lace, Borders & Latkan",
-    "Choli & Garment Trims",
-    "Packaging Materials"
-  ];
+
 
   return (
     <div className="w-full space-y-3.5 select-none pb-20 animate-in fade-in duration-150 text-xs font-sans">
@@ -571,13 +556,13 @@ function NewPurchaseContent() {
           
           {/* ROW 1: PURCHASE BILL NO * */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-extrabold text-rose-600">{t("Purchase Bill No / ચલણ નં.*")}</label>
+            <label className="font-extrabold text-rose-600">{t("Purchase Bill No*")}</label>
             <div className="max-w-xl w-full">
               <input
                 type="text"
                 value={purchaseNo}
                 onChange={(e) => setPurchaseNo(e.target.value)}
-                placeholder="e.g. PB-001 or Mill Invoice #"
+                placeholder="e.g. PB-001 or Mill Challan No"
                 className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
                 required
               />
@@ -670,30 +655,91 @@ function NewPurchaseContent() {
             </div>
           </div>
 
-          {/* ROW 4: MATERIAL CATEGORY * */}
+          {/* ROW 4: MATERIAL CATEGORY (SEARCHABLE + ADD NEW) */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-bold text-slate-700">{t("Material Category (પ્રકાર)*")}</label>
+            <label className="font-bold text-slate-700">{t("Material Category*")}</label>
             <div className="max-w-xl w-full">
-              <CustomSelect
-                value={category}
-                onChange={(val) => setCategory(val)}
-                options={categories.map((c) => ({
-                  value: c,
-                  label: t(c)
-                }))}
-              />
+              <div className="relative" ref={categoryDropdownRef}>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={categorySearch}
+                    onChange={(e) => {
+                      setCategorySearch(e.target.value);
+                      setCategory(e.target.value);
+                      setIsCategoryDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsCategoryDropdownOpen(true)}
+                    placeholder={t("Type to search or enter new category...")}
+                    className="w-full h-9 pl-9 pr-14 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs text-xs"
+                    required
+                  />
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {categorySearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategorySearch("");
+                          setCategory("");
+                          setIsCategoryDropdownOpen(true);
+                        }}
+                        className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                        title="Clear"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                      className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    >
+                      <ChevronDown className={`w-4 h-4 transition-transform ${isCategoryDropdownOpen ? "rotate-180" : ""}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {isCategoryDropdownOpen && (
+                  <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-1.5 max-h-60 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                    {filteredCategories.length === 0 ? (
+                      <div className="p-3 text-center text-slate-400 text-xs font-medium">
+                        {t("No categories found.")}
+                      </div>
+                    ) : (
+                      filteredCategories.map((c) => {
+                        const isSelected = category.toLowerCase().trim() === c.toLowerCase().trim();
+
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => handleCategorySelect(c)}
+                            className={`w-full text-left px-3 py-2 hover:bg-blue-50/70 rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                              isSelected ? "bg-blue-50 text-blue-900 font-extrabold" : ""
+                            }`}
+                          >
+                            <span className="truncate">{c}</span>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           {/* ROW 5: ITEMS / DESCRIPTION */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-bold text-slate-700">{t("Items / Description (વિગત)")}</label>
+            <label className="font-bold text-slate-700">{t("Items / Description")}</label>
             <div className="max-w-xl w-full">
               <input
                 type="text"
                 value={itemsDescription}
                 onChange={(e) => setItemsDescription(e.target.value)}
-                placeholder="દા.ત. 370 - 14 box, 351 - 17 box = 40 box"
+                placeholder="e.g. 370 - 14 box, 351 - 17 box = 40 box"
                 className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
               />
             </div>
@@ -719,23 +765,9 @@ function NewPurchaseContent() {
 
           {/* ROW 7: PAYMENT STATUS * */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-bold text-slate-700">{t("Payment Status (સ્થિતિ)*")}</label>
+            <label className="font-bold text-slate-700">{t("Payment Status*")}</label>
             <div className="flex items-center gap-2 max-w-xl w-full">
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentStatus("Pending");
-                  if (creditDays === 0) setCreditDays(45);
-                }}
-                className={`flex-1 h-9 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
-                  paymentStatus === "Pending"
-                    ? "bg-amber-600 text-white border-amber-600 shadow-2xs"
-                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>{t("Pending / શાખ (ઉધાર)")}</span>
-              </button>
+              {/* 1. PAID FIRST */}
               <button
                 type="button"
                 onClick={() => {
@@ -750,16 +782,34 @@ function NewPurchaseContent() {
                 }`}
               >
                 <Check className="w-3.5 h-3.5" />
-                <span>{t("Paid (રોકડા / ચૂકતે)")}</span>
+                <span>{t("Paid")}</span>
+              </button>
+
+              {/* 2. PENDING / CREDIT SECOND */}
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentStatus("Pending");
+                  if (creditDays === 0) setCreditDays(45);
+                  setPaymentTerms("Net 45");
+                }}
+                className={`flex-1 h-9 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+                  paymentStatus === "Pending"
+                    ? "bg-amber-600 text-white border-amber-600 shadow-2xs"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>{t("Pending / Credit")}</span>
               </button>
             </div>
           </div>
 
-          {/* ROW 8: CREDIT TERMS (NET DAYS) */}
+          {/* ROW 8: CREDIT TERMS (NET DAYS) - SHOWN ONLY FOR UDHAR */}
           {paymentStatus === "Pending" && (
             <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
               <div className="flex flex-col">
-                <label className="font-bold text-slate-700">{t("Credit Terms (મુદત)*")}</label>
+                <label className="font-bold text-slate-700">{t("Credit Terms*")}</label>
                 <span className="text-[10px] text-blue-600 font-extrabold">{creditDays} {t("Days Credit")}</span>
               </div>
               <div className="flex items-center gap-1.5 flex-wrap max-w-xl w-full">
@@ -779,7 +829,7 @@ function NewPurchaseContent() {
                           : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
                       }`}
                     >
-                      {days} {t("દિવસ")}
+                      {days} {t("Days")}
                     </button>
                   );
                 })}
@@ -797,63 +847,11 @@ function NewPurchaseContent() {
                     }}
                     className="w-12 h-5 text-xs font-mono font-bold text-slate-900 focus:outline-none"
                   />
-                  <span className="text-[11px] text-slate-400">{t("દિ")}</span>
+                  <span className="text-[11px] text-slate-400">{t("Days")}</span>
                 </div>
               </div>
             </div>
           )}
-
-          {/* ROW 9: DUE DATE */}
-          {paymentStatus === "Pending" && (
-            <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-              <label className="font-bold text-slate-700">{t("Due Date (છેલ્લી તારીખ)")}</label>
-              <div className="flex items-center gap-3 max-w-xl w-full">
-                <div className="flex-1">
-                  <CustomDatePicker
-                    value={dueDate || calculateDueDate(billDate, creditDays)}
-                    onChange={(newDate) => {
-                      setDueDate(newDate);
-                      const billD = parseAnyDate(billDate);
-                      const dueD = parseAnyDate(newDate);
-                      if (billD && dueD) {
-                        const diff = Math.round((dueD.getTime() - billD.getTime()) / (1000 * 60 * 60 * 24));
-                        if (diff > 0) {
-                          setCreditDays(diff);
-                          setPaymentTerms(`Net ${diff}`);
-                        }
-                      }
-                    }}
-                    placeholder="DD-MM-YYYY"
-                  />
-                </div>
-                {(() => {
-                  const info = getDueStatus(dueDate || calculateDueDate(billDate, creditDays), false);
-                  return (
-                    <span className={`px-2.5 py-1.5 rounded-xl text-[10px] font-black border shrink-0 ${info.badgeClass}`}>
-                      {info.labelGu}
-                    </span>
-                  );
-                })()}
-              </div>
-            </div>
-          )}
-
-          {/* ROW 10: LINKED ORDER / CHOLI JOB WORK */}
-          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <div className="flex flex-col">
-              <label className="font-bold text-slate-700">{t("Linked Order")}</label>
-              <span className="text-[10px] text-slate-400 font-normal">Choli / Merchant (ઓપ્શનલ)</span>
-            </div>
-            <div className="max-w-xl w-full">
-              <input
-                type="text"
-                placeholder={t("e.g. Choli Order #2486 - Hari Har Vepari")}
-                value={linkedOrder}
-                onChange={(e) => setLinkedOrder(e.target.value)}
-                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
-              />
-            </div>
-          </div>
 
           {/* ROW 11: REMARKS / NOTES */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs pt-1">

@@ -51,12 +51,17 @@ export interface PaymentVoucherItem {
   voucher_no: string;
   date: string;
   party_name: string;
+  payer_person?: string;
+  design_no?: string;
+  linked_challan?: string;
+  kasar_amount?: number;
   type: "Payment Out" | "Receipt In";
   linked_source?: string;
   amount: number;
   mode: string;
   ref_no: string;
   notes: string;
+  company_id?: string;
 }
 
 export interface VendorMaster {
@@ -78,6 +83,10 @@ export interface LedgerEntry {
   type: "BILL" | "PAYMENT";
   refNo: string;
   partyName: string;
+  payerPerson?: string;
+  designNo?: string;
+  paidAmount?: number;
+  kasarAmount?: number;
   description: string;
   modeOrTerms?: string;
   openingBalance?: number;
@@ -88,6 +97,11 @@ export interface LedgerEntry {
   dueDate?: string;
   isOverdue?: boolean;
   notes?: string;
+}
+
+export function formatShortRefNo(ref: string) {
+  if (!ref) return "-";
+  return ref.replace(/-(?:20\d{2})-/, "-");
 }
 
 const SEED_PURCHASES: PurchaseItem[] = [];
@@ -475,8 +489,8 @@ export default function LedgerPage() {
         type: "BILL",
         refNo: p.purchase_no,
         partyName: p.vendor_name || "Unknown Supplier",
-        description: p.items_description || p.category || "કાપડ / મટિરિયલ ખરીદી બિલ",
-        modeOrTerms: p.payment_terms || p.paid_via || "શાખ મુદત",
+        description: p.items_description || p.category || (isGujarati ? "કાપડ / મટિરિયલ ખરીદી બિલ" : "Fabric / Material Inward Bill"),
+        modeOrTerms: p.payment_terms || p.paid_via || (isGujarati ? "શાખ મુદત" : "Credit Terms"),
         debit: Number(p.amount) || 0,
         credit: 0,
         status: p.payment_status,
@@ -488,6 +502,16 @@ export default function LedgerPage() {
 
     // 2. Payment Vouchers (Credit - Cr)
     vouchers.forEach((v) => {
+      const kasar = Number(v.kasar_amount || 0);
+      const paid = Number(v.amount || 0);
+      const totalCredit = paid + kasar;
+      const payerTag = v.payer_person ? ` [Payer: ${v.payer_person}]` : "";
+      const kasarTag = kasar > 0 ? ` (+ ₹${kasar} Kasar)` : "";
+
+      const voucherDesc = v.type === "Receipt In"
+        ? (v.notes ? `${v.notes}${payerTag}${kasarTag}` : `Payment Received${payerTag}${kasarTag}`)
+        : (v.notes ? `${v.notes}${kasarTag}` : (v.ref_no ? `Ref: ${v.ref_no}${kasarTag}` : `Payment Out Voucher${kasarTag}`));
+
       entries.push({
         id: v.id || `vou-${v.voucher_no}`,
         date: v.date,
@@ -495,10 +519,14 @@ export default function LedgerPage() {
         type: "PAYMENT",
         refNo: v.voucher_no,
         partyName: v.party_name || "Unknown Party",
-        description: v.notes || (v.ref_no ? `Ref: ${v.ref_no}` : "પેમેન્ટ ચૂકવણી વાઉચર"),
+        payerPerson: v.payer_person,
+        designNo: v.design_no || v.linked_challan,
+        paidAmount: paid,
+        kasarAmount: kasar,
+        description: voucherDesc,
         modeOrTerms: v.mode || "RTGS / NEFT",
         debit: 0,
-        credit: Number(v.amount) || 0,
+        credit: totalCredit,
         status: "Paid",
         notes: v.notes
       });
@@ -672,34 +700,104 @@ export default function LedgerPage() {
     document.body.removeChild(link);
   };
 
-  // WhatsApp Share for single entry or filtered statement
+  // WhatsApp Share for single entry
   const handleShareWhatsApp = (entry: LedgerEntry) => {
-    const todayStr = new Date().toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric"
-    });
-
     const isBill = entry.type === "BILL";
     const amt = isBill ? entry.debit : entry.credit;
+    const firmName = getStoredCompanyId() === "comp-002"
+      ? (isGujarati ? "ઓમ સાઈ એન્ટરપ્રાઈઝ" : "Om Sai Enterprise")
+      : (isGujarati ? "શિવ ક્રિએશન" : "Shiv Creation");
 
-    const lines = [
-      `*🏛️ ઓમ સાઈ ટેક્સટાઇલ - ખાતાવહી નોંધ*`,
+    const lines = isGujarati ? [
+      `*🏛️ ${firmName} - ખાતાવહી નોંધ*`,
       `-----------------------------------------`,
       `📅 તારીખ: ${entry.date}`,
       `🏢 પાર્ટી / મિલ: *${entry.partyName}*`,
-      `📄 સંદર્ભ / નં: *${entry.refNo}* (${isBill ? "ખરીદી બિલ" : "પેમેન્ટ વાઉચર"})`,
+      `📄 સંદર્ભ / નં: *${formatShortRefNo(entry.refNo)}* (${isBill ? "ખરીદી બિલ" : "પેમેન્ટ વાઉચર"})`,
+      entry.payerPerson ? `👤 આપનાર ભાઈ: *${entry.payerPerson}*` : "",
+      entry.designNo ? `🎨 ડિઝાઇન નં (DN): *${entry.designNo}*` : "",
       `📦 વિગત: ${entry.description}`,
-      `${isBill ? "🔴 ઉધાર રકમ (Dr)" : "🟢 ચૂકવેલ રકમ (Cr)"}: *₹${amt.toLocaleString("en-IN")}*`,
-      entry.runningBalance !== undefined ? `⚖️ ખાતાની રનિંગ બાકી: *₹${entry.runningBalance.toLocaleString("en-IN")}*` : "",
+      isBill
+        ? `🔴 ઉધાર રકમ (Dr): *₹${amt.toLocaleString("en-IN")}*`
+        : Boolean(entry.kasarAmount && entry.kasarAmount > 0)
+        ? `💰 ચૂકવેલ રકમ: *₹${(entry.paidAmount || 0).toLocaleString("en-IN")}*\n🏷️ કસર / ડિસ્કાઉન્ટ: *₹${(entry.kasarAmount || 0).toLocaleString("en-IN")}*\n🟢 કુલ જમા રકમ (Cr): *₹${amt.toLocaleString("en-IN")}*`
+        : `🟢 ચૂકવેલ રકમ (Cr): *₹${amt.toLocaleString("en-IN")}*`,
+      entry.runningBalance !== undefined ? `⚖️ ખાતાની રનિંગ બાકી: *₹${Math.abs(entry.runningBalance).toLocaleString("en-IN")} ${entry.runningBalance > 0 ? "Dr (બાકી)" : "Cr (જમા)"}*` : "",
       entry.dueDate ? `⏳ મુદત તારીખ: ${entry.dueDate}` : "",
       ``,
-      `_વિગતવાર હિસાબ માટે સંપર્ક કરો: ઓમ સાઈ ટેક્સટાઇલ, સુરત._`
+      `_વિગતવાર હિસાબ માટે સંપર્ક કરો: ${firmName}, સુરત._`
+    ].filter(Boolean) : [
+      `*🏛️ ${firmName} - Ledger Record*`,
+      `-----------------------------------------`,
+      `📅 Date: ${entry.date}`,
+      `🏢 Party / Mill: *${entry.partyName}*`,
+      `📄 Ref / No: *${formatShortRefNo(entry.refNo)}* (${isBill ? "Inward Bill" : "Payment Voucher"})`,
+      entry.payerPerson ? `👤 Payer: *${entry.payerPerson}*` : "",
+      entry.designNo ? `🎨 Design No (DN): *${entry.designNo}*` : "",
+      `📦 Description: ${entry.description}`,
+      isBill
+        ? `🔴 Debit Amount (Dr): *₹${amt.toLocaleString("en-IN")}*`
+        : Boolean(entry.kasarAmount && entry.kasarAmount > 0)
+        ? `💰 Paid Amount: *₹${(entry.paidAmount || 0).toLocaleString("en-IN")}*\n🏷️ Kasar / Discount: *₹${(entry.kasarAmount || 0).toLocaleString("en-IN")}*\n🟢 Total Credit (Cr): *₹${amt.toLocaleString("en-IN")}*`
+        : `🟢 Credit Amount (Cr): *₹${amt.toLocaleString("en-IN")}*`,
+      entry.runningBalance !== undefined ? `⚖️ Net Running Balance: *₹${Math.abs(entry.runningBalance).toLocaleString("en-IN")} ${entry.runningBalance > 0 ? "Dr (Payable)" : "Cr (Settled)"}*` : "",
+      entry.dueDate ? `⏳ Due Date: ${entry.dueDate}` : "",
+      ``,
+      `_For questions regarding this record, contact: ${firmName}, Surat._`
     ].filter(Boolean);
 
     const message = lines.join("\n");
     const encoded = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encoded}`, "_blank");
+  };
+
+  // WhatsApp Share for full party statement
+  const handleSharePartyStatementWhatsApp = () => {
+    if (partyFilter === "All" && !searchQuery.trim()) {
+      alert(isGujarati ? "કૃપા કરીને પહેલા કોઈ એક પાર્ટી સિલેક્ટ કરો જેથી તેનું સ્ટેટમેન્ટ મોકલી શકાય." : "Please select a specific party first.");
+      return;
+    }
+    const targetParty = partyFilter !== "All" ? partyFilter : searchQuery.trim();
+    const firmName = getStoredCompanyId() === "comp-002"
+      ? (isGujarati ? "ઓમ સાઈ એન્ટરપ્રાઈઝ" : "Om Sai Enterprise")
+      : (isGujarati ? "શિવ ક્રિએશન" : "Shiv Creation");
+    const totalDr = filteredEntries.reduce((sum, e) => sum + (e.debit || 0), 0);
+    const totalCr = filteredEntries.reduce((sum, e) => sum + (e.credit || 0), 0);
+    const opBal = selectedPartyOpeningBal || 0;
+    const netClosing = opBal + totalDr - totalCr;
+
+    const lines = isGujarati ? [
+      `*🏛️ ${firmName} - ખાતાવહી હિસાબ સ્ટેટમેન્ટ*`,
+      `-----------------------------------------`,
+      `🏢 પાર્ટી: *${targetParty}*`,
+      `📅 તારીખ: ${new Date().toLocaleDateString("en-IN")}`,
+      `-----------------------------------------`,
+      `🔹 શરૂઆતની બાકી (Op Bal): *₹${opBal.toLocaleString("en-IN")}*`,
+      `🔴 કુલ ખરીદી / ઉધાર (Dr): *₹${totalDr.toLocaleString("en-IN")}*`,
+      `🟢 કુલ જમા / પેમેન્ટ (Cr): *₹${totalCr.toLocaleString("en-IN")}*`,
+      `-----------------------------------------`,
+      `⚖️ *આખર બાકી હિસાબ (Net Outstanding):*`,
+      `👉 *₹${Math.abs(netClosing).toLocaleString("en-IN")} ${netClosing > 0 ? "(બાકી ચૂકવવાના - Dr)" : "(જમા રકમ - Cr)"}*`,
+      `-----------------------------------------`,
+      `_વિગતવાર હિસાબ માટે સંપર્ક કરો: ${firmName}, સુરત._`
+    ] : [
+      `*🏛️ ${firmName} - Statement of Account*`,
+      `-----------------------------------------`,
+      `🏢 Party: *${targetParty}*`,
+      `📅 Date: ${new Date().toLocaleDateString("en-IN")}`,
+      `-----------------------------------------`,
+      `🔹 Opening Balance: *₹${opBal.toLocaleString("en-IN")}*`,
+      `🔴 Total Inward / Bills (Dr): *₹${totalDr.toLocaleString("en-IN")}*`,
+      `🟢 Total Payments (Cr): *₹${totalCr.toLocaleString("en-IN")}*`,
+      `-----------------------------------------`,
+      `⚖️ *Net Outstanding Balance:*`,
+      `👉 *₹${Math.abs(netClosing).toLocaleString("en-IN")} ${netClosing > 0 ? "(Debit - Payable)" : "(Credit - Settled)"}*`,
+      `-----------------------------------------`,
+      `_For detailed statement, contact: ${firmName}, Surat._`
+    ];
+
+    const message = lines.join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
   };
 
   return (
@@ -923,6 +1021,17 @@ export default function LedgerPage() {
             <span>{isGujarati ? "PDF પ્રિન્ટ" : "Print PDF"}</span>
           </button>
 
+          {/* 6. WHATSAPP STATEMENT BUTTON */}
+          <button
+            type="button"
+            onClick={handleSharePartyStatementWhatsApp}
+            className="h-9 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+            title={isGujarati ? "પાર્ટીને WhatsApp પર આખું સ્ટેટમેન્ટ મોકલો" : "Send Party Statement on WhatsApp"}
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span>{isGujarati ? "WhatsApp હિસાબ" : "WhatsApp"}</span>
+          </button>
+
         </div>
       </div>
 
@@ -1056,8 +1165,8 @@ export default function LedgerPage() {
       {/* 4. CLEAN UNIFIED LEDGER TABLE & MOBILE CARD VIEW               */}
       {/* ------------------------------------------------------------- */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-        
-        {/* MOBILE CARD VIEW (< md) */}
+
+        {/* MOBILE CARD VIEW (< md) - Clean Text Without Boxes */}
         <div className="block md:hidden p-3 space-y-3 bg-slate-50/50">
           {filteredEntries.length === 0 ? (
             <div className="p-8 text-center text-slate-400 font-medium text-xs">
@@ -1067,40 +1176,52 @@ export default function LedgerPage() {
             filteredEntries.map((e) => {
               const isBill = e.type === "BILL";
               return (
-                <div key={e.id} className="bg-white rounded-xl border border-slate-200 p-3.5 space-y-2 shadow-2xs">
+                <div key={e.id} className="bg-white rounded-xl border border-slate-200/90 p-3.5 space-y-2 shadow-2xs">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-mono font-bold text-slate-500">{e.date}</span>
-                    <span className="font-mono text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                    <span className="font-mono font-medium text-slate-500">{e.date}</span>
+                    <span className="font-mono text-xs font-semibold text-slate-600">
                       {isGujarati ? "શરૂઆત:" : "Op:"} ₹{(e.openingBalance || 0).toLocaleString("en-IN")}
                     </span>
                   </div>
 
                   <div className="flex items-start justify-between gap-2 pt-1 border-t border-slate-100">
                     <div>
-                      <h4 className="font-extrabold text-slate-900 text-sm">{e.partyName}</h4>
-                      <p className="text-[11px] text-slate-500 font-medium">{e.description}</p>
+                      <h4 className="font-bold text-slate-900 text-sm">{e.partyName}</h4>
+                      <p className="text-[11px] text-slate-600 font-medium mt-0.5">{e.description}</p>
+                      {(e.payerPerson || e.designNo || Boolean(e.kasarAmount && e.kasarAmount > 0)) && (
+                        <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 flex-wrap">
+                          {e.payerPerson && <span className="text-blue-700">{isGujarati ? "આપનાર:" : "Payer:"} <b>{e.payerPerson}</b></span>}
+                          {e.designNo && <span className="font-mono text-indigo-700">DN: {e.designNo}</span>}
+                          {Boolean(e.kasarAmount && e.kasarAmount > 0) && (
+                            <span className="text-amber-700 font-semibold">({isGujarati ? "કસર:" : "Kasar:"} ₹{e.kasarAmount})</span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <div className={`font-mono font-black text-sm ${isBill ? "text-rose-700" : "text-emerald-700"}`}>
+                    <div className="text-right shrink-0">
+                      <div className={`font-mono font-bold text-sm ${isBill ? "text-rose-700" : "text-emerald-700"}`}>
                         {isBill ? "+" : "-"}₹{(isBill ? e.debit : e.credit).toLocaleString("en-IN")}
                       </div>
                       {e.runningBalance !== undefined && (
-                        <span className="text-[10px] font-mono font-bold text-slate-500 block">
-                          આખર બાકી: ₹{e.runningBalance.toLocaleString("en-IN")}
+                        <span className="text-[10px] font-mono font-semibold text-slate-500 block mt-0.5">
+                          {isGujarati ? "બાકી:" : "Bal:"} ₹{Math.abs(e.runningBalance).toLocaleString("en-IN")} {e.runningBalance > 0 ? "Dr" : "Cr"}
                         </span>
                       )}
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                    <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                      {e.refNo}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${isBill ? "bg-blue-600" : "bg-emerald-600"}`}></span>
+                      <span className="font-mono text-xs font-bold text-slate-800">
+                        {formatShortRefNo(e.refNo)}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => handleShareWhatsApp(e)}
-                        className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                        className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
                         title="Share on WhatsApp"
                       >
                         <MessageCircle className="w-4 h-4" />
@@ -1108,7 +1229,7 @@ export default function LedgerPage() {
                       <button
                         type="button"
                         onClick={() => setPreviewEntry(e)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
                         title="View Slip"
                       >
                         <Eye className="w-4 h-4" />
@@ -1121,60 +1242,54 @@ export default function LedgerPage() {
           )}
         </div>
 
-        {/* DESKTOP TABLE VIEW (>= md) - EXACT CLEAN TABLE DESIGN */}
+        {/* DESKTOP TABLE VIEW (>= md) - CLEAN PLAIN TEXT, NO HEAVY BOXES */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">
               <tr>
-                <th className="py-3.5 px-4">{isGujarati ? "તારીખ" : "DATE"}</th>
-                <th className="py-3.5 px-4">{isGujarati ? "બિલ / વાઉચર નં" : "REF / NO"}</th>
-                <th className="py-3.5 px-4">{isGujarati ? "સપ્લાયર / પાર્ટી" : "PARTY / MILL"}</th>
-                <th className="py-3.5 px-4">{isGujarati ? "વિગત / મટિરિયલ" : "PARTICULARS"}</th>
-                <th className="py-3.5 px-4">{isGujarati ? "મુદત / મોડ" : "TERMS / MODE"}</th>
-                <th className="py-3.5 px-4 text-right text-slate-600 font-bold">{isGujarati ? "શરૂઆતની બાકી (₹)" : "OPENING BAL (₹)"}</th>
-                <th className="py-3.5 px-4 text-right text-rose-700">{isGujarati ? "ઉધાર (DR)" : "DEBIT (DR)"}</th>
-                <th className="py-3.5 px-4 text-right text-emerald-700">{isGujarati ? "જમા (CR)" : "CREDIT (CR)"}</th>
-                <th className="py-3.5 px-4 text-right font-black text-slate-900">{isGujarati ? "આખર બાકી (₹)" : "NET BALANCE"}</th>
-                <th className="py-3.5 px-4 text-center">{isGujarati ? "સ્ટેટસ" : "STATUS"}</th>
-                <th className="py-3.5 px-4 text-center w-20">{isGujarati ? "એક્શન" : "ACTION"}</th>
+                <th className="py-3 px-4">{isGujarati ? "તારીખ" : "DATE"}</th>
+                <th className="py-3 px-4">{isGujarati ? "બિલ / વાઉચર નં" : "REF / NO"}</th>
+                <th className="py-3 px-4">{isGujarati ? "સપ્લાયર / પાર્ટી" : "PARTY / MILL"}</th>
+                <th className="py-3 px-4">{isGujarati ? "વિગત / મટિરિયલ" : "PARTICULARS"}</th>
+                <th className="py-3 px-4">{isGujarati ? "મુદત / મોડ" : "TERMS / MODE"}</th>
+                <th className="py-3 px-4 text-right text-slate-600 font-bold">{isGujarati ? "શરૂઆતની બાકી (₹)" : "OPENING BAL (₹)"}</th>
+                <th className="py-3 px-4 text-right text-rose-700">{isGujarati ? "ઉધાર (DR)" : "DEBIT (DR)"}</th>
+                <th className="py-3 px-4 text-right text-emerald-700">{isGujarati ? "જમા (CR)" : "CREDIT (CR)"}</th>
+                <th className="py-3 px-4 text-right font-black text-slate-900">{isGujarati ? "આખર બાકી (₹)" : "NET BALANCE"}</th>
+                <th className="py-3 px-4 text-center w-20">{isGujarati ? "એક્શન" : "ACTION"}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+            <tbody className="divide-y divide-slate-100 text-slate-700">
               {partyFilter !== "All" && (
-                <tr className="bg-slate-50/70 border-b border-slate-200/90 font-medium">
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-400 text-xs">—</td>
-                  <td className="py-3.5 px-4 whitespace-nowrap">
-                    <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg border bg-slate-100 border-slate-300 text-slate-700">
+                <tr className="bg-slate-50/60 font-medium">
+                  <td className="py-3 px-4 font-mono font-medium text-slate-400 text-xs">—</td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    <span className="font-mono text-xs font-bold text-slate-700">
                       OP-BAL
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 whitespace-nowrap font-extrabold text-slate-900 text-xs">
+                  <td className="py-3 px-4 whitespace-nowrap font-bold text-slate-900 text-xs">
                     {partyFilter}
                   </td>
-                  <td className="py-3.5 px-4 text-xs font-bold text-slate-700">
+                  <td className="py-3 px-4 text-xs font-bold text-slate-700">
                     {isGujarati ? "શરૂઆતની બાકી (Opening Balance B/F)" : "Opening Balance Brought Forward"}
                   </td>
-                  <td className="py-3.5 px-4 font-mono text-xs text-slate-400 whitespace-nowrap">—</td>
-                  <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-700 text-xs whitespace-nowrap">
+                  <td className="py-3 px-4 font-mono text-xs text-slate-400 whitespace-nowrap">—</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-slate-700 text-xs whitespace-nowrap">
                     ₹{selectedPartyOpeningBal.toLocaleString("en-IN")}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono text-slate-400 whitespace-nowrap">—</td>
-                  <td className="py-3.5 px-4 text-right font-mono text-slate-400 whitespace-nowrap">—</td>
-                  <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 text-xs whitespace-nowrap">
+                  <td className="py-3 px-4 text-right font-mono text-slate-400 whitespace-nowrap">—</td>
+                  <td className="py-3 px-4 text-right font-mono text-slate-400 whitespace-nowrap">—</td>
+                  <td className="py-3 px-4 text-right font-mono font-black text-slate-900 text-xs whitespace-nowrap">
                     ₹{selectedPartyOpeningBal.toLocaleString("en-IN")}
                   </td>
-                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700">
-                      {isGujarati ? "શરૂઆત" : "Opening"}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-center text-slate-400">—</td>
+                  <td className="py-3 px-4 text-center text-slate-400">—</td>
                 </tr>
               )}
 
               {filteredEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center text-slate-400 font-medium">
+                  <td colSpan={10} className="py-12 text-center text-slate-400 font-medium">
                     {isGujarati ? "કોઈ વ્યવહાર મળેલ નથી. ફિલ્ટર અથવા સર્ચ બદલો." : "No ledger records found matching your filters."}
                   </td>
                 </tr>
@@ -1182,116 +1297,112 @@ export default function LedgerPage() {
                 filteredEntries.map((e) => {
                   const isBill = e.type === "BILL";
                   return (
-                    <tr key={e.id} className="hover:bg-blue-50/40 transition-colors">
+                    <tr key={e.id} className="hover:bg-slate-50/80 transition-colors">
                       {/* 1. Date */}
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-700 whitespace-nowrap align-middle">
+                      <td className="py-3 px-4 font-mono font-medium text-slate-600 whitespace-nowrap align-middle">
                         {e.date}
                       </td>
 
-                      {/* 2. Ref / Bill No */}
-                      <td className="py-3.5 px-4 whitespace-nowrap align-middle">
-                        <span className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border ${
-                          isBill ? "text-blue-700 bg-blue-50/90 border-blue-200" : "text-emerald-700 bg-emerald-50/90 border-emerald-200"
-                        }`}>
-                          {e.refNo}
-                        </span>
+                      {/* 2. Ref / Bill No (Clean Plain Text With Dot - NO BOX) */}
+                      <td className="py-3 px-4 whitespace-nowrap align-middle">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isBill ? "bg-blue-600" : "bg-emerald-600"}`}></span>
+                          <span className="font-mono text-xs font-bold text-slate-800">
+                            {formatShortRefNo(e.refNo)}
+                          </span>
+                        </div>
                       </td>
 
                       {/* 3. Party / Mill Name */}
-                      <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                      <td className="py-3 px-4 whitespace-nowrap align-middle">
                         <button
                           type="button"
                           onClick={() => setPartyFilter(e.partyName)}
-                          className="font-extrabold text-slate-900 text-xs hover:text-blue-600 hover:underline transition-colors cursor-pointer text-left"
+                          className="font-bold text-slate-900 text-xs hover:text-blue-600 hover:underline transition-colors cursor-pointer text-left"
                           title={isGujarati ? "આ પાર્ટીના તમામ વ્યવહારો ફિલ્ટર કરો" : "Filter by this party"}
                         >
                           {e.partyName}
                         </button>
                       </td>
 
-                      {/* 5. Particulars */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <span className="text-xs font-bold text-slate-800 leading-snug">
+                      {/* 4. Particulars With Clean Subtitles (Payer, Design No, Kasar) */}
+                      <td className="py-3 px-4 align-middle">
+                        <div className="text-xs font-bold text-slate-900 leading-snug">
                           {e.description}
-                        </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 text-[11px] flex-wrap">
+                          {e.payerPerson && (
+                            <span className="text-blue-700 font-medium">
+                              {isGujarati ? "આપનાર:" : "Payer:"} <strong>{e.payerPerson}</strong>
+                            </span>
+                          )}
+                          {e.designNo && (
+                            <span className="font-mono text-indigo-700 font-medium">
+                              DN: {e.designNo}
+                            </span>
+                          )}
+                          {Boolean(e.kasarAmount && e.kasarAmount > 0) && (
+                            <span className="text-amber-700 font-semibold">
+                              ({isGujarati ? "પેમેન્ટ:" : "Payment:"} ₹{(e.paidAmount || 0).toLocaleString("en-IN")} + {isGujarati ? "કસર:" : "Kasar:"} ₹{e.kasarAmount?.toLocaleString("en-IN")})
+                            </span>
+                          )}
+                        </div>
                       </td>
 
-                      {/* 6. Terms / Mode */}
-                      <td className="py-3.5 px-4 whitespace-nowrap align-middle font-mono text-xs">
+                      {/* 5. Terms / Mode (Clean Plain Text - NO BOX) */}
+                      <td className="py-3 px-4 whitespace-nowrap align-middle">
                         {isBill ? (
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-slate-800 font-bold text-xs">{e.modeOrTerms || "શાખ"}</span>
+                            <span className="text-slate-800 font-semibold text-xs">{e.modeOrTerms || (isGujarati ? "શાખ" : "Credit")}</span>
                             {e.dueDate && (
-                              <div className="flex items-center gap-1 text-[11px] text-slate-500">
-                                <Calendar className="w-3 h-3 text-blue-600" />
+                              <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                                <Calendar className="w-3 h-3 text-blue-500" />
                                 <span>{e.dueDate}</span>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                            {e.modeOrTerms || "RTGS"}
+                          <span className="text-xs font-semibold text-slate-700">
+                            {e.modeOrTerms || "Bank"}
                           </span>
                         )}
                       </td>
 
-                      {/* Opening Balance for this transaction */}
-                      <td className="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono font-bold text-slate-700 text-xs">
+                      {/* 6. Opening Balance for this transaction */}
+                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-medium text-slate-700 text-xs">
                         ₹{(e.openingBalance || 0).toLocaleString("en-IN")}
                       </td>
 
                       {/* 7. Debit (Dr) */}
-                      <td className="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono font-black text-rose-700 text-sm">
+                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-bold text-rose-700 text-xs">
                         {e.debit > 0 ? `₹${e.debit.toLocaleString("en-IN")}` : "—"}
                       </td>
 
                       {/* 8. Credit (Cr) */}
-                      <td className="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono font-black text-emerald-700 text-sm">
+                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-bold text-emerald-700 text-xs">
                         {e.credit > 0 ? `₹${e.credit.toLocaleString("en-IN")}` : "—"}
                       </td>
 
-                      {/* 9. Running Balance */}
-                      <td className="py-3.5 px-4 text-right align-middle whitespace-nowrap">
+                      {/* 9. Running Balance (Clean Text With Dr/Cr - NO BOX) */}
+                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap">
                         {e.runningBalance !== undefined ? (
-                          <span className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border inline-block ${
+                          <span className={`font-mono text-xs font-bold ${
                             e.runningBalance > 0
-                              ? "bg-rose-50/90 text-rose-700 border-rose-200"
+                              ? "text-rose-700"
                               : e.runningBalance < 0
-                              ? "bg-blue-50/90 text-blue-700 border-blue-200"
-                              : "bg-emerald-50/90 text-emerald-700 border-emerald-200"
+                              ? "text-blue-700"
+                              : "text-emerald-700"
                           }`}>
-                            ₹{e.runningBalance.toLocaleString("en-IN")}
+                            ₹{Math.abs(e.runningBalance).toLocaleString("en-IN")}{" "}
+                            <span className="text-[10px] font-bold uppercase">{e.runningBalance > 0 ? "Dr" : (e.runningBalance < 0 ? "Cr" : "")}</span>
                           </span>
                         ) : (
                           <span className="text-slate-400">-</span>
                         )}
                       </td>
 
-                      {/* 10. Status */}
-                      <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
-                        {isBill ? (
-                          e.status === "Paid" ? (
-                            <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50/90 px-2.5 py-1 rounded-lg border border-emerald-200 inline-block">
-                              {t("Paid")}
-                            </span>
-                          ) : e.isOverdue ? (
-                            <span className="font-mono text-xs font-bold text-rose-700 bg-rose-50/90 px-2.5 py-1 rounded-lg border border-rose-200 inline-block">
-                              {t("Overdue")}
-                            </span>
-                          ) : (
-                            <span className="font-mono text-xs font-bold text-amber-700 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200 inline-block">
-                              {t("Pending")}
-                            </span>
-                          )
-                        ) : (
-                          <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50/90 px-2.5 py-1 rounded-lg border border-emerald-200 inline-block">
-                            {t("Paid")}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* 11. Action */}
-                      <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
+                      {/* 10. Action */}
+                      <td className="py-3 px-4 text-center align-middle whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
@@ -1325,7 +1436,7 @@ export default function LedgerPage() {
             {isGujarati ? "કુલ વ્યવહારો:" : "Total Records:"} <b className="text-slate-900 font-bold">{filteredEntries.length}</b>
             {partyFilter !== "All" && (
               <span className="ml-2 font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                પાર્ટી: {partyFilter}
+                {isGujarati ? "પાર્ટી:" : "Party:"} {partyFilter}
               </span>
             )}
           </div>
@@ -1363,22 +1474,24 @@ export default function LedgerPage() {
             <div className="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 space-y-3.5 shadow-2xs">
               <div className="flex items-start justify-between pb-3 border-b border-slate-200">
                 <div>
-                  <div className="font-black text-slate-900 text-sm tracking-wide uppercase">OM SAI TEXTILES</div>
+                  <div className="font-black text-slate-900 text-sm tracking-wide uppercase">
+                    {getStoredCompanyId() === "comp-002" ? "OM SAI ENTERPRISE" : "SHIV CREATION"}
+                  </div>
                   <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                    {previewEntry.type === "BILL" ? "Material Inward Bill" : "Payment Voucher Out"}
+                    {previewEntry.type === "BILL" ? "Material Inward Bill" : "Payment Voucher"}
                   </div>
                 </div>
                 <span className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold border ${
                   previewEntry.status === "Paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
                 }`}>
-                  {previewEntry.status === "Paid" ? t("Paid") : t("Pending / શાખ")}
+                  {previewEntry.status === "Paid" ? t("Paid") : (isGujarati ? "પેન્ડિંગ / શાખ" : "Pending / Credit")}
                 </span>
               </div>
 
               <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 text-xs shadow-2xs overflow-hidden">
                 <div className="p-3 flex items-center justify-between">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">{isGujarati ? "સંદર્ભ નં" : "Ref No"}</span>
-                  <span className="font-extrabold font-mono text-blue-700">{previewEntry.refNo}</span>
+                  <span className="font-extrabold font-mono text-slate-900">{formatShortRefNo(previewEntry.refNo)}</span>
                 </div>
                 <div className="p-3 flex items-center justify-between">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">{isGujarati ? "તારીખ" : "Date"}</span>
@@ -1388,6 +1501,18 @@ export default function LedgerPage() {
                   <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{isGujarati ? "પાર્ટી / સપ્લાયર" : "Party / Mill"}</span>
                   <span className="font-extrabold text-slate-900 text-right">{previewEntry.partyName}</span>
                 </div>
+                {previewEntry.payerPerson && (
+                  <div className="p-3 flex items-center justify-between gap-4 bg-blue-50/40">
+                    <span className="text-[10px] font-bold text-blue-700 uppercase shrink-0">{isGujarati ? "આપનાર ભાઈ" : "Payer"}</span>
+                    <span className="font-bold text-blue-900 text-right">{previewEntry.payerPerson}</span>
+                  </div>
+                )}
+                {previewEntry.designNo && (
+                  <div className="p-3 flex items-center justify-between gap-4">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{isGujarati ? "ડિઝાઇન નં" : "Design No"}</span>
+                    <span className="font-mono font-bold text-indigo-700 text-right">{previewEntry.designNo}</span>
+                  </div>
+                )}
                 <div className="p-3 flex flex-col gap-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">{isGujarati ? "વિગત / મટિરિયલ" : "Particulars"}</span>
                   <span className="font-medium text-slate-800">{previewEntry.description}</span>
@@ -1398,6 +1523,12 @@ export default function LedgerPage() {
                     <span className="font-bold text-slate-800 font-mono">{previewEntry.modeOrTerms}</span>
                   </div>
                 )}
+                {Boolean(previewEntry.kasarAmount && previewEntry.kasarAmount > 0) && (
+                  <div className="p-3 flex items-center justify-between gap-4 bg-amber-50/60">
+                    <span className="text-[10px] font-bold text-amber-800 uppercase shrink-0">{isGujarati ? "કસર / વળતર" : "Kasar / Discount"}</span>
+                    <span className="font-mono font-bold text-amber-900 text-right">₹{previewEntry.kasarAmount?.toLocaleString("en-IN")}</span>
+                  </div>
+                )}
                 {previewEntry.runningBalance !== undefined && (
                   <div className="p-3 flex items-center justify-between gap-4">
                     <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{isGujarati ? "રનિંગ બેલેન્સ" : "Running Balance"}</span>
@@ -1405,9 +1536,11 @@ export default function LedgerPage() {
                   </div>
                 )}
                 <div className="p-3.5 flex items-center justify-between bg-slate-50/50">
-                  <span className="text-xs font-black text-slate-700 uppercase">{isGujarati ? "રકમ (₹)" : "Amount (₹)"}</span>
+                  <span className="text-xs font-black text-slate-700 uppercase">
+                    {previewEntry.type === "BILL" ? (isGujarati ? "બિલ રકમ (₹)" : "Bill Amount (₹)") : (isGujarati ? "ચૂકવેલ રકમ (₹)" : "Amount Paid (₹)")}
+                  </span>
                   <span className="text-base font-black font-mono text-slate-900">
-                    ₹{(previewEntry.type === "BILL" ? previewEntry.debit : previewEntry.credit).toLocaleString("en-IN")}
+                    ₹{(previewEntry.type === "BILL" ? previewEntry.debit : (previewEntry.paidAmount || previewEntry.credit)).toLocaleString("en-IN")}
                   </span>
                 </div>
               </div>
@@ -1503,16 +1636,16 @@ export default function LedgerPage() {
               {/* PARTY & PERIOD DETAILS */}
               <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
                 <div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Statement For (પાર્ટી હિસાબ)</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">{isGujarati ? "Statement For (પાર્ટી હિસાબ)" : "Statement For Party"}</span>
                   <h4 className="text-sm font-extrabold text-slate-900 mt-0.5">
                     {partyFilter === "All" ? "All Parties / Combined Statement" : partyFilter}
                   </h4>
                   <p className="text-slate-500 mt-0.5">Surat, Gujarat, India</p>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Net Closing Balance (આખર બાકી)</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">{isGujarati ? "Net Closing Balance (આખર બાકી)" : "Net Closing Balance"}</span>
                   <div className="text-base font-black font-mono text-rose-600 mt-0.5">
-                    ₹{stats.netOutstanding.toLocaleString("en-IN")} {stats.netOutstanding > 0 ? "Dr (બાકી)" : "Cr"}
+                    ₹{stats.netOutstanding.toLocaleString("en-IN")} {stats.netOutstanding > 0 ? (isGujarati ? "Dr (બાકી)" : "Dr (Payable)") : "Cr"}
                   </div>
                   <span className="text-[11px] text-slate-500 font-bold">Total Transactions: {filteredEntries.length}</span>
                 </div>
@@ -1548,7 +1681,7 @@ export default function LedgerPage() {
                     {filteredEntries.map((e) => (
                       <tr key={e.id}>
                         <td className="py-2 px-3 font-mono">{e.date}</td>
-                        <td className="py-2 px-3 font-mono font-bold text-slate-800">{e.refNo}</td>
+                        <td className="py-2 px-3 font-mono font-bold text-slate-800">{formatShortRefNo(e.refNo)}</td>
                         <td className="py-2 px-3">{e.description}</td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-rose-700">
                           {e.debit > 0 ? `₹${e.debit.toLocaleString("en-IN")}` : "—"}

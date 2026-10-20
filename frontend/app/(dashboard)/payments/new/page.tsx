@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, invalidateApiCache } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { getTenantItem, setTenantItem, getStoredCompanyId, getStoredFirmName } from "@/lib/tenantStorage";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
@@ -35,23 +35,38 @@ export interface VendorItemState {
   visible: boolean;
 }
 
-const linkedSourceOptions = [
-  "ON-ACCOUNT / GENERAL PAYMENT",
-  "Job Process Challan"
+const linkedSourceOptionsOut = [
+  "Purchase Bill / Delivery Challan",
+  "Job Process Challan",
+  "ON-ACCOUNT / GENERAL PAYMENT"
+];
+
+const linkedSourceOptionsIn = [
+  "Sales Bill / Delivery Challan (DN)",
+  "Job Work Outward / Delivery Challan",
+  "ON-ACCOUNT / ADVANCE PAYMENT"
 ];
 
 const paymentModeOptions = [
   "BANK TRANSFER (NEFT/RTGS/IMPS)",
   "UPI (GPay / PhonePe / Paytm)",
   "Cash",
-  "Cheque"
+  "Cheque",
+  "Angadia / Cash Deposit"
 ];
 
-export default function NewPaymentVoucherPage() {
+function NewPaymentVoucherContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
+
+  const qVendor = searchParams.get("vendor");
+  const qAmount = searchParams.get("amount");
+  const qRef = searchParams.get("ref");
+  const qSource = searchParams.get("source");
+  const qType = searchParams.get("type");
 
   const activeCid = user?.companyId || getStoredCompanyId();
   const defaultTenantFirm = activeCid === "comp-002" ? "Om Sai Enterprise" : (activeCid === "comp-001" ? "Shiv Creation" : "");
@@ -65,15 +80,19 @@ export default function NewPaymentVoucherPage() {
   }, [currentFirmName]);
 
   // Form State (Initializes paying company to current tenant firm name once)
-  const [formType, setFormType] = useState<"Payment Out" | "Receipt In">("Payment Out");
+  const [formType, setFormType] = useState<"Payment Out" | "Receipt In">(
+    qType === "Receipt In" ? "Receipt In" : "Payment Out"
+  );
   const [payingCompany, setPayingCompany] = useState<string>(() => user?.firmName || getStoredFirmName() || defaultTenantFirm || "Company");
   const isCompanyInitialized = useRef(Boolean(user?.firmName));
   const [supplierName, setSupplierName] = useState("");
+  const [payerPerson, setPayerPerson] = useState("");
+  const [kasarAmount, setKasarAmount] = useState("");
   const [formVoucherDate, setFormVoucherDate] = useState(
     new Date().toISOString().split("T")[0]
   );
   const [formLinkedSource, setFormLinkedSource] = useState(
-    "ON-ACCOUNT / GENERAL PAYMENT"
+    qType === "Receipt In" ? "Sales Bill / Delivery Challan (DN)" : "Purchase Bill / Delivery Challan"
   );
   const [formAmount, setFormAmount] = useState("");
   const [formMode, setFormMode] = useState("BANK TRANSFER (NEFT/RTGS/IMPS)");
@@ -103,6 +122,17 @@ export default function NewPaymentVoucherPage() {
       isCompanyInitialized.current = true;
     }
   }, [currentFirmName]);
+
+  // Auto-populate when redirected from Purchase Bill slip or action link
+  useEffect(() => {
+    if (qVendor) setSupplierName(qVendor);
+    if (qAmount) setFormAmount(qAmount);
+    if (qRef) setSelectedChallan(qRef);
+    if (qSource) setFormLinkedSource("Purchase Bill / Delivery Challan");
+    if (qRef) {
+      setFormNotes(`Payment settled for ${qRef}`);
+    }
+  }, [qVendor, qAmount, qRef, qSource]);
 
   // Load registered vendors for this company from API / storage
   useEffect(() => {
@@ -218,6 +248,92 @@ export default function NewPaymentVoucherPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Real Purchases Data
+  const [purchasesList, setPurchasesList] = useState<any[]>([]);
+  // Job Process Challans Data
+  const [jobChallansList, setJobChallansList] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadPurchases = () => {
+      const currentCid = getStoredCompanyId() || "comp-001";
+      try {
+        const list = getTenantItem<any[]>(
+          "texaflow_purchases",
+          currentCid === "comp-001" ? "om_sai_purchases" : undefined
+        ) || [];
+        setPurchasesList(Array.isArray(list) ? list : []);
+      } catch {}
+    };
+    const loadJobChallans = () => {
+      const currentCid = getStoredCompanyId() || "comp-001";
+      try {
+        const list = getTenantItem<any[]>(
+          "texaflow_job_challans",
+          currentCid === "comp-001" ? "om_sai_job_challans" : undefined
+        ) || [];
+        setJobChallansList(Array.isArray(list) ? list : []);
+      } catch {}
+    };
+    loadPurchases();
+    loadJobChallans();
+
+    window.addEventListener("app_data_update", loadPurchases);
+    window.addEventListener("texaflow_purchases_updated", loadPurchases);
+    window.addEventListener("texaflow_job_challans_updated", loadJobChallans);
+    window.addEventListener("storage", loadPurchases);
+    window.addEventListener("storage", loadJobChallans);
+    return () => {
+      window.removeEventListener("app_data_update", loadPurchases);
+      window.removeEventListener("texaflow_purchases_updated", loadPurchases);
+      window.removeEventListener("texaflow_job_challans_updated", loadJobChallans);
+      window.removeEventListener("storage", loadPurchases);
+      window.removeEventListener("storage", loadJobChallans);
+    };
+  }, []);
+
+  // Reset selected challan if source type changes
+  useEffect(() => {
+    setSelectedChallan("");
+  }, [formLinkedSource]);
+
+  const pendingChallansForSupplier = useMemo(() => {
+    if (formLinkedSource === "ON-ACCOUNT / GENERAL PAYMENT") return [];
+
+    // 1. If Purchase Bill is selected -> only show Purchase Bills (PB-xxx)
+    if (formLinkedSource === "Purchase Bill / Delivery Challan") {
+      const pending = purchasesList.filter(
+        (p: any) => p && (p.payment_status === "Pending" || p.payment_status === "Unpaid")
+      );
+      if (!supplierName.trim()) return pending;
+
+      const sNorm = supplierName.toLowerCase().trim();
+      const matched = pending.filter((p: any) => {
+        const vNorm = (p.vendor_name || "").toLowerCase().trim();
+        return vNorm === sNorm || vNorm.includes(sNorm) || sNorm.includes(vNorm);
+      });
+
+      return matched.length > 0 ? matched : pending;
+    }
+
+    // 2. If Job Process Challan is selected -> only show Job Process Challans (JC-xxx)
+    if (formLinkedSource === "Job Process Challan") {
+      const pending = jobChallansList.filter(
+        (jc: any) => jc && (jc.payment_status === "Pending" || jc.payment_status === "Unpaid" || !jc.payment_status)
+      );
+      if (!supplierName.trim()) return pending;
+
+      const sNorm = supplierName.toLowerCase().trim();
+      const matched = pending.filter((jc: any) => {
+        const vNorm = (jc.party_name || jc.vendor_name || jc.worker_name || "").toLowerCase().trim();
+        return vNorm === sNorm || vNorm.includes(sNorm) || sNorm.includes(vNorm);
+      });
+
+      return matched;
+    }
+
+    return [];
+  }, [purchasesList, jobChallansList, supplierName, formLinkedSource]);
+
   const toggleVendorVisibility = (id: string) => {
     setVendorsList((prev) =>
       prev.map((item) =>
@@ -242,7 +358,11 @@ export default function NewPaymentVoucherPage() {
     if (isSavingRef.current) return;
 
     if (!payingCompany || !supplierName || !formAmount) {
-      alert("Please select Paying Company, Supplier/Vendor Name, and enter Amount.");
+      alert(
+        formType === "Receipt In"
+          ? "Please select Receiving Company/Account, Party/Customer Name, and enter Amount."
+          : "Please select Paying Company, Supplier/Vendor Name, and enter Amount."
+      );
       return;
     }
 
@@ -251,7 +371,23 @@ export default function NewPaymentVoucherPage() {
 
     try {
       let assignedId = `pay-${Date.now()}`;
-      let finalVoucherNo = `VOU-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`;
+      let finalVoucherNo =
+        formType === "Receipt In"
+          ? `REC-${Math.floor(Math.random() * 900 + 100)}`
+          : `PAY-${Math.floor(Math.random() * 900 + 100)}`;
+      const parsedAmount = parseFloat(formAmount) || 0;
+      const parsedKasar = kasarAmount ? (parseFloat(kasarAmount) || 0) : 0;
+      const cleanedPayer = formType === "Receipt In" ? (payerPerson || "").trim() : "";
+
+      const finalRemarks = formNotes || (
+        formType === "Receipt In"
+          ? (cleanedPayer
+              ? `Received from ${cleanedPayer}${parsedKasar > 0 ? ` (Kasar: ₹${parsedKasar})` : ""}`
+              : `Payment received from party${parsedKasar > 0 ? ` (Kasar: ₹${parsedKasar})` : ""}`)
+          : (selectedChallan
+              ? `Payment settled for ${selectedChallan}${parsedKasar > 0 ? ` (+ ₹${parsedKasar} Kasar)` : ""}`
+              : `Payment settled${parsedKasar > 0 ? ` (+ ₹${parsedKasar} Kasar)` : ""}`)
+      );
 
       const currentCid = getStoredCompanyId();
       try {
@@ -262,12 +398,14 @@ export default function NewPaymentVoucherPage() {
             voucher_type: formType,
             date: formVoucherDate,
             party_name: supplierName,
-            amount: parseFloat(formAmount) || 0,
+            payer_person: cleanedPayer || undefined,
+            kasar_amount: parsedKasar || 0,
+            amount: parsedAmount,
             payment_mode: formMode,
             bank_account: bankDetails || "Main Bank A/c",
             reference_no: formRefNo || `REF-${Math.floor(Math.random() * 89999 + 10000)}`,
             status: "Paid",
-            remarks: formNotes || "Payment voucher transaction entry",
+            remarks: finalRemarks,
             company_id: currentCid
           })
         });
@@ -285,13 +423,15 @@ export default function NewPaymentVoucherPage() {
         date: formVoucherDate,
         party_name: supplierName,
         paying_company: payingCompany,
-        type: formType,
-        linked_source: formLinkedSource as any,
-        amount: parseFloat(formAmount) || 0,
+        payer_person: cleanedPayer || undefined,
+        design_no: selectedChallan || undefined,
+        linked_challan: selectedChallan || undefined,
+        kasar_amount: parsedKasar || 0,
+        amount: parsedAmount,
         mode: formMode,
         ref_no: formRefNo || `REF-${Math.floor(Math.random() * 89999 + 10000)}`,
         bank_details: bankDetails || "Main Bank A/c",
-        notes: formNotes || "Payment voucher transaction entry",
+        notes: finalRemarks,
         company_id: currentCid
       };
 
@@ -309,11 +449,96 @@ export default function NewPaymentVoucherPage() {
           list,
           currentCid === "comp-001" ? "om_sai_vouchers" : undefined
         );
+
+        // Auto-update purchase payment status to "Paid" if paying out
+        const targetBillNo = (selectedChallan || formRefNo || "").trim().toLowerCase();
+        if (formType === "Payment Out" && (formLinkedSource === "Purchase Bill / Delivery Challan" || targetBillNo)) {
+          const storedPurchases = getTenantItem<any[]>(
+            "texaflow_purchases",
+            currentCid === "comp-001" ? "om_sai_purchases" : undefined
+          ) || [];
+
+          let hasUpdated = false;
+          const updatedPurchases = storedPurchases.map((pur: any) => {
+            const purNo = (pur.purchase_no || "").toLowerCase().trim();
+            const purId = (pur.id || "").toLowerCase().trim();
+            const purVendor = (pur.vendor_name || "").toLowerCase().trim();
+            const sVendor = (supplierName || "").toLowerCase().trim();
+            const purAmount = Number(pur.amount);
+            const vAmount = Number(formAmount);
+
+            const isDirectMatch = targetBillNo && (purNo === targetBillNo || purId === targetBillNo);
+            const isVendorAmountMatch = !targetBillNo && sVendor && purVendor === sVendor && purAmount === vAmount && (pur.payment_status === "Pending" || pur.payment_status === "Unpaid");
+
+            if (isDirectMatch || isVendorAmountMatch) {
+              hasUpdated = true;
+              return {
+                ...pur,
+                payment_status: "Paid",
+                due_date: pur.date
+              };
+            }
+            return pur;
+          });
+
+          if (hasUpdated) {
+            setTenantItem(
+              "texaflow_purchases",
+              updatedPurchases,
+              currentCid === "comp-001" ? "om_sai_purchases" : undefined
+            );
+            invalidateApiCache("/purchases");
+            window.dispatchEvent(new CustomEvent("texaflow_purchases_updated"));
+            window.dispatchEvent(new Event("app_data_update"));
+
+            // Sync with backend if available
+            const matchedPur = storedPurchases.find((pur: any) => {
+              const purNo = (pur.purchase_no || "").toLowerCase().trim();
+              return targetBillNo ? purNo === targetBillNo : pur.vendor_name?.toLowerCase().trim() === supplierName.toLowerCase().trim();
+            });
+            if (matchedPur?.id) {
+              fetchApi(`/purchases/${matchedPur.id}`, {
+                method: "PUT",
+                body: JSON.stringify({ ...matchedPur, payment_status: "Paid" })
+              }).catch(() => {});
+            }
+          }
+        }
+
+        if (formType === "Payment Out" && formLinkedSource === "Job Process Challan" && selectedChallan) {
+          const storedJobChallans = getTenantItem<any[]>(
+            "texaflow_job_challans",
+            currentCid === "comp-001" ? "om_sai_job_challans" : undefined
+          ) || [];
+          const updatedJobChallans = storedJobChallans.map((jc: any) => {
+            if ((jc.challan_no || jc.id) === selectedChallan) {
+              return {
+                ...jc,
+                payment_status: "Paid"
+              };
+            }
+            return jc;
+          });
+          setTenantItem(
+            "texaflow_job_challans",
+            updatedJobChallans,
+            currentCid === "comp-001" ? "om_sai_job_challans" : undefined
+          );
+          window.dispatchEvent(new CustomEvent("texaflow_job_challans_updated"));
+        }
+
+        invalidateApiCache("/payments");
+        window.dispatchEvent(new CustomEvent("texaflow_vouchers_updated"));
+        window.dispatchEvent(new Event("app_data_update"));
       } catch (err) {
         console.error(err);
       }
 
-      alert(`Payment Voucher (${newVoucher.voucher_no}) created successfully!`);
+      alert(
+        formType === "Receipt In"
+          ? `Receipt Voucher (${newVoucher.voucher_no}) of ₹${parsedAmount.toLocaleString("en-IN")}${parsedKasar > 0 ? ` (+ ₹${parsedKasar} Kasar)` : ""} created successfully!`
+          : `Payment Voucher (${newVoucher.voucher_no}) of ₹${parsedAmount.toLocaleString("en-IN")}${parsedKasar > 0 ? ` (+ ₹${parsedKasar} Kasar)` : ""} created successfully!`
+      );
       router.push("/payments");
     } finally {
       isSavingRef.current = false;
@@ -327,9 +552,16 @@ export default function NewPaymentVoucherPage() {
       
       {/* 1. TOP HEADER TOOLBAR - MATCHING VENDORS PAGE BAR */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
-        <h2 className="font-extrabold text-slate-800 text-xs tracking-wide uppercase">
-          NEW PAYMENT VOUCHER REGISTRATION
-        </h2>
+        <div className="flex items-center gap-2.5">
+          <h2 className="font-extrabold text-slate-800 text-xs tracking-wide uppercase">
+            {formType === "Receipt In" ? "NEW RECEIPT VOUCHER (PAYMENT IN)" : "NEW PAYMENT VOUCHER REGISTRATION"}
+          </h2>
+          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${
+            formType === "Receipt In" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-rose-50 text-rose-700 border-rose-200"
+          }`}>
+            {formType === "Receipt In" ? "Party Payment In" : "Supplier Payment Out"}
+          </span>
+        </div>
         <Link
           href="/payments"
           className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-slate-200"
@@ -345,11 +577,16 @@ export default function NewPaymentVoucherPage() {
           
           {/* ROW 1: VOUCHER TYPE */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-extrabold text-rose-600">Voucher Type*</label>
+            <label className={formType === "Receipt In" ? "font-extrabold text-blue-700" : "font-extrabold text-rose-600"}>
+              Voucher Type*
+            </label>
             <div className="flex items-center gap-2 sm:gap-3 max-w-xl w-full">
               <button
                 type="button"
-                onClick={() => setFormType("Payment Out")}
+                onClick={() => {
+                  setFormType("Payment Out");
+                  setFormLinkedSource("Purchase Bill / Delivery Challan");
+                }}
                 className={`flex-1 sm:flex-initial justify-center px-3 sm:px-4 py-2 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
                   formType === "Payment Out"
                     ? "bg-rose-50 text-rose-600 border-rose-400 ring-2 ring-rose-500/20 shadow-2xs"
@@ -365,7 +602,10 @@ export default function NewPaymentVoucherPage() {
 
               <button
                 type="button"
-                onClick={() => setFormType("Receipt In")}
+                onClick={() => {
+                  setFormType("Receipt In");
+                  setFormLinkedSource("Sales Bill / Delivery Challan (DN)");
+                }}
                 className={`flex-1 sm:flex-initial justify-center px-3 sm:px-4 py-2 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
                   formType === "Receipt In"
                     ? "bg-blue-50 text-blue-700 border-blue-400 ring-2 ring-blue-500/20 shadow-2xs"
@@ -381,31 +621,36 @@ export default function NewPaymentVoucherPage() {
             </div>
           </div>
 
-          {/* ROW 2: PAYING COMPANY / INTERNAL FIRM * */}
+          {/* ROW 2: PAYING / RECEIVING COMPANY * */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-bold text-slate-700">Paying Company*</label>
+            <label className="font-bold text-slate-700">
+              {formType === "Receipt In" ? "Receiving Company / Account*" : "Paying Company*"}
+            </label>
             <div className="max-w-xl w-full">
               <input
                 type="text"
                 value={payingCompany}
                 onChange={(e) => setPayingCompany(e.target.value)}
-                placeholder="Company Name"
+                placeholder={formType === "Receipt In" ? "e.g. Shiv Creation (Main A/c)" : "Company Name"}
                 className="w-full h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 shadow-2xs focus:outline-none focus:border-blue-500"
               />
             </div>
           </div>
 
-          {/* ROW 3: SUPPLIER / VENDOR NAME * (TYPE MANUALLY OR SELECT FROM MASTER) */}
+          {/* ROW 3: PARTY / SUPPLIER NAME * */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <div className="flex flex-col">
-              <label className="font-extrabold text-rose-600">Supplier / Vendor*</label>
-              <span className="text-[10px] text-slate-400 font-normal">Type name manually</span>
-            </div>
+            <label className={formType === "Receipt In" ? "font-extrabold text-blue-700" : "font-extrabold text-rose-600"}>
+              {formType === "Receipt In" ? "Party / Customer Name*" : "Supplier / Vendor*"}
+            </label>
             <div ref={supplierRef} className="relative max-w-xl w-full">
               <div className="relative flex items-center">
                 <input
                   type="text"
-                  placeholder="Type supplier / vendor name manually..."
+                  placeholder={
+                    formType === "Receipt In"
+                      ? "Search or select party name..."
+                      : "Type supplier / vendor name..."
+                  }
                   value={supplierName}
                   onChange={(e) => {
                     setSupplierName(e.target.value);
@@ -426,24 +671,24 @@ export default function NewPaymentVoucherPage() {
                     setIsDatePickerOpen(false);
                   }}
                   className="absolute right-2 p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                  title="Toggle registered vendor list"
+                  title="Toggle registered vendor/party list"
                 >
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isSupplierDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
                 </button>
               </div>
 
-              {/* SUPPLIER DROPDOWN / AUTOCOMPLETE */}
+              {/* SUPPLIER / PARTY DROPDOWN / AUTOCOMPLETE */}
               {isSupplierDropdownOpen && (
                 <div className="absolute left-0 top-[calc(100%+4px)] z-50 min-w-full w-full bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
                   <div className="max-h-48 overflow-y-auto space-y-0.5 no-scrollbar">
                     {isLoadingVendors ? (
                       <div className="py-3 text-center text-slate-400 font-medium text-xs">
-                        Loading registered vendors...
+                        Loading directory...
                       </div>
                     ) : filteredVendors.length === 0 ? (
                       <div className="py-3.5 px-3 text-center space-y-1">
                         <p className="text-xs font-bold text-slate-700">
-                          {supplierName ? `Using "${supplierName}" (Custom Name)` : "No saved vendors found"}
+                          {supplierName ? `Using "${supplierName}" (Custom Name)` : "No saved records found"}
                         </p>
                         <p className="text-[10px] text-slate-400">
                           You can type any name directly in the box above.
@@ -458,10 +703,12 @@ export default function NewPaymentVoucherPage() {
                             type="button"
                             onClick={() => {
                               setSupplierName(opt.name);
-                              if (opt.account_type === "Customer / Client" || opt.account_type === "Trading Partner") {
+                              if (opt.account_type === "Customer / Client" || opt.account_type === "Trading Partner" || opt.type === "PARTY") {
                                 setFormType("Receipt In");
+                                setFormLinkedSource("Sales Bill / Delivery Challan (DN)");
                               } else {
                                 setFormType("Payment Out");
+                                setFormLinkedSource("Purchase Bill / Delivery Challan");
                               }
                               setIsSupplierDropdownOpen(false);
                             }}
@@ -471,7 +718,14 @@ export default function NewPaymentVoucherPage() {
                                 : "text-slate-800 hover:bg-slate-50 font-bold"
                             }`}
                           >
-                            <span className="font-bold text-slate-900 truncate">{opt.name}</span>
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="font-bold text-slate-900 truncate">{opt.name}</span>
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase ${
+                                opt.type === "PARTY" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"
+                              }`}>
+                                {opt.type === "PARTY" ? "Party" : "Supplier"}
+                              </span>
+                            </div>
                             {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2 stroke-[2.5]" />}
                           </button>
                         );
@@ -505,6 +759,22 @@ export default function NewPaymentVoucherPage() {
               )}
             </div>
           </div>
+
+          {/* ROW 3B: PAYER / DEPOSITOR PERSON NAME (SHOWN SPECIFICALLY FOR RECEIPT IN) */}
+          {formType === "Receipt In" && (
+            <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs animate-in fade-in duration-150">
+              <label className="font-extrabold text-blue-900">Payer / Depositor Name</label>
+              <div className="max-w-xl w-full">
+                <input
+                  type="text"
+                  placeholder="e.g. UMESH, RAVI, SAILESH P"
+                  value={payerPerson}
+                  onChange={(e) => setPayerPerson(e.target.value)}
+                  className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs placeholder:font-normal placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+          )}
 
           {/* ROW 4: VOUCHER DATE * (CUSTOM BEAUTIFUL DATE PICKER) */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
@@ -682,7 +952,7 @@ export default function NewPaymentVoucherPage() {
 
               {isSourceDropdownOpen && (
                 <div className="absolute left-0 top-[calc(100%+4px)] z-50 min-w-full w-full bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
-                  {linkedSourceOptions.map((opt) => {
+                  {(formType === "Receipt In" ? linkedSourceOptionsIn : linkedSourceOptionsOut).map((opt) => {
                     const isSelected = formLinkedSource === opt;
                     return (
                       <button
@@ -708,14 +978,67 @@ export default function NewPaymentVoucherPage() {
             </div>
           </div>
 
-          {/* CONDITIONAL SUB-BOX: SELECT PENDING JOB PROCESS CHALLAN (EXACT MATCHING USER'S IMAGE 4 & 5) */}
-          {(formLinkedSource === "Job Process Challan" || formLinkedSource.includes("Job Process")) && (
+          {/* CONDITIONAL SUB-BOX: RECEIPT IN - LINK TO SALES DISPATCH / DESIGN NO (DN) */}
+          {formType === "Receipt In" && formLinkedSource === "Sales Bill / Delivery Challan (DN)" && (
+            <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs animate-in fade-in duration-150">
+              <div />
+              <div className="p-3 bg-blue-50/70 rounded-2xl border border-blue-200/90 space-y-2 max-w-xl w-full shadow-2xs">
+                <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-blue-900 uppercase tracking-wider">
+                  <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span>LINK SALES DISPATCH / DESIGN NO (DN)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Design No / Order (DN)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. DN-1042 / Design-5"
+                      value={selectedChallan}
+                      onChange={(e) => setSelectedChallan(e.target.value)}
+                      className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Bill / Challan No (BN)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. BN-842"
+                      value={formRefNo}
+                      onChange={(e) => setFormRefNo(e.target.value)}
+                      className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CONDITIONAL SUB-BOX: PAYMENT OUT - SELECT PENDING PURCHASE BILL / JOB PROCESS CHALLAN */}
+          {formType === "Payment Out" && formLinkedSource !== "ON-ACCOUNT / GENERAL PAYMENT" && (
             <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs">
               <div />
               <div className="p-3 bg-amber-50/60 rounded-2xl border border-amber-200/90 space-y-2 max-w-xl w-full animate-in fade-in duration-150 shadow-2xs">
-                <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-amber-900 uppercase tracking-wider">
-                  <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>SELECT PENDING JOB PROCESS CHALLAN</span>
+                <div className="flex items-center justify-between text-[10px] font-extrabold text-amber-900 uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>
+                      {formLinkedSource === "Purchase Bill / Delivery Challan"
+                        ? "SELECT PENDING PURCHASE BILL"
+                        : "SELECT PENDING JOB PROCESS CHALLAN"}
+                    </span>
+                  </div>
+                  {selectedChallan && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedChallan("");
+                        setFormAmount("");
+                      }}
+                      className="text-amber-700 hover:text-rose-600 hover:underline capitalize font-bold"
+                    >
+                      Clear Selection
+                    </button>
+                  )}
                 </div>
                 
                 {/* SELECT CHALLAN DROPDOWN */}
@@ -738,21 +1061,106 @@ export default function NewPaymentVoucherPage() {
                       isChallanDropdownOpen
                         ? "border-amber-500 ring-2 ring-amber-500/20 text-slate-900"
                         : selectedChallan
-                        ? "border-slate-300 text-slate-900 font-bold"
+                        ? "border-amber-400 bg-amber-50/40 text-amber-950 font-bold"
                         : "border-slate-300 text-slate-400 font-semibold hover:border-amber-400"
                     }`}
                   >
                     <span className="truncate">
-                      {selectedChallan || "-- SELECT CHALLAN --"}
+                      {selectedChallan ? (
+                        <span className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                            {selectedChallan}
+                          </span>
+                          <span className="text-slate-800">
+                            {(() => {
+                              if (formLinkedSource === "Purchase Bill / Delivery Challan") {
+                                const found = purchasesList.find((p: any) => p.purchase_no === selectedChallan || p.id === selectedChallan);
+                                return found ? `• ₹${Number(found.amount).toLocaleString("en-IN")} • ${found.category || "Material"}` : "";
+                              } else {
+                                const found = jobChallansList.find((jc: any) => (jc.challan_no || jc.id) === selectedChallan);
+                                return found ? `• ₹${Number(found.amount || 0).toLocaleString("en-IN")} • ${found.process_type || "Job Work"}` : "";
+                              }
+                            })()}
+                          </span>
+                        </span>
+                      ) : (
+                        formLinkedSource === "Purchase Bill / Delivery Challan"
+                          ? `-- SELECT PENDING PURCHASE BILL (${pendingChallansForSupplier.length} AVAILABLE) --`
+                          : `-- SELECT PENDING JOB PROCESS CHALLAN (${pendingChallansForSupplier.length} AVAILABLE) --`
+                      )}
                     </span>
                     <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${isChallanDropdownOpen ? "rotate-180 text-amber-600" : ""}`} />
                   </button>
 
                   {isChallanDropdownOpen && (
-                    <div className="absolute left-0 top-[calc(100%+4px)] z-50 min-w-full w-full bg-white border border-slate-200 rounded-xl shadow-xl p-3 animate-in fade-in zoom-in-95 duration-100">
-                      <div className="py-2 text-center text-slate-400 text-xs font-semibold">
-                        No options available
-                      </div>
+                    <div className="absolute left-0 top-[calc(100%+4px)] z-50 min-w-full w-full bg-white border border-slate-200 rounded-xl shadow-xl p-2 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-100 space-y-1">
+                      {pendingChallansForSupplier.length === 0 ? (
+                        <div className="py-4 px-3 text-center text-slate-400 text-xs font-semibold">
+                          {formLinkedSource === "Purchase Bill / Delivery Challan"
+                            ? (supplierName ? `No pending purchase bills found for "${supplierName}".` : "No pending purchase bills found.")
+                            : (supplierName ? `No pending job process challans found for "${supplierName}".` : "No pending job process challans found.")
+                          }
+                        </div>
+                      ) : (
+                        pendingChallansForSupplier.map((item: any) => {
+                          const itemNo = item.purchase_no || item.challan_no || item.id;
+                          const isSelected = selectedChallan === itemNo;
+                          const vendor = item.vendor_name || item.party_name || item.worker_name || "Vendor";
+                          const categoryOrProcess = item.category || item.process_type || (formLinkedSource === "Purchase Bill / Delivery Challan" ? "Material Purchase" : "Job Work");
+                          const amount = Number(item.amount || 0);
+
+                          return (
+                            <button
+                              key={item.id || itemNo}
+                              type="button"
+                              onClick={() => {
+                                setSelectedChallan(itemNo);
+                                setFormAmount(String(amount));
+                                if (!supplierName && vendor) {
+                                  setSupplierName(vendor);
+                                }
+                                if (!formNotes) {
+                                  setFormNotes(`Payment settled for ${itemNo} (${categoryOrProcess})`);
+                                }
+                                setIsChallanDropdownOpen(false);
+                              }}
+                              className={`w-full text-left p-2.5 rounded-xl text-xs flex items-center justify-between cursor-pointer transition-all border ${
+                                isSelected
+                                  ? "bg-amber-100/70 border-amber-400 text-amber-950 font-black shadow-2xs"
+                                  : "bg-white border-slate-100 hover:bg-amber-50/60 hover:border-amber-200 text-slate-800"
+                              }`}
+                            >
+                              <div className="min-w-0 flex-1 pr-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[11px]">
+                                    {itemNo}
+                                  </span>
+                                  <span className="font-extrabold text-slate-900 truncate">
+                                    {vendor}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-slate-500 mt-1 flex flex-wrap items-center gap-2 font-medium">
+                                  <span>{categoryOrProcess}</span>
+                                  <span>•</span>
+                                  <span>{item.date || "Today"}</span>
+                                  {item.credit_days ? (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-amber-700 font-bold">{item.credit_days} Days Due</span>
+                                    </>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="font-mono font-black text-slate-900 text-sm">
+                                  ₹{amount.toLocaleString("en-IN")}
+                                </span>
+                                {isSelected && <Check className="w-4 h-4 text-amber-700 ml-auto mt-0.5 stroke-[2.5]" />}
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
                     </div>
                   )}
                 </div>
@@ -760,18 +1168,63 @@ export default function NewPaymentVoucherPage() {
             </div>
           )}
 
-          {/* ROW 6: AMOUNT (₹) * */}
-          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-extrabold text-rose-600">Amount (₹)*</label>
-            <input
-              type="number"
-              required
-              step="0.01"
-              placeholder="0.00"
-              value={formAmount}
-              onChange={(e) => setFormAmount(e.target.value)}
-              className="h-9 px-3 max-w-xl w-full bg-white border border-slate-300 rounded-xl text-xs font-extrabold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
-            />
+          {/* ROW 6: AMOUNT (₹) & KASAR / DISCOUNT (SHOWN FOR BOTH RECEIPT IN AND PAYMENT OUT) */}
+          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs">
+            <label className={formType === "Receipt In" ? "font-extrabold text-blue-700" : "font-extrabold text-rose-600"}>
+              {formType === "Receipt In" ? "Amount Received (₹)*" : "Amount Paid (₹)*"}
+            </label>
+            <div className="max-w-xl w-full space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">
+                    {formType === "Receipt In" ? "Received Amount (₹)*" : "Paid Amount (₹)*"}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    step="0.01"
+                    placeholder="0.00"
+                    value={formAmount}
+                    onChange={(e) => setFormAmount(e.target.value)}
+                    className="h-9 px-3 w-full bg-white border border-slate-300 rounded-xl text-xs font-extrabold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Kasar / Discount (₹)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={kasarAmount}
+                    onChange={(e) => setKasarAmount(e.target.value)}
+                    className="h-9 px-3 w-full bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
+                  />
+                </div>
+              </div>
+
+              {/* Live Settlement Calculation Card */}
+              <div className={`flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl text-xs shadow-2xs border ${
+                formType === "Receipt In"
+                  ? "bg-blue-50/70 border-blue-200/80"
+                  : "bg-rose-50/70 border-rose-200/80"
+              }`}>
+                <span className="text-slate-700 font-bold text-[11px]">
+                  {formType === "Receipt In" ? "Total Credit to Party Account:" : "Total Settled / Debit to Supplier Account:"}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`font-mono font-black text-sm ${
+                    formType === "Receipt In" ? "text-blue-900" : "text-rose-900"
+                  }`}>
+                    ₹{((parseFloat(formAmount) || 0) + (parseFloat(kasarAmount) || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </span>
+                  {parseFloat(kasarAmount) > 0 && (
+                    <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">
+                      (₹{(parseFloat(formAmount) || 0).toLocaleString("en-IN")} + ₹{(parseFloat(kasarAmount) || 0).toLocaleString("en-IN")} Kasar)
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* ROW 7: PAYMENT MODE */}
@@ -829,12 +1282,20 @@ export default function NewPaymentVoucherPage() {
             </div>
           </div>
 
-          {/* ROW 8: REF / UTR NO */}
+          {/* ROW 8: REF / UTR / PAUTI NO */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-bold text-slate-700">Ref / UTR No</label>
+            <label className="font-bold text-slate-700">
+              {formMode.includes("Angadia") ? "Pauti / Angadia Ref No" : formMode.includes("Cheque") ? "Cheque No" : "Ref / UTR No"}
+            </label>
             <input
               type="text"
-              placeholder="e.g. UTR12345678"
+              placeholder={
+                formMode.includes("Angadia")
+                  ? "e.g. Angadia Name & Pauti No / Recipt"
+                  : formMode.includes("Cheque")
+                  ? "e.g. Cheque No 123456"
+                  : "e.g. UTR12345678"
+              }
               value={formRefNo}
               onChange={(e) => setFormRefNo(e.target.value)}
               className="h-9 px-3 max-w-xl w-full bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
@@ -843,10 +1304,10 @@ export default function NewPaymentVoucherPage() {
 
           {/* ROW 9: BANK DETAILS */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-bold text-slate-700">Bank Details</label>
+            <label className="font-bold text-slate-700">Bank Details / Account</label>
             <input
               type="text"
-              placeholder="e.g. HDFC Bank Main A/c"
+              placeholder="e.g. HDFC Bank Main A/c / Cash In Hand"
               value={bankDetails}
               onChange={(e) => setBankDetails(e.target.value)}
               className="h-9 px-3 max-w-xl w-full bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
@@ -858,7 +1319,11 @@ export default function NewPaymentVoucherPage() {
             <label className="font-bold text-slate-700 pt-2">Remarks / Notes</label>
             <VoiceTextarea
               rows={3}
-              placeholder="Add optional payment notes..."
+              placeholder={
+                formType === "Receipt In"
+                  ? "Add optional notes (e.g. payment received towards festival collection)..."
+                  : "Add optional payment notes..."
+              }
               value={formNotes}
               onChangeValue={(val) => setFormNotes(val)}
             />
@@ -885,7 +1350,9 @@ export default function NewPaymentVoucherPage() {
               className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
                 isSaving
                   ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
-                  : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
+                  : formType === "Receipt In"
+                  ? "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
+                  : "bg-rose-600 hover:bg-rose-700 text-white cursor-pointer active:scale-95"
               }`}
             >
               {isSaving ? (
@@ -896,7 +1363,7 @@ export default function NewPaymentVoucherPage() {
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  <span>Save Payment Voucher</span>
+                  <span>{formType === "Receipt In" ? "Save Receipt Voucher" : "Save Payment Voucher"}</span>
                 </>
               )}
             </button>
@@ -1060,3 +1527,12 @@ export default function NewPaymentVoucherPage() {
     </div>
   );
 }
+
+export default function NewPaymentVoucherPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400 font-semibold">Loading payment voucher form...</div>}>
+      <NewPaymentVoucherContent />
+    </Suspense>
+  );
+}
+
