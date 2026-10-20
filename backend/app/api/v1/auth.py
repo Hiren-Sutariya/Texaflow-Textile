@@ -666,14 +666,44 @@ class UpdateCompanySettingsRequest(BaseModel):
     company_name: str
     brand_name: Optional[str] = None
     tagline: Optional[str] = None
+    owner_name: Optional[str] = None
     phone: Optional[str] = None
+    alt_phone: Optional[str] = None
     email: Optional[str] = None
     username: Optional[str] = None
     address: Optional[str] = None
     city_state: Optional[str] = None
     pincode: Optional[str] = None
+    msme_no: Optional[str] = None
+    website: Optional[str] = None
     gstin: Optional[str] = None
     pan: Optional[str] = None
+
+    # Bank Details
+    bank_name: Optional[str] = None
+    account_holder: Optional[str] = None
+    account_no: Optional[str] = None
+    account_type: Optional[str] = None
+    ifsc: Optional[str] = None
+    branch_name: Optional[str] = None
+    upi_id: Optional[str] = None
+    qr_code_image: Optional[str] = None
+
+    # Invoicing & Printing
+    invoice_title: Optional[str] = None
+    challan_title: Optional[str] = None
+    invoice_prefix: Optional[str] = None
+    next_invoice_no: Optional[str] = None
+    challan_prefix: Optional[str] = None
+    next_challan_no: Optional[str] = None
+    hsn_sac_code: Optional[str] = None
+    gst_rate: Optional[str] = None
+    payment_terms: Optional[str] = None
+    signatory_label: Optional[str] = None
+    eway_threshold: Optional[str] = None
+    print_qr: Optional[bool] = None
+    terms_conditions: Optional[str] = None
+    settings_json: Optional[Any] = None
 
 @router.get("/company-settings")
 def get_company_settings(
@@ -681,7 +711,7 @@ def get_company_settings(
     user_id: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    """Retrieve company settings and profile strictly isolated by company_id or user_id."""
+    """Retrieve full company settings and profile strictly isolated by company_id or user_id."""
     cid = company_id.strip() if company_id and company_id.strip() else None
     if not cid and user_id and user_id.strip():
         user = db.query(User).filter(User.id == user_id.strip()).first()
@@ -715,45 +745,143 @@ def get_company_settings(
         "success": True,
         "company_id": cid,
         "company_name": comp_name,
-        "brand_name": comp_name,
+        "brand_name": comp.brand_name if (comp and comp.brand_name) else comp_name,
+        "tagline": comp.tagline if (comp and comp.tagline) else "",
         "owner_name": owner_name,
         "phone": phone,
+        "alt_phone": comp.alt_phone if (comp and comp.alt_phone) else "",
         "email": email,
         "username": username_val,
         "address": address,
-        "gstin": gstin
+        "city_state": comp.city_state if (comp and comp.city_state) else "",
+        "pincode": comp.pincode if (comp and comp.pincode) else "",
+        "msme_no": comp.msme_no if (comp and comp.msme_no) else "",
+        "website": comp.website if (comp and comp.website) else "",
+        "gstin": gstin,
+        "pan": comp.pan if (comp and comp.pan) else "",
+
+        # Bank Details
+        "bank_name": comp.bank_name if (comp and comp.bank_name) else "",
+        "account_holder": comp.account_holder if (comp and comp.account_holder) else comp_name,
+        "account_no": comp.account_no if (comp and comp.account_no) else "",
+        "account_type": comp.account_type if (comp and comp.account_type) else "Current Account",
+        "ifsc": comp.ifsc if (comp and comp.ifsc) else "",
+        "branch_name": comp.branch_name if (comp and comp.branch_name) else "",
+        "upi_id": comp.upi_id if (comp and comp.upi_id) else "",
+        "qr_code_image": comp.qr_code_image if (comp and comp.qr_code_image) else "",
+
+        # Invoicing & Printing
+        "invoice_title": comp.invoice_title if (comp and comp.invoice_title) else "TAX INVOICE / JOBWORK BILL",
+        "challan_title": comp.challan_title if (comp and comp.challan_title) else "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
+        "invoice_prefix": comp.invoice_prefix if (comp and comp.invoice_prefix) else "SC/26-27/",
+        "next_invoice_no": comp.next_invoice_no if (comp and comp.next_invoice_no) else "101",
+        "challan_prefix": comp.challan_prefix if (comp and comp.challan_prefix) else "DC/26-27/",
+        "next_challan_no": comp.next_challan_no if (comp and comp.next_challan_no) else "101",
+        "hsn_sac_code": comp.hsn_sac_code if (comp and comp.hsn_sac_code) else "998822 (Textile Jobwork)",
+        "gst_rate": comp.gst_rate if (comp and comp.gst_rate) else "5% (Textile Embroidery Jobwork)",
+        "payment_terms": comp.payment_terms if (comp and comp.payment_terms) else "Due on Receipt",
+        "signatory_label": comp.signatory_label if (comp and comp.signatory_label) else f"For {comp_name} (Authorized Signatory)",
+        "eway_threshold": comp.eway_threshold if (comp and comp.eway_threshold) else "50000",
+        "print_qr": comp.print_qr if (comp and comp.print_qr is not None) else True,
+        "terms_conditions": comp.terms_conditions if (comp and comp.terms_conditions) else "",
+        "settings_json": comp.settings_json if comp else None
     }
 
 @router.put("/company-settings")
 def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Depends(get_db)):
-    """Update company profile, firm name, and username in database."""
+    """Update all company profile, bank, invoice preferences, and username in 00_settings database."""
     cid = req.company_id or "comp-001"
     clean_name = req.company_name.strip()
     clean_user = req.username.strip() if req.username else None
 
     comp = db.query(Company).filter(Company.id == cid).first()
-    if comp and clean_name:
-        comp.name = clean_name
-        if req.phone:
-            comp.phone = req.phone.strip()
-        if req.email:
-            comp.email = req.email.strip()
-        if req.address:
-            comp.address = req.address.strip()
-        if req.gstin:
-            comp.gstin = req.gstin.strip()
-    elif not comp and clean_name:
+    if not comp and clean_name:
         comp = Company(
             id=cid,
             name=clean_name,
             code=cid,
-            owner_name="Owner",
-            phone=req.phone.strip() if req.phone else "",
-            email=req.email.strip() if req.email else "",
-            address=req.address.strip() if req.address else "",
-            gstin=req.gstin.strip() if req.gstin else ""
+            owner_name=req.owner_name or "Owner",
+            status="active"
         )
         db.add(comp)
+
+    if comp:
+        if clean_name:
+            comp.name = clean_name
+        if req.brand_name is not None:
+            comp.brand_name = req.brand_name.strip()
+        if req.tagline is not None:
+            comp.tagline = req.tagline.strip()
+        if req.owner_name is not None:
+            comp.owner_name = req.owner_name.strip()
+        if req.phone is not None:
+            comp.phone = req.phone.strip()
+        if req.alt_phone is not None:
+            comp.alt_phone = req.alt_phone.strip()
+        if req.email is not None:
+            comp.email = req.email.strip()
+        if req.address is not None:
+            comp.address = req.address.strip()
+        if req.city_state is not None:
+            comp.city_state = req.city_state.strip()
+        if req.pincode is not None:
+            comp.pincode = req.pincode.strip()
+        if req.msme_no is not None:
+            comp.msme_no = req.msme_no.strip()
+        if req.website is not None:
+            comp.website = req.website.strip()
+        if req.gstin is not None:
+            comp.gstin = req.gstin.strip()
+        if req.pan is not None:
+            comp.pan = req.pan.strip()
+
+        # Bank Details
+        if req.bank_name is not None:
+            comp.bank_name = req.bank_name.strip()
+        if req.account_holder is not None:
+            comp.account_holder = req.account_holder.strip()
+        if req.account_no is not None:
+            comp.account_no = req.account_no.strip()
+        if req.account_type is not None:
+            comp.account_type = req.account_type.strip()
+        if req.ifsc is not None:
+            comp.ifsc = req.ifsc.strip()
+        if req.branch_name is not None:
+            comp.branch_name = req.branch_name.strip()
+        if req.upi_id is not None:
+            comp.upi_id = req.upi_id.strip()
+        if req.qr_code_image is not None:
+            comp.qr_code_image = req.qr_code_image.strip()
+
+        # Invoicing & Printing
+        if req.invoice_title is not None:
+            comp.invoice_title = req.invoice_title.strip()
+        if req.challan_title is not None:
+            comp.challan_title = req.challan_title.strip()
+        if req.invoice_prefix is not None:
+            comp.invoice_prefix = req.invoice_prefix.strip()
+        if req.next_invoice_no is not None:
+            comp.next_invoice_no = req.next_invoice_no.strip()
+        if req.challan_prefix is not None:
+            comp.challan_prefix = req.challan_prefix.strip()
+        if req.next_challan_no is not None:
+            comp.next_challan_no = req.next_challan_no.strip()
+        if req.hsn_sac_code is not None:
+            comp.hsn_sac_code = req.hsn_sac_code.strip()
+        if req.gst_rate is not None:
+            comp.gst_rate = req.gst_rate.strip()
+        if req.payment_terms is not None:
+            comp.payment_terms = req.payment_terms.strip()
+        if req.signatory_label is not None:
+            comp.signatory_label = req.signatory_label.strip()
+        if req.eway_threshold is not None:
+            comp.eway_threshold = req.eway_threshold.strip()
+        if req.print_qr is not None:
+            comp.print_qr = req.print_qr
+        if req.terms_conditions is not None:
+            comp.terms_conditions = req.terms_conditions.strip()
+        if req.settings_json is not None:
+            comp.settings_json = req.settings_json
 
     # Also update firm_name and username on corresponding user(s)
     users = db.query(User).filter((User.company_id == cid) | (User.id == "user-001") | (User.id == "usr-owner-01")).all()
@@ -780,7 +908,7 @@ def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Dep
 
     return {
         "success": True,
-        "message": "Company settings updated successfully",
+        "message": "Company settings updated successfully in 00_settings",
         "firm_name": clean_name,
         "username": clean_user
     }

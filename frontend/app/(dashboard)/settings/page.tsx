@@ -330,12 +330,44 @@ export default function SettingsPage() {
             setFormData((prev) => {
               const updated = {
                 ...prev,
-                company_name: data.company_name,
-                brand_name: data.brand_name || data.company_name.toUpperCase(),
+                company_name: data.company_name || prev.company_name,
+                brand_name: data.brand_name || prev.brand_name,
+                tagline: data.tagline !== undefined && data.tagline !== "" ? data.tagline : prev.tagline,
                 phone: (data.phone && data.phone.trim()) ? data.phone.trim() : prev.phone,
+                alt_phone: data.alt_phone !== undefined && data.alt_phone !== "" ? data.alt_phone : prev.alt_phone,
                 email: (data.email && data.email.trim()) ? data.email.trim() : (cid === "comp-001" ? "owner@shivcreation.com" : (cid === "comp-002" ? "owner@om-sai.com" : prev.email)),
                 address: (data.address && data.address.trim()) ? data.address.trim() : prev.address,
-                gstin: (data.gstin && data.gstin.trim()) ? data.gstin.trim() : prev.gstin
+                city_state: data.city_state !== undefined && data.city_state !== "" ? data.city_state : prev.city_state,
+                pincode: data.pincode !== undefined && data.pincode !== "" ? data.pincode : prev.pincode,
+                msme_no: data.msme_no !== undefined && data.msme_no !== "" ? data.msme_no : prev.msme_no,
+                website: data.website !== undefined && data.website !== "" ? data.website : prev.website,
+                gstin: (data.gstin && data.gstin.trim()) ? data.gstin.trim() : prev.gstin,
+                pan: data.pan !== undefined && data.pan !== "" ? data.pan : prev.pan,
+
+                // Bank Details
+                bank_name: data.bank_name !== undefined && data.bank_name !== "" ? data.bank_name : prev.bank_name,
+                account_holder: data.account_holder !== undefined && data.account_holder !== "" ? data.account_holder : prev.account_holder,
+                account_no: data.account_no !== undefined && data.account_no !== "" ? data.account_no : prev.account_no,
+                account_type: data.account_type !== undefined && data.account_type !== "" ? data.account_type : prev.account_type,
+                ifsc: data.ifsc !== undefined && data.ifsc !== "" ? data.ifsc : prev.ifsc,
+                branch_name: data.branch_name !== undefined && data.branch_name !== "" ? data.branch_name : prev.branch_name,
+                upi_id: data.upi_id !== undefined && data.upi_id !== "" ? data.upi_id : prev.upi_id,
+                qr_code_image: data.qr_code_image !== undefined && data.qr_code_image !== "" ? data.qr_code_image : prev.qr_code_image,
+
+                // Invoicing & Printing
+                invoice_title: data.invoice_title !== undefined && data.invoice_title !== "" ? data.invoice_title : prev.invoice_title,
+                challan_title: data.challan_title !== undefined && data.challan_title !== "" ? data.challan_title : prev.challan_title,
+                invoice_prefix: data.invoice_prefix !== undefined && data.invoice_prefix !== "" ? data.invoice_prefix : prev.invoice_prefix,
+                next_invoice_no: data.next_invoice_no !== undefined && data.next_invoice_no !== "" ? data.next_invoice_no : prev.next_invoice_no,
+                challan_prefix: data.challan_prefix !== undefined && data.challan_prefix !== "" ? data.challan_prefix : prev.challan_prefix,
+                next_challan_no: data.next_challan_no !== undefined && data.next_challan_no !== "" ? data.next_challan_no : prev.next_challan_no,
+                hsn_sac_code: data.hsn_sac_code !== undefined && data.hsn_sac_code !== "" ? data.hsn_sac_code : prev.hsn_sac_code,
+                gst_rate: data.gst_rate !== undefined && data.gst_rate !== "" ? data.gst_rate : prev.gst_rate,
+                payment_terms: data.payment_terms !== undefined && data.payment_terms !== "" ? data.payment_terms : prev.payment_terms,
+                signatory_label: data.signatory_label !== undefined && data.signatory_label !== "" ? data.signatory_label : prev.signatory_label,
+                eway_threshold: data.eway_threshold !== undefined && data.eway_threshold !== "" ? data.eway_threshold : prev.eway_threshold,
+                print_qr: data.print_qr !== undefined ? data.print_qr : prev.print_qr,
+                terms_conditions: data.terms_conditions !== undefined && data.terms_conditions !== "" ? data.terms_conditions : prev.terms_conditions,
               };
               try {
                 localStorage.setItem(`app_settings_${cid}`, JSON.stringify(updated));
@@ -1074,17 +1106,47 @@ export default function SettingsPage() {
           body: JSON.stringify({
             company_id: cid,
             user_id: user?.id,
-            company_name: formData.company_name.trim(),
+            company_name: formData.company_name?.trim() || "",
             brand_name: formData.brand_name?.trim(),
             tagline: formData.tagline?.trim(),
+            owner_name: settingsToSave.owner_name,
             phone: formData.phone?.trim(),
+            alt_phone: formData.alt_phone?.trim(),
             email: formData.email?.trim(),
             username: newUsername,
             address: formData.address?.trim(),
             city_state: formData.city_state?.trim(),
             pincode: formData.pincode?.trim(),
+            msme_no: formData.msme_no?.trim(),
+            website: formData.website?.trim(),
             gstin: formData.gstin?.trim(),
-            pan: formData.pan?.trim()
+            pan: formData.pan?.trim(),
+
+            // Bank Details
+            bank_name: formData.bank_name?.trim(),
+            account_holder: formData.account_holder?.trim(),
+            account_no: formData.account_no?.trim(),
+            account_type: formData.account_type?.trim(),
+            ifsc: formData.ifsc?.trim(),
+            branch_name: formData.branch_name?.trim(),
+            upi_id: formData.upi_id?.trim(),
+            qr_code_image: formData.qr_code_image,
+
+            // Invoicing & Printing
+            invoice_title: formData.invoice_title?.trim(),
+            challan_title: formData.challan_title?.trim(),
+            invoice_prefix: formData.invoice_prefix?.trim(),
+            next_invoice_no: formData.next_invoice_no?.trim(),
+            challan_prefix: formData.challan_prefix?.trim(),
+            next_challan_no: formData.next_challan_no?.trim(),
+            hsn_sac_code: formData.hsn_sac_code?.trim(),
+            gst_rate: formData.gst_rate?.trim(),
+            payment_terms: formData.payment_terms?.trim(),
+            signatory_label: formData.signatory_label?.trim(),
+            eway_threshold: formData.eway_threshold?.trim(),
+            print_qr: formData.print_qr,
+            terms_conditions: formData.terms_conditions?.trim(),
+            settings_json: settingsToSave
           })
         });
 
