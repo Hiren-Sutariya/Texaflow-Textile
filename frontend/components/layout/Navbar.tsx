@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
   Bell, 
@@ -20,22 +19,20 @@ import { useLanguage } from "@/context/LanguageContext";
 
 const pageTitles: Record<string, string> = {
   "/": "Owner Command Center",
-  "/job-works": "Job Work Directory",
-  "/job-works/new": "Create New Job Work Order",
-  "/designs": "Design Library",
-  "/inventory": "Company vs Party Stock Ledger",
-  "/purchases": "Purchase Orders & Stock Shortage",
-  "/payments": "Payments & Vouchers Ledger",
+  "/parties": "Parties Directory",
+  "/vendors": "Parties Directory",
+  "/employees": "Staff & Karigar Directory",
   "/expenses": "Factory & Overhead Expenses",
+  "/purchases": "Purchase Orders & Inward Bills",
+  "/payments": "Payments & Vouchers Ledger",
+  "/ledger": "General Ledger & Accounts",
+  "/categories": "Master Categories & Classifications",
+  "/settings": "System & Company Settings",
+  "/designs": "Design Library",
+  "/job-works": "Job Work Directory",
   "/worker-payout": "Worker Payout & Karigar Salary Ledger",
   "/oms-performance": "OMS Performance & Operation Engine",
-  "/parties": "Parties Directory",
-  "/vendors": "Vendor Master",
-  "/employees": "Staff & Karigar Directory",
-  "/tasks": "Tasks & Audit Proof Logs",
   "/reports": "Reports & Business Analytics",
-  "/documents": "Digital Document Repository",
-  "/settings": "System & Company Settings"
 };
 
 interface NavbarProps {

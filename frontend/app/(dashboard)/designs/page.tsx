@@ -291,7 +291,7 @@ export default function DesignsPage() {
 
   // Load parties for dropdowns
   const loadPartiesInDesigns = () => {
-    let partyList: { id?: string; name: string; city?: string; mobile?: string }[] = [];
+    const partyList: { id?: string; name: string; city?: string; mobile?: string }[] = [];
     try {
       const saved = localStorage.getItem("app_parties");
       if (saved) {
@@ -422,7 +422,7 @@ export default function DesignsPage() {
     const dateFormatted = new Date().toLocaleDateString("en-GB").replace(/\//g, "-");
     const stitchesNum = Number(newFolderStitches) || 35000;
     const rateNum = Number(newFolderRate) || 0.45;
-    let assignedId = `des-${Date.now()}`;
+    const assignedId = `des-${Date.now()}`;
 
     const newDesignObj: DesignFolder = {
       id: assignedId,

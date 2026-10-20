@@ -1,8 +1,8 @@
-from sqlalchemy import Column, String, Float, DateTime, Text, Integer
-from datetime import datetime
+from sqlalchemy import Column, String, Float, Text, Integer
 from app.core.database import Base
+from app.models.base import TimestampMixin
 
-class Purchase(Base):
+class Purchase(Base, TimestampMixin):
     __tablename__ = "04_purchases"
 
     id = Column(String(50), primary_key=True, index=True)
@@ -21,5 +21,3 @@ class Purchase(Base):
     linked_order = Column(String(100), nullable=True)  # Choli Order #
     bill_image = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

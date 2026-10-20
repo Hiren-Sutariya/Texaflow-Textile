@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db, SessionLocal
 from app.models.user import User
-from app.models.company import Company
+from app.models.settings import Settings as Company
 from app.core.email_verifier import validate_email_authenticity
 from app.core.mailer import (
     store_registration_otp,

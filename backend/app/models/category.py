@@ -1,5 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime
-from datetime import datetime
+from sqlalchemy import Column, String, Boolean
 from app.core.database import Base
 from app.models.base import TimestampMixin
 import uuid

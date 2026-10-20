@@ -11,7 +11,8 @@ backend_dir = Path(__file__).resolve().parent.parent.parent
 dotenv_path = backend_dir / ".env"
 if dotenv_path.exists():
     load_dotenv(dotenv_path=dotenv_path)
-load_dotenv()
+else:
+    load_dotenv()
 
 def get_cors_origins() -> List[str]:
     raw = os.getenv("CORS_ORIGINS")
@@ -32,7 +33,7 @@ def get_cors_origins() -> List[str]:
 class Settings(BaseModel):
     PROJECT_NAME: str = os.getenv("PROJECT_NAME", "TexaFlow Textile ERP API")
     API_V1_STR: str = os.getenv("API_V1_STR", "/api/v1")
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./om_sai.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///:memory:")
     CORS_ORIGINS: List[str] = get_cors_origins()
 
 settings = Settings()

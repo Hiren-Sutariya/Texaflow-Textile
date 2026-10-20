@@ -947,7 +947,7 @@ export default function VendorsPage() {
   };
 
   const filteredVendors = useMemo(() => {
-    let result = vendors.filter((v) => {
+    const result = vendors.filter((v) => {
       const q = search.trim().toLowerCase();
       const matchesSearch =
         !q ||

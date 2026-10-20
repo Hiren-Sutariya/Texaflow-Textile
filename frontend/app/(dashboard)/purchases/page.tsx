@@ -233,7 +233,7 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
         const extractedQtys: string[] = [];
 
         subItems.forEach((sub) => {
-          let cleanSub = sub.replace(/\(₹[^)]*\)/g, "").trim();
+          const cleanSub = sub.replace(/\(₹[^)]*\)/g, "").trim();
 
           if (cleanSub.includes(":")) {
             const [name, q] = cleanSub.split(":");

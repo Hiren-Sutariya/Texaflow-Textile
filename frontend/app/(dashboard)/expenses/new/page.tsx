@@ -371,7 +371,7 @@ function NewExpenseVoucherForm() {
       }
 
       if (exp.date) {
-        let dStr = String(exp.date).trim();
+        const dStr = String(exp.date).trim();
         if (dStr.includes("-")) {
           const parts = dStr.split("-");
           if (parts[0].length === 4) {

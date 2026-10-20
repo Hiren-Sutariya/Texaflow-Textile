@@ -4,7 +4,6 @@ from sqlalchemy import func
 
 from app.core.database import get_db
 from app.models.expense import Expense
-from app.models.payment import PaymentVoucher
 from app.core.tenant import get_tenant_company_id
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])

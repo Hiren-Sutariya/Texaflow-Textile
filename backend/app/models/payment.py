@@ -6,7 +6,6 @@ import uuid
 class PaymentVoucher(Base, TimestampMixin):
     __tablename__ = "05_payments"
 
-
     id = Column(String(64), primary_key=True, default=lambda: f"pay-{uuid.uuid4().hex[:12]}")
     voucher_no = Column(String(64), nullable=False, unique=True, index=True)
     voucher_type = Column(String(32), nullable=False, default="Payment", index=True) # Payment, Receipt

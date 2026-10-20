@@ -5,33 +5,20 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
   Users, 
-  Briefcase, 
-  Package, 
-  Factory, 
   ShoppingCart, 
-  Truck, 
   CreditCard, 
   Receipt, 
   UserCheck, 
-  Handshake, 
   BarChart3, 
-  CheckSquare, 
   Settings,
   Palette,
-  PieChart,
   FileText,
   SquarePen,
   X,
   Sparkles,
-  Calculator,
   ChevronDown,
-  Check,
-  Building2,
-  MapPin,
-  LayoutGrid,
   Wallet,
   TrendingUp,
-  Coins,
   LogOut,
   BookOpen,
   Tags
@@ -39,6 +26,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { getStoredFirmName, getStoredUserName, getStoredCompanyId } from "@/lib/tenantStorage";
+import { setTenantCookie } from "@/lib/cookieStorage";
 
 interface MenuItem {
   name: string;
@@ -47,15 +35,9 @@ interface MenuItem {
   isUpcoming?: boolean;
 }
 
-interface SubGroup {
-  subTitle?: string;
-  items: MenuItem[];
-}
-
 interface MenuGroup {
   groupTitle: string;
-  items?: MenuItem[];
-  subGroups?: SubGroup[];
+  items: MenuItem[];
 }
 
 const menuGroups: MenuGroup[] = [
@@ -102,8 +84,6 @@ const quickCreateOptions = [
   { title: "Parties", href: "/vendors", icon: Users, color: "bg-purple-50 text-purple-600 border-purple-100" }
 ];
 
-import { setTenantCookie } from "@/lib/cookieStorage";
-
 interface SidebarProps {
   mobileOpen?: boolean;
   onClose?: () => void;
@@ -122,7 +102,7 @@ export function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
 
   const [showQuickModal, setShowQuickModal] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -152,23 +132,6 @@ export function Sidebar({
     const handleOpenQuickModal = () => setShowQuickModal(true);
     window.addEventListener("app_open_quick_create", handleOpenQuickModal);
     return () => window.removeEventListener("app_open_quick_create", handleOpenQuickModal);
-  }, []);
-
-  const [activeUnit, setActiveUnit] = useState<string>("Unit 1");
-
-  useEffect(() => {
-    const updateUnit = () => {
-      const saved = localStorage.getItem("app_active_unit");
-      if (saved && saved !== "Owner View") {
-        setActiveUnit(saved);
-      } else {
-        setActiveUnit("Unit 1");
-        localStorage.setItem("app_active_unit", "Unit 1");
-      }
-    };
-    updateUnit();
-    window.addEventListener("app_location_change", updateUnit);
-    return () => window.removeEventListener("app_location_change", updateUnit);
   }, []);
 
   // Dynamic Company Brand Name & Owner Name (Syncs with Settings in Real-Time with ZERO delay on refresh)

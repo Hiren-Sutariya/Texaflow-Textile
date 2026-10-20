@@ -5,7 +5,6 @@ from app.models.base import TimestampMixin
 class Design(Base, TimestampMixin):
     __tablename__ = "07_design_library"
 
-
     id = Column(String(64), primary_key=True)
     folder_code = Column(String(64), nullable=False, unique=True, index=True)
     title = Column(String(255), nullable=False, index=True)

@@ -1,0 +1,33 @@
+# Python Bytecode and Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+venv/
+env/
+ENV/
+.venv/
+
+# Environment Variables
+.env
+!.env.example
+
+# SQLite Databases & Local Storage
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE & Editor Configs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Generated
+.DS_Store
+Thumbs.db

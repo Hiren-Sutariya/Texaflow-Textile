@@ -722,7 +722,7 @@ export default function EmployeesPage() {
 
 
   const filteredEmployees = useMemo(() => {
-    let result = employees.filter((emp) => {
+    const result = employees.filter((emp) => {
       const matchesSearch =
         emp.name.toLowerCase().includes(search.toLowerCase()) ||
         emp.code.toLowerCase().includes(search.toLowerCase()) ||

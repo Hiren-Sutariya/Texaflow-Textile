@@ -497,7 +497,7 @@ export default function ExpensesPage() {
     }
     const nextSeqNo = `EB-${String(maxSeq + 1).padStart(3, "0")}`;
 
-    let newEntry: ExpenseItem = {
+    const newEntry: ExpenseItem = {
       id: `exp-${Date.now()}`,
       expense_no: nextSeqNo,
       date: formattedDate,
