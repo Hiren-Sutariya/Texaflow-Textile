@@ -203,26 +203,24 @@ export function getTenantItem<T>(baseKey: string, legacyKey?: string): T | null 
         }
 
         if (Array.isArray(parsed)) {
-          // If array has items, make sure it has data
-          if (parsed.length > 0) {
-            // Check if items have company_id
-            const hasCompanyId = parsed.some((x: any) => x && typeof x === "object" && x.company_id);
-            if (hasCompanyId) {
-              const matched = parsed.filter((x: any) => !x.company_id || x.company_id === cid);
-              if (matched.length > 0) {
-                // Cache into primaryKey for instant 0ms access next time
-                try {
-                  localStorage.setItem(primaryKey, JSON.stringify(matched));
-                } catch {}
-                return matched as unknown as T;
-              }
-            } else {
-              // Untagged array - return as is and cache to primaryKey
-              try {
-                localStorage.setItem(primaryKey, JSON.stringify(parsed));
-              } catch {}
-              return parsed as unknown as T;
-            }
+          // If array is empty, return empty array immediately (do not fallback to stale data)
+          if (parsed.length === 0) {
+            return [] as unknown as T;
+          }
+          // Check if items have company_id
+          const hasCompanyId = parsed.some((x: any) => x && typeof x === "object" && x.company_id);
+          if (hasCompanyId) {
+            const matched = parsed.filter((x: any) => !x.company_id || x.company_id === cid);
+            try {
+              localStorage.setItem(primaryKey, JSON.stringify(matched));
+            } catch {}
+            return matched as unknown as T;
+          } else {
+            // Untagged array - return as is and cache to primaryKey
+            try {
+              localStorage.setItem(primaryKey, JSON.stringify(parsed));
+            } catch {}
+            return parsed as unknown as T;
           }
         } else if (parsed && typeof parsed === "object") {
           return parsed as unknown as T;

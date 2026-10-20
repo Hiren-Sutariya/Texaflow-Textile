@@ -1242,45 +1242,45 @@ export default function LedgerPage() {
           )}
         </div>
 
-        {/* DESKTOP TABLE VIEW (>= md) - CLEAN PLAIN TEXT, NO HEAVY BOXES */}
+        {/* DESKTOP TABLE VIEW (>= md) - CLEAN PLAIN TEXT, EXCEL-STYLE BOX GRID */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+            <thead className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
               <tr>
-                <th className="py-3 px-4">{isGujarati ? "તારીખ" : "DATE"}</th>
-                <th className="py-3 px-4">{isGujarati ? "બિલ / વાઉચર નં" : "REF / NO"}</th>
-                <th className="py-3 px-4">{isGujarati ? "સપ્લાયર / પાર્ટી" : "PARTY / MILL"}</th>
-                <th className="py-3 px-4">{isGujarati ? "વિગત / મટિરિયલ" : "PARTICULARS"}</th>
-                <th className="py-3 px-4">{isGujarati ? "મુદત / મોડ" : "TERMS / MODE"}</th>
-                <th className="py-3 px-4 text-right text-slate-600 font-bold">{isGujarati ? "શરૂઆતની બાકી (₹)" : "OPENING BAL (₹)"}</th>
-                <th className="py-3 px-4 text-right text-rose-700">{isGujarati ? "ઉધાર (DR)" : "DEBIT (DR)"}</th>
-                <th className="py-3 px-4 text-right text-emerald-700">{isGujarati ? "જમા (CR)" : "CREDIT (CR)"}</th>
-                <th className="py-3 px-4 text-right font-black text-slate-900">{isGujarati ? "આખર બાકી (₹)" : "NET BALANCE"}</th>
-                <th className="py-3 px-4 text-center w-20">{isGujarati ? "એક્શન" : "ACTION"}</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{isGujarati ? "તારીખ" : "DATE"}</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{isGujarati ? "બિલ / વાઉચર નં" : "REF / NO"}</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{isGujarati ? "સપ્લાયર / પાર્ટી" : "PARTY / MILL"}</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{isGujarati ? "વિગત / મટિરિયલ" : "PARTICULARS"}</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{isGujarati ? "મુદત / મોડ" : "TERMS / MODE"}</th>
+                <th className="py-2.5 px-4 text-right text-slate-600 font-bold border-r border-slate-200/80">{isGujarati ? "શરૂઆતની બાકી (₹)" : "OPENING BAL (₹)"}</th>
+                <th className="py-2.5 px-4 text-right text-rose-700 border-r border-slate-200/80">{isGujarati ? "ઉધાર (DR)" : "DEBIT (DR)"}</th>
+                <th className="py-2.5 px-4 text-right text-emerald-700 border-r border-slate-200/80">{isGujarati ? "જમા (CR)" : "CREDIT (CR)"}</th>
+                <th className="py-2.5 px-4 text-right font-black text-slate-900 border-r border-slate-200/80">{isGujarati ? "આખર બાકી (₹)" : "NET BALANCE"}</th>
+                <th className="py-2.5 px-4 text-center w-20">{isGujarati ? "એક્શન" : "ACTION"}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
               {partyFilter !== "All" && (
                 <tr className="bg-slate-50/60 font-medium">
-                  <td className="py-3 px-4 font-mono font-medium text-slate-400 text-xs">—</td>
-                  <td className="py-3 px-4 whitespace-nowrap">
+                  <td className="py-3 px-4 font-mono font-medium text-slate-400 text-xs border-r border-slate-200/70">—</td>
+                  <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
                     <span className="font-mono text-xs font-bold text-slate-700">
                       OP-BAL
                     </span>
                   </td>
-                  <td className="py-3 px-4 whitespace-nowrap font-bold text-slate-900 text-xs">
+                  <td className="py-3 px-4 whitespace-nowrap font-bold text-slate-900 text-xs border-r border-slate-200/70">
                     {partyFilter}
                   </td>
-                  <td className="py-3 px-4 text-xs font-bold text-slate-700">
+                  <td className="py-3 px-4 text-xs font-bold text-slate-700 border-r border-slate-200/70">
                     {isGujarati ? "શરૂઆતની બાકી (Opening Balance B/F)" : "Opening Balance Brought Forward"}
                   </td>
-                  <td className="py-3 px-4 font-mono text-xs text-slate-400 whitespace-nowrap">—</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-slate-700 text-xs whitespace-nowrap">
+                  <td className="py-3 px-4 font-mono text-xs text-slate-400 whitespace-nowrap border-r border-slate-200/70">—</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-slate-700 text-xs whitespace-nowrap border-r border-slate-200/70">
                     ₹{selectedPartyOpeningBal.toLocaleString("en-IN")}
                   </td>
-                  <td className="py-3 px-4 text-right font-mono text-slate-400 whitespace-nowrap">—</td>
-                  <td className="py-3 px-4 text-right font-mono text-slate-400 whitespace-nowrap">—</td>
-                  <td className="py-3 px-4 text-right font-mono font-black text-slate-900 text-xs whitespace-nowrap">
+                  <td className="py-3 px-4 text-right font-mono text-slate-400 whitespace-nowrap border-r border-slate-200/70">—</td>
+                  <td className="py-3 px-4 text-right font-mono text-slate-400 whitespace-nowrap border-r border-slate-200/70">—</td>
+                  <td className="py-3 px-4 text-right font-mono font-black text-slate-900 text-xs whitespace-nowrap border-r border-slate-200/70">
                     ₹{selectedPartyOpeningBal.toLocaleString("en-IN")}
                   </td>
                   <td className="py-3 px-4 text-center text-slate-400">—</td>
@@ -1297,14 +1297,14 @@ export default function LedgerPage() {
                 filteredEntries.map((e) => {
                   const isBill = e.type === "BILL";
                   return (
-                    <tr key={e.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={e.id} className="hover:bg-blue-50/40 transition-colors">
                       {/* 1. Date */}
-                      <td className="py-3 px-4 font-mono font-medium text-slate-600 whitespace-nowrap align-middle">
+                      <td className="py-3 px-4 font-mono font-medium text-slate-600 whitespace-nowrap align-middle border-r border-slate-200/70">
                         {e.date}
                       </td>
 
                       {/* 2. Ref / Bill No (Clean Plain Text With Dot - NO BOX) */}
-                      <td className="py-3 px-4 whitespace-nowrap align-middle">
+                      <td className="py-3 px-4 whitespace-nowrap align-middle border-r border-slate-200/70">
                         <div className="flex items-center gap-1.5">
                           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isBill ? "bg-blue-600" : "bg-emerald-600"}`}></span>
                           <span className="font-mono text-xs font-bold text-slate-800">
@@ -1314,7 +1314,7 @@ export default function LedgerPage() {
                       </td>
 
                       {/* 3. Party / Mill Name */}
-                      <td className="py-3 px-4 whitespace-nowrap align-middle">
+                      <td className="py-3 px-4 whitespace-nowrap align-middle border-r border-slate-200/70">
                         <button
                           type="button"
                           onClick={() => setPartyFilter(e.partyName)}
@@ -1326,7 +1326,7 @@ export default function LedgerPage() {
                       </td>
 
                       {/* 4. Particulars With Clean Subtitles (Payer, Design No, Kasar) */}
-                      <td className="py-3 px-4 align-middle">
+                      <td className="py-3 px-4 align-middle border-r border-slate-200/70">
                         <div className="text-xs font-bold text-slate-900 leading-snug">
                           {e.description}
                         </div>
@@ -1350,7 +1350,7 @@ export default function LedgerPage() {
                       </td>
 
                       {/* 5. Terms / Mode (Clean Plain Text - NO BOX) */}
-                      <td className="py-3 px-4 whitespace-nowrap align-middle">
+                      <td className="py-3 px-4 whitespace-nowrap align-middle border-r border-slate-200/70">
                         {isBill ? (
                           <div className="flex flex-col gap-0.5">
                             <span className="text-slate-800 font-semibold text-xs">{e.modeOrTerms || (isGujarati ? "શાખ" : "Credit")}</span>
@@ -1369,22 +1369,22 @@ export default function LedgerPage() {
                       </td>
 
                       {/* 6. Opening Balance for this transaction */}
-                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-medium text-slate-700 text-xs">
+                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-medium text-slate-700 text-xs border-r border-slate-200/70">
                         ₹{(e.openingBalance || 0).toLocaleString("en-IN")}
                       </td>
 
                       {/* 7. Debit (Dr) */}
-                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-bold text-rose-700 text-xs">
+                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-bold text-rose-700 text-xs border-r border-slate-200/70">
                         {e.debit > 0 ? `₹${e.debit.toLocaleString("en-IN")}` : "—"}
                       </td>
 
                       {/* 8. Credit (Cr) */}
-                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-bold text-emerald-700 text-xs">
+                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-bold text-emerald-700 text-xs border-r border-slate-200/70">
                         {e.credit > 0 ? `₹${e.credit.toLocaleString("en-IN")}` : "—"}
                       </td>
 
                       {/* 9. Running Balance (Clean Text With Dr/Cr - NO BOX) */}
-                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap">
+                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap border-r border-slate-200/70">
                         {e.runningBalance !== undefined ? (
                           <span className={`font-mono text-xs font-bold ${
                             e.runningBalance > 0

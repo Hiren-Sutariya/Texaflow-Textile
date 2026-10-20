@@ -151,7 +151,7 @@ export default function TextileCreditWidget() {
             className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer"
             title={t("View Supplier Ledgers & Statements")}
           >
-            <span>📊 {t("Ledger & Accounts")}</span>
+            <span>📊 {t("Ledger")}</span>
           </button>
           <Link
             href="/purchases/new"

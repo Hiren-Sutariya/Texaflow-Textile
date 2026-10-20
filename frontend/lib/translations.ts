@@ -3,19 +3,28 @@ export type Language = "en" | "gu";
 export const translations: Record<string, { en: string; gu: string }> = {
   // Navigation / Sidebar Groups
   "Masters": { en: "Masters", gu: "માસ્ટર્સ" },
-  "Finance & Accounts": { en: "Finance & Accounts", gu: "નાણાં અને એકાઉન્ટ્સ" },
-  "Staff & Settings": { en: "Staff & Settings", gu: "સ્ટાફ અને સેટિંગ્સ" },
+  "Finance": { en: "Finance", gu: "ફાઇનાન્સ (નાણાં)" },
+  "Finance & Accounts": { en: "Finance", gu: "નાણાં અને એકાઉન્ટ્સ" },
+  "Staff & Settings": { en: "Settings", gu: "સેટિંગ્સ" },
+  "Upcoming Features": { en: "Upcoming Features", gu: "આગામી ફીચર્સ" },
+  "Upcoming Modules": { en: "Upcoming Modules", gu: "આગામી મોડ્યુલ્સ" },
 
   // Sidebar Menu Items
   "Vendors": { en: "Vendors", gu: "વેન્ડર્સ (વેપારીઓ)" },
-  "Workers & Karigars": { en: "Workers & Karigars", gu: "કારીગરો અને વર્કર્સ" },
-  "Categories Master": { en: "Categories Master", gu: "કેટેગરી માસ્ટર" },
+  "Parties & Vendors": { en: "Vendors", gu: "વેન્ડર્સ (વેપારીઓ)" },
+  "Workers": { en: "Workers", gu: "કારીગરો / વર્કર્સ" },
+  "Workers & Karigars": { en: "Workers", gu: "કારીગરો અને વર્કર્સ" },
+  "Categories Master": { en: "Categories", gu: "કેટેગરી માસ્ટર" },
   "Categories": { en: "Categories", gu: "કેટેગરી માસ્ટર" },
-  "Category Master": { en: "Category Master", gu: "કેટેગરી માસ્ટર" },
+  "Category Master": { en: "Categories", gu: "કેટેગરી માસ્ટર" },
+  "Purchases": { en: "Purchases", gu: "ખરીદી (ઇનવર્ડ)" },
+  "Payments": { en: "Payments", gu: "ચુકવણી (પેમેન્ટ્સ)" },
+  "Payments & Vouchers": { en: "Payments", gu: "ચુકવણી અને વાઉચર્સ" },
+  "Ledger": { en: "Ledger", gu: "ખાતાવહી (લેજર)" },
+  "Ledger & Accounts": { en: "Ledger", gu: "ખાતાવહી અને હિસાબ" },
   "Design Library": { en: "Design Library", gu: "ડિઝાઇન લાઇબ્રેરી" },
-  "Parties": { en: "Parties", gu: "પાર્ટીઓ (ગ્રાહકો)" },
+  "Parties": { en: "Parties", gu: "પાર્ટીઓ" },
   "Karigar Issue": { en: "Karigar Issue", gu: "કારીગર જોબ વર્ક" },
-  "Payments & Vouchers": { en: "Payments & Vouchers", gu: "ચુકવણી અને વાઉચર્સ" },
   "Expenses": { en: "Expenses", gu: "ખર્ચાઓ (Expenses)" },
   "Worker Payout": { en: "Worker Payout", gu: "કારીગર પગાર હિસાબ" },
   "OMS Performance": { en: "OMS Performance", gu: "OMS ઓપરેશન્સ" },
@@ -61,7 +70,6 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "Create New Job Work Order": { en: "Create New Job Work Order", gu: "નવો જોબ વર્ક ઓર્ડર" },
   "Production Floor & Daily Shift Entry": { en: "Production Floor & Daily Shift Entry", gu: "પ્રોડક્શન ફ્લોર અને દૈનિક શિફ્ટ એન્ટ્રી" },
   "Company vs Party Stock Ledger": { en: "Company vs Party Stock Ledger", gu: "કંપની વિ. પાર્ટી સ્ટોક લેજર" },
-  "Ledger & Accounts": { en: "Ledger & Accounts", gu: "ખાતાવહી અને હિસાબ" },
   "Ledgers & Statements": { en: "Ledgers & Statements", gu: "ખાતાવહી અને સ્ટેટમેન્ટ" },
   "Supplier / Mill Ledger & Statement": { en: "Supplier / Mill Ledger & Statement", gu: "સપ્લાયર / મિલ ખાતાવહી સ્ટેટમેન્ટ" },
   "View Supplier Ledger & Statement": { en: "View Supplier Ledger & Statement", gu: "સપ્લાયર ખાતાવહી સ્ટેટમેન્ટ જુઓ" },
@@ -408,15 +416,14 @@ export const translations: Record<string, { en: string; gu: string }> = {
   },
 
   // Purchases & Material Inward
-  "Purchases": { en: "Purchases", gu: "મટિરિયલ ખરીદી" },
   "Material Purchase": { en: "Material Purchase", gu: "મટિરિયલ ખરીદી" },
   "Raw Material Purchases": { en: "Raw Material Purchases", gu: "કાચો માલ / મટિરિયલ ખરીદી" },
   "+ New Purchase Bill": { en: "New Purchase Bill", gu: "નવું ખરીદી બિલ" },
   "New Purchase Bill": { en: "New Purchase Bill", gu: "નવું ખરીદી બિલ" },
   "All Status": { en: "All Status", gu: "તમામ સ્થિતિ" },
   "TOTAL PURCHASES": { en: "TOTAL PURCHASES", gu: "કુલ ખરીદી" },
-  "PENDING CREDIT (શાખ)": { en: "PENDING CREDIT (શાખ)", gu: "બાકી શાખ (Credit)" },
-  "OVERDUE BILLS (ઓવરડ્યુ)": { en: "OVERDUE BILLS (ઓવરડ્યુ)", gu: "મુદત વીતેલા બિલ" },
+  "PENDING CREDIT (શાખ)": { en: "PENDING CREDIT", gu: "બાકી શાખ (Credit)" },
+  "OVERDUE BILLS (ઓવરડ્યુ)": { en: "OVERDUE BILLS", gu: "મુદત વીતેલા બિલ" },
   "PAID / SETTLED": { en: "PAID / SETTLED", gu: "ચૂકતે / પેઇડ" },
   "Pay via Voucher": { en: "Pay via Voucher", gu: "વાઉચરથી ચૂકવણી" },
   "Pay Voucher": { en: "Pay Voucher", gu: "વાઉચર બનાવો" },
@@ -448,6 +455,22 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "Due Date / Mudat": { en: "Due Date / Mudat", gu: "મુદત તારીખ / દિવસો" },
   "Total Bill Amount": { en: "Total Bill Amount", gu: "કુલ બિલ રકમ" },
   "View Bill Slip": { en: "View Bill Slip", gu: "બિલ સ્લિપ જુઓ" },
+  "QUANTITY": { en: "QUANTITY", gu: "જથ્થો (QTY)" },
+  "QTY": { en: "QTY", gu: "જથ્થો" },
+  "MATERIAL & ITEMS": { en: "MATERIAL & ITEMS", gu: "મટિરિયલ અને આઇટમ્સ" },
+  "SUPPLIER / MILL": { en: "SUPPLIER / MILL", gu: "સપ્લાયર / મિલ" },
+  "BILL NO": { en: "BILL NO", gu: "બિલ નં." },
+  "REMARKS": { en: "REMARKS", gu: "રિમાર્ક્સ" },
+  "ITEM / SHADE DESCRIPTION": { en: "ITEM / SHADE DESCRIPTION", gu: "આઇટમ / શેડ વિગત" },
+  "ITEM / SHADE DESCRIPTION*": { en: "ITEM / SHADE DESCRIPTION*", gu: "આઇટમ / શેડ વિગત*" },
+  "SUPPLIER / VENDOR": { en: "SUPPLIER / VENDOR", gu: "સપ્લાયર / વેપારી (મિલ)" },
+  "Supplier / Vendor*": { en: "Supplier / Vendor*", gu: "સપ્લાયર / વેપારી (મિલ)*" },
+  "Supplier / Vendor (વેપારી / મિલ)*": { en: "Supplier / Vendor*", gu: "સપ્લાયર / વેપારી (મિલ)*" },
+  "INVOICE SPECIFICATIONS": { en: "INVOICE SPECIFICATIONS", gu: "ઇન્વોઇસ વિગત (બિલ વિગત)" },
+  "Invoice Specifications": { en: "Invoice Specifications", gu: "ઇન્વોઇસ વિગત (બિલ વિગત)" },
+  "Invoice Specifications*": { en: "Invoice Specifications*", gu: "ઇન્વોઇસ વિગત (બિલ વિગત)*" },
+  "Invoice Specifications (બિલ વિગત)*": { en: "Invoice Specifications*", gu: "ઇન્વોઇસ વિગત (બિલ વિગત)*" },
+  "DUE (DAYS)": { en: "DUE (DAYS)", gu: "મુદત (દિવસ)" },
   "Pay Now": { en: "Pay Now", gu: "ચૂકવો" }
 };
 
@@ -868,6 +891,10 @@ export function getTranslation(key: string, lang: Language, fallback?: string): 
 
   // Handle English: If key is in Gujarati, convert it back to English
   if (lang === "en") {
+    if (translations[trimmed]?.en) {
+      return translations[trimmed].en;
+    }
+
     const lowerKey = trimmed.toLowerCase();
     if (guToEnMap[lowerKey]) {
       return guToEnMap[lowerKey];
@@ -889,7 +916,10 @@ export function getTranslation(key: string, lang: Language, fallback?: string): 
         return guToEnMap[coreClean] + punctuation.trim();
       }
     }
-    return fallback || key;
+
+    // Safety strip: Remove any parenthetical Gujarati like "(વેપારી / મિલ)"
+    const res = fallback || key;
+    return res.replace(/\s*\([\u0A80-\u0AFF\s\/\-]+\)/g, "").trim();
   }
   const directMatch = translations[trimmed];
   if (directMatch?.gu) return directMatch.gu;

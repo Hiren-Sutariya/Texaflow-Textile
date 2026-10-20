@@ -24,7 +24,7 @@ import {
 
 const destinationModules = [
   {
-    title: "Parties & Vendors",
+    title: "Parties",
     description: "Register Vepari clients, suppliers, dyeing mills, job workers & brokers",
     href: "/vendors",
     icon: Users,
@@ -48,7 +48,7 @@ const destinationModules = [
     isUpcoming: true
   },
   {
-    title: "Payments & Vouchers",
+    title: "Payments",
     description: "Party payments, receipts & white/black ledger vouchers",
     href: "/payments",
     icon: CreditCard,

@@ -1002,23 +1002,23 @@ export default function ExpensesPage() {
           )}
         </div>
 
-        {/* DESKTOP TABLE VIEW (>= md) */}
+        {/* DESKTOP TABLE VIEW (>= md) - EXCEL-STYLE BOX GRID */}
         <div suppressHydrationWarning className="hidden md:block overflow-x-auto">
           <table suppressHydrationWarning className="w-full text-left border-collapse text-xs min-w-[950px]">
             <thead>
-              <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                <th className="py-3.5 px-4">{t("DATE")}</th>
-                <th className="py-3.5 px-4">{t("EXPENSE / BILL")}</th>
-                <th className="py-3.5 px-4">{t("CATEGORY")}</th>
-                <th className="py-3.5 px-4">{t("VENDOR / PAYEE")}</th>
-                <th className="py-3.5 px-4">{t("PAYMENT MODE")}</th>
-                <th className="py-3.5 px-4">{t("STATUS")}</th>
-                <th className="py-3.5 px-4">{t("REMARKS / NOTES")}</th>
-                <th className="py-3.5 px-4 text-right">{t("AMOUNT (₹)")}</th>
-                <th className="py-3.5 px-4 text-center w-20">{t("ACTION")}</th>
+              <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("DATE")}</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("EXPENSE / BILL")}</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("CATEGORY")}</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("VENDOR / PAYEE")}</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("PAYMENT MODE")}</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("STATUS")}</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("REMARKS / NOTES")}</th>
+                <th className="py-2.5 px-4 text-right border-r border-slate-200/80">{t("AMOUNT (₹)")}</th>
+                <th className="py-2.5 px-4 text-center w-20">{t("ACTION")}</th>
               </tr>
             </thead>
-            <tbody suppressHydrationWarning className="divide-y divide-slate-100 font-medium text-slate-700">
+            <tbody suppressHydrationWarning className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
               {filteredExpenses.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
@@ -1027,14 +1027,14 @@ export default function ExpensesPage() {
                 </tr>
               ) : (
                 filteredExpenses.map((item) => (
-                  <tr key={item.id} className="hover:bg-blue-50/50 transition-colors animate-in fade-in duration-150">
+                  <tr key={item.id} className="hover:bg-blue-50/40 transition-colors animate-in fade-in duration-150">
                   {/* 1. DATE */}
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-700 whitespace-nowrap">
+                  <td className="py-3 px-4 font-mono font-bold text-slate-700 whitespace-nowrap border-r border-slate-200/70">
                     {formatDateDDMMYYYY(item.date)}
                   </td>
 
                   {/* 2. EXPENSE / BILL */}
-                  <td className="py-3.5 px-4 whitespace-nowrap">
+                  <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
                     <div className="inline-flex items-center gap-1.5">
                       <span className="font-mono text-xs font-bold text-slate-800">
                         {item.expense_no || "-"}
@@ -1054,24 +1054,24 @@ export default function ExpensesPage() {
                   </td>
 
                   {/* 3. CATEGORY */}
-                  <td className="py-3.5 px-4 whitespace-nowrap">
+                  <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
                     <span className="text-xs font-semibold text-slate-800">
                       {t(item.category)}
                     </span>
                   </td>
 
                   {/* 4. VENDOR / PAYEE */}
-                  <td className="py-3.5 px-4 whitespace-nowrap">
+                  <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
                     <span className="font-bold text-slate-900">{t(item.vendor_name || "-")}</span>
                   </td>
 
                   {/* 5. PAYMENT MODE */}
-                  <td className="py-3.5 px-4 whitespace-nowrap text-slate-700 font-semibold text-xs">
+                  <td className="py-3 px-4 whitespace-nowrap text-slate-700 font-semibold text-xs border-r border-slate-200/70">
                     {t(item.paid_via)}
                   </td>
 
                   {/* 6. STATUS */}
-                  <td className="py-3.5 px-4 whitespace-nowrap">
+                  <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
                     {item.payment_status === "Paid" ? (
                       <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -1086,19 +1086,19 @@ export default function ExpensesPage() {
                   </td>
 
                   {/* 7. REMARKS / NOTES */}
-                  <td className="py-3.5 px-4 min-w-[200px] max-w-sm">
+                  <td className="py-3 px-4 min-w-[200px] max-w-sm border-r border-slate-200/70">
                     <p className="text-slate-700 text-xs font-medium leading-relaxed break-words">
                       {t(item.notes || "-")}
                     </p>
                   </td>
 
                   {/* 8. AMOUNT (₹) */}
-                  <td className="py-3.5 px-4 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap">
+                  <td className="py-3 px-4 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap border-r border-slate-200/70">
                     ₹{item.amount.toLocaleString("en-IN")}
                   </td>
 
                   {/* 9. ACTION */}
-                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                  <td className="py-3 px-4 text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-1">
                       <Link
                         href={`/expenses/new?edit=${item.id}`}

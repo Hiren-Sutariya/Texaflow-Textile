@@ -2619,21 +2619,22 @@ export default function VendorsPage() {
         </div>
 
         {/* 2. DESKTOP / TABLET DATA TABLE (VISIBLE ON md: AND ABOVE) */}
+        {/* 2. DESKTOP / TABLET DATA TABLE (VISIBLE ON md: AND ABOVE) - EXCEL-STYLE BOX GRID */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse divide-y divide-slate-100 min-w-[850px]">
-            <thead className="bg-slate-50/90 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+          <table className="w-full text-left border-collapse min-w-[850px]">
+            <thead className="bg-slate-100/80 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider border-b border-slate-200 whitespace-nowrap">
               <tr>
-                <th className="py-3.5 px-4 text-center w-14">SR NO.</th>
-                <th className="py-3.5 px-5">VENDOR NAME</th>
-                <th className="py-3.5 px-4 text-center">ACCOUNT TYPE</th>
-                <th className="py-3.5 px-4">PRIMARY CONTACT</th>
-                <th className="py-3.5 px-4 font-mono">MOBILE / PHONE</th>
-                <th className="py-3.5 px-4 font-mono">GSTIN / PAN</th>
-                <th className="py-3.5 px-4 text-center">PAYMENT TERMS</th>
-                <th className="py-3.5 px-4 text-center w-28">ACTION</th>
+                <th className="py-2.5 px-4 text-center w-14 border-r border-slate-200/80">SR NO.</th>
+                <th className="py-2.5 px-5 border-r border-slate-200/80">VENDOR NAME</th>
+                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">ACCOUNT TYPE</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">PRIMARY CONTACT</th>
+                <th className="py-2.5 px-4 font-mono border-r border-slate-200/80">MOBILE / PHONE</th>
+                <th className="py-2.5 px-4 font-mono border-r border-slate-200/80">GSTIN / PAN</th>
+                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">PAYMENT TERMS</th>
+                <th className="py-2.5 px-4 text-center w-28">ACTION</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-800">
+            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-800 bg-white">
               {filteredVendors.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-slate-400 font-medium text-xs">
@@ -2645,15 +2646,15 @@ export default function VendorsPage() {
                   <tr
                     key={v.id}
                     onClick={() => openPreviewVendor(v)}
-                    className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
+                    className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
                   >
-                    <td className="py-4 px-4 text-center font-bold text-slate-500 font-mono text-xs">{v.srNo}</td>
-                    <td className="py-4 px-5">
+                    <td className="py-3 px-4 text-center font-bold text-slate-500 font-mono text-xs border-r border-slate-200/70">{v.srNo}</td>
+                    <td className="py-3 px-5 border-r border-slate-200/70">
                       <span className="font-extrabold text-slate-900 text-xs sm:text-sm group-hover:text-blue-700 transition-colors">
                         {v.display_name || v.company_name}
                       </span>
                     </td>
-                    <td className="py-4 px-4 text-center whitespace-nowrap">
+                    <td className="py-3 px-4 text-center whitespace-nowrap border-r border-slate-200/70">
                       <span className="text-xs font-bold text-slate-800 inline-flex items-center gap-1.5">
                         <span className={`w-1.5 h-1.5 rounded-full ${
                           v.account_type === "Customer / Client"
@@ -2667,16 +2668,16 @@ export default function VendorsPage() {
                         <span>{v.account_type || "Supplier / Vendor"}</span>
                       </span>
                     </td>
-                    <td className="py-4 px-4 font-bold text-slate-800 whitespace-nowrap">
+                    <td className="py-3 px-4 font-bold text-slate-800 whitespace-nowrap border-r border-slate-200/70">
                       {v.salutation ? `${v.salutation} ` : ""}{v.first_name} {v.last_name}
                     </td>
-                    <td className="py-4 px-4 font-mono whitespace-nowrap">
+                    <td className="py-3 px-4 font-mono whitespace-nowrap border-r border-slate-200/70">
                       <span className="font-bold text-slate-800 flex items-center gap-1.5">
                         <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0 inline" />
                         {v.mobile || v.work_phone || "-"}
                       </span>
                     </td>
-                    <td className="py-4 px-4 font-mono whitespace-nowrap">
+                    <td className="py-3 px-4 font-mono whitespace-nowrap border-r border-slate-200/70">
                       <span className="font-bold text-slate-700">{v.gstin || v.pan || "-"}</span>
                       {v.is_msme && (
                         <span className="text-emerald-700 font-extrabold text-[10px] ml-1.5">
@@ -2684,12 +2685,12 @@ export default function VendorsPage() {
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-4 text-center whitespace-nowrap">
+                    <td className="py-3 px-4 text-center whitespace-nowrap border-r border-slate-200/70">
                       <span className="font-mono text-xs font-semibold text-slate-700">
                         {v.payment_terms || "Due on Receipt"}
                       </span>
                     </td>
-                    <td className="py-4 px-4 text-center">
+                    <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"

@@ -28,7 +28,8 @@ import {
   TrendingUp,
   FileSpreadsheet,
   ExternalLink,
-  CheckCircle2
+  CheckCircle2,
+  Printer
 } from "lucide-react";
 
 interface CustomSelectOption {
@@ -116,92 +117,250 @@ function CustomSelect({
   );
 }
 
-type ParsedMaterial =
-  | { isBreakdown: true; total: string | null; items: Array<{ shade: string; qty: string }> }
-  | { isBreakdown: false; raw: string };
+export interface ParsedPurchaseData {
+  categories: string[];
+  itemNames: string[];
+  quantityDisplay: string;
+  itemCount: number;
+}
 
-function parseMaterialDescription(desc?: string): ParsedMaterial | null {
-  if (!desc || !desc.trim()) return null;
-  let trimmed = desc.trim();
-  if (trimmed.startsWith("(") && trimmed.endsWith(")")) {
-    trimmed = trimmed.slice(1, -1).trim();
-  }
+export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
+  // 1. Categories Extraction
+  const categorySet = new Set<string>();
 
-  // Pattern like: "370 - 14 box, 351 - 17 box, 6074 - 9 box = 40 box"
-  if (trimmed.includes("=") && trimmed.includes("-")) {
-    const [left, right] = trimmed.split("=");
-    const total = right?.trim() || null;
-    const parts = left.split(",").map((p) => p.trim()).filter(Boolean);
-    const items = parts.map((part) => {
-      const segs = part.split("-");
-      if (segs.length >= 2) {
-        return {
-          shade: segs[0].trim(),
-          qty: segs.slice(1).join("-").trim()
-        };
-      }
-      return { shade: part, qty: "" };
+  if (Array.isArray(item.items) && item.items.length > 0) {
+    item.items.forEach((it: any) => {
+      const c = (it.category || "").trim();
+      if (c && c !== "Select Category...") categorySet.add(c);
     });
-    return { isBreakdown: true, total, items };
   }
 
-  // Pattern with comma-separated items like "370 - 14 box, 351 - 17 box" (without =)
-  if (trimmed.includes(",") && trimmed.includes("-")) {
-    const parts = trimmed.split(",").map((p) => p.trim()).filter(Boolean);
-    const hasShades = parts.every((p) => p.includes("-"));
-    if (hasShades && parts.length > 1) {
-      const items = parts.map((part) => {
-        const segs = part.split("-");
-        return {
-          shade: segs[0].trim(),
-          qty: segs.slice(1).join("-").trim()
-        };
-      });
-      return { isBreakdown: true, total: null, items };
+  if (item.category) {
+    item.category
+      .split(",")
+      .map((c) => c.trim())
+      .filter((c) => c && c !== "Select Category...")
+      .forEach((c) => categorySet.add(c));
+  }
+
+  const categories = Array.from(categorySet);
+  if (categories.length === 0) {
+    categories.push("Raw Material");
+  }
+
+  // 2. Item Names / Shades & Quantity Extraction
+  const itemNames: string[] = [];
+  let quantityDisplay = "";
+  let itemCount = 0;
+
+  if (Array.isArray(item.items) && item.items.length > 0) {
+    const validLineItems = item.items.filter(
+      (it: any) =>
+        (it.description && it.description.trim()) ||
+        (it.quantity && it.quantity.toString().trim()) ||
+        (it.amount && it.amount.toString().trim())
+    );
+
+    itemCount = validLineItems.length;
+
+    validLineItems.forEach((it: any) => {
+      const desc = (it.description || "").trim();
+      if (desc) itemNames.push(desc);
+    });
+
+    // Check quantities
+    let totalNumeric = 0;
+    let hasNumeric = false;
+    let detectedUnit = "";
+    let mixedUnits = false;
+    const rawQtyList: string[] = [];
+
+    for (const it of validLineItems) {
+      const rawQty = (it.quantity || "").toString().trim();
+      if (!rawQty) continue;
+      rawQtyList.push(rawQty);
+
+      const match = rawQty.match(/^([\d.]+)\s*(.*)$/);
+      if (match) {
+        hasNumeric = true;
+        totalNumeric += parseFloat(match[1]);
+        const unit = match[2]?.trim() || "";
+        if (!detectedUnit && unit) {
+          detectedUnit = unit;
+        } else if (detectedUnit && unit && detectedUnit.toLowerCase() !== unit.toLowerCase()) {
+          mixedUnits = true;
+        }
+      }
+    }
+
+    if (hasNumeric && !mixedUnits && totalNumeric > 0) {
+      quantityDisplay = detectedUnit ? `${totalNumeric} ${detectedUnit}` : `${totalNumeric}`;
+    } else if (rawQtyList.length > 0) {
+      if (rawQtyList.length <= 2) {
+        quantityDisplay = rawQtyList.join(", ");
+      } else {
+        quantityDisplay = `${rawQtyList.slice(0, 2).join(", ")} +${rawQtyList.length - 2}`;
+      }
     }
   }
 
-  return { isBreakdown: false, raw: trimmed };
-}
+  // 3. Fallback to items_description if no items array or quantity is still blank
+  if (!quantityDisplay || itemNames.length === 0) {
+    const rawDesc = (item.items_description || "").trim();
+    if (rawDesc) {
+      let desc = rawDesc;
+      if (desc.startsWith("(") && desc.endsWith(")")) {
+        desc = desc.slice(1, -1).trim();
+      }
 
-function MaterialDescriptionCell({ category, description }: { category: string; description?: string }) {
-  if (!description || !description.trim()) {
-    return <span className="font-bold text-slate-800">{category}</span>;
+      // Pattern like: "370 - 14 box, 351 - 17 box = 40 box"
+      if (desc.includes("=")) {
+        const parts = desc.split("=");
+        const totalPart = parts[1]?.trim();
+        if (totalPart && !quantityDisplay) {
+          quantityDisplay = totalPart;
+        }
+        const leftPart = parts[0]?.trim() || "";
+        leftPart.split(",").forEach((p) => {
+          const segs = p.split("-");
+          if (segs[0]?.trim() && itemNames.length < 5) {
+            itemNames.push(segs[0].trim());
+          }
+        });
+      } else {
+        // Pattern like: "124 - LL - 4 (₹1480)" or "2313 : 10 (₹1230), 1234 : 5 (₹1770)"
+        const subItems = desc.split(",").map((s) => s.trim()).filter(Boolean);
+        const extractedQtys: string[] = [];
+
+        subItems.forEach((sub) => {
+          let cleanSub = sub.replace(/\(₹[^)]*\)/g, "").trim();
+
+          if (cleanSub.includes(":")) {
+            const [name, q] = cleanSub.split(":");
+            if (name?.trim()) itemNames.push(name.trim());
+            if (q?.trim()) extractedQtys.push(q.trim());
+          } else if (cleanSub.includes("-")) {
+            const segs = cleanSub.split("-").map((s) => s.trim()).filter(Boolean);
+            if (segs.length >= 2) {
+              itemNames.push(segs[0]);
+              const lastSeg = segs[segs.length - 1];
+              if (/^[\d.]+\s*[a-zA-Z]*$/.test(lastSeg)) {
+                extractedQtys.push(lastSeg);
+              }
+            } else if (segs.length === 1) {
+              itemNames.push(segs[0]);
+            }
+          } else {
+            if (cleanSub) itemNames.push(cleanSub);
+          }
+        });
+
+        if (!quantityDisplay && extractedQtys.length > 0) {
+          let sumNum = 0;
+          let canSum = true;
+          let unit = "";
+          for (const q of extractedQtys) {
+            const m = q.match(/^([\d.]+)\s*(.*)$/);
+            if (m) {
+              sumNum += parseFloat(m[1]);
+              if (!unit && m[2]) unit = m[2];
+            } else {
+              canSum = false;
+            }
+          }
+          if (canSum && sumNum > 0) {
+            quantityDisplay = unit ? `${sumNum} ${unit}` : `${sumNum}`;
+          } else {
+            quantityDisplay = extractedQtys.join(", ");
+          }
+        }
+      }
+    }
   }
 
-  const parsed = parseMaterialDescription(description);
+  const uniqueItemNames = Array.from(new Set(itemNames)).filter(Boolean);
+  if (itemCount === 0) {
+    itemCount = uniqueItemNames.length > 0 ? uniqueItemNames.length : 1;
+  }
 
-  if (!parsed || !parsed.isBreakdown) {
-    return (
-      <div className="flex items-center gap-1.5 text-xs flex-wrap">
-        <span className="font-bold text-slate-800">{category}</span>
-        <span className="text-slate-500 font-medium">({description})</span>
-      </div>
-    );
+  return {
+    categories,
+    itemNames: uniqueItemNames,
+    quantityDisplay: quantityDisplay || "-",
+    itemCount
+  };
+}
+
+function CategoryDisplayCell({
+  item,
+  t
+}: {
+  item: PurchaseItem;
+  t: (key: string) => string;
+}) {
+  const { categories } = parsePurchaseRecord(item);
+
+  if (categories.length === 0) {
+    return <span className="text-slate-800 font-black text-sm select-none">-</span>;
   }
 
   return (
-    <div className="flex flex-col gap-1 py-0.5">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="font-extrabold text-slate-900 text-xs">{category}</span>
-        {parsed.total && (
-          <span className="font-mono font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 text-[10px]">
-            Total: {parsed.total}
+    <div className="py-0.5 max-w-[140px]">
+      <span
+        className="font-bold text-slate-900 text-xs truncate block tracking-tight"
+        title={categories.map((c) => t(c)).join(", ")}
+      >
+        {categories.map((c) => t(c)).join(", ")}
+      </span>
+    </div>
+  );
+}
+
+function ItemDescriptionDisplayCell({
+  item
+}: {
+  item: PurchaseItem;
+}) {
+  const { itemNames } = parsePurchaseRecord(item);
+
+  if (itemNames.length === 0) {
+    return <span className="text-slate-400 font-bold text-xs select-none">-</span>;
+  }
+
+  return (
+    <div className="py-0.5 max-w-[170px]">
+      <span
+        className="font-extrabold text-slate-900 text-xs truncate block tracking-tight"
+        title={itemNames.join(", ")}
+      >
+        {itemNames.slice(0, 2).join(", ")}
+        {itemNames.length > 2 && (
+          <span className="text-slate-500 font-semibold text-[11px] ml-1">
+            (+{itemNames.length - 2})
           </span>
         )}
-      </div>
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {parsed.items.map((sub, idx) => (
-          <span
-            key={idx}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-xs shadow-2xs"
-          >
-            <span className="font-mono font-extrabold text-slate-800">{sub.shade}</span>
-            <span className="text-slate-400 font-bold">:</span>
-            <span className="font-mono font-bold text-blue-700 text-[11px]">{sub.qty}</span>
-          </span>
-        ))}
-      </div>
+      </span>
+    </div>
+  );
+}
+
+function QuantityDisplayCell({ item }: { item: PurchaseItem }) {
+  const { quantityDisplay, itemCount } = parsePurchaseRecord(item);
+
+  if (!quantityDisplay || quantityDisplay === "-") {
+    return <span className="text-slate-800 font-black text-sm select-none">-</span>;
+  }
+
+  return (
+    <div className="text-center">
+      <span className="font-mono text-xs font-black text-slate-900 whitespace-nowrap">
+        {quantityDisplay}
+      </span>
+      {itemCount > 1 && (
+        <span className="text-[10px] text-slate-500 font-bold block whitespace-nowrap leading-none mt-0.5">
+          {itemCount} items
+        </span>
+      )}
     </div>
   );
 }
@@ -213,6 +372,7 @@ export interface PurchaseItem {
   category: string;
   vendor_name: string;
   items_description?: string;
+  items?: any[];
   amount: number;
   payment_status: "Paid" | "Pending" | "Unpaid";
   paid_via?: string;
@@ -235,16 +395,37 @@ export default function PurchasesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedBillImage, setSelectedBillImage] = useState<{ image: string; purchase_no: string; notes?: string } | null>(null);
   const [previewBill, setPreviewBill] = useState<PurchaseItem | null>(null);
+  const [materialCategoriesList, setMaterialCategoriesList] = useState<string[]>([]);
 
-  const purchaseCategories = [
-    "All",
-    "Raw Material & Fabric",
-    "Yarn & Threads",
-    "Zari & Metallic Trims",
-    "Lace, Borders & Latkan",
-    "Choli & Garment Trims",
-    "Packaging Materials"
-  ];
+  useEffect(() => {
+    const loadCats = () => {
+      const currentCid = getStoredCompanyId() || "comp-001";
+      const stored = getTenantItem<string[]>("texaflow_material_categories", currentCid === "comp-001" ? "om_sai_material_categories" : undefined);
+      if (Array.isArray(stored)) {
+        setMaterialCategoriesList(stored);
+      } else {
+        setMaterialCategoriesList([
+          "Raw Material & Fabric",
+          "Yarn & Threads",
+          "Zari & Metallic Trims",
+          "Lace, Borders & Latkan",
+          "Choli & Garment Trims",
+          "Packaging Materials"
+        ]);
+      }
+    };
+    loadCats();
+    window.addEventListener("texaflow_material_categories_changed", loadCats);
+    window.addEventListener("storage", loadCats);
+    return () => {
+      window.removeEventListener("texaflow_material_categories_changed", loadCats);
+      window.removeEventListener("storage", loadCats);
+    };
+  }, []);
+
+  const purchaseCategories = useMemo(() => {
+    return ["All", ...materialCategoriesList];
+  }, [materialCategoriesList]);
 
   useEffect(() => {
     let isMounted = true;
@@ -339,6 +520,13 @@ export default function PurchasesPage() {
     } catch (err) {
       console.warn("API delete notice:", err);
     }
+  };
+
+  const handlePrintBill = (item: any) => {
+    setPreviewBill(item);
+    setTimeout(() => {
+      window.print();
+    }, 250);
   };
 
   // Filter purchases
@@ -486,7 +674,7 @@ export default function PurchasesPage() {
       </div>
 
       {/* Main Table & Mobile Cards */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         {/* Mobile View (< md) */}
         <div className="block md:hidden divide-y divide-slate-100 p-3 space-y-3">
           {filteredPurchases.length === 0 ? (
@@ -499,10 +687,10 @@ export default function PurchasesPage() {
               const dueInfo = item.due_date ? getDueStatus(item.due_date, !isUnpaid) : null;
 
               return (
-                <div key={item.id} className="p-3 bg-white rounded-xl border border-slate-200 space-y-2 shadow-2xs">
+                <div key={item.id} className="p-3.5 bg-white rounded-2xl border border-slate-200 space-y-2.5 shadow-2xs">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-mono font-bold text-slate-500">{item.date}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
                       item.payment_status === "Paid"
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                         : "bg-amber-50 text-amber-700 border-amber-200"
@@ -530,11 +718,18 @@ export default function PurchasesPage() {
                     </div>
                   </div>
 
-                  {item.items_description && (
-                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-200">
-                      <MaterialDescriptionCell category={t(item.category)} description={item.items_description} />
+                  {/* Category & Quantity Row */}
+                  <div className="p-2.5 bg-slate-50/80 rounded-xl border border-slate-200 flex items-center justify-between gap-2">
+                    <CategoryDisplayCell item={item} t={t} />
+                    <div className="text-right shrink-0">
+                      <QuantityDisplayCell item={item} />
                     </div>
-                  )}
+                  </div>
+
+                  {/* Items / Description Row */}
+                  <div className="px-1 text-xs">
+                    <ItemDescriptionDisplayCell item={item} />
+                  </div>
 
                   {/* Due Date Info */}
                   {item.due_date && (
@@ -562,12 +757,14 @@ export default function PurchasesPage() {
                     </div>
                   )}
 
-                  {item.notes && (
-                    <div className="text-[11px] text-slate-600 flex items-start gap-1.5">
-                      <span className="font-bold text-slate-400 uppercase text-[10px] shrink-0">{t("Remarks")}:</span>
-                      <span className="font-medium text-slate-700">{item.notes}</span>
-                    </div>
-                  )}
+                  <div className="text-[11px] text-slate-600 flex items-start gap-1.5">
+                    <span className="font-bold text-slate-400 uppercase text-[10px] shrink-0">{t("Remarks")}:</span>
+                    {item.notes ? (
+                      <span className="font-medium text-slate-800">{item.notes}</span>
+                    ) : (
+                      <span className="text-slate-900 font-black text-xs">-</span>
+                    )}
+                  </div>
 
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                     {isUnpaid ? (
@@ -580,11 +777,19 @@ export default function PurchasesPage() {
                       </Link>
                     ) : <span />}
 
-                    <div className="flex items-center gap-2">
-                      <Link href={`/purchases/new?edit=${item.id}`} className="p-1 text-slate-400 hover:text-blue-600">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handlePrintBill(item)}
+                        className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                        title={t("Print Bill Slip")}
+                      >
+                        <Printer className="w-4 h-4" />
+                      </button>
+                      <Link href={`/purchases/new?edit=${item.id}`} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" title={t("Edit")}>
                         <Edit3 className="w-4 h-4" />
                       </Link>
-                      <button type="button" onClick={() => handleDeletePurchase(item.id)} className="p-1 text-slate-400 hover:text-rose-600">
+                      <button type="button" onClick={() => handleDeletePurchase(item.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title={t("Delete")}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -595,35 +800,39 @@ export default function PurchasesPage() {
           )}
         </div>
 
-        {/* Desktop Table View (>= md) - Balanced, Stable Space Allocation */}
+        {/* Desktop Table View (>= md) - Clean, Modern Space Allocation */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs min-w-[1180px]">
+          <table className="w-full text-left border-collapse text-xs min-w-[1280px]">
             <thead>
-              <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+              <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
                 {/* 1. DATE */}
-                <th className="py-3 px-3 w-[105px] min-w-[105px]">{t("DATE")}</th>
+                <th className="py-2.5 px-3.5 w-[100px] min-w-[100px] border-r border-slate-200/80">{t("DATE")}</th>
                 {/* 2. BILL NO */}
-                <th className="py-3 px-3 w-[105px] min-w-[105px]">{t("BILL NO")}</th>
+                <th className="py-2.5 px-3.5 w-[105px] min-w-[105px] border-r border-slate-200/80">{t("BILL NO")}</th>
                 {/* 3. SUPPLIER / MILL */}
-                <th className="py-3 px-3 w-[190px] min-w-[190px] max-w-[190px]">{t("SUPPLIER / MILL")}</th>
-                {/* 4. MATERIAL & ITEMS */}
-                <th className="py-3 px-3 w-[230px] min-w-[230px] max-w-[230px]">{t("MATERIAL & ITEMS")}</th>
-                {/* 5. REMARKS */}
-                <th className="py-3 px-3 w-[240px] min-w-[240px] max-w-[240px]">{t("REMARKS")}</th>
-                {/* 6. AMOUNT (₹) */}
-                <th className="py-3 px-3 text-right w-[110px] min-w-[110px]">{t("AMOUNT (₹)")}</th>
-                {/* 7. DUE (DAYS) */}
-                <th className="py-3 px-3 text-center w-[110px] min-w-[110px]">{t("DUE (DAYS)")}</th>
-                {/* 8. STATUS */}
-                <th className="py-3 px-3 text-center w-[100px] min-w-[100px]">{t("STATUS")}</th>
-                {/* 9. ACTION */}
-                <th className="py-3 px-3 text-center w-[90px] min-w-[90px]">{t("ACTION")}</th>
+                <th className="py-2.5 px-3.5 w-[170px] min-w-[170px] max-w-[170px] border-r border-slate-200/80">{t("SUPPLIER / MILL")}</th>
+                {/* 4. CATEGORY */}
+                <th className="py-2.5 px-3.5 w-[140px] min-w-[140px] max-w-[140px] border-r border-slate-200/80">{t("CATEGORY")}</th>
+                {/* 5. ITEM / SHADE DESCRIPTION */}
+                <th className="py-2.5 px-3.5 w-[170px] min-w-[170px] max-w-[170px] border-r border-slate-200/80">{t("ITEM / SHADE DESCRIPTION")}</th>
+                {/* 6. QUANTITY */}
+                <th className="py-2.5 px-3.5 text-center w-[110px] min-w-[110px] border-r border-slate-200/80">{t("QUANTITY")}</th>
+                {/* 7. AMOUNT (₹) */}
+                <th className="py-2.5 px-3.5 text-right w-[115px] min-w-[115px] border-r border-slate-200/80">{t("AMOUNT (₹)")}</th>
+                {/* 8. REMARKS */}
+                <th className="py-2.5 px-3.5 w-[170px] min-w-[170px] max-w-[170px] border-r border-slate-200/80">{t("REMARKS")}</th>
+                {/* 9. DUE (DAYS) */}
+                <th className="py-2.5 px-3.5 text-center w-[105px] min-w-[105px] border-r border-slate-200/80">{t("DUE (DAYS)")}</th>
+                {/* 10. STATUS */}
+                <th className="py-2.5 px-3.5 text-center w-[95px] min-w-[95px] border-r border-slate-200/80">{t("STATUS")}</th>
+                {/* 11. ACTION */}
+                <th className="py-2.5 px-3.5 text-center w-[105px] min-w-[105px]">{t("ACTION")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+            <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
               {filteredPurchases.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
+                  <td colSpan={11} className="py-12 text-center text-slate-400 font-medium">
                     {t("No purchase bills found matching your filters. Click \"+ New Purchase Bill\" to add.")}
                   </td>
                 </tr>
@@ -633,80 +842,99 @@ export default function PurchasesPage() {
                     <tr
                       key={item.id}
                       onClick={() => setPreviewBill(item)}
-                      className="hover:bg-slate-50/70 transition-colors cursor-pointer group"
+                      className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
                     >
                       {/* 1. DATE */}
-                      <td className="py-3.5 px-3 font-mono font-bold text-slate-700 whitespace-nowrap align-middle w-[105px] min-w-[105px]">
+                      <td className="py-3 px-3.5 font-mono font-bold text-slate-700 whitespace-nowrap align-middle w-[100px] min-w-[100px] border-r border-slate-200/70">
                         {item.date}
                       </td>
 
                       {/* 2. BILL NO */}
-                      <td className="py-3.5 px-3 whitespace-nowrap align-middle w-[105px] min-w-[105px]">
+                      <td className="py-3 px-3.5 whitespace-nowrap align-middle w-[105px] min-w-[105px] border-r border-slate-200/70">
                         <span className="font-mono text-xs font-bold text-slate-800">
                           {item.purchase_no}
                         </span>
                       </td>
 
                       {/* 3. SUPPLIER / MILL */}
-                      <td className="py-3.5 px-3 align-middle w-[190px] min-w-[190px] max-w-[190px]">
-                        <span className="font-extrabold text-slate-900 text-xs block truncate" title={item.vendor_name}>
+                      <td className="py-3 px-3.5 align-middle w-[170px] min-w-[170px] max-w-[170px] border-r border-slate-200/70">
+                        <span className="font-bold text-slate-900 text-xs block truncate tracking-tight" title={item.vendor_name}>
                           {item.vendor_name}
                         </span>
                       </td>
 
-                      {/* 4. MATERIAL & ITEMS */}
-                      <td className="py-3.5 px-3 align-middle w-[230px] min-w-[230px] max-w-[230px]">
-                        <MaterialDescriptionCell category={t(item.category)} description={item.items_description} />
+                      {/* 4. CATEGORY */}
+                      <td className="py-3 px-3.5 align-middle w-[140px] min-w-[140px] max-w-[140px] border-r border-slate-200/70">
+                        <CategoryDisplayCell item={item} t={t} />
                       </td>
 
-                      {/* 5. REMARKS */}
-                      <td className="py-3.5 px-3 text-xs align-middle w-[240px] min-w-[240px] max-w-[240px] whitespace-normal">
-                        {item.notes ? (
-                          <p className="font-medium text-slate-700 text-xs break-words whitespace-normal leading-relaxed">
-                            {item.notes}
-                          </p>
-                        ) : (
-                          <span className="text-slate-300 italic">-</span>
-                        )}
+                      {/* 5. ITEM / SHADE DESCRIPTION */}
+                      <td className="py-3 px-3.5 align-middle w-[170px] min-w-[170px] max-w-[170px] border-r border-slate-200/70">
+                        <ItemDescriptionDisplayCell item={item} />
                       </td>
 
-                      {/* 6. AMOUNT (₹) */}
-                      <td className="py-3.5 px-3 text-right align-middle whitespace-nowrap font-mono font-black text-slate-900 text-sm w-[110px] min-w-[110px]">
+                      {/* 6. QUANTITY */}
+                      <td className="py-3 px-3.5 text-center align-middle whitespace-nowrap w-[110px] min-w-[110px] border-r border-slate-200/70">
+                        <QuantityDisplayCell item={item} />
+                      </td>
+
+                      {/* 7. AMOUNT (₹) */}
+                      <td className="py-3 px-3.5 text-right align-middle whitespace-nowrap font-mono font-black text-slate-950 text-xs tracking-tight w-[115px] min-w-[115px] border-r border-slate-200/70">
                         ₹{item.amount.toLocaleString("en-IN")}
                       </td>
 
-                      {/* 7. DUE (DAYS) - ONLY DAYS */}
-                      <td className="py-3.5 px-3 text-center align-middle whitespace-nowrap w-[110px] min-w-[110px]">
+                      {/* 8. REMARKS */}
+                      <td className="py-3 px-3.5 text-xs align-middle w-[170px] min-w-[170px] max-w-[170px] whitespace-normal border-r border-slate-200/70">
+                        {item.notes ? (
+                          <p className="font-medium text-slate-700 text-xs truncate max-w-[160px]" title={item.notes}>
+                            {item.notes}
+                          </p>
+                        ) : (
+                          <span className="text-slate-800 font-black text-sm select-none">-</span>
+                        )}
+                      </td>
+
+                      {/* 9. DUE (DAYS) */}
+                      <td className="py-3 px-3.5 text-center align-middle whitespace-nowrap w-[105px] min-w-[105px] border-r border-slate-200/70">
                         {item.payment_status === "Paid" ? (
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 inline-flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span className="text-xs font-bold text-emerald-700 inline-flex items-center gap-1.5 justify-center">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             <span>{t("Settled")}</span>
                           </span>
                         ) : (
-                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50/90 px-2.5 py-1 rounded-lg border border-blue-200 inline-block">
-                            {item.credit_days ? `${item.credit_days} Days` : "0 Days"}
+                          <span className="font-mono text-xs font-bold text-amber-700 inline-flex items-center gap-1.5 justify-center">
+                            <Clock className="w-3.5 h-3.5 text-amber-600" />
+                            <span>{item.credit_days ? `${item.credit_days}d` : "0d"}</span>
                           </span>
                         )}
                       </td>
 
-                      {/* 8. STATUS */}
-                      <td className="py-3.5 px-3 text-center align-middle whitespace-nowrap w-[100px] min-w-[100px]">
+                      {/* 10. STATUS */}
+                      <td className="py-3 px-3.5 text-center align-middle whitespace-nowrap w-[95px] min-w-[95px] border-r border-slate-200/70">
                         {item.payment_status === "Paid" ? (
-                          <span className="text-xs font-bold text-emerald-700 flex items-center justify-center gap-1.5">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                             <span>{t("Paid")}</span>
                           </span>
                         ) : (
-                          <span className="text-xs font-bold text-amber-600 flex items-center justify-center gap-1.5">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                             <span>{t("Pending")}</span>
                           </span>
                         )}
                       </td>
 
-                      {/* 9. ACTION */}
-                      <td className="py-3.5 px-3 text-center align-middle whitespace-nowrap w-[90px] min-w-[90px]">
-                        <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      {/* 11. ACTION */}
+                      <td className="py-3 px-3.5 text-center align-middle whitespace-nowrap w-[105px] min-w-[105px]">
+                        <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handlePrintBill(item)}
+                            className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                            title={t("Print Bill Slip")}
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
                           <Link
                             href={`/purchases/new?edit=${item.id}`}
                             className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
@@ -736,7 +964,30 @@ export default function PurchasesPage() {
       {/* 4. PURCHASE BILL SLIP PREVIEW MODAL */}
       {previewBill && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <style>{`
+            @media print {
+              body * {
+                visibility: hidden;
+              }
+              #printable-bill-slip, #printable-bill-slip * {
+                visibility: visible;
+              }
+              #printable-bill-slip {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                border: none !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+            }
+          `}</style>
+
+          <div id="printable-bill-slip" className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
@@ -745,7 +996,7 @@ export default function PurchasesPage() {
               </div>
               <button
                 onClick={() => setPreviewBill(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer no-print"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -784,12 +1035,35 @@ export default function PurchasesPage() {
                   <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{t("Category")}</span>
                   <span className="font-extrabold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">{t(previewBill.category)}</span>
                 </div>
-                {previewBill.items_description && (
+                {previewBill.items && Array.isArray(previewBill.items) && previewBill.items.length > 0 ? (
+                  <div className="p-3 space-y-1.5">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">{t("Items / Material Details")}</span>
+                    <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden text-xs">
+                      {previewBill.items.map((it: any, idx: number) => (
+                        <div key={idx} className="p-2 flex items-center justify-between bg-slate-50/50">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-extrabold text-slate-900">{it.description || it.category}</span>
+                            {it.quantity && (
+                              <span className="text-blue-700 font-mono font-bold text-[10px] bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                                {it.quantity}
+                              </span>
+                            )}
+                          </div>
+                          {it.amount && (
+                            <span className="font-mono font-bold text-slate-800">
+                              ₹{parseFloat(String(it.amount)).toLocaleString("en-IN")}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : previewBill.items_description ? (
                   <div className="p-3 flex flex-col gap-1">
                     <span className="text-[10px] font-bold text-slate-400 uppercase">{t("Items / Material Details")}</span>
                     <span className="font-medium text-slate-800">{previewBill.items_description}</span>
                   </div>
-                )}
+                ) : null}
                 {previewBill.linked_order && (
                   <div className="p-3 flex items-center justify-between gap-4">
                     <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{t("Linked Order")}</span>
@@ -815,27 +1089,35 @@ export default function PurchasesPage() {
               </div>
             </div>
 
-            {/* Modal Actions - Balanced 2 Buttons without Ledger */}
-            <div className="flex items-center gap-3 pt-2">
+            {/* Modal Actions */}
+            <div className="flex items-center gap-2 pt-2 no-print">
               <button
                 type="button"
                 onClick={() => setPreviewBill(null)}
-                className="w-28 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-extrabold transition-colors cursor-pointer text-center"
+                className="px-4 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
               >
                 {t("Close")}
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>{t("Print")}</span>
               </button>
               {(previewBill.payment_status === "Pending" || previewBill.payment_status === "Unpaid") ? (
                 <Link
                   href={`/payments/new?vendor=${encodeURIComponent(previewBill.vendor_name)}&amount=${previewBill.amount}&source=Purchase+Bill&ref=${previewBill.purchase_no}`}
-                  className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="flex-1 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <CreditCard className="w-4 h-4" />
-                  <span>{t("Create Payment Voucher")}</span>
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>{t("Pay Voucher")}</span>
                 </Link>
               ) : (
-                <div className="flex-1 py-2.5 px-4 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-extrabold border border-emerald-200 flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>{t("Bill Paid & Settled")}</span>
+                <div className="flex-1 py-2.5 px-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-bold border border-emerald-200 flex items-center justify-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{t("Paid & Settled")}</span>
                 </div>
               )}
             </div>

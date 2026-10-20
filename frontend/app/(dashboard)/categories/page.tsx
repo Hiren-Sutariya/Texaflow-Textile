@@ -149,6 +149,9 @@ export default function CategoriesPage() {
   const [expenseCategories, setExpenseCategories] = useState<string[]>(DEFAULT_EXPENSE_CATEGORIES);
   const [designCategories, setDesignCategories] = useState<string[]>(DEFAULT_DESIGN_CATEGORIES);
 
+  // Multi-select state for bulk deletion
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+
   // Add category modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addName, setAddName] = useState("");
@@ -187,15 +190,15 @@ export default function CategoriesPage() {
     const cid = getStoredCompanyId() || "comp-001";
     try {
       const mat = getTenantItem<string[]>("texaflow_material_categories", cid === "comp-001" ? "om_sai_material_categories" : undefined);
-      if (Array.isArray(mat) && mat.length > 0) setMaterialCategories(mat);
+      if (Array.isArray(mat)) setMaterialCategories(mat);
       else setMaterialCategories(DEFAULT_MATERIAL_CATEGORIES);
 
       const exp = getTenantItem<string[]>("texaflow_expense_categories_order", cid === "comp-001" ? "om_sai_expense_categories" : undefined);
-      if (Array.isArray(exp) && exp.length > 0) setExpenseCategories(exp);
+      if (Array.isArray(exp)) setExpenseCategories(exp);
       else setExpenseCategories(DEFAULT_EXPENSE_CATEGORIES);
 
       const des = getTenantItem<string[]>("texaflow_design_categories", cid === "comp-001" ? "om_sai_design_categories" : undefined);
-      if (Array.isArray(des) && des.length > 0) setDesignCategories(des);
+      if (Array.isArray(des)) setDesignCategories(des);
       else setDesignCategories(DEFAULT_DESIGN_CATEGORIES);
     } catch (e) {
       console.error(e);
@@ -216,27 +219,27 @@ export default function CategoriesPage() {
   // Combine into unified table records
   const allRecords: CategoryRecord[] = useMemo(() => {
     const records: CategoryRecord[] = [];
-    materialCategories.forEach((cat, idx) => {
+    materialCategories.forEach((cat) => {
       records.push({
-        id: `mat-${idx}-${cat}`,
+        id: `mat-${cat}`,
         name: cat,
         module: "material",
         moduleLabel: "Material & Purchase",
         status: "Active"
       });
     });
-    expenseCategories.forEach((cat, idx) => {
+    expenseCategories.forEach((cat) => {
       records.push({
-        id: `exp-${idx}-${cat}`,
+        id: `exp-${cat}`,
         name: cat,
         module: "expense",
         moduleLabel: "Expenses",
         status: "Active"
       });
     });
-    designCategories.forEach((cat, idx) => {
+    designCategories.forEach((cat) => {
       records.push({
-        id: `des-${idx}-${cat}`,
+        id: `des-${cat}`,
         name: cat,
         module: "design",
         moduleLabel: "Design Library",
@@ -296,6 +299,63 @@ export default function CategoriesPage() {
     showToast(`Category "${trimmed}" added successfully!`);
   };
 
+  // Multi-select handlers
+  const handleToggleRow = (id: string) => {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    const allFilteredIds = filteredRecords.map((r) => r.id);
+    const isAllSelected =
+      allFilteredIds.length > 0 &&
+      allFilteredIds.every((id) => selectedCategoryIds.includes(id));
+
+    if (isAllSelected) {
+      setSelectedCategoryIds((prev) =>
+        prev.filter((id) => !allFilteredIds.includes(id))
+      );
+    } else {
+      setSelectedCategoryIds((prev) =>
+        Array.from(new Set([...prev, ...allFilteredIds]))
+      );
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedCategoryIds.length === 0) return;
+    const count = selectedCategoryIds.length;
+    if (
+      !window.confirm(
+        `Are you sure you want to delete ${count} selected ${count === 1 ? "category" : "categories"}?`
+      )
+    ) {
+      return;
+    }
+
+    const selectedRecords = allRecords.filter((r) => selectedCategoryIds.includes(r.id));
+    const matToDelete = new Set(selectedRecords.filter((r) => r.module === "material").map((r) => r.name));
+    const expToDelete = new Set(selectedRecords.filter((r) => r.module === "expense").map((r) => r.name));
+    const desToDelete = new Set(selectedRecords.filter((r) => r.module === "design").map((r) => r.name));
+
+    if (matToDelete.size > 0) {
+      const updatedMat = materialCategories.filter((c) => !matToDelete.has(c));
+      saveCategoryList("material", updatedMat);
+    }
+    if (expToDelete.size > 0) {
+      const updatedExp = expenseCategories.filter((c) => !expToDelete.has(c));
+      saveCategoryList("expense", updatedExp);
+    }
+    if (desToDelete.size > 0) {
+      const updatedDes = designCategories.filter((c) => !desToDelete.has(c));
+      saveCategoryList("design", updatedDes);
+    }
+
+    setSelectedCategoryIds([]);
+    showToast(`Deleted ${count} ${count === 1 ? "category" : "categories"} successfully!`);
+  };
+
   // Delete handler
   const handleDelete = (rec: CategoryRecord) => {
     if (!window.confirm(`Are you sure you want to remove "${rec.name}"?`)) {
@@ -308,6 +368,7 @@ export default function CategoriesPage() {
 
     const updated = targetList.filter((c) => c !== rec.name);
     saveCategoryList(rec.module, updated);
+    setSelectedCategoryIds((prev) => prev.filter((id) => id !== rec.id));
     showToast(`Removed "${rec.name}".`);
   };
 
@@ -356,9 +417,14 @@ export default function CategoriesPage() {
     setTenantItem("texaflow_expense_categories_order", DEFAULT_EXPENSE_CATEGORIES, cid === "comp-001" ? "om_sai_expense_categories" : undefined);
     setTenantItem("texaflow_design_categories", DEFAULT_DESIGN_CATEGORIES, cid === "comp-001" ? "om_sai_design_categories" : undefined);
     window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
+    setSelectedCategoryIds([]);
     setIsActionMenuOpen(false);
     showToast("Reset to default categories.");
   };
+
+  const isAllFilteredSelected =
+    filteredRecords.length > 0 &&
+    filteredRecords.every((r) => selectedCategoryIds.includes(r.id));
 
   return (
     <div className="space-y-4 pb-12">
@@ -367,6 +433,35 @@ export default function CategoriesPage() {
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in duration-150">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* BULK ACTION SELECTION BANNER */}
+      {selectedCategoryIds.length > 0 && (
+        <div className="bg-blue-50/90 border border-blue-200 px-4 py-2.5 rounded-2xl flex items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1 duration-150 shadow-2xs">
+          <div className="flex items-center gap-2 text-blue-900 font-extrabold">
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+            <span>
+              {selectedCategoryIds.length} {selectedCategoryIds.length === 1 ? "category" : "categories"} selected
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedCategoryIds([])}
+              className="px-3 py-1.5 text-slate-600 hover:text-slate-900 hover:bg-white/80 rounded-xl font-bold text-xs transition-colors cursor-pointer"
+            >
+              Deselect All
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Selected ({selectedCategoryIds.length})</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -401,6 +496,19 @@ export default function CategoriesPage() {
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {/* Bulk Delete Button in Toolbar when rows selected */}
+            {selectedCategoryIds.length > 0 && (
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                className="h-9 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-extrabold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
+                title="Delete Selected Categories"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>Delete ({selectedCategoryIds.length})</span>
+              </button>
+            )}
+
             {/* Add Category Button */}
             <button
               type="button"
@@ -455,39 +563,65 @@ export default function CategoriesPage() {
         </div>
       </div>
 
-      {/* TABLE CARD CONTAINER (MATCHING OTHER MODULES) */}
+      {/* TABLE CARD CONTAINER (MATCHING OTHER MODULES) - EXCEL-STYLE BOX GRID */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-black tracking-wider text-slate-500 uppercase">
-                <th className="py-3 px-4 w-16 text-center">SR NO.</th>
-                <th className="py-3 px-4">CATEGORY NAME</th>
-                <th className="py-3 px-4">MODULE TYPE</th>
-                <th className="py-3 px-4 text-center">STATUS</th>
-                <th className="py-3 px-4 text-center w-28">ACTION</th>
+              <tr className="border-b border-slate-200 bg-slate-100/80 text-[10px] font-extrabold tracking-wider text-slate-600 uppercase whitespace-nowrap">
+                {/* SELECT ALL CHECKBOX */}
+                <th className="py-2.5 px-3 w-10 text-center border-r border-slate-200/80">
+                  <input
+                    type="checkbox"
+                    checked={isAllFilteredSelected}
+                    onChange={handleToggleSelectAll}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    title="Select All"
+                  />
+                </th>
+                <th className="py-2.5 px-4 w-16 text-center border-r border-slate-200/80">SR NO.</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">CATEGORY NAME</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">MODULE TYPE</th>
+                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">STATUS</th>
+                <th className="py-2.5 px-4 text-center w-28">ACTION</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-xs">
+            <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-xs bg-white">
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400 font-medium text-xs">
+                  <td colSpan={6} className="py-12 text-center text-slate-400 font-medium text-xs">
                     No category records found matching your filters. Click &quot;+ Add Category&quot; to add a record.
                   </td>
                 </tr>
               ) : (
                 filteredRecords.map((rec, index) => {
                   const isEditing = editingItem?.name === rec.name && editingItem?.module === rec.module;
+                  const isRowSelected = selectedCategoryIds.includes(rec.id);
 
                   return (
-                    <tr key={rec.id} className="hover:bg-blue-50/40 transition-colors">
+                    <tr
+                      key={rec.id}
+                      className={`transition-colors ${
+                        isRowSelected ? "bg-blue-50/60" : "hover:bg-blue-50/40"
+                      }`}
+                    >
+                      {/* ROW CHECKBOX */}
+                      <td className="py-3 px-3 text-center border-r border-slate-200/70" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isRowSelected}
+                          onChange={() => handleToggleRow(rec.id)}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                      </td>
+
                       {/* SR NO. */}
-                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-400 text-xs">
+                      <td className="py-3 px-4 text-center font-mono font-bold text-slate-400 text-xs border-r border-slate-200/70">
                         {String(index + 1).padStart(2, "0")}
                       </td>
 
                       {/* CATEGORY NAME */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-4 border-r border-slate-200/70">
                         {isEditing ? (
                           <div className="flex items-center gap-2 max-w-sm">
                             <input
@@ -524,7 +658,7 @@ export default function CategoriesPage() {
                       </td>
 
                       {/* MODULE TYPE */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
                         <span className={`text-xs font-bold flex items-center gap-1.5 ${
                           rec.module === "material"
                             ? "text-blue-700"
@@ -544,7 +678,7 @@ export default function CategoriesPage() {
                       </td>
 
                       {/* STATUS */}
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                      <td className="py-3 px-4 text-center whitespace-nowrap border-r border-slate-200/70">
                         <span className="text-xs font-bold text-emerald-700 inline-flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                           <span>{rec.status}</span>
@@ -552,7 +686,7 @@ export default function CategoriesPage() {
                       </td>
 
                       {/* ACTION */}
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"

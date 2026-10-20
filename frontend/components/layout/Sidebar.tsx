@@ -62,29 +62,34 @@ const menuGroups: MenuGroup[] = [
   {
     groupTitle: "Masters",
     items: [
-      { name: "Parties & Vendors", href: "/vendors", icon: Users },
-      { name: "Workers & Karigars", href: "/employees", icon: UserCheck },
-      { name: "Categories Master", href: "/categories", icon: Tags },
+      { name: "Parties", href: "/vendors", icon: Users },
+      { name: "Workers", href: "/employees", icon: UserCheck },
+    ]
+  },
+  {
+    groupTitle: "Finance",
+    items: [
+      { name: "Expenses", href: "/expenses", icon: Receipt },
+      { name: "Purchases", href: "/purchases", icon: ShoppingCart },
+      { name: "Payments", href: "/payments", icon: CreditCard },
+      { name: "Ledger", href: "/ledger", icon: BookOpen },
+    ]
+  },
+  {
+    groupTitle: "Settings",
+    items: [
+      { name: "Categories", href: "/categories", icon: Tags },
+      { name: "Settings", href: "/settings", icon: Settings },
+    ]
+  },
+  {
+    groupTitle: "Upcoming Features",
+    items: [
       { name: "Design Library", href: "/designs", icon: Palette, isUpcoming: true },
       { name: "Karigar Issue", href: "/job-works", icon: FileText, isUpcoming: true },
-    ]
-  },
-  {
-    groupTitle: "Finance & Accounts",
-    items: [
-      { name: "Purchases", href: "/purchases", icon: ShoppingCart },
-      { name: "Payments & Vouchers", href: "/payments", icon: CreditCard },
-      { name: "Ledger & Accounts", href: "/ledger", icon: BookOpen },
-      { name: "Expenses", href: "/expenses", icon: Receipt },
       { name: "Worker Payout", href: "/worker-payout", icon: Wallet, isUpcoming: true },
       { name: "OMS Performance", href: "/oms-performance", icon: TrendingUp, isUpcoming: true },
-    ]
-  },
-  {
-    groupTitle: "Staff & Settings",
-    items: [
       { name: "Reports", href: "/reports", icon: BarChart3, isUpcoming: true },
-      { name: "Settings", href: "/settings", icon: Settings },
     ]
   }
 ];
@@ -94,7 +99,7 @@ const quickCreateOptions = [
   { title: "Company Expense", href: "/expenses/new", icon: Receipt, color: "bg-rose-50 text-rose-600 border-rose-100" },
   { title: "Payment Voucher", href: "/payments/new", icon: CreditCard, color: "bg-indigo-50 text-indigo-600 border-indigo-100" },
   { title: "Worker Payout", href: "/worker-payout", icon: Wallet, color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-  { title: "Party / Vendor", href: "/vendors", icon: Users, color: "bg-purple-50 text-purple-600 border-purple-100" }
+  { title: "Parties", href: "/vendors", icon: Users, color: "bg-purple-50 text-purple-600 border-purple-100" }
 ];
 
 import { setTenantCookie } from "@/lib/cookieStorage";
@@ -122,9 +127,20 @@ export function Sidebar({
   const [showQuickModal, setShowQuickModal] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Masters: true,
-    "Finance & Accounts": true,
-    "Staff & Settings": true,
+    Finance: true,
+    Settings: true,
+    "Upcoming Features": false,
   });
+
+  // Auto-expand "Upcoming Features" if current route matches an upcoming item
+  useEffect(() => {
+    const isUpcomingActive = ["/designs", "/job-works", "/worker-payout", "/oms-performance", "/reports"].some(
+      (path) => pathname === path || (path !== "/" && pathname.startsWith(path + "/"))
+    );
+    if (isUpcomingActive) {
+      setOpenGroups((prev) => ({ ...prev, "Upcoming Features": true }));
+    }
+  }, [pathname]);
 
   const handleOptionClick = (href: string) => {
     setShowQuickModal(false);
@@ -318,13 +334,26 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={toggleGroup}
-                  className="w-full flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-extrabold text-slate-400 uppercase tracking-wider hover:text-slate-700 transition-colors group/hdr cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all group/hdr cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 ${
+                    group.groupTitle === "Upcoming Features"
+                      ? "text-amber-700 hover:text-amber-800 bg-amber-50/60 hover:bg-amber-100/60 border border-amber-200/70 my-1"
+                      : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                  }`}
                 >
-                  <span>{t(group.groupTitle)}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span>{t(group.groupTitle)}</span>
+                    {group.groupTitle === "Upcoming Features" && (
+                      <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-amber-200/80 text-amber-900 border border-amber-300/80">
+                        {group.items?.length || 5}
+                      </span>
+                    )}
+                  </div>
                   <ChevronDown
-                    className={`w-3.5 h-3.5 text-slate-400 group-hover/hdr:text-slate-600 transition-transform duration-200 ${
-                      isOpen ? "rotate-0" : "-rotate-90"
-                    }`}
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      group.groupTitle === "Upcoming Features"
+                        ? "text-amber-600 group-hover/hdr:text-amber-800"
+                        : "text-slate-400 group-hover/hdr:text-slate-600"
+                    } ${isOpen ? "rotate-0" : "-rotate-90"}`}
                   />
                 </button>
 

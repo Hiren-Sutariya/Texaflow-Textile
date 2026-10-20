@@ -747,25 +747,25 @@ export default function PaymentsAndVouchersPage() {
           )}
         </div>
 
-        {/* DESKTOP TABLE VIEW (>= md) - Clean Simple Text, No Heavy Boxes */}
+        {/* DESKTOP TABLE VIEW (>= md) - Clean Simple Text, Excel-Style Box Grid */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse min-w-[1020px]">
-            <thead className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+            <thead className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
               <tr>
-                <th className="py-3 px-3.5">{t("Date")}</th>
-                <th className="py-3 px-3.5">{t("Voucher No")}</th>
-                <th className="py-3 px-3">{t("Type")}</th>
-                <th className="py-3 px-4">{t("Party Name")}</th>
-                <th className="py-3 px-3.5">{t("Person / Payer")}</th>
-                <th className="py-3 px-3.5">{t("Design No (DN)")}</th>
-                <th className="py-3 px-3.5">{t("Mode")}</th>
-                <th className="py-3 px-3.5 text-right">{t("Amount (₹)")}</th>
-                <th className="py-3 px-3.5 text-right">{t("Discount (₹)")}</th>
-                <th className="py-3 px-3.5 text-right">{t("Total Settled (₹)")}</th>
-                <th className="py-3 px-3 text-center">{t("Action")}</th>
+                <th className="py-2.5 px-3.5 border-r border-slate-200/80">{t("Date")}</th>
+                <th className="py-2.5 px-3.5 border-r border-slate-200/80">{t("Voucher No")}</th>
+                <th className="py-2.5 px-3 border-r border-slate-200/80">{t("Type")}</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("Party Name")}</th>
+                <th className="py-2.5 px-3.5 border-r border-slate-200/80">{t("Person / Payer")}</th>
+                <th className="py-2.5 px-3.5 border-r border-slate-200/80">{t("Design No (DN)")}</th>
+                <th className="py-2.5 px-3.5 border-r border-slate-200/80">{t("Mode")}</th>
+                <th className="py-2.5 px-3.5 text-right border-r border-slate-200/80">{t("Amount (₹)")}</th>
+                <th className="py-2.5 px-3.5 text-right border-r border-slate-200/80">{t("Discount (₹)")}</th>
+                <th className="py-2.5 px-3.5 text-right border-r border-slate-200/80">{t("Total Settled (₹)")}</th>
+                <th className="py-2.5 px-3 text-center">{t("Action")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
               {filteredVouchers.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="py-8 text-center text-slate-400 font-medium">
@@ -776,21 +776,21 @@ export default function PaymentsAndVouchersPage() {
                 filteredVouchers.map((v) => {
                   const totalSettled = (v.amount || 0) + (v.kasar_amount || 0);
                   return (
-                    <tr key={v.id} className="hover:bg-slate-50/70 transition-colors animate-in fade-in duration-150">
+                    <tr key={v.id} className="hover:bg-blue-50/40 transition-colors animate-in fade-in duration-150">
                       {/* 1. DATE (SIMPLE TEXT) */}
-                      <td className="py-3 px-3.5 text-slate-600 font-medium text-xs whitespace-nowrap">
+                      <td className="py-3 px-3.5 text-slate-600 font-medium text-xs whitespace-nowrap border-r border-slate-200/70">
                         {v.date}
                       </td>
 
                       {/* 2. VOUCHER NO (SHORT, SIMPLE MONOSPACE TEXT - NO BOX) */}
-                      <td className="py-3 px-3.5 whitespace-nowrap">
+                      <td className="py-3 px-3.5 whitespace-nowrap border-r border-slate-200/70">
                         <span className="font-mono text-xs font-bold text-slate-800">
                           {formatShortVoucherNo(v.voucher_no)}
                         </span>
                       </td>
 
                       {/* 3. TYPE (CLEAN TEXT + DOT - NO BOX) */}
-                      <td className="py-3 px-3 whitespace-nowrap">
+                      <td className="py-3 px-3 whitespace-nowrap border-r border-slate-200/70">
                         {v.type === "Receipt In" ? (
                           <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -805,7 +805,7 @@ export default function PaymentsAndVouchersPage() {
                       </td>
 
                       {/* 4. PARTY NAME (REGISTERED PARTY) */}
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 border-r border-slate-200/70">
                         <div className="font-bold text-slate-900 text-xs truncate max-w-[170px]" title={v.party_name}>
                           {v.party_name}
                         </div>
@@ -817,33 +817,33 @@ export default function PaymentsAndVouchersPage() {
                       </td>
 
                       {/* 5. PERSON / PAYER (SIMPLE CLEAN TEXT - NO BOX) */}
-                      <td className="py-3 px-3.5 whitespace-nowrap">
+                      <td className="py-3 px-3.5 whitespace-nowrap border-r border-slate-200/70">
                         <span className="text-xs font-medium text-slate-800">
                           {v.payer_person || "-"}
                         </span>
                       </td>
 
                       {/* 6. DESIGN NO (DN) (SIMPLE CLEAN TEXT - NO BOX) */}
-                      <td className="py-3 px-3.5 whitespace-nowrap">
+                      <td className="py-3 px-3.5 whitespace-nowrap border-r border-slate-200/70">
                         <span className="font-mono text-xs font-medium text-slate-700">
                           {v.design_no || v.linked_challan || "-"}
                         </span>
                       </td>
 
                       {/* 7. PAYMENT MODE (SIMPLE CLEAN TEXT - NO BOX) */}
-                      <td className="py-3 px-3.5 whitespace-nowrap">
+                      <td className="py-3 px-3.5 whitespace-nowrap border-r border-slate-200/70">
                         {renderPaymentModeSimple(v.mode, v.ref_no)}
                       </td>
 
                       {/* 8. AMOUNT (₹) */}
-                      <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                      <td className="py-3 px-3.5 text-right whitespace-nowrap border-r border-slate-200/70">
                         <span className={`font-bold text-xs ${v.type === "Receipt In" ? "text-emerald-700" : "text-rose-700"}`}>
                           {v.type === "Receipt In" ? "+" : "-"}₹{v.amount.toLocaleString("en-IN")}
                         </span>
                       </td>
 
                       {/* 9. DISCOUNT / KASAR (₹) (SIMPLE CLEAN TEXT - NO BOX) */}
-                      <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                      <td className="py-3 px-3.5 text-right whitespace-nowrap border-r border-slate-200/70">
                         {Boolean(v.kasar_amount && v.kasar_amount > 0) ? (
                           <span className="text-xs font-semibold text-amber-600">
                             ₹{Number(v.kasar_amount).toLocaleString("en-IN")}
@@ -854,7 +854,7 @@ export default function PaymentsAndVouchersPage() {
                       </td>
 
                       {/* 10. TOTAL SETTLED (₹) (NEW DEDICATED COLUMN) */}
-                      <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                      <td className="py-3 px-3.5 text-right whitespace-nowrap border-r border-slate-200/70">
                         <span className="text-xs font-bold text-slate-900">
                           ₹{totalSettled.toLocaleString("en-IN")}
                         </span>

@@ -154,21 +154,21 @@ export default function InventoryPage() {
           )}
         </div>
 
-        {/* DESKTOP TABLE VIEW (>= md) */}
+        {/* DESKTOP TABLE VIEW (>= md) - EXCEL-STYLE BOX GRID */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[780px]">
+          <table className="w-full text-left border-collapse min-w-[780px] text-xs">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3.5 px-4">Code</th>
-                <th className="py-3.5 px-4">Material Name</th>
-                <th className="py-3.5 px-4">Category</th>
-                <th className="py-3.5 px-4">Warehouse Location</th>
-                <th className="py-3.5 px-4">Ownership</th>
-                <th className="py-3.5 px-4 text-right">Current Stock</th>
-                <th className="py-3.5 px-4 text-center">Status</th>
+              <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Code</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Material Name</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Category</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Warehouse Location</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Ownership</th>
+                <th className="py-2.5 px-4 text-right border-r border-slate-200/80">Current Stock</th>
+                <th className="py-2.5 px-4 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700 bg-white">
               {filteredStock.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-slate-400 font-medium">
@@ -177,9 +177,9 @@ export default function InventoryPage() {
                 </tr>
               ) : (
                 filteredStock.map((s) => (
-                <tr key={s.id} className="hover:bg-blue-50/50 transition-colors">
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{s.material_code}</td>
-                  <td className="py-3.5 px-4 font-bold text-slate-900">
+                <tr key={s.id} className="hover:bg-blue-50/40 transition-colors">
+                  <td className="py-3 px-4 font-mono font-bold text-slate-900 border-r border-slate-200/70">{s.material_code}</td>
+                  <td className="py-3 px-4 font-bold text-slate-900 border-r border-slate-200/70">
                     {s.material_name}
                     {s.party_name && (
                       <span className="block text-[10px] text-purple-700 font-semibold">
@@ -187,27 +187,30 @@ export default function InventoryPage() {
                       </span>
                     )}
                   </td>
-                  <td className="py-3.5 px-4">{s.category}</td>
-                  <td className="py-3.5 px-4 text-slate-600">{s.warehouse}</td>
-                  <td className="py-3.5 px-4">
-                    <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                  <td className="py-3 px-4 border-r border-slate-200/70">{s.category}</td>
+                  <td className="py-3 px-4 text-slate-600 border-r border-slate-200/70">{s.warehouse}</td>
+                  <td className="py-3 px-4 border-r border-slate-200/70">
+                    <span className={`text-xs font-bold inline-flex items-center gap-1.5 ${
                       s.ownership_type === "Company"
-                        ? "bg-blue-50 text-blue-700 border border-blue-200"
-                        : "bg-purple-50 text-purple-700 border border-purple-200"
+                        ? "text-blue-700"
+                        : "text-purple-700"
                     }`}>
-                      {s.ownership_type}
+                      <span className={`w-1.5 h-1.5 rounded-full ${s.ownership_type === "Company" ? "bg-blue-500" : "bg-purple-500"}`} />
+                      <span>{s.ownership_type}</span>
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 text-right font-extrabold text-slate-900 text-sm">
+                  <td className="py-3 px-4 text-right font-extrabold text-slate-900 text-sm border-r border-slate-200/70">
                     {s.current_stock} <span className="text-xs font-normal text-slate-500">{s.unit}</span>
                   </td>
-                  <td className="py-3.5 px-4 text-center">
+                  <td className="py-3 px-4 text-center">
                     {s.status === "Low_Stock" ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-[11px] font-bold">
-                        <ShieldAlert className="w-3.5 h-3.5 text-red-600" /> Low Stock Alert
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                        Low Stock Alert
                       </span>
                     ) : (
-                      <span className="inline-block px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[11px] font-bold">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                         Sufficient
                       </span>
                     )}

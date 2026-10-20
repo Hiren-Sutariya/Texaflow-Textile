@@ -865,14 +865,14 @@ export function SupplierLedgerModal({
         <div className="flex-1 overflow-auto bg-white">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap sticky top-0 z-10 backdrop-blur-xs">
-                <th className="py-3 px-4 text-center w-12">#</th>
-                <th className="py-3 px-4">{isGujarati ? "તારીખ" : "DATE"}</th>
-                <th className="py-3 px-4">{isGujarati ? "પ્રકાર / રેફરન્સ" : "TYPE & REF"}</th>
-                <th className="py-3 px-4">{isGujarati ? "વિગત / મટિરિયલ" : "MATERIAL & PARTICULARS"}</th>
-                <th className="py-3 px-4">{isGujarati ? "મુદત / મોડ" : "MUDAT / TERMS"}</th>
-                <th className="py-3 px-4 text-right text-rose-700">{isGujarati ? "ઉધાર / બિલ (DR)" : "DEBIT (DR)"}</th>
-                <th className="py-3 px-4 text-right text-emerald-700">{isGujarati ? "જમા / પેમેન્ટ (CR)" : "CREDIT (CR)"}</th>
+              <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap sticky top-0 z-10 backdrop-blur-xs">
+                <th className="py-3 px-4 text-center w-12 border-r border-slate-200/80">#</th>
+                <th className="py-3 px-4 border-r border-slate-200/80">{isGujarati ? "તારીખ" : "DATE"}</th>
+                <th className="py-3 px-4 border-r border-slate-200/80">{isGujarati ? "પ્રકાર / રેફરન્સ" : "TYPE & REF"}</th>
+                <th className="py-3 px-4 border-r border-slate-200/80">{isGujarati ? "વિગત / મટિરિયલ" : "MATERIAL & PARTICULARS"}</th>
+                <th className="py-3 px-4 border-r border-slate-200/80">{isGujarati ? "મુદત / મોડ" : "MUDAT / TERMS"}</th>
+                <th className="py-3 px-4 text-right text-rose-700 border-r border-slate-200/80">{isGujarati ? "ઉધાર / બિલ (DR)" : "DEBIT (DR)"}</th>
+                <th className="py-3 px-4 text-right text-emerald-700 border-r border-slate-200/80">{isGujarati ? "જમા / પેમેન્ટ (CR)" : "CREDIT (CR)"}</th>
                 <th className="py-3 px-4 text-right font-black text-slate-900">{isGujarati ? "રનિંગ બાકી (₹)" : "NET BALANCE"}</th>
               </tr>
             </thead>
@@ -898,20 +898,20 @@ export function SupplierLedgerModal({
                       className="hover:bg-blue-50/40 transition-colors"
                     >
                       {/* Index */}
-                      <td className="py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] align-middle">
+                      <td className="py-3 px-4 text-center text-slate-400 font-mono text-[11px] align-middle border-r border-slate-200/70">
                         {displayedTransactions.length - idx}
                       </td>
 
                       {/* Date */}
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-700 whitespace-nowrap align-middle">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-700 whitespace-nowrap align-middle border-r border-slate-200/70">
                         {tx.date}
                       </td>
 
                       {/* Type & Ref */}
-                      <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                      <td className="py-3 px-4 whitespace-nowrap align-middle border-r border-slate-200/70">
                         <div className="flex items-center gap-1.5">
                           <span
-                            className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                            className={`font-mono text-xs font-bold px-2 py-0.5 rounded border ${
                               isBill
                                 ? "text-blue-700 bg-blue-50/90 border-blue-200"
                                 : "text-emerald-700 bg-emerald-50/90 border-emerald-200"
@@ -928,14 +928,14 @@ export function SupplierLedgerModal({
                       </td>
 
                       {/* Description */}
-                      <td className="py-3.5 px-4 align-middle">
+                      <td className="py-3 px-4 align-middle border-r border-slate-200/70">
                         <div className="text-xs font-bold text-slate-800 leading-snug">
                           {tx.description}
                         </div>
                       </td>
 
                       {/* Terms / Mode */}
-                      <td className="py-3.5 px-4 whitespace-nowrap align-middle font-mono text-xs">
+                      <td className="py-3 px-4 whitespace-nowrap align-middle font-mono text-xs border-r border-slate-200/70">
                         {isBill ? (
                           <div className="flex flex-col gap-0.5">
                             <span className="text-slate-800 font-bold text-xs">
@@ -956,17 +956,17 @@ export function SupplierLedgerModal({
                       </td>
 
                       {/* Debit (Inward Bill) */}
-                      <td className="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono font-black text-rose-700 text-sm">
+                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-black text-rose-700 text-sm border-r border-slate-200/70">
                         {tx.debit > 0 ? `₹${tx.debit.toLocaleString("en-IN")}` : "—"}
                       </td>
 
                       {/* Credit (Payment Out) */}
-                      <td className="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono font-black text-emerald-700 text-sm">
+                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-black text-emerald-700 text-sm border-r border-slate-200/70">
                         {tx.credit > 0 ? `₹${tx.credit.toLocaleString("en-IN")}` : "—"}
                       </td>
 
                       {/* Running Balance */}
-                      <td className="py-3.5 px-4 text-right align-middle whitespace-nowrap">
+                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap">
                         <span
                           className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border inline-block ${
                             tx.runningBalance > 0

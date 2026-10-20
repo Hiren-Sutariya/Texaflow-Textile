@@ -2051,27 +2051,28 @@ export default function EmployeesPage() {
         )}
       </div>
 
-      {/* 2. DESKTOP / TABLET DATA TABLE (VISIBLE ON md: AND ABOVE) */}
+      {/* 2. DESKTOP / TABLET DATA TABLE (VISIBLE ON md: AND ABOVE) - EXCEL-STYLE BOX GRID */}
       <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left divide-y divide-slate-100 min-w-[900px]">
-            <thead className="bg-slate-50/90 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+          <table className="w-full text-left border-collapse min-w-[900px]">
+            <thead className="bg-slate-100/80 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider border-b border-slate-200 whitespace-nowrap">
               <tr>
-                <th className="px-4 py-3 text-center w-12">SR NO.</th>
-                <th className="px-4 py-3">WORKER NAME</th>
-                <th className="px-4 py-3">KHATA NO.</th>
-                <th className="px-4 py-3">MACHINE NUMBER</th>
-                <th className="px-4 py-3">MOBILE NUMBER</th>
-                <th className="px-4 py-3">EMAIL</th>
-                <th className="px-4 py-3">HELPERS</th>
-                <th className="px-4 py-3 text-center">STATUS</th>
-                <th className="px-4 py-3 text-right">ACTION</th>
+                <th className="px-4 py-2.5 text-center w-12 border-r border-slate-200/80">SR NO.</th>
+                <th className="px-3 py-2.5 text-center w-14 border-r border-slate-200/80">PHOTO</th>
+                <th className="px-4 py-2.5 border-r border-slate-200/80">WORKER NAME</th>
+                <th className="px-4 py-2.5 border-r border-slate-200/80">KHATA NO.</th>
+                <th className="px-4 py-2.5 border-r border-slate-200/80">MACHINE NUMBER</th>
+                <th className="px-4 py-2.5 border-r border-slate-200/80">MOBILE NUMBER</th>
+                <th className="px-4 py-2.5 border-r border-slate-200/80">EMAIL</th>
+                <th className="px-4 py-2.5 border-r border-slate-200/80">HELPERS</th>
+                <th className="px-4 py-2.5 text-center border-r border-slate-200/80">STATUS</th>
+                <th className="px-4 py-2.5 text-right">ACTION</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-xs">
+            <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-xs bg-white">
               {filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
+                  <td colSpan={10} className="py-8 text-center text-slate-400 font-medium">
                     No worker records found matching your filters. Click &quot;+ Add Worker&quot; to add a record.
                   </td>
                 </tr>
@@ -2080,16 +2081,16 @@ export default function EmployeesPage() {
                 <tr
                   key={emp.id}
                   onClick={() => setPreviewWorker(emp)}
-                  className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
+                  className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
                 >
                   {/* SR NO */}
-                  <td className="px-4 py-3.5 text-center font-bold text-slate-400 font-mono text-xs">
+                  <td className="px-4 py-3 text-center font-bold text-slate-400 font-mono text-xs border-r border-slate-200/70">
                     {index + 1}
                   </td>
 
-                  {/* WORKER PHOTO & NAME */}
-                  <td className="px-4 py-3.5 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
+                  {/* PHOTO */}
+                  <td className="px-3 py-2 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
+                    <div className="flex items-center justify-center">
                       {emp.photoUrl ? (
                         <img
                           src={emp.photoUrl}
@@ -2106,28 +2107,32 @@ export default function EmployeesPage() {
                           {emp.name.charAt(0)}
                         </div>
                       )}
-                      <span className="font-extrabold text-slate-900 text-xs sm:text-sm group-hover:text-blue-700 transition-colors">
-                        {emp.name}
-                      </span>
                     </div>
                   </td>
 
+                  {/* WORKER NAME */}
+                  <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200/70">
+                    <span className="font-extrabold text-slate-900 text-xs sm:text-sm group-hover:text-blue-700 transition-colors">
+                      {emp.name}
+                    </span>
+                  </td>
+
                   {/* KHATA NO */}
-                  <td className="px-4 py-3.5 whitespace-nowrap">
+                  <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200/70">
                     <span className="font-mono text-xs font-bold text-slate-800">
                       {emp.code || "-"}
                     </span>
                   </td>
 
                   {/* MACHINE NUMBER */}
-                  <td className="px-4 py-3.5 whitespace-nowrap">
+                  <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200/70">
                     <span className="font-mono text-xs font-medium text-slate-700">
                       {emp.assigned_machine || "-"}
                     </span>
                   </td>
 
                   {/* MOBILE NUMBER */}
-                  <td className="px-4 py-3.5 whitespace-nowrap font-mono font-bold text-slate-800">
+                  <td className="px-4 py-3 whitespace-nowrap font-mono font-bold text-slate-800 border-r border-slate-200/70">
                     {emp.mobile && emp.mobile !== "-" ? (
                       <span className="flex items-center gap-1.5">
                         <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -2139,12 +2144,12 @@ export default function EmployeesPage() {
                   </td>
 
                   {/* EMAIL */}
-                  <td className="px-4 py-3.5 whitespace-nowrap text-slate-700 font-medium">
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 font-medium border-r border-slate-200/70">
                     {emp.email ? emp.email : <span className="text-slate-400">-</span>}
                   </td>
 
                   {/* HELPERS */}
-                  <td className="px-4 py-3.5 whitespace-nowrap">
+                  <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200/70">
                     {emp.helpers && emp.helpers.length > 0 ? (
                       <span className="text-xs font-medium text-slate-700">
                         {emp.helpers.length} Helper{emp.helpers.length > 1 ? "s" : ""}
@@ -2155,7 +2160,7 @@ export default function EmployeesPage() {
                   </td>
 
                   {/* STATUS */}
-                  <td className="px-4 py-3.5 whitespace-nowrap text-center">
+                  <td className="px-4 py-3 whitespace-nowrap text-center border-r border-slate-200/70">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -2173,7 +2178,7 @@ export default function EmployeesPage() {
                   </td>
 
                   {/* ACTION */}
-                  <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"

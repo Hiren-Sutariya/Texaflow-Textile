@@ -29,7 +29,12 @@ import {
   X,
   ShoppingCart,
   Trash2,
-  Settings
+  Settings,
+  Receipt,
+  FileText,
+  Hash,
+  CheckCircle2,
+  Calculator
 } from "lucide-react";
 
 const getTodayStr = () => {
@@ -41,6 +46,170 @@ const getTodayStr = () => {
 };
 
 
+
+export interface PurchaseLineItem {
+  id: string;
+  category: string;
+  description: string;
+  quantity: string;
+  rate?: string;
+  amount: string;
+}
+
+function parseMaterialDescription(desc?: string) {
+  if (!desc || !desc.trim()) return null;
+  let trimmed = desc.trim();
+  if (trimmed.startsWith("(") && trimmed.endsWith(")")) {
+    trimmed = trimmed.slice(1, -1).trim();
+  }
+
+  // Pattern like: "370 - 14 box, 351 - 17 box, 6074 - 9 box = 40 box"
+  if (trimmed.includes("=") && trimmed.includes("-")) {
+    const [left, right] = trimmed.split("=");
+    const total = right?.trim() || null;
+    const parts = left.split(",").map((p) => p.trim()).filter(Boolean);
+    const items = parts.map((part) => {
+      const segs = part.split("-");
+      if (segs.length >= 2) {
+        return {
+          shade: segs[0].trim(),
+          qty: segs.slice(1).join("-").trim()
+        };
+      }
+      return { shade: part, qty: "" };
+    });
+    return { isBreakdown: true, total, items };
+  }
+
+  // Pattern with comma-separated items like "370 - 14 box, 351 - 17 box" (without =)
+  if (trimmed.includes(",") && trimmed.includes("-")) {
+    const parts = trimmed.split(",").map((p) => p.trim()).filter(Boolean);
+    const hasShades = parts.every((p) => p.includes("-"));
+    if (hasShades && parts.length > 1) {
+      const items = parts.map((part) => {
+        const segs = part.split("-");
+        return {
+          shade: segs[0].trim(),
+          qty: segs.slice(1).join("-").trim()
+        };
+      });
+      return { isBreakdown: true, total: null, items };
+    }
+  }
+
+  return { isBreakdown: false, raw: trimmed, items: [] };
+}
+
+function numberToIndianWords(num: number): string {
+  if (!num || isNaN(num) || num <= 0) return "";
+  const a = [
+    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+    "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+    "Seventeen", "Eighteen", "Nineteen"
+  ];
+  const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+  const inWords = (n: number): string => {
+    if (n === 0) return "";
+    if (n < 20) return a[n] + " ";
+    if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + a[n % 10] : "") + " ";
+    if (n < 1000) return a[Math.floor(n / 100)] + " Hundred " + inWords(n % 100);
+    if (n < 100000) return inWords(Math.floor(n / 1000)) + "Thousand " + inWords(n % 1000);
+    if (n < 10000000) return inWords(Math.floor(n / 100000)) + "Lakh " + inWords(n % 100000);
+    return inWords(Math.floor(n / 10000000)) + "Crore " + inWords(n % 10000000);
+  };
+
+  const rupees = Math.floor(num);
+  const paise = Math.round((num - rupees) * 100);
+  let res = inWords(rupees).trim() + " Rupees";
+  if (paise > 0) {
+    res += " and " + inWords(paise).trim() + " Paise";
+  }
+  return res + " Only";
+}
+
+interface CustomSelectOption {
+  value: string;
+  label: string;
+}
+
+interface CustomSelectProps {
+  value: string;
+  onChange: (val: string) => void;
+  options: CustomSelectOption[];
+  placeholder?: string;
+  className?: string;
+}
+
+function CustomSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Select...",
+  className = ""
+}: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((opt) => opt.value === value);
+
+  return (
+    <div ref={containerRef} className={`relative inline-block w-full text-xs select-none ${className}`}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full h-9 px-3 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${
+          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
+        }`}
+      >
+        <span className={`truncate font-bold ${selectedOption ? "text-slate-900" : "text-slate-400"}`}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${
+            isOpen ? "rotate-180 text-blue-600" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-[100] right-0 min-w-full w-full sm:min-w-[240px] mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 max-h-64 overflow-y-auto">
+          {options.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-all cursor-pointer ${
+                  isSelected
+                    ? "bg-blue-50 text-blue-900 font-extrabold"
+                    : "text-slate-700 hover:bg-slate-50 font-bold"
+                }`}
+              >
+                <span className="truncate">{opt.label}</span>
+                {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface CustomDatePickerProps {
   value: string;
@@ -99,18 +268,18 @@ function CustomDatePicker({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${
-          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
+        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-slate-400 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer ${
+          isOpen ? "border-slate-500 ring-1 ring-slate-400" : ""
         }`}
       >
         <span className={`font-mono font-bold text-xs ${formattedDisplay ? "text-slate-900" : "text-slate-400"}`}>
           {formattedDisplay || placeholder}
         </span>
-        <Calendar className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
+        <Calendar className="w-4 h-4 text-slate-500 shrink-0 ml-1.5" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 left-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 w-64 space-y-2 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute z-[100] right-0 sm:right-auto sm:left-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-2xl p-3 w-64 space-y-2 animate-in fade-in zoom-in-95 duration-100">
           <div className="flex items-center justify-between text-xs font-extrabold text-slate-800 pb-1.5 border-b border-slate-100">
             <button
               type="button"
@@ -188,9 +357,9 @@ function CustomDatePicker({
                     }}
                     className={`h-7 rounded-lg text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
                       isSelected
-                        ? "bg-blue-600 text-white shadow-2xs font-extrabold ring-2 ring-blue-500/20"
+                        ? "bg-slate-900 text-white shadow-2xs font-extrabold"
                         : isToday
-                        ? "bg-blue-50 text-blue-700 font-extrabold border border-blue-200"
+                        ? "bg-slate-100 text-slate-900 font-extrabold border border-slate-300"
                         : "text-slate-700 hover:bg-slate-100"
                     }`}
                   >
@@ -255,10 +424,21 @@ function NewPurchaseContent() {
   ];
 
   const [category, setCategory] = useState("");
-  const [categoriesList, setCategoriesList] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [categoriesList, setCategoriesList] = useState<string[]>([]);
   const [categorySearch, setCategorySearch] = useState("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Multi-item / line items state
+  const [lineItems, setLineItems] = useState<PurchaseLineItem[]>([
+    {
+      id: "item-1",
+      category: "",
+      description: "",
+      quantity: "",
+      amount: ""
+    }
+  ]);
 
   const [itemsDescription, setItemsDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -270,11 +450,20 @@ function NewPurchaseContent() {
   const [billImage, setBillImage] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Tax / GST state
+  const [taxMode, setTaxMode] = useState<"none" | "cgst_sgst" | "igst">("none");
+  const [taxRate, setTaxRate] = useState<number>(5);
+  const [isCustomTaxRate, setIsCustomTaxRate] = useState(false);
+
   // Vendor selection states
   const [vendorsList, setVendorsList] = useState<string[]>([]);
   const [rawVendors, setRawVendors] = useState<any[]>([]);
   const [isVendorDropdownOpen, setIsVendorDropdownOpen] = useState(false);
   const vendorDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Custom Category Dropdown for line items
+  const [openCategoryItemId, setOpenCategoryItemId] = useState<string | null>(null);
+  const categoryItemDropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -285,18 +474,22 @@ function NewPurchaseContent() {
       if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
         setIsCategoryDropdownOpen(false);
       }
+      if (openCategoryItemId && categoryItemDropdownRefs.current[openCategoryItemId]) {
+        if (!categoryItemDropdownRefs.current[openCategoryItemId]?.contains(event.target as Node)) {
+          setOpenCategoryItemId(null);
+        }
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [openCategoryItemId]);
 
-  // Function to refresh categories from tenant storage
   const loadStoredCategories = () => {
     const currentCid = getStoredCompanyId() || "comp-001";
     try {
       const stored = getTenantItem<string[]>("texaflow_material_categories", currentCid === "comp-001" ? "om_sai_material_categories" : undefined);
-      if (Array.isArray(stored) && stored.length > 0) {
-        setCategoriesList(Array.from(new Set([...DEFAULT_CATEGORIES, ...stored])));
+      if (Array.isArray(stored)) {
+        setCategoriesList(stored);
       } else {
         setCategoriesList(DEFAULT_CATEGORIES);
       }
@@ -356,6 +549,191 @@ function NewPurchaseContent() {
     if (category === catToDelete) {
       setCategory("");
       setCategorySearch("");
+    }
+  };
+
+  // Line items handlers
+  const handleAddLineItem = () => {
+    setLineItems((prev) => [
+      ...prev,
+      {
+        id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        category: "",
+        description: "",
+        quantity: "",
+        rate: "",
+        amount: ""
+      }
+    ]);
+  };
+
+  const calculateTotalWithTax = (sub: number, mode: "none" | "cgst_sgst" | "igst", rate: number) => {
+    if (mode === "cgst_sgst") {
+      const halfRate = rate / 2;
+      const cgst = Math.round((sub * (halfRate / 100)) * 100) / 100;
+      const sgst = Math.round((sub * (halfRate / 100)) * 100) / 100;
+      return Math.round((sub + cgst + sgst) * 100) / 100;
+    } else if (mode === "igst") {
+      const igst = Math.round((sub * (rate / 100)) * 100) / 100;
+      return Math.round((sub + igst) * 100) / 100;
+    }
+    return sub;
+  };
+
+  const handleRemoveLineItem = (id: string) => {
+    const nextItems = lineItems.length <= 1
+      ? [
+          {
+            id: "item-1",
+            category: "",
+            description: "",
+            quantity: "",
+            rate: "",
+            amount: ""
+          }
+        ]
+      : lineItems.filter((item) => item.id !== id);
+
+    setLineItems(nextItems);
+    const sum = nextItems.reduce((acc, it) => acc + (parseFloat(it.amount || "0") || 0), 0);
+    if (sum > 0) {
+      setAmount(String(calculateTotalWithTax(sum, taxMode, taxRate)));
+    } else {
+      setAmount("");
+    }
+  };
+
+  const handleUpdateLineItem = (id: string, field: keyof PurchaseLineItem, val: string) => {
+    setLineItems((prev) => {
+      const next = prev.map((item) => {
+        if (item.id !== id) return item;
+        const updated = { ...item, [field]: val };
+
+        // If rate is modified or quantity is modified, and rate is valid, auto-calculate amount
+        if (field === "rate" || field === "quantity") {
+          const r = parseFloat(field === "rate" ? val : updated.rate || "0");
+          // Extract numeric quantity if present (e.g. "14 Box" -> 14, "10" -> 10)
+          const matchQty = (field === "quantity" ? val : updated.quantity || "").match(/^[\s]*([0-9]+(?:\.[0-9]+)?)/);
+          const q = matchQty ? parseFloat(matchQty[1]) : 0;
+          if (r > 0 && q > 0) {
+            updated.amount = String(Math.round(r * q * 100) / 100);
+          }
+        }
+        return updated;
+      });
+
+      const sum = next.reduce((acc, it) => acc + (parseFloat(it.amount || "0") || 0), 0);
+      if (sum > 0) {
+        setAmount(String(calculateTotalWithTax(sum, taxMode, taxRate)));
+      }
+      return next;
+    });
+  };
+
+  const calculatedTotal = useMemo(() => {
+    return lineItems.reduce((acc, it) => acc + (parseFloat(it.amount || "0") || 0), 0);
+  }, [lineItems]);
+
+  const { cgstAmount, sgstAmount, igstAmount, totalWithTax } = useMemo(() => {
+    if (taxMode === "cgst_sgst") {
+      const halfRate = taxRate / 2;
+      const cgst = Math.round((calculatedTotal * (halfRate / 100)) * 100) / 100;
+      const sgst = Math.round((calculatedTotal * (halfRate / 100)) * 100) / 100;
+      return {
+        cgstAmount: cgst,
+        sgstAmount: sgst,
+        igstAmount: 0,
+        totalWithTax: Math.round((calculatedTotal + cgst + sgst) * 100) / 100
+      };
+    } else if (taxMode === "igst") {
+      const igst = Math.round((calculatedTotal * (taxRate / 100)) * 100) / 100;
+      return {
+        cgstAmount: 0,
+        sgstAmount: 0,
+        igstAmount: igst,
+        totalWithTax: Math.round((calculatedTotal + igst) * 100) / 100
+      };
+    }
+    return {
+      cgstAmount: 0,
+      sgstAmount: 0,
+      igstAmount: 0,
+      totalWithTax: calculatedTotal
+    };
+  }, [calculatedTotal, taxMode, taxRate]);
+
+  const handleTaxModeChange = (mode: "none" | "cgst_sgst" | "igst") => {
+    setTaxMode(mode);
+    const newTot = calculateTotalWithTax(calculatedTotal, mode, taxRate);
+    if (newTot > 0) {
+      setAmount(String(newTot));
+    }
+  };
+
+  const handleTaxRateChange = (rate: number) => {
+    setTaxRate(rate);
+    const newTot = calculateTotalWithTax(calculatedTotal, taxMode, rate);
+    if (newTot > 0) {
+      setAmount(String(newTot));
+    }
+  };
+
+  const gstOptions = [
+    { value: "none", label: "None (0%)" },
+    { value: "cgst_sgst_5", label: "CGST + SGST @ 5%" },
+    { value: "cgst_sgst_12", label: "CGST + SGST @ 12%" },
+    { value: "cgst_sgst_18", label: "CGST + SGST @ 18%" },
+    { value: "cgst_sgst_28", label: "CGST + SGST @ 28%" },
+    { value: "igst_5", label: "Only GST @ 5%" },
+    { value: "igst_12", label: "Only GST @ 12%" },
+    { value: "igst_18", label: "Only GST @ 18%" },
+    { value: "igst_28", label: "Only GST @ 28%" },
+    { value: "custom_cgst_sgst", label: "Custom CGST + SGST" },
+    { value: "custom_igst", label: "Custom Only GST" }
+  ];
+
+  const currentGstDropdownValue = useMemo(() => {
+    if (taxMode === "none") return "none";
+    if (isCustomTaxRate) {
+      return taxMode === "cgst_sgst" ? "custom_cgst_sgst" : "custom_igst";
+    }
+    if (taxMode === "cgst_sgst") {
+      if ([5, 12, 18, 28].includes(taxRate)) return `cgst_sgst_${taxRate}`;
+      return "custom_cgst_sgst";
+    }
+    if (taxMode === "igst") {
+      if ([5, 12, 18, 28].includes(taxRate)) return `igst_${taxRate}`;
+      return "custom_igst";
+    }
+    return "none";
+  }, [taxMode, taxRate, isCustomTaxRate]);
+
+  const handleGstDropdownChange = (val: string) => {
+    if (val === "none") {
+      setTaxMode("none");
+      setIsCustomTaxRate(false);
+      const newTot = calculateTotalWithTax(calculatedTotal, "none", 0);
+      if (newTot > 0) setAmount(String(newTot));
+    } else if (val.startsWith("cgst_sgst_")) {
+      const rate = parseFloat(val.replace("cgst_sgst_", "")) || 5;
+      setTaxMode("cgst_sgst");
+      setTaxRate(rate);
+      setIsCustomTaxRate(false);
+      const newTot = calculateTotalWithTax(calculatedTotal, "cgst_sgst", rate);
+      if (newTot > 0) setAmount(String(newTot));
+    } else if (val.startsWith("igst_")) {
+      const rate = parseFloat(val.replace("igst_", "")) || 5;
+      setTaxMode("igst");
+      setTaxRate(rate);
+      setIsCustomTaxRate(false);
+      const newTot = calculateTotalWithTax(calculatedTotal, "igst", rate);
+      if (newTot > 0) setAmount(String(newTot));
+    } else if (val === "custom_cgst_sgst") {
+      setTaxMode("cgst_sgst");
+      setIsCustomTaxRate(true);
+    } else if (val === "custom_igst") {
+      setTaxMode("igst");
+      setIsCustomTaxRate(true);
     }
   };
 
@@ -429,6 +807,16 @@ function NewPurchaseContent() {
         setCategorySearch(matched.category || "Raw Material & Fabric");
         setItemsDescription(matched.items_description || "");
         setAmount(String(matched.amount || ""));
+        if (matched.tax_mode) {
+          setTaxMode(matched.tax_mode);
+        } else if (matched.cgst_amount || matched.sgst_amount) {
+          setTaxMode("cgst_sgst");
+        } else if (matched.igst_amount) {
+          setTaxMode("igst");
+        }
+        if (matched.tax_rate) {
+          setTaxRate(Number(matched.tax_rate));
+        }
         setPaymentStatus(matched.payment_status === "Pending" ? "Pending" : "Paid");
         setPaymentTerms(matched.payment_terms || (matched.payment_status === "Pending" ? "Net 45" : "Cash / Immediate"));
         setCreditDays(matched.credit_days !== undefined ? matched.credit_days : (matched.payment_status === "Pending" ? 45 : 0));
@@ -436,6 +824,52 @@ function NewPurchaseContent() {
         setLinkedOrder(matched.linked_order || "");
         setBillImage(matched.bill_image || "");
         setNotes(matched.notes || "");
+
+        // Load line items if present or parse from items_description
+        if (Array.isArray(matched.items) && matched.items.length > 0) {
+          setLineItems(
+            matched.items.map((it: any, idx: number) => ({
+              id: it.id || `item-${idx + 1}`,
+              category: it.category || matched.category || "Raw Material & Fabric",
+              description: it.description || it.items_description || "",
+              quantity: it.quantity || "",
+              amount: String(it.amount !== undefined ? it.amount : "")
+            }))
+          );
+        } else if (matched.items_description) {
+          const parsedBreakdown = parseMaterialDescription(matched.items_description);
+          if (parsedBreakdown && parsedBreakdown.isBreakdown && parsedBreakdown.items && parsedBreakdown.items.length > 0) {
+            setLineItems(
+              parsedBreakdown.items.map((sub: any, idx: number) => ({
+                id: `item-${idx + 1}`,
+                category: matched.category || "Raw Material & Fabric",
+                description: sub.shade || "",
+                quantity: sub.qty || "",
+                amount: ""
+              }))
+            );
+          } else {
+            setLineItems([
+              {
+                id: "item-1",
+                category: matched.category || "Raw Material & Fabric",
+                description: matched.items_description || "",
+                quantity: "",
+                amount: String(matched.amount || "")
+              }
+            ]);
+          }
+        } else {
+          setLineItems([
+            {
+              id: "item-1",
+              category: matched.category || "Raw Material & Fabric",
+              description: "",
+              quantity: "",
+              amount: String(matched.amount || "")
+            }
+          ]);
+        }
       }
     }
   }, [editId]);
@@ -485,15 +919,42 @@ function NewPurchaseContent() {
     const currentCid = getStoredCompanyId() || "comp-001";
     const recordId = isEditMode && editId ? editId : `pur-${Date.now()}`;
 
+    // Filter valid line items
+    const validItems = lineItems.filter(
+      (it) => it.description.trim() || it.category.trim() || it.quantity.trim() || it.amount.trim()
+    );
+    const itemsToSave = validItems.length > 0 ? validItems : lineItems;
+
+    // Derived category string (unique categories joined by comma, or primary category)
+    const distinctCategories = Array.from(new Set(itemsToSave.map((it) => it.category.trim()).filter(Boolean)));
+    const primaryCategory = distinctCategories.length > 0 ? distinctCategories.join(", ") : (category || "Raw Material & Fabric");
+
+    // Derived items_description: e.g. "124-LL - 14 Box, 351 - 17 Box"
+    let derivedDescription = itemsToSave
+      .filter((it) => it.description.trim() || it.quantity.trim())
+      .map((it) => `${it.description.trim()}${it.quantity.trim() ? ` - ${it.quantity.trim()}` : ""}${it.amount.trim() ? ` (₹${it.amount.trim()})` : ""}`)
+      .join(", ");
+
+    if (!derivedDescription && itemsDescription) {
+      derivedDescription = itemsDescription;
+    }
+
     const purchasePayload = {
       id: recordId,
       company_id: currentCid,
       purchase_no: purchaseNo.trim(),
       date: billDate,
       vendor_name: vendorName.trim(),
-      category,
-      items_description: itemsDescription.trim(),
+      category: primaryCategory,
+      items_description: derivedDescription,
+      items: itemsToSave,
       amount: numAmount,
+      subtotal: calculatedTotal,
+      tax_mode: taxMode,
+      tax_rate: taxMode !== "none" ? taxRate : 0,
+      cgst_amount: cgstAmount,
+      sgst_amount: sgstAmount,
+      igst_amount: igstAmount,
       payment_status: paymentStatus,
       paid_via: paymentStatus === "Paid" ? "Cash / Immediate" : `Credit (${creditDays} days)`,
       payment_terms: paymentStatus === "Paid" ? "Cash / Immediate" : paymentTerms,
@@ -535,56 +996,31 @@ function NewPurchaseContent() {
 
 
   return (
-    <div className="w-full space-y-3.5 select-none pb-20 animate-in fade-in duration-150 text-xs font-sans">
-      {/* 1. TOP HEADER TOOLBAR - MATCHING PAYMENTS & VENDORS PAGE BAR */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
+    <div className="w-full space-y-3.5 select-none pb-24 animate-in fade-in duration-150 text-xs font-sans">
+      {/* 1. TOP HEADER TOOLBAR */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-4 py-3 flex items-center justify-between gap-3 text-xs">
         <h2 className="font-extrabold text-slate-800 text-xs tracking-wide uppercase">
-          {isEditMode ? t("EDIT RAW MATERIAL PURCHASE") : t("NEW RAW MATERIAL PURCHASE REGISTRATION")}
+          {isEditMode ? t("EDIT RAW MATERIAL PURCHASE BILL") : t("NEW RAW MATERIAL PURCHASE BILL")}
         </h2>
         <Link
           href="/purchases"
-          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-slate-200"
+          className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-slate-200"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>{t("Back to Purchase List")}</span>
         </Link>
       </div>
 
-      {/* 2. FORM CONTAINER */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 sm:p-6 space-y-5">
-        <form onSubmit={handleSavePurchase} className="space-y-4">
-          
-          {/* ROW 1: PURCHASE BILL NO * */}
-          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-extrabold text-rose-600">{t("Purchase Bill No*")}</label>
-            <div className="max-w-xl w-full">
-              <input
-                type="text"
-                value={purchaseNo}
-                onChange={(e) => setPurchaseNo(e.target.value)}
-                placeholder="e.g. PB-001 or Mill Challan No"
-                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
-                required
-              />
-            </div>
-          </div>
+      <form onSubmit={handleSavePurchase} className="space-y-3.5 pb-28">
+        {/* BOX 1: SUPPLIER & BILL SPECIFICATIONS */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs relative z-30">
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200">
+            {/* LEFT COLUMN: SUPPLIER / VENDOR */}
+            <div className="p-4 sm:p-5 md:pr-8 space-y-3">
+              <label className="text-xs font-bold text-slate-800 uppercase tracking-wide block">
+                {t("Supplier / Vendor*")}
+              </label>
 
-          {/* ROW 2: BILL / INWARD DATE * */}
-          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-extrabold text-rose-600">{t("Bill / Inward Date*")}</label>
-            <div className="max-w-xl w-full">
-              <CustomDatePicker
-                value={billDate}
-                onChange={(newDate) => setBillDate(newDate)}
-                placeholder="DD-MM-YYYY"
-              />
-            </div>
-          </div>
-
-          {/* ROW 3: SUPPLIER / VENDOR * */}
-          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-extrabold text-rose-600">{t("Supplier / Vendor*")}</label>
-            <div className="max-w-xl w-full">
               <div className="relative" ref={vendorDropdownRef}>
                 <div className="relative">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -596,8 +1032,8 @@ function NewPurchaseContent() {
                       setIsVendorDropdownOpen(true);
                     }}
                     onFocus={() => setIsVendorDropdownOpen(true)}
-                    placeholder={t("Type to search or enter vendor name...")}
-                    className="w-full h-9 pl-9 pr-14 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs text-xs"
+                    placeholder={t("Search or enter vendor name...")}
+                    className="w-full h-9 pl-9 pr-14 bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-bold text-slate-900 text-xs shadow-2xs focus:outline-none transition-all"
                     required
                   />
                   <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -619,13 +1055,14 @@ function NewPurchaseContent() {
                       onClick={() => setIsVendorDropdownOpen(!isVendorDropdownOpen)}
                       className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
                     >
-                      <ChevronDown className={`w-4 h-4 transition-transform ${isVendorDropdownOpen ? "rotate-180" : ""}`} />
+                      <ChevronDown className={`w-4 h-4 transition-transform ${isVendorDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
                     </button>
                   </div>
                 </div>
 
+                {/* VENDOR DROPDOWN */}
                 {isVendorDropdownOpen && (
-                  <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-1.5 max-h-60 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-full bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 max-h-60 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
                     {filteredVendors.length === 0 ? (
                       <div className="p-3 text-center text-slate-400 text-xs font-medium">
                         {vendorName ? `No registered vendor matching "${vendorName}". Keep typing to use custom name.` : t("No vendors found.")}
@@ -633,7 +1070,6 @@ function NewPurchaseContent() {
                     ) : (
                       filteredVendors.map((v) => {
                         const isSelected = vendorName.toLowerCase().trim() === v.toLowerCase().trim();
-
                         return (
                           <button
                             key={v}
@@ -653,221 +1089,499 @@ function NewPurchaseContent() {
                 )}
               </div>
             </div>
-          </div>
 
-          {/* ROW 4: MATERIAL CATEGORY (SEARCHABLE + ADD NEW) */}
-          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-bold text-slate-700">{t("Material Category*")}</label>
-            <div className="max-w-xl w-full">
-              <div className="relative" ref={categoryDropdownRef}>
-                <div className="relative">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            {/* RIGHT COLUMN: INVOICE SPECIFICATIONS */}
+            <div className="p-4 sm:p-5 md:pl-8 space-y-3">
+              <label className="text-xs font-bold text-slate-800 uppercase tracking-wide block">
+                {t("Invoice Specifications*")}
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* BILL NO */}
+                <div>
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
+                    {t("Bill / Challan No*")}
+                  </span>
                   <input
                     type="text"
-                    value={categorySearch}
-                    onChange={(e) => {
-                      setCategorySearch(e.target.value);
-                      setCategory(e.target.value);
-                      setIsCategoryDropdownOpen(true);
-                    }}
-                    onFocus={() => setIsCategoryDropdownOpen(true)}
-                    placeholder={t("Type to search or enter new category...")}
-                    className="w-full h-9 pl-9 pr-14 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs text-xs"
+                    value={purchaseNo}
+                    onChange={(e) => setPurchaseNo(e.target.value)}
+                    placeholder="e.g. PB-001"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-900 text-xs shadow-2xs focus:outline-none transition-all"
                     required
                   />
-                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    {categorySearch && (
+                </div>
+
+                {/* BILL DATE */}
+                <div>
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
+                    {t("Bill / Inward Date*")}
+                  </span>
+                  <CustomDatePicker
+                    value={billDate}
+                    onChange={(newDate) => setBillDate(newDate)}
+                    placeholder="DD-MM-YYYY"
+                  />
+                </div>
+              </div>
+
+              {/* DUE DATE DISPLAY */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center justify-between text-xs mt-1">
+                <span className="text-slate-600 font-medium">
+                  {t("Settlement Due Date")}:
+                </span>
+                <span className="font-mono font-bold text-slate-900">
+                  {paymentStatus === "Paid" ? t("Immediate (Paid)") : `${dueDate || billDate} (${creditDays}d)`}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* BOX 2: PURCHASE ITEMS / MATERIALS BREAKDOWN */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs relative z-20">
+          {/* HEADER TOOLBAR */}
+          <div className="bg-slate-50/80 px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-2.5 rounded-t-2xl">
+            <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-wide">
+              {t("Purchase Items / Materials Breakdown")}
+            </h3>
+            <button
+              type="button"
+              onClick={handleAddLineItem}
+              className="h-8 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>{t("Add Item Row")}</span>
+            </button>
+          </div>
+
+          {/* TABLE */}
+          <div className="overflow-visible">
+            <table className="w-full text-left border-collapse text-xs min-w-[760px]">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-extrabold tracking-wider text-slate-600 uppercase">
+                  <th className="py-2.5 px-3 w-12 text-center">{t("SR")}</th>
+                  <th className="py-2.5 px-3 w-52">{t("CATEGORY*")}</th>
+                  <th className="py-2.5 px-3 min-w-[220px]">{t("ITEM / SHADE DESCRIPTION*")}</th>
+                  <th className="py-2.5 px-3 w-36">{t("QUANTITY / UNIT")}</th>
+                  <th className="py-2.5 px-3 w-32 text-right">{t("RATE (₹)")}</th>
+                  <th className="py-2.5 px-3 w-36 text-right">{t("AMOUNT (₹)*")}</th>
+                  <th className="py-2.5 px-2 w-10 text-center"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {lineItems.map((item, index) => (
+                  <tr
+                    key={item.id}
+                    className={`transition-colors ${openCategoryItemId === item.id ? "relative z-30 bg-blue-50/20" : "hover:bg-slate-50/70"}`}
+                  >
+                    {/* INDEX */}
+                    <td className="py-2 px-3 text-center font-mono font-bold text-slate-400 text-xs">
+                      {String(index + 1).padStart(2, "0")}
+                    </td>
+
+                    {/* CATEGORY (CUSTOM MODERN DROPDOWN) */}
+                    <td className={`py-2 px-3 ${openCategoryItemId === item.id ? "relative z-40" : ""}`}>
+                      <div 
+                        className="relative w-full"
+                        ref={(el) => {
+                          categoryItemDropdownRefs.current[item.id] = el;
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setOpenCategoryItemId(openCategoryItemId === item.id ? null : item.id)}
+                          className={`w-full h-9 px-3 bg-white hover:bg-slate-50 border rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between shadow-2xs cursor-pointer transition-all ${
+                            openCategoryItemId === item.id ? "border-blue-500 ring-2 ring-blue-500/20" : "border-slate-300"
+                          }`}
+                        >
+                          <span className={`truncate ${item.category ? "text-slate-900" : "text-slate-400 font-normal"}`}>
+                            {item.category || t("Select Category...")}
+                          </span>
+                          <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1 transition-transform ${openCategoryItemId === item.id ? "rotate-180 text-blue-600" : ""}`} />
+                        </button>
+
+                        {openCategoryItemId === item.id && (
+                          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-[100] w-full bg-white border border-slate-200 rounded-xl shadow-2xl p-1.5 max-h-60 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                            {categoriesList.map((c) => {
+                              const isSelected = item.category === c;
+                              return (
+                                <button
+                                  key={c}
+                                  type="button"
+                                  onClick={() => {
+                                    handleUpdateLineItem(item.id, "category", c);
+                                    setOpenCategoryItemId(null);
+                                  }}
+                                  className={`w-full text-left px-3 py-2 hover:bg-blue-50/70 rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                                    isSelected ? "bg-blue-50 text-blue-900 font-extrabold" : ""
+                                  }`}
+                                >
+                                  <span className="truncate">{c}</span>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* DESCRIPTION / SHADE */}
+                    <td className="py-2 px-3">
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) => handleUpdateLineItem(item.id, "description", e.target.value)}
+                        placeholder={t("e.g. 124-LL, 370 White")}
+                        className="w-full h-9 px-3 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-bold text-slate-900 text-xs focus:outline-none transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                        required={index === 0}
+                      />
+                    </td>
+
+                    {/* QUANTITY */}
+                    <td className="py-2 px-3">
+                      <input
+                        type="text"
+                        value={item.quantity}
+                        onChange={(e) => handleUpdateLineItem(item.id, "quantity", e.target.value)}
+                        placeholder={t("e.g. 10 Box")}
+                        className="w-full h-9 px-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-800 text-xs focus:outline-none transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                      />
+                    </td>
+
+                    {/* RATE */}
+                    <td className="py-2 px-3">
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">₹</span>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={item.rate || ""}
+                          onChange={(e) => handleUpdateLineItem(item.id, "rate", e.target.value)}
+                          placeholder="0.00"
+                          className="w-full h-9 pl-6 pr-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-800 text-xs focus:outline-none transition-all shadow-2xs text-right placeholder:text-slate-400 placeholder:font-normal"
+                        />
+                      </div>
+                    </td>
+
+                    {/* AMOUNT */}
+                    <td className="py-2 px-3">
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">₹</span>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={item.amount}
+                          onChange={(e) => handleUpdateLineItem(item.id, "amount", e.target.value)}
+                          placeholder="0.00"
+                          className="w-full h-9 pl-6 pr-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-black text-slate-900 text-xs focus:outline-none transition-all shadow-2xs text-right placeholder:text-slate-400 placeholder:font-normal"
+                        />
+                      </div>
+                    </td>
+
+                    {/* REMOVE BUTTON */}
+                    <td className="py-2 px-2 text-center">
                       <button
                         type="button"
-                        onClick={() => {
-                          setCategorySearch("");
-                          setCategory("");
-                          setIsCategoryDropdownOpen(true);
-                        }}
-                        className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-                        title="Clear"
+                        onClick={() => handleRemoveLineItem(item.id)}
+                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                          lineItems.length > 1
+                            ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                            : "text-slate-300 hover:text-slate-500 hover:bg-slate-100"
+                        }`}
+                        title="Remove Row"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                      className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-                    >
-                      <ChevronDown className={`w-4 h-4 transition-transform ${isCategoryDropdownOpen ? "rotate-180" : ""}`} />
-                    </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+
+              {/* TABLE FOOTER */}
+              <tfoot>
+                <tr className="border-t border-slate-200 bg-slate-50/90 font-bold text-slate-700">
+                  <td colSpan={4} className="py-2.5 px-4 text-xs text-slate-500 font-mono">
+                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-600">
+                      <span>{lineItems.length}</span>
+                      <span>{lineItems.length === 1 ? t("Item") : t("Items")}</span>
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-3 text-right text-[11px] font-extrabold uppercase tracking-wide text-slate-500">
+                    {t("Items Total:")}
+                  </td>
+                  <td className="py-2.5 px-3 text-right">
+                    <span className="font-mono font-black text-slate-900 text-sm">
+                      ₹{calculatedTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        {/* BOX 3: SETTLEMENT & ACCOUNTING SUMMARY */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200">
+            {/* LEFT COLUMN: PAYMENT TERMS & REMARKS */}
+            <div className="p-4 sm:p-5 md:pr-8 space-y-3.5">
+              {/* PAYMENT STATUS TOGGLE */}
+              <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-2 sm:gap-3 items-center text-xs">
+                <label className="font-bold text-slate-800 uppercase tracking-wide block">
+                  {t("Payment Status*")}
+                </label>
+                <div className="flex items-center gap-2">
+                  {/* PAID */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentStatus("Paid");
+                      setCreditDays(0);
+                      setPaymentTerms("Cash / Immediate");
+                    }}
+                    className={`flex-1 h-9 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+                      paymentStatus === "Paid"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-2xs font-extrabold"
+                        : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{t("Paid")}</span>
+                  </button>
+
+                  {/* PENDING / CREDIT */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentStatus("Pending");
+                      if (creditDays === 0) setCreditDays(45);
+                      setPaymentTerms("Net 45");
+                    }}
+                    className={`flex-1 h-9 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+                      paymentStatus === "Pending"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-2xs font-extrabold"
+                        : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{t("Pending / Credit")}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* CREDIT TERMS SELECTION */}
+              {paymentStatus === "Pending" && (
+                <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-2 sm:gap-3 items-center text-xs">
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-amber-900 uppercase tracking-wide block">
+                      {t("Credit Term")}:
+                    </span>
+                    <span className="font-mono text-[11px] text-amber-800 block">
+                      {creditDays}d ({dueDate || billDate})
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[30, 45, 60, 90, 100, 120].map((days) => {
+                      const isSelected = creditDays === days;
+                      return (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => {
+                            setCreditDays(days);
+                            setPaymentTerms(`Net ${days}`);
+                          }}
+                          className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer border ${
+                            isSelected
+                              ? "bg-blue-600 text-white border-blue-600 shadow-2xs font-extrabold"
+                              : "bg-white text-slate-700 border-amber-200 hover:bg-amber-100/50"
+                          }`}
+                        >
+                          {days}d
+                        </button>
+                      );
+                    })}
+                    <div className="inline-flex items-center gap-1 bg-white border border-amber-200 rounded-lg px-2 py-0.5">
+                      <span className="text-[10px] text-slate-400 font-medium">{t("Custom")}:</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={creditDays || ""}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10) || 0;
+                          setCreditDays(val);
+                          setPaymentTerms(`Net ${val}`);
+                        }}
+                        className="w-10 h-4 text-xs font-mono font-bold text-slate-900 focus:outline-none"
+                      />
+                      <span className="text-[10px] text-slate-400">{t("Days")}</span>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {isCategoryDropdownOpen && (
-                  <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-1.5 max-h-60 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
-                    {filteredCategories.length === 0 ? (
-                      <div className="p-3 text-center text-slate-400 text-xs font-medium">
-                        {t("No categories found.")}
-                      </div>
-                    ) : (
-                      filteredCategories.map((c) => {
-                        const isSelected = category.toLowerCase().trim() === c.toLowerCase().trim();
+              {/* REMARKS */}
+              <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-2 sm:gap-3 items-start text-xs pt-1 border-t border-slate-100">
+                <label className="font-bold text-slate-800 uppercase tracking-wide block pt-1.5">
+                  {t("Remarks / Notes")}:
+                </label>
+                <VoiceTextarea
+                  rows={2}
+                  placeholder={t("Add optional notes...")}
+                  value={notes}
+                  onChangeValue={(val) => setNotes(val)}
+                />
+              </div>
+            </div>
 
-                        return (
-                          <button
-                            key={c}
-                            type="button"
-                            onClick={() => handleCategorySelect(c)}
-                            className={`w-full text-left px-3 py-2 hover:bg-blue-50/70 rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                              isSelected ? "bg-blue-50 text-blue-900 font-extrabold" : ""
-                            }`}
-                          >
-                            <span className="truncate">{c}</span>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
+            {/* RIGHT COLUMN: BILL ACCOUNTING SUMMARY */}
+            <div className="p-4 sm:p-5 md:pl-8 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                  {t("Bill Accounting Summary")}
+                </h4>
+                {calculatedTotal > 0 && Math.abs(totalWithTax - (parseFloat(amount) || 0)) < 0.01 && (
+                  <span className="text-[10px] text-emerald-700 font-extrabold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <Check className="w-3 h-3 text-emerald-600" />
+                    <span>Auto-Calculated</span>
+                  </span>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* ROW 5: ITEMS / DESCRIPTION */}
-          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-bold text-slate-700">{t("Items / Description")}</label>
-            <div className="max-w-xl w-full">
-              <input
-                type="text"
-                value={itemsDescription}
-                onChange={(e) => setItemsDescription(e.target.value)}
-                placeholder="e.g. 370 - 14 box, 351 - 17 box = 40 box"
-                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
-              />
-            </div>
-          </div>
-
-          {/* ROW 6: BILL AMOUNT (₹) * */}
-          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-extrabold text-rose-600">{t("Bill Amount (₹)*")}</label>
-            <div className="relative max-w-xl w-full">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-500 text-sm">₹</span>
-              <input
-                type="number"
-                step="any"
-                min="0"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full h-9 pl-7 pr-3 bg-white border border-slate-300 rounded-xl font-mono font-black text-slate-900 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
-                required
-              />
-            </div>
-          </div>
-
-          {/* ROW 7: PAYMENT STATUS * */}
-          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-            <label className="font-bold text-slate-700">{t("Payment Status*")}</label>
-            <div className="flex items-center gap-2 max-w-xl w-full">
-              {/* 1. PAID FIRST */}
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentStatus("Paid");
-                  setCreditDays(0);
-                  setPaymentTerms("Cash / Immediate");
-                }}
-                className={`flex-1 h-9 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
-                  paymentStatus === "Paid"
-                    ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
-                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>{t("Paid")}</span>
-              </button>
-
-              {/* 2. PENDING / CREDIT SECOND */}
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentStatus("Pending");
-                  if (creditDays === 0) setCreditDays(45);
-                  setPaymentTerms("Net 45");
-                }}
-                className={`flex-1 h-9 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
-                  paymentStatus === "Pending"
-                    ? "bg-amber-600 text-white border-amber-600 shadow-2xs"
-                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>{t("Pending / Credit")}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* ROW 8: CREDIT TERMS (NET DAYS) - SHOWN ONLY FOR UDHAR */}
-          {paymentStatus === "Pending" && (
-            <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
-              <div className="flex flex-col">
-                <label className="font-bold text-slate-700">{t("Credit Terms*")}</label>
-                <span className="text-[10px] text-blue-600 font-extrabold">{creditDays} {t("Days Credit")}</span>
+              {/* 1. Items Gross Total / Subtotal Row */}
+              <div className="flex items-center justify-between gap-4 text-xs">
+                <span className="font-bold text-slate-700 whitespace-nowrap">
+                  {t("Items Gross Total")}:
+                </span>
+                <span className="font-mono font-bold text-slate-900 text-sm text-right">
+                  ₹{calculatedTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
               </div>
-              <div className="flex items-center gap-1.5 flex-wrap max-w-xl w-full">
-                {[30, 45, 60, 90, 100, 120].map((days) => {
-                  const isSelected = creditDays === days;
-                  return (
-                    <button
-                      key={days}
-                      type="button"
-                      onClick={() => {
-                        setCreditDays(days);
-                        setPaymentTerms(`Net ${days}`);
-                      }}
-                      className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer border ${
-                        isSelected
-                          ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
-                          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                      }`}
-                    >
-                      {days} {t("Days")}
-                    </button>
-                  );
-                })}
-                <div className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1">
-                  <span className="text-[11px] text-slate-400 font-medium">{t("Custom")}:</span>
-                  <input
-                    type="number"
-                    min="1"
-                    max="365"
-                    value={creditDays || ""}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value, 10) || 0;
-                      setCreditDays(val);
-                      setPaymentTerms(`Net ${val}`);
-                    }}
-                    className="w-12 h-5 text-xs font-mono font-bold text-slate-900 focus:outline-none"
-                  />
-                  <span className="text-[11px] text-slate-400">{t("Days")}</span>
+
+              {/* 2. GST / Tax Dropdown Selection */}
+              <div className="flex items-center justify-between gap-4 text-xs pt-1 border-t border-slate-100">
+                <span className="font-bold text-slate-700 whitespace-nowrap shrink-0">
+                  {t("GST / Tax")}:
+                </span>
+                <div className="w-52 sm:w-60 shrink-0 flex items-center gap-2 justify-end">
+                  <div className="w-full">
+                    <CustomSelect
+                      value={currentGstDropdownValue}
+                      onChange={handleGstDropdownChange}
+                      options={gstOptions}
+                      placeholder={t("Select GST / Tax...")}
+                    />
+                  </div>
+                  {isCustomTaxRate && (
+                    <div className="w-16 shrink-0 relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        placeholder="Rate"
+                        value={taxRate || ""}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value) || 0;
+                          handleTaxRateChange(v);
+                        }}
+                        className="w-full h-9 pl-2 pr-5 bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-900 text-xs shadow-2xs focus:outline-none text-right"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">%</span>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* ROW 11: REMARKS / NOTES */}
-          <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs pt-1">
-            <label className="font-bold text-slate-700 pt-2">{t("Remarks / Notes")}</label>
-            <div className="max-w-xl w-full">
-              <VoiceTextarea
-                rows={3}
-                placeholder={t("Add optional purchase description, lot number or mill notes...")}
-                value={notes}
-                onChangeValue={(val) => setNotes(val)}
-              />
+              {/* GST Breakdown details (Right-aligned) */}
+              {taxMode === "cgst_sgst" && (
+                <div className="space-y-1 pl-2 border-l-2 border-blue-100 text-xs text-slate-500">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="font-medium whitespace-nowrap">
+                      ↳ CGST ({(taxRate / 2).toFixed(1)}%):
+                    </span>
+                    <span className="font-mono font-bold text-slate-800 text-right">
+                      + ₹{cgstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="font-medium whitespace-nowrap">
+                      ↳ SGST ({(taxRate / 2).toFixed(1)}%):
+                    </span>
+                    <span className="font-mono font-bold text-slate-800 text-right">
+                      + ₹{sgstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {taxMode === "igst" && (
+                <div className="pl-2 border-l-2 border-blue-100 text-xs text-slate-500">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="font-medium whitespace-nowrap">
+                      ↳ IGST ({taxRate}%):
+                    </span>
+                    <span className="font-mono font-bold text-slate-800 text-right">
+                      + ₹{igstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Final Total Bill Amount (Label in single line, compact right-aligned input matching GST box) */}
+              <div className="flex items-center justify-between gap-4 text-xs pt-1.5 border-t border-slate-200">
+                <div className="shrink-0">
+                  <label className="font-bold text-slate-800 uppercase tracking-wide whitespace-nowrap block">
+                    {t("Total Bill Amount (₹)*")}
+                  </label>
+                  {calculatedTotal > 0 && Math.abs(totalWithTax - (parseFloat(amount) || 0)) > 0.01 && (
+                    <button
+                      type="button"
+                      onClick={() => setAmount(String(totalWithTax))}
+                      className="text-[10px] text-blue-600 hover:text-blue-700 font-bold underline cursor-pointer mt-0.5 block"
+                    >
+                      {t("Reset to ₹")}{totalWithTax.toFixed(2)}
+                    </button>
+                  )}
+                </div>
+                <div className="w-52 sm:w-60 shrink-0 relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">₹</span>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full h-9 pl-7 pr-3 bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-900 text-xs shadow-2xs focus:outline-none transition-all text-right"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* 4. Amount In Words */}
+              {parseFloat(amount || "0") > 0 && (
+                <div className="pt-1 border-t border-slate-100 text-xs space-y-1">
+                  <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px] block">
+                    {t("Amount In Words")}:
+                  </span>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
+                    <p className="font-medium text-slate-800 italic text-xs leading-relaxed text-right sm:text-left">
+                      {numberToIndianWords(parseFloat(amount || "0"))}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-
-        </form>
-      </div>
+        </div>
+      </form>
 
       {/* 3. UNIFIED STATIC / FIXED ACTIONS FOOTER BAR */}
       <BottomActionBar
