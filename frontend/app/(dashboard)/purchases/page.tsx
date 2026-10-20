@@ -125,11 +125,20 @@ export interface ParsedPurchaseData {
 }
 
 export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
+  let lineItems: any = item.items;
+  if (typeof lineItems === "string") {
+    try {
+      lineItems = JSON.parse(lineItems);
+    } catch {
+      lineItems = undefined;
+    }
+  }
+
   // 1. Categories Extraction
   const categorySet = new Set<string>();
 
-  if (Array.isArray(item.items) && item.items.length > 0) {
-    item.items.forEach((it: any) => {
+  if (Array.isArray(lineItems) && lineItems.length > 0) {
+    lineItems.forEach((it: any) => {
       const c = (it.category || "").trim();
       if (c && c !== "Select Category...") categorySet.add(c);
     });
@@ -153,8 +162,8 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
   let quantityDisplay = "";
   let itemCount = 0;
 
-  if (Array.isArray(item.items) && item.items.length > 0) {
-    const validLineItems = item.items.filter(
+  if (Array.isArray(lineItems) && lineItems.length > 0) {
+    const validLineItems = lineItems.filter(
       (it: any) =>
         (it.description && it.description.trim()) ||
         (it.quantity && it.quantity.toString().trim()) ||
@@ -195,6 +204,8 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
 
     if (hasNumeric && !mixedUnits && totalNumeric > 0) {
       quantityDisplay = detectedUnit ? `${totalNumeric} ${detectedUnit}` : `${totalNumeric}`;
+    } else if (hasNumeric && totalNumeric > 0) {
+      quantityDisplay = `${totalNumeric}`;
     } else if (rawQtyList.length > 0) {
       if (rawQtyList.length <= 2) {
         quantityDisplay = rawQtyList.join(", ");
@@ -213,66 +224,61 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
         desc = desc.slice(1, -1).trim();
       }
 
-      // Pattern like: "370 - 14 box, 351 - 17 box = 40 box"
-      if (desc.includes("=")) {
-        const parts = desc.split("=");
-        const totalPart = parts[1]?.trim();
-        if (totalPart && !quantityDisplay) {
-          quantityDisplay = totalPart;
+      // Check if string ends with "= total" (e.g. "= 40 box")
+      let explicitTotal = "";
+      const endEqualMatch = desc.match(/\s*=\s*([^,=]+)$/);
+      if (endEqualMatch && endEqualMatch.index !== undefined && endEqualMatch.index > 0) {
+        const candidateTotal = endEqualMatch[1].trim();
+        if (/\d/.test(candidateTotal)) {
+          explicitTotal = candidateTotal;
+          desc = desc.slice(0, endEqualMatch.index).trim();
         }
-        const leftPart = parts[0]?.trim() || "";
-        leftPart.split(",").forEach((p) => {
-          const segs = p.split("-");
-          if (segs[0]?.trim() && itemNames.length < 5) {
-            itemNames.push(segs[0].trim());
+      }
+
+      const subItems = desc.split(",").map((s) => s.trim()).filter(Boolean);
+      const extractedQtys: string[] = [];
+
+      subItems.forEach((sub) => {
+        const cleanSub = sub.replace(/\(₹[^)]*\)/g, "").trim();
+
+        if (cleanSub.includes(":")) {
+          const lastColon = cleanSub.lastIndexOf(":");
+          const name = cleanSub.slice(0, lastColon).trim();
+          const q = cleanSub.slice(lastColon + 1).trim();
+          if (name) itemNames.push(name);
+          if (q) extractedQtys.push(q);
+        } else if (cleanSub.includes("-")) {
+          const lastDash = cleanSub.lastIndexOf("-");
+          const name = cleanSub.slice(0, lastDash).trim();
+          const q = cleanSub.slice(lastDash + 1).trim();
+          if (name) itemNames.push(name);
+          if (q && /^[\d.]+\s*[a-zA-Z]*$/.test(q)) {
+            extractedQtys.push(q);
           }
-        });
-      } else {
-        // Pattern like: "124 - LL - 4 (₹1480)" or "2313 : 10 (₹1230), 1234 : 5 (₹1770)"
-        const subItems = desc.split(",").map((s) => s.trim()).filter(Boolean);
-        const extractedQtys: string[] = [];
+        } else {
+          if (cleanSub) itemNames.push(cleanSub);
+        }
+      });
 
-        subItems.forEach((sub) => {
-          const cleanSub = sub.replace(/\(₹[^)]*\)/g, "").trim();
-
-          if (cleanSub.includes(":")) {
-            const [name, q] = cleanSub.split(":");
-            if (name?.trim()) itemNames.push(name.trim());
-            if (q?.trim()) extractedQtys.push(q.trim());
-          } else if (cleanSub.includes("-")) {
-            const segs = cleanSub.split("-").map((s) => s.trim()).filter(Boolean);
-            if (segs.length >= 2) {
-              itemNames.push(segs[0]);
-              const lastSeg = segs[segs.length - 1];
-              if (/^[\d.]+\s*[a-zA-Z]*$/.test(lastSeg)) {
-                extractedQtys.push(lastSeg);
-              }
-            } else if (segs.length === 1) {
-              itemNames.push(segs[0]);
-            }
+      if (explicitTotal && !quantityDisplay) {
+        quantityDisplay = explicitTotal;
+      } else if (!quantityDisplay && extractedQtys.length > 0) {
+        let sumNum = 0;
+        let canSum = true;
+        let unit = "";
+        for (const q of extractedQtys) {
+          const m = q.match(/^([\d.]+)\s*(.*)$/);
+          if (m) {
+            sumNum += parseFloat(m[1]);
+            if (!unit && m[2]) unit = m[2];
           } else {
-            if (cleanSub) itemNames.push(cleanSub);
+            canSum = false;
           }
-        });
-
-        if (!quantityDisplay && extractedQtys.length > 0) {
-          let sumNum = 0;
-          let canSum = true;
-          let unit = "";
-          for (const q of extractedQtys) {
-            const m = q.match(/^([\d.]+)\s*(.*)$/);
-            if (m) {
-              sumNum += parseFloat(m[1]);
-              if (!unit && m[2]) unit = m[2];
-            } else {
-              canSum = false;
-            }
-          }
-          if (canSum && sumNum > 0) {
-            quantityDisplay = unit ? `${sumNum} ${unit}` : `${sumNum}`;
-          } else {
-            quantityDisplay = extractedQtys.join(", ");
-          }
+        }
+        if (canSum && sumNum > 0) {
+          quantityDisplay = unit ? `${sumNum} ${unit}` : `${sumNum}`;
+        } else {
+          quantityDisplay = extractedQtys.join(", ");
         }
       }
     }

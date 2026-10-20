@@ -66,30 +66,6 @@ def sync_user_to_cache(user_id: str, username: str, email: str, name: str, firm_
     if user_id:
         AUTH_FAST_STORE[user_id.strip().lower()] = entry
 
-# Pre-seed standard tenants immediately so login is <5ms instantly without remote DB hops
-sync_user_to_cache(
-    user_id="user-001",
-    username="shivcreation",
-    email="owner@shivcreation.com",
-    name="Hiren Sutariya",
-    firm_name="Shiv Creation",
-    company_id="comp-001",
-    password_hash="",
-    plain_password="owner123"
-)
-sync_user_to_cache(
-    user_id="user-002",
-    username="owner@om-sai.com",
-    email="owner@om-sai.com",
-    name="Nilesh Sutariya",
-    firm_name="Om Sai Enterprise",
-    company_id="comp-002",
-    password_hash="",
-    plain_password="owner123"
-)
-# Aliases
-AUTH_FAST_STORE["omsai"] = AUTH_FAST_STORE["owner@om-sai.com"]
-
 def preload_auth_cache_from_db():
     try:
         db = SessionLocal()
@@ -106,7 +82,7 @@ def preload_auth_cache_from_db():
                     firm_name=firm,
                     company_id=u.company_id or "comp-001",
                     password_hash=u.password_hash or "",
-                    plain_password="owner123" if (u.company_id in ["comp-001", "comp-002"] or u.id in ["user-001", "user-002"]) else None
+                    plain_password=None
                 )
         finally:
             db.close()
@@ -130,76 +106,22 @@ class ChangeCredentialsRequest(BaseModel):
 
 @router.post("/login")
 def login(req: LoginRequest):
-    """Authenticate user strictly with their registered username or email and password.
-    Returns in 1-5 milliseconds via in-memory cache, avoiding remote Supabase connection delays.
-    """
+    """Authenticate user strictly with their registered username or email and password directly against the database."""
     clean_id = req.username_or_email.strip()
-    key = clean_id.lower()
 
-    # 1. Fast in-memory check (0-3ms response time!)
-    cached = AUTH_FAST_STORE.get(key)
-    if cached:
-        is_valid = False
-        if cached.get("plain_password") and req.password == cached["plain_password"]:
-            is_valid = True
-        elif cached.get("password_hash") and verify_password(req.password, cached["password_hash"]):
-            is_valid = True
-
-        if not is_valid:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect password. Please try again."
-            )
-
-        return {
-            "success": True,
-            "message": "Login successful",
-            "user": {
-                "id": cached["id"],
-                "name": cached["name"],
-                "email": cached["email"],
-                "username": cached["username"],
-                "role": "Owner",
-                "roleTitle": "Proprietor & Director",
-                "firmName": cached["firmName"],
-                "companyId": cached["companyId"]
-            }
-        }
-
-    # 2. Fallback to on-demand DB query if user was created outside cache
     db = SessionLocal()
     try:
         user = db.query(User).filter(
             (User.username.ilike(clean_id)) | (User.email.ilike(clean_id))
         ).first()
 
-        # If no users exist in table yet, seed default and test against that
-        if not user:
-            total_users = db.query(User).count()
-            if total_users == 0:
-                pw_hash = hash_password("owner123")
-                default_user = User(
-                    id="user-001",
-                    firm_name="Shiv Creation",
-                    name="Hiren Sutariya",
-                    email="owner@shivcreation.com",
-                    username="owner@shivcreation.com",
-                    password_hash=pw_hash,
-                    company_id="comp-001"
-                )
-                db.add(default_user)
-                db.commit()
-                db.refresh(default_user)
-                if clean_id.lower() == "owner@shivcreation.com":
-                    user = default_user
-
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User ID not found. Please check your username/email."
+                detail="User not found. Please check your username or email."
             )
 
-        # Verify password
+        # Verify password strictly against database password hash
         if not verify_password(req.password, user.password_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -209,7 +131,7 @@ def login(req: LoginRequest):
         company = db.query(Company).filter(Company.id == user.company_id).first()
         firm_name = company.name if company else (user.firm_name or "Om Sai Enterprise")
 
-        # Cache credentials for ultra-fast subsequent logins
+        # Sync credentials to cache
         sync_user_to_cache(
             user_id=user.id,
             username=user.username,
@@ -218,7 +140,7 @@ def login(req: LoginRequest):
             firm_name=firm_name,
             company_id=user.company_id or "comp-001",
             password_hash=user.password_hash,
-            plain_password=req.password
+            plain_password=None
         )
 
         return {
@@ -229,7 +151,7 @@ def login(req: LoginRequest):
                 "name": user.name,
                 "email": user.email,
                 "username": user.username,
-                "role": "Owner",
+                "role": getattr(user, "role", "Owner") or "Owner",
                 "roleTitle": "Proprietor & Director",
                 "firmName": firm_name,
                 "companyId": user.company_id or "comp-001"
@@ -406,108 +328,24 @@ def get_credentials(
     company_id: Optional[str] = None,
     firm_name: Optional[str] = None
 ):
-    """Fetch current primary admin credentials info strictly isolated by user or company.
-    Fast path returns in <1ms from memory cache.
-    """
+    """Fetch current primary admin credentials info strictly from the database."""
     cid_clean = (company_id or "").strip()
     uid_clean = (user_id or "").strip()
     uname_clean = (username or "").strip().lower()
 
-    if cid_clean == "comp-001" or uid_clean == "user-001" or uname_clean in ["shivcreation", "owner@shivcreation.com"]:
-        c = AUTH_FAST_STORE.get("shivcreation") or AUTH_FAST_STORE.get("owner@shivcreation.com")
-        if c:
-            return {
-                "success": True,
-                "id": c["id"],
-                "username": c["username"],
-                "email": c["email"],
-                "name": c["name"],
-                "role": "Owner",
-                "firm_name": c["firmName"],
-                "company_id": "comp-001"
-            }
-
-    if cid_clean == "comp-002" or uid_clean == "user-002" or uname_clean in ["omsai", "owner@om-sai.com"]:
-        c = AUTH_FAST_STORE.get("owner@om-sai.com") or AUTH_FAST_STORE.get("omsai")
-        if c:
-            return {
-                "success": True,
-                "id": c["id"],
-                "username": c["username"],
-                "email": c["email"],
-                "name": c["name"],
-                "role": "Owner",
-                "firm_name": c["firmName"],
-                "company_id": "comp-002"
-            }
-
-    if uname_clean and uname_clean in AUTH_FAST_STORE:
-        c = AUTH_FAST_STORE[uname_clean]
-        return {
-            "success": True,
-            "id": c["id"],
-            "username": c["username"],
-            "email": c["email"],
-            "name": c["name"],
-            "role": "Owner",
-            "firm_name": c["firmName"],
-            "company_id": c["companyId"]
-        }
-
-    # Fallback to DB
     db = SessionLocal()
     try:
         query = db.query(User)
         user = None
 
-        if cid_clean:
-            scoped_query = query.filter(User.company_id == cid_clean)
-            if uid_clean:
-                user = scoped_query.filter(User.id == uid_clean).first()
-            elif uname_clean:
-                user = scoped_query.filter((User.username.ilike(uname_clean)) | (User.email.ilike(uname_clean))).first()
-            if not user:
-                user = scoped_query.first()
-        else:
-            if uid_clean:
-                user = query.filter(User.id == uid_clean).first()
-            elif uname_clean:
-                user = query.filter((User.username.ilike(uname_clean)) | (User.email.ilike(uname_clean))).first()
-            elif firm_name and firm_name.strip():
-                user = query.filter(User.firm_name.ilike(f"%{firm_name.strip()}%")).first()
-
-        # Fallback logic strictly per tenant
-        if not user and cid_clean == "comp-002":
-            user = query.filter(
-                (User.company_id == "comp-002") |
-                (User.id == "user-002") |
-                (User.firm_name.ilike("%om sai%")) |
-                (User.email.ilike("%om-sai%"))
-            ).first()
-
-        if not user and (not cid_clean or cid_clean == "comp-001"):
-            user = query.filter(
-                (User.company_id == "comp-001") | 
-                (User.id == "user-001") |
-                (User.id == "usr-owner-01") |
-                (User.firm_name.ilike("%shiv%")) |
-                (User.email.ilike("%shiv%"))
-            ).first()
-
-            if not user:
-                pw_hash = hash_password("owner123")
-                user = User(
-                    id="user-001",
-                    firm_name="Shiv Creation",
-                    name="Hiren Sutariya",
-                    email="owner@shivcreation.com",
-                    username="owner@shivcreation.com",
-                    password_hash=pw_hash,
-                    company_id="comp-001"
-                )
-                db.add(user)
-                db.commit()
-                db.refresh(user)
+        if uid_clean:
+            user = query.filter(User.id == uid_clean).first()
+        elif uname_clean:
+            user = query.filter((User.username.ilike(uname_clean)) | (User.email.ilike(uname_clean))).first()
+        elif cid_clean:
+            user = query.filter(User.company_id == cid_clean).first()
+        elif firm_name and firm_name.strip():
+            user = query.filter(User.firm_name.ilike(f"%{firm_name.strip()}%")).first()
 
         if not user:
             raise HTTPException(
@@ -515,24 +353,13 @@ def get_credentials(
                 detail="Credentials not found for the requested company"
             )
 
-        # Sync to cache
-        sync_user_to_cache(
-            user_id=user.id,
-            username=user.username,
-            email=user.email,
-            name=user.name,
-            firm_name=user.firm_name,
-            company_id=user.company_id or "comp-001",
-            password_hash=user.password_hash
-        )
-
         return {
             "success": True,
             "id": user.id,
             "username": user.username,
             "email": user.email or user.username,
             "name": user.name,
-            "role": "Owner",
+            "role": getattr(user, "role", "Owner") or "Owner",
             "firm_name": user.firm_name,
             "company_id": user.company_id or "comp-001"
         }
@@ -562,15 +389,6 @@ def change_credentials(req: ChangeCredentialsRequest, db: Session = Depends(get_
         user = query.filter(
             (User.username.ilike(req.new_username.strip())) |
             (User.email.ilike(req.new_username.strip()))
-        ).first()
-
-    if not user and (not req.company_id or req.company_id.strip() == "comp-001"):
-        # Fallback to comp-001 / Shiv Creation user
-        user = query.filter(
-            (User.company_id == "comp-001") |
-            (User.id == "user-001") |
-            (User.id == "usr-owner-01") |
-            (User.firm_name.ilike("%shiv%"))
         ).first()
 
     if not user:
@@ -739,7 +557,7 @@ def get_company_settings(
     email = comp.email if (comp and comp.email) else (user.email if user else "")
     address = comp.address if (comp and comp.address) else ""
     gstin = comp.gstin if (comp and comp.gstin) else ""
-    username_val = user.username if user else (email or "owner@shivcreation.com")
+    username_val = user.username if user else (email or "")
 
     return {
         "success": True,

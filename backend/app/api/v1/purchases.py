@@ -90,6 +90,11 @@ def create_purchase(
     purchase_data = purchase_in.model_dump()
     purchase_data["company_id"] = company_id
 
+    if purchase_data.get("items") is not None:
+        if isinstance(purchase_data["items"], (list, dict)):
+            import json
+            purchase_data["items"] = json.dumps(purchase_data["items"])
+
     if purchase_data.get("date"):
         purchase_data["date"] = format_to_dd_mm_yyyy(purchase_data["date"])
     if purchase_data.get("due_date"):
@@ -149,6 +154,11 @@ def update_purchase(
         raise HTTPException(status_code=404, detail="Purchase record not found")
 
     update_data = purchase_in.model_dump(exclude_unset=True)
+    if "items" in update_data and update_data["items"] is not None:
+        if isinstance(update_data["items"], (list, dict)):
+            import json
+            update_data["items"] = json.dumps(update_data["items"])
+
     if "date" in update_data and update_data["date"]:
         update_data["date"] = format_to_dd_mm_yyyy(update_data["date"])
     if "due_date" in update_data and update_data["due_date"]:

@@ -15,6 +15,7 @@ import {
   CheckCircle2
 } from "lucide-react";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
+import { fetchApi } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
 
 const DEFAULT_MATERIAL_CATEGORIES = [
@@ -185,19 +186,39 @@ export default function CategoriesPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Load from tenantStorage
-  const loadCategories = () => {
-    const cid = getStoredCompanyId() || "comp-001";
+  // Load strictly from backend Supabase Database with fallback to tenantStorage
+  const loadCategories = async () => {
     try {
-      const mat = getTenantItem<string[]>("texaflow_material_categories", cid === "comp-001" ? "om_sai_material_categories" : undefined);
+      const live = await fetchApi<Array<{ id: string; name: string; module: string; color?: string; is_system?: boolean }>>("/categories").catch(() => null);
+      if (Array.isArray(live) && live.length > 0) {
+        const mat = live.filter((c) => c.module === "material").map((c) => c.name);
+        const exp = live.filter((c) => c.module === "expense").map((c) => c.name);
+        const des = live.filter((c) => c.module === "design").map((c) => c.name);
+
+        const finalMat = mat.length > 0 ? mat : DEFAULT_MATERIAL_CATEGORIES;
+        const finalExp = exp.length > 0 ? exp : DEFAULT_EXPENSE_CATEGORIES;
+        const finalDes = des.length > 0 ? des : DEFAULT_DESIGN_CATEGORIES;
+
+        setMaterialCategories(finalMat);
+        setExpenseCategories(finalExp);
+        setDesignCategories(finalDes);
+
+        setTenantItem("texaflow_material_categories", finalMat);
+        setTenantItem("texaflow_expense_categories_order", finalExp);
+        setTenantItem("texaflow_design_categories", finalDes);
+        return;
+      }
+
+      // Offline / network fallback
+      const mat = getTenantItem<string[]>("texaflow_material_categories");
       if (Array.isArray(mat)) setMaterialCategories(mat);
       else setMaterialCategories(DEFAULT_MATERIAL_CATEGORIES);
 
-      const exp = getTenantItem<string[]>("texaflow_expense_categories_order", cid === "comp-001" ? "om_sai_expense_categories" : undefined);
+      const exp = getTenantItem<string[]>("texaflow_expense_categories_order");
       if (Array.isArray(exp)) setExpenseCategories(exp);
       else setExpenseCategories(DEFAULT_EXPENSE_CATEGORIES);
 
-      const des = getTenantItem<string[]>("texaflow_design_categories", cid === "comp-001" ? "om_sai_design_categories" : undefined);
+      const des = getTenantItem<string[]>("texaflow_design_categories");
       if (Array.isArray(des)) setDesignCategories(des);
       else setDesignCategories(DEFAULT_DESIGN_CATEGORIES);
     } catch (e) {
@@ -260,18 +281,17 @@ export default function CategoriesPage() {
 
   // Save to storage
   const saveCategoryList = (module: "material" | "expense" | "design", updated: string[]) => {
-    const cid = getStoredCompanyId() || "comp-001";
     if (module === "material") {
       setMaterialCategories(updated);
-      setTenantItem("texaflow_material_categories", updated, cid === "comp-001" ? "om_sai_material_categories" : undefined);
+      setTenantItem("texaflow_material_categories", updated);
       window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
     } else if (module === "expense") {
       setExpenseCategories(updated);
-      setTenantItem("texaflow_expense_categories_order", updated, cid === "comp-001" ? "om_sai_expense_categories" : undefined);
+      setTenantItem("texaflow_expense_categories_order", updated);
       window.dispatchEvent(new CustomEvent("texaflow_expense_categories_changed"));
     } else {
       setDesignCategories(updated);
-      setTenantItem("texaflow_design_categories", updated, cid === "comp-001" ? "om_sai_design_categories" : undefined);
+      setTenantItem("texaflow_design_categories", updated);
       window.dispatchEvent(new CustomEvent("texaflow_design_categories_changed"));
     }
   };
@@ -294,6 +314,11 @@ export default function CategoriesPage() {
 
     const updated = [trimmed, ...targetList];
     saveCategoryList(addModule, updated);
+    fetchApi("/categories", {
+      method: "POST",
+      body: JSON.stringify({ name: trimmed, module: addModule, color: "blue" })
+    }).catch((err) => console.error("Category create sync error:", err));
+
     setAddName("");
     setIsAddModalOpen(false);
     showToast(`Category "${trimmed}" added successfully!`);
@@ -352,6 +377,10 @@ export default function CategoriesPage() {
       saveCategoryList("design", updatedDes);
     }
 
+    selectedRecords.forEach((r) => {
+      fetchApi(`/categories/${encodeURIComponent(r.name)}`, { method: "DELETE" }).catch(() => {});
+    });
+
     setSelectedCategoryIds([]);
     showToast(`Deleted ${count} ${count === 1 ? "category" : "categories"} successfully!`);
   };
@@ -368,6 +397,7 @@ export default function CategoriesPage() {
 
     const updated = targetList.filter((c) => c !== rec.name);
     saveCategoryList(rec.module, updated);
+    fetchApi(`/categories/${encodeURIComponent(rec.name)}`, { method: "DELETE" }).catch(() => {});
     setSelectedCategoryIds((prev) => prev.filter((id) => id !== rec.id));
     showToast(`Removed "${rec.name}".`);
   };
@@ -393,6 +423,10 @@ export default function CategoriesPage() {
 
     const updated = targetList.map((c) => (c === editingItem.name ? trimmed : c));
     saveCategoryList(editingItem.module, updated);
+    fetchApi(`/categories/${encodeURIComponent(editingItem.name)}`, { method: "DELETE" })
+      .then(() => fetchApi("/categories", { method: "POST", body: JSON.stringify({ name: trimmed, module: editingItem.module }) }))
+      .catch(() => {});
+
     setEditingItem(null);
     showToast(`Renamed to "${trimmed}"`);
   };
@@ -409,13 +443,12 @@ export default function CategoriesPage() {
 
   const handleResetDefaults = () => {
     if (!window.confirm("Reset all categories to system defaults?")) return;
-    const cid = getStoredCompanyId() || "comp-001";
     setMaterialCategories(DEFAULT_MATERIAL_CATEGORIES);
     setExpenseCategories(DEFAULT_EXPENSE_CATEGORIES);
     setDesignCategories(DEFAULT_DESIGN_CATEGORIES);
-    setTenantItem("texaflow_material_categories", DEFAULT_MATERIAL_CATEGORIES, cid === "comp-001" ? "om_sai_material_categories" : undefined);
-    setTenantItem("texaflow_expense_categories_order", DEFAULT_EXPENSE_CATEGORIES, cid === "comp-001" ? "om_sai_expense_categories" : undefined);
-    setTenantItem("texaflow_design_categories", DEFAULT_DESIGN_CATEGORIES, cid === "comp-001" ? "om_sai_design_categories" : undefined);
+    setTenantItem("texaflow_material_categories", DEFAULT_MATERIAL_CATEGORIES);
+    setTenantItem("texaflow_expense_categories_order", DEFAULT_EXPENSE_CATEGORIES);
+    setTenantItem("texaflow_design_categories", DEFAULT_DESIGN_CATEGORIES);
     window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
     setSelectedCategoryIds([]);
     setIsActionMenuOpen(false);

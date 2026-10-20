@@ -1,6 +1,7 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, field_validator
+from typing import Optional, Any
 from datetime import datetime
+import json
 
 class PurchaseBase(BaseModel):
     purchase_no: Optional[str] = None
@@ -8,6 +9,7 @@ class PurchaseBase(BaseModel):
     vendor_name: str
     category: str
     items_description: Optional[str] = None
+    items: Optional[Any] = None
     amount: float
     payment_status: Optional[str] = "Pending"
     paid_via: Optional[str] = "Credit (45 days)"
@@ -27,6 +29,7 @@ class PurchaseUpdate(BaseModel):
     vendor_name: Optional[str] = None
     category: Optional[str] = None
     items_description: Optional[str] = None
+    items: Optional[Any] = None
     amount: Optional[float] = None
     payment_status: Optional[str] = None
     paid_via: Optional[str] = None
@@ -40,8 +43,20 @@ class PurchaseUpdate(BaseModel):
 class PurchaseResponse(PurchaseBase):
     id: str
     company_id: str
+    items: Optional[Any] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
+    @field_validator("items", mode="before")
+    @classmethod
+    def parse_items_json(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return v
+        return v
+
     class Config:
         from_attributes = True
+

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, invalidateApiCache } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { setTenantCookie, clearTenantCookie } from "@/lib/cookieStorage";
 
@@ -232,52 +232,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (emailOrPin: string, password?: string): Promise<{ success: boolean; error?: string }> => {
     const cleanId = emailOrPin.trim();
     const cleanPassword = (password || "").trim();
-    const lowerId = cleanId.toLowerCase();
-
-    // Instant fast-path for default tenant accounts (< 1ms instant login)
-    const isShiv = lowerId === "owner@shivcreation.com" || lowerId === "shivcreation";
-    const isOmSai = lowerId === "owner@om-sai.com" || lowerId === "omsai";
-
-    if ((isShiv || isOmSai) && cleanPassword === "owner123") {
-      const targetCid = isShiv ? "comp-001" : "comp-002";
-      const targetFirm = isShiv ? "Shiv Creation" : "Om Sai Enterprise";
-      const targetName = isShiv ? "Hiren Sutariya" : "Nilesh Sutariya";
-      const targetEmail = isShiv ? "owner@shivcreation.com" : "owner@om-sai.com";
-      const targetUsername = isShiv ? "shivcreation" : "owner@om-sai.com";
-      const targetUid = isShiv ? "user-001" : "user-002";
-
-      const instantSession: UserSession = {
-        id: targetUid,
-        name: targetName,
-        email: targetEmail,
-        username: targetUsername,
-        role: "Owner",
-        roleTitle: "Proprietor & Director",
-        firmName: targetFirm,
-        companyId: targetCid,
-        lastLogin: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-        expiresAt: Date.now() + 4 * 60 * 60 * 1000
-      };
-
-      setUser(instantSession);
-      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(instantSession));
-      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(instantSession));
-      sessionStorage.setItem("texaflow_active_company_id", targetCid);
-      localStorage.setItem("texaflow_active_company_id", targetCid);
-      setTenantCookie(targetCid, targetFirm, targetName);
-
-      // Background sync without blocking instant navigation
-      fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username_or_email: cleanId, password: cleanPassword })
-      }).catch(() => {});
-
-      return { success: true };
-    }
 
     try {
-      // Connect to Backend API for strict ID & password authentication
+      // Connect to Backend API for strict ID & password authentication directly from database
       const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -307,6 +264,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           lastLogin: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
           expiresAt: Date.now() + 4 * 60 * 60 * 1000 // Valid for 4 hours
         };
+        const prevSessionRaw = typeof window !== "undefined" ? localStorage.getItem(SESSION_STORAGE_KEY) : null;
+        if (prevSessionRaw) {
+          try {
+            const prev = JSON.parse(prevSessionRaw);
+            if (prev.id !== data.user.id || prev.companyId !== tenant.resolvedCompanyId) {
+              invalidateApiCache();
+            }
+          } catch {}
+        }
+
         setUser(session);
         sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
         localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
@@ -414,6 +381,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.removeItem("texaflow_active_company_id");
       localStorage.removeItem("texaflow_active_company_id");
       clearTenantCookie();
+      invalidateApiCache();
     } catch (e) {
       console.error(e);
     }

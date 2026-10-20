@@ -6,17 +6,66 @@ import uuid
 from app.core.database import get_db
 from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryResponse
+from app.core.tenant import get_tenant_company_id
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
+
+DEFAULT_CATEGORIES_TEMPLATE = [
+    # Materials
+    {"name": "Raw Material & Fabric", "module": "material", "color": "blue"},
+    {"name": "Yarn & Threads", "module": "material", "color": "purple"},
+    {"name": "Zari & Metallic", "module": "material", "color": "amber"},
+    {"name": "Lace & Borders", "module": "material", "color": "emerald"},
+    {"name": "Chemicals & Dyes", "module": "material", "color": "cyan"},
+    # Expenses
+    {"name": "Karigar Salary", "module": "expense", "color": "emerald"},
+    {"name": "Electricity & Power", "module": "expense", "color": "amber"},
+    {"name": "Worker Advance / Upad", "module": "expense", "color": "cyan"},
+    {"name": "Machine Maintenance & Repairs", "module": "expense", "color": "rose"},
+    {"name": "Packaging Materials", "module": "expense", "color": "indigo"},
+    {"name": "Dhaga & Consumables", "module": "expense", "color": "violet"},
+    {"name": "Logistics & Courier", "module": "expense", "color": "blue"},
+    # Designs
+    {"name": "Saree", "module": "design", "color": "purple"},
+    {"name": "Choli & Blouse", "module": "design", "color": "pink"},
+    {"name": "Kurti & Suit", "module": "design", "color": "indigo"},
+    {"name": "Dupatta", "module": "design", "color": "teal"},
+    {"name": "Lehenga", "module": "design", "color": "amber"},
+]
+
+def seed_default_categories_for_tenant(db: Session, company_id: str):
+    new_cats = []
+    suffix = company_id.replace("comp-", "") if "comp-" in company_id else company_id[:6]
+    for item in DEFAULT_CATEGORIES_TEMPLATE:
+        mod_prefix = item["module"][:3]
+        uid = f"cat-{mod_prefix}-{suffix}-{uuid.uuid4().hex[:6]}"
+        new_cats.append(Category(
+            id=uid,
+            company_id=company_id,
+            name=item["name"],
+            module=item["module"],
+            color=item["color"],
+            is_system=True
+        ))
+    db.add_all(new_cats)
+    db.commit()
 
 @router.get("", response_model=List[CategoryResponse])
 def get_categories(
     module: Optional[str] = Query(None, description="Filter by module: material, expense, design"),
-    company_id: str = "comp-001",
+    company_id: Optional[str] = Query(None, description="Optional Company ID override"),
+    tenant_cid: str = Depends(get_tenant_company_id),
     db: Session = Depends(get_db)
 ):
-    """Retrieve all categories, optionally filtered by module."""
-    query = db.query(Category).filter(Category.company_id == company_id)
+    """Retrieve all categories strictly isolated by company_id."""
+    active_cid = company_id.strip() if company_id and company_id.strip() else tenant_cid
+
+    # If the company has NO categories in table yet, seed clean defaults
+    cat_count = db.query(Category).filter(Category.company_id == active_cid).count()
+    if cat_count == 0:
+        seed_default_categories_for_tenant(db, active_cid)
+
+    query = db.query(Category).filter(Category.company_id == active_cid)
     if module and module != "all":
         query = query.filter(Category.module == module)
     return query.order_by(Category.name.asc()).all()
@@ -24,24 +73,28 @@ def get_categories(
 @router.post("", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
 def create_category(
     cat_in: CategoryCreate,
-    company_id: str = "comp-001",
+    company_id: Optional[str] = Query(None),
+    tenant_cid: str = Depends(get_tenant_company_id),
     db: Session = Depends(get_db)
 ):
-    """Create a new category in 06_categories table."""
+    """Create a new category in 06_categories table strictly for the active tenant."""
+    active_cid = company_id.strip() if company_id and company_id.strip() else tenant_cid
+    clean_name = cat_in.name.strip()
+
     existing = db.query(Category).filter(
-        Category.company_id == company_id,
-        Category.name.ilike(cat_in.name.strip()),
+        Category.company_id == active_cid,
+        Category.name.ilike(clean_name),
         Category.module == cat_in.module
     ).first()
     if existing:
         return existing
 
     new_cat = Category(
-        id=f"cat-{uuid.uuid4().hex[:8]}",
-        company_id=company_id,
-        name=cat_in.name.strip(),
+        id=f"cat-{cat_in.module[:3]}-{uuid.uuid4().hex[:8]}",
+        company_id=active_cid,
+        name=clean_name,
         module=cat_in.module,
-        color=cat_in.color,
+        color=cat_in.color or "blue",
         is_system=cat_in.is_system or False
     )
     db.add(new_cat)
@@ -52,13 +105,22 @@ def create_category(
 @router.delete("/{category_id}", status_code=status.HTTP_200_OK)
 def delete_category(
     category_id: str,
-    company_id: str = "comp-001",
+    company_id: Optional[str] = Query(None),
+    tenant_cid: str = Depends(get_tenant_company_id),
     db: Session = Depends(get_db)
 ):
-    """Delete a category by ID."""
-    cat = db.query(Category).filter(Category.id == category_id, Category.company_id == company_id).first()
+    """Delete a category by ID or by exact name strictly for the active tenant."""
+    active_cid = company_id.strip() if company_id and company_id.strip() else tenant_cid
+    clean_target = category_id.strip()
+
+    cat = db.query(Category).filter(
+        (Category.id == clean_target) | (Category.name.ilike(clean_target)),
+        Category.company_id == active_cid
+    ).first()
+
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
+
     db.delete(cat)
     db.commit()
-    return {"success": True, "message": f"Category {category_id} deleted successfully"}
+    return {"success": True, "message": f"Category '{clean_target}' deleted successfully"}

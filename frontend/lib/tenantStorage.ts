@@ -183,12 +183,11 @@ export function getTenantItem<T>(baseKey: string, legacyKey?: string): T | null 
   const cid = getStoredCompanyId() || "comp-001";
   const primaryKey = `${baseKey}_${cid}`;
 
+  // Strict Tenant Isolation: Only check this tenant's primary key
+  // Only allow legacyKey if explicitly in comp-001 for backward compatibility
   const tryKeys = [
     primaryKey,
-    baseKey,
-    legacyKey,
-    `${baseKey}_comp-001`,
-    `${baseKey}_comp-002`
+    ...(cid === "comp-001" && legacyKey ? [legacyKey] : [])
   ].filter(Boolean) as string[];
 
   for (const k of tryKeys) {
@@ -216,10 +215,6 @@ export function getTenantItem<T>(baseKey: string, legacyKey?: string): T | null 
             } catch {}
             return matched as unknown as T;
           } else {
-            // Untagged array - return as is and cache to primaryKey
-            try {
-              localStorage.setItem(primaryKey, JSON.stringify(parsed));
-            } catch {}
             return parsed as unknown as T;
           }
         } else if (parsed && typeof parsed === "object") {
@@ -243,11 +238,8 @@ export function setTenantItem<T>(baseKey: string, value: T, legacyKey?: string):
   try {
     const serialized = JSON.stringify(value);
     localStorage.setItem(key, serialized);
-    // Also save under baseKey for quick fallback if single-tenant/offline
-    try {
-      localStorage.setItem(baseKey, serialized);
-    } catch {}
-    if (legacyKey) {
+    // Strictly isolate: only save under legacyKey if explicitly in comp-001
+    if (cid === "comp-001" && legacyKey) {
       try {
         localStorage.setItem(legacyKey, serialized);
       } catch {}
@@ -255,4 +247,21 @@ export function setTenantItem<T>(baseKey: string, value: T, legacyKey?: string):
   } catch (e) {
     console.error(`Error saving tenant item for key: ${key}`, e);
   }
+}
+
+export function clearTenantData(companyId?: string): void {
+  if (typeof window === "undefined") return;
+  const cid = companyId || getStoredCompanyId();
+  if (!cid) return;
+  try {
+    const suffix = `_${cid}`;
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.endsWith(suffix)) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+  } catch {}
 }

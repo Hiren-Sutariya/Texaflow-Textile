@@ -140,7 +140,7 @@ export function LoginCard({ onSuccess }: LoginCardProps) {
               type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="owner@shivcreation.com"
+              placeholder="Enter your username or email"
               required
               className="w-full h-10 pl-9 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 transition-colors shadow-2xs"
             />
@@ -150,7 +150,6 @@ export function LoginCard({ onSuccess }: LoginCardProps) {
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-xs font-bold text-slate-700">Password</label>
-            <span className="text-[11px] font-semibold text-slate-400">Default: owner123</span>
           </div>
           <div className="relative">
             <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />

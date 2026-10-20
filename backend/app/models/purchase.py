@@ -19,5 +19,6 @@ class Purchase(Base, TimestampMixin):
     credit_days = Column(Integer, nullable=True, default=45)
     due_date = Column(String(20), nullable=True)  # DD-MM-YYYY
     linked_order = Column(String(100), nullable=True)  # Choli Order #
+    items = Column(Text, nullable=True)  # JSON-serialized list of line items
     bill_image = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)

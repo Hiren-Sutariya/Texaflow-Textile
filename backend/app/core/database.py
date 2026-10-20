@@ -74,29 +74,7 @@ def init_db():
 
         db = SessionLocal()
         try:
-            # 1. Ensure default admin user exists
-            admin = db.query(User).first()
-            if not admin:
-                import hashlib
-                import secrets
-                salt = secrets.token_hex(16)
-                key = hashlib.pbkdf2_hmac("sha256", "owner123".encode("utf-8"), salt.encode("utf-8"), 100000)
-                pw_hash = f"{salt}:{key.hex()}"
-                
-                default_user = User(
-                    id="user-001",
-                    firm_name="Shiv Creation",
-                    name="Hiren Sutariya",
-                    email="owner@shivcreation.com",
-                    username="owner@shivcreation.com",
-                    password_hash=pw_hash,
-                    company_id="comp-001"
-                )
-                db.add(default_user)
-                db.commit()
-                print("✅ Default admin user created (owner@shivcreation.com / owner123)")
-
-            # 2. Ensure default company settings exist
+            # 1. Ensure default company settings exist
             company = db.query(Settings).filter(Settings.id == "comp-001").first()
             if not company:
                 default_company = Settings(

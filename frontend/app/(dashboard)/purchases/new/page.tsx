@@ -63,37 +63,49 @@ function parseMaterialDescription(desc?: string) {
     trimmed = trimmed.slice(1, -1).trim();
   }
 
-  // Pattern like: "370 - 14 box, 351 - 17 box, 6074 - 9 box = 40 box"
-  if (trimmed.includes("=") && trimmed.includes("-")) {
-    const [left, right] = trimmed.split("=");
-    const total = right?.trim() || null;
-    const parts = left.split(",").map((p) => p.trim()).filter(Boolean);
-    const items = parts.map((part) => {
-      const segs = part.split("-");
-      if (segs.length >= 2) {
-        return {
-          shade: segs[0].trim(),
-          qty: segs.slice(1).join("-").trim()
-        };
-      }
-      return { shade: part, qty: "" };
-    });
-    return { isBreakdown: true, total, items };
+  // Check if string ends with "= total" (e.g. "= 40 box")
+  let total: string | null = null;
+  const endEqualMatch = trimmed.match(/\s*=\s*([^,=]+)$/);
+  if (endEqualMatch && endEqualMatch.index !== undefined && endEqualMatch.index > 0) {
+    const candidateTotal = endEqualMatch[1].trim();
+    if (/\d/.test(candidateTotal)) {
+      total = candidateTotal;
+      trimmed = trimmed.slice(0, endEqualMatch.index).trim();
+    }
   }
 
-  // Pattern with comma-separated items like "370 - 14 box, 351 - 17 box" (without =)
-  if (trimmed.includes(",") && trimmed.includes("-")) {
-    const parts = trimmed.split(",").map((p) => p.trim()).filter(Boolean);
-    const hasShades = parts.every((p) => p.includes("-"));
-    if (hasShades && parts.length > 1) {
-      const items = parts.map((part) => {
-        const segs = part.split("-");
-        return {
-          shade: segs[0].trim(),
-          qty: segs.slice(1).join("-").trim()
-        };
-      });
-      return { isBreakdown: true, total: null, items };
+  // Split comma-separated items
+  const parts = trimmed.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length > 0) {
+    const items = parts.map((part) => {
+      let amount = "";
+      let cleaned = part;
+      const amtMatch = cleaned.match(/\(₹?\s*([\d.]+)\s*\)/);
+      if (amtMatch) {
+        amount = amtMatch[1];
+        cleaned = cleaned.replace(amtMatch[0], "").trim();
+      }
+
+      const lastHyphenIndex = cleaned.lastIndexOf("-");
+      if (lastHyphenIndex !== -1) {
+        const shade = cleaned.slice(0, lastHyphenIndex).trim();
+        const qty = cleaned.slice(lastHyphenIndex + 1).trim();
+        return { shade, qty, amount };
+      }
+
+      const lastColonIndex = cleaned.lastIndexOf(":");
+      if (lastColonIndex !== -1) {
+        const shade = cleaned.slice(0, lastColonIndex).trim();
+        const qty = cleaned.slice(lastColonIndex + 1).trim();
+        return { shade, qty, amount };
+      }
+
+      return { shade: cleaned, qty: "", amount };
+    });
+
+    const hasAnyQtyOrDesc = items.some((it) => it.shade || it.qty);
+    if (hasAnyQtyOrDesc) {
+      return { isBreakdown: true, total, items };
     }
   }
 
@@ -795,83 +807,143 @@ function NewPurchaseContent() {
 
   // Load record for edit mode
   useEffect(() => {
-    if (editId) {
-      const currentCid = getStoredCompanyId() || "comp-001";
-      const list = getTenantItem<any[]>("texaflow_purchases", currentCid === "comp-001" ? "om_sai_purchases" : undefined) || [];
-      const matched = list.find((item: any) => item.id === editId || item.purchase_no === editId);
-      if (matched) {
-        setPurchaseNo(matched.purchase_no || "");
-        setBillDate(matched.date || getTodayStr());
-        setVendorName(matched.vendor_name || "");
-        setCategory(matched.category || "Raw Material & Fabric");
-        setCategorySearch(matched.category || "Raw Material & Fabric");
-        setItemsDescription(matched.items_description || "");
-        setAmount(String(matched.amount || ""));
-        if (matched.tax_mode) {
-          setTaxMode(matched.tax_mode);
-        } else if (matched.cgst_amount || matched.sgst_amount) {
-          setTaxMode("cgst_sgst");
-        } else if (matched.igst_amount) {
-          setTaxMode("igst");
-        }
-        if (matched.tax_rate) {
-          setTaxRate(Number(matched.tax_rate));
-        }
-        setPaymentStatus(matched.payment_status === "Pending" ? "Pending" : "Paid");
-        setPaymentTerms(matched.payment_terms || (matched.payment_status === "Pending" ? "Net 45" : "Cash / Immediate"));
-        setCreditDays(matched.credit_days !== undefined ? matched.credit_days : (matched.payment_status === "Pending" ? 45 : 0));
-        setDueDate(matched.due_date || "");
-        setLinkedOrder(matched.linked_order || "");
-        setBillImage(matched.bill_image || "");
-        setNotes(matched.notes || "");
+    if (!editId) return;
 
-        // Load line items if present or parse from items_description
-        if (Array.isArray(matched.items) && matched.items.length > 0) {
-          setLineItems(
-            matched.items.map((it: any, idx: number) => ({
+    const populateFromRecord = (matched: any) => {
+      if (!matched) return;
+      setPurchaseNo(matched.purchase_no || "");
+      setBillDate(matched.date || getTodayStr());
+      setVendorName(matched.vendor_name || "");
+      setCategory(matched.category || "Raw Material & Fabric");
+      setCategorySearch(matched.category || "Raw Material & Fabric");
+      setItemsDescription(matched.items_description || "");
+      setAmount(String(matched.amount || ""));
+      if (matched.tax_mode) {
+        setTaxMode(matched.tax_mode);
+      } else if (matched.cgst_amount || matched.sgst_amount) {
+        setTaxMode("cgst_sgst");
+      } else if (matched.igst_amount) {
+        setTaxMode("igst");
+      }
+      if (matched.tax_rate) {
+        setTaxRate(Number(matched.tax_rate));
+      }
+      setPaymentStatus(matched.payment_status === "Pending" ? "Pending" : "Paid");
+      setPaymentTerms(matched.payment_terms || (matched.payment_status === "Pending" ? "Net 45" : "Cash / Immediate"));
+      setCreditDays(matched.credit_days !== undefined ? matched.credit_days : (matched.payment_status === "Pending" ? 45 : 0));
+      setDueDate(matched.due_date || "");
+      setLinkedOrder(matched.linked_order || "");
+      setBillImage(matched.bill_image || "");
+      setNotes(matched.notes || "");
+
+      // Load line items if present (handling JSON string or array)
+      let loadedItems = matched.items;
+      if (typeof loadedItems === "string") {
+        try {
+          loadedItems = JSON.parse(loadedItems);
+        } catch {
+          loadedItems = null;
+        }
+      }
+
+      if (Array.isArray(loadedItems) && loadedItems.length > 0) {
+        setLineItems(
+          loadedItems.map((it: any, idx: number) => {
+            const qty = it.quantity !== undefined && it.quantity !== null ? String(it.quantity) : "";
+            const amt = it.amount !== undefined && it.amount !== null ? String(it.amount) : "";
+            let rate = it.rate !== undefined && it.rate !== null ? String(it.rate) : "";
+            if (!rate && qty && amt) {
+              const qNum = parseFloat(qty);
+              const aNum = parseFloat(amt);
+              if (qNum > 0 && aNum > 0) {
+                rate = String(Math.round((aNum / qNum) * 100) / 100);
+              }
+            }
+            return {
               id: it.id || `item-${idx + 1}`,
               category: it.category || matched.category || "Raw Material & Fabric",
               description: it.description || it.items_description || "",
-              quantity: it.quantity || "",
-              amount: String(it.amount !== undefined ? it.amount : "")
-            }))
-          );
-        } else if (matched.items_description) {
-          const parsedBreakdown = parseMaterialDescription(matched.items_description);
-          if (parsedBreakdown && parsedBreakdown.isBreakdown && parsedBreakdown.items && parsedBreakdown.items.length > 0) {
-            setLineItems(
-              parsedBreakdown.items.map((sub: any, idx: number) => ({
+              quantity: qty,
+              rate: rate,
+              amount: amt
+            };
+          })
+        );
+      } else if (matched.items_description) {
+        const parsedBreakdown = parseMaterialDescription(matched.items_description);
+        if (parsedBreakdown && parsedBreakdown.isBreakdown && parsedBreakdown.items && parsedBreakdown.items.length > 0) {
+          setLineItems(
+            parsedBreakdown.items.map((sub: any, idx: number) => {
+              const qty = sub.qty || "";
+              const amt = sub.amount || "";
+              let rate = sub.rate || "";
+              if (!rate && qty && amt) {
+                const qNum = parseFloat(qty);
+                const aNum = parseFloat(amt);
+                if (qNum > 0 && aNum > 0) {
+                  rate = String(Math.round((aNum / qNum) * 100) / 100);
+                }
+              }
+              return {
                 id: `item-${idx + 1}`,
                 category: matched.category || "Raw Material & Fabric",
                 description: sub.shade || "",
-                quantity: sub.qty || "",
-                amount: ""
-              }))
-            );
-          } else {
-            setLineItems([
-              {
-                id: "item-1",
-                category: matched.category || "Raw Material & Fabric",
-                description: matched.items_description || "",
-                quantity: "",
-                amount: String(matched.amount || "")
-              }
-            ]);
-          }
+                quantity: qty,
+                rate: rate,
+                amount: amt
+              };
+            })
+          );
         } else {
           setLineItems([
             {
               id: "item-1",
               category: matched.category || "Raw Material & Fabric",
-              description: "",
+              description: matched.items_description || "",
               quantity: "",
+              rate: "",
               amount: String(matched.amount || "")
             }
           ]);
         }
+      } else {
+        setLineItems([
+          {
+            id: "item-1",
+            category: matched.category || "Raw Material & Fabric",
+            description: "",
+            quantity: "",
+            rate: "",
+            amount: String(matched.amount || "")
+          }
+        ]);
+      }
+    };
+
+    const currentCid = getStoredCompanyId() || "comp-001";
+    const list = getTenantItem<any[]>("texaflow_purchases", currentCid === "comp-001" ? "om_sai_purchases" : undefined) || [];
+    const localMatched = list.find((item: any) => item.id === editId || item.purchase_no === editId);
+    if (localMatched) {
+      populateFromRecord(localMatched);
+    }
+
+    async function fetchFromApi() {
+      try {
+        const record = await fetchApi<any>(`/purchases/${editId}`);
+        if (record) {
+          populateFromRecord(record);
+        }
+      } catch {
+        try {
+          const all = await fetchApi<any[]>("/purchases");
+          if (Array.isArray(all)) {
+            const m = all.find((p: any) => p.id === editId || p.purchase_no === editId);
+            if (m) populateFromRecord(m);
+          }
+        } catch {}
       }
     }
+    fetchFromApi();
   }, [editId]);
 
   const handleVendorSelect = (name: string) => {
