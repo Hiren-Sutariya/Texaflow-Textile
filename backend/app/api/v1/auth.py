@@ -4,7 +4,7 @@ import json
 import base64
 import urllib.request
 import threading
-from typing import Optional
+from typing import Optional, Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
