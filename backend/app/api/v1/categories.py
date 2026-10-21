@@ -5,33 +5,34 @@ import uuid
 
 from app.core.database import get_db
 from app.models.category import Category
-from app.schemas.category import CategoryCreate, CategoryResponse
+from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
 from app.core.tenant import get_tenant_company_id
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
 DEFAULT_CATEGORIES_TEMPLATE = [
-    # Materials
-    {"name": "Raw Material & Fabric", "module": "material", "color": "blue"},
-    {"name": "Yarn & Threads", "module": "material", "color": "purple"},
-    {"name": "Zari & Metallic", "module": "material", "color": "amber"},
-    {"name": "Lace & Borders", "module": "material", "color": "emerald"},
-    {"name": "Chemicals & Dyes", "module": "material", "color": "cyan"},
-    # Expenses
-    {"name": "Karigar Salary", "module": "expense", "color": "emerald"},
-    {"name": "Electricity & Power", "module": "expense", "color": "amber"},
-    {"name": "Worker Advance / Upad", "module": "expense", "color": "cyan"},
-    {"name": "Machine Maintenance & Repairs", "module": "expense", "color": "rose"},
-    {"name": "Packaging Materials", "module": "expense", "color": "indigo"},
-    {"name": "Dhaga & Consumables", "module": "expense", "color": "violet"},
-    {"name": "Logistics & Courier", "module": "expense", "color": "blue"},
-    # Designs
-    {"name": "Saree", "module": "design", "color": "purple"},
-    {"name": "Choli & Blouse", "module": "design", "color": "pink"},
-    {"name": "Kurti & Suit", "module": "design", "color": "indigo"},
-    {"name": "Dupatta", "module": "design", "color": "teal"},
-    {"name": "Lehenga", "module": "design", "color": "amber"},
+    # Expenses (Only expense categories seeded by default)
+    {"name": "Karigar Salary", "module": "expense"},
+    {"name": "Electricity & Power", "module": "expense"},
+    {"name": "Worker Advance / Upad", "module": "expense"},
+    {"name": "Machine Maintenance & Repairs", "module": "expense"},
+    {"name": "Packaging Materials", "module": "expense"},
+    {"name": "Dhaga & Consumables", "module": "expense"},
+    {"name": "Logistics & Courier", "module": "expense"},
 ]
+
+def generate_short_category_id(db: Session, module: str) -> str:
+    """Generate a clean, short unique category ID like cat-des-1, cat-mat-1, cat-exp-1."""
+    mod_prefix = module[:3].lower()
+    existing_records = db.query(Category.id).filter(
+        Category.id.like(f"cat-{mod_prefix}-%")
+    ).all()
+    existing_ids = {r[0] for r in existing_records}
+    
+    num = 1
+    while f"cat-{mod_prefix}-{num}" in existing_ids:
+        num += 1
+    return f"cat-{mod_prefix}-{num}"
 
 def seed_default_categories_for_tenant(db: Session, company_id: str):
     existing_names = {
@@ -39,22 +40,22 @@ def seed_default_categories_for_tenant(db: Session, company_id: str):
         for c in db.query(Category.module, Category.name).filter(Category.company_id == company_id).all()
     }
     new_cats = []
-    suffix = company_id.replace("comp-", "") if "comp-" in company_id else company_id[:6]
     for item in DEFAULT_CATEGORIES_TEMPLATE:
         if (item["module"], item["name"].strip().lower()) in existing_names:
             continue
-        mod_prefix = item["module"][:3]
-        uid = f"cat-{mod_prefix}-{suffix}-{uuid.uuid4().hex[:6]}"
-        new_cats.append(Category(
+        uid = generate_short_category_id(db, item["module"])
+        # Add to tracking so subsequent items in the same batch get incremented IDs
+        new_cat = Category(
             id=uid,
             company_id=company_id,
             name=item["name"],
             module=item["module"],
-            color=item["color"],
             is_system=True
-        ))
+        )
+        new_cats.append(new_cat)
+        db.add(new_cat)
+        db.flush()
     if new_cats:
-        db.add_all(new_cats)
         db.commit()
 
 @router.get("", response_model=List[CategoryResponse])
@@ -113,11 +114,10 @@ def create_category(
         return existing
 
     new_cat = Category(
-        id=f"cat-{cat_in.module[:3]}-{uuid.uuid4().hex[:8]}",
+        id=generate_short_category_id(db, cat_in.module),
         company_id=active_cid,
         name=clean_name,
         module=cat_in.module,
-        color=cat_in.color or "blue",
         is_system=cat_in.is_system or False,
         is_deleted=False
     )
@@ -125,6 +125,49 @@ def create_category(
     db.commit()
     db.refresh(new_cat)
     return new_cat
+
+@router.put("/{category_id}", response_model=CategoryResponse)
+def update_category(
+    category_id: str,
+    cat_in: CategoryUpdate,
+    company_id: Optional[str] = Query(None),
+    tenant_cid: str = Depends(get_tenant_company_id),
+    db: Session = Depends(get_db)
+):
+    """Update category in-place so its position, ID, and created_at never change."""
+    active_cid = company_id.strip() if company_id and company_id.strip() else tenant_cid
+    clean_target = category_id.strip()
+
+    cat = db.query(Category).filter(
+        (Category.id == clean_target) | (Category.name.ilike(clean_target)),
+        Category.company_id == active_cid,
+        Category.is_deleted == False
+    ).first()
+
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    if cat_in.name is not None:
+        new_name = cat_in.name.strip()
+        duplicate = db.query(Category).filter(
+            Category.id != cat.id,
+            Category.company_id == active_cid,
+            Category.module == (cat_in.module or cat.module),
+            Category.name.ilike(new_name),
+            Category.is_deleted == False
+        ).first()
+        if duplicate:
+            raise HTTPException(status_code=400, detail=f"Category '{new_name}' already exists in this module")
+        cat.name = new_name
+
+    if cat_in.module is not None:
+        cat.module = cat_in.module
+
+    from datetime import datetime
+    cat.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(cat)
+    return cat
 
 @router.delete("/{category_id}", status_code=status.HTTP_200_OK)
 def delete_category(

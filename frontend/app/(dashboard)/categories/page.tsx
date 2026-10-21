@@ -18,13 +18,7 @@ import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantSt
 import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
 
-const DEFAULT_MATERIAL_CATEGORIES = [
-  "Raw Material & Fabric",
-  "Yarn & Threads",
-  "Zari & Metallic",
-  "Lace & Borders",
-  "Chemicals & Dyes"
-];
+const DEFAULT_MATERIAL_CATEGORIES: string[] = [];
 
 const DEFAULT_EXPENSE_CATEGORIES = [
   "Karigar Salary",
@@ -36,13 +30,7 @@ const DEFAULT_EXPENSE_CATEGORIES = [
   "Logistics & Courier"
 ];
 
-const DEFAULT_DESIGN_CATEGORIES = [
-  "Saree",
-  "Choli & Blouse",
-  "Kurti & Suit",
-  "Dupatta",
-  "Lehenga"
-];
+const DEFAULT_DESIGN_CATEGORIES: string[] = [];
 
 type ModuleType = "all" | "material" | "expense" | "design";
 
@@ -144,51 +132,30 @@ export default function CategoriesPage() {
     setHasMounted(true);
   }, []);
 
-  // Storage states with 0ms synchronous initialization to prevent refresh flicker
-  const [materialCategories, setMaterialCategories] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const liveCached = getCachedApi<Array<{ name: string; module: string }>>("/categories");
-        if (Array.isArray(liveCached) && liveCached.length > 0) {
-          const mat = Array.from(new Set(liveCached.filter((c) => c.module === "material").map((c) => c.name.trim()).filter(Boolean)));
-          if (mat.length > 0) return mat;
-        }
-        const cached = getTenantItem<string[]>("texaflow_material_categories");
-        if (Array.isArray(cached) && cached.length > 0) return cached;
-      } catch {}
+  // Load initial cached categories synchronously if available for 0ms transition
+  const getInitialCategories = () => {
+    if (typeof window === "undefined") {
+      return { mat: [], exp: [], des: [], hasCache: false };
     }
-    return DEFAULT_MATERIAL_CATEGORIES;
-  });
+    try {
+      const liveCached = getCachedApi<Array<{ name: string; module: string }>>("/categories");
+      if (Array.isArray(liveCached) && liveCached.length > 0) {
+        return {
+          mat: Array.from(new Set(liveCached.filter((c) => c.module === "material").map((c) => c.name.trim()).filter(Boolean))),
+          exp: Array.from(new Set(liveCached.filter((c) => c.module === "expense").map((c) => c.name.trim()).filter(Boolean))),
+          des: Array.from(new Set(liveCached.filter((c) => c.module === "design").map((c) => c.name.trim()).filter(Boolean))),
+          hasCache: true
+        };
+      }
+    } catch {}
+    return { mat: [], exp: [], des: [], hasCache: false };
+  };
 
-  const [expenseCategories, setExpenseCategories] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const liveCached = getCachedApi<Array<{ name: string; module: string }>>("/categories");
-        if (Array.isArray(liveCached) && liveCached.length > 0) {
-          const exp = Array.from(new Set(liveCached.filter((c) => c.module === "expense").map((c) => c.name.trim()).filter(Boolean)));
-          if (exp.length > 0) return exp;
-        }
-        const cached = getTenantItem<string[]>("texaflow_expense_categories_order");
-        if (Array.isArray(cached) && cached.length > 0) return cached;
-      } catch {}
-    }
-    return DEFAULT_EXPENSE_CATEGORIES;
-  });
-
-  const [designCategories, setDesignCategories] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const liveCached = getCachedApi<Array<{ name: string; module: string }>>("/categories");
-        if (Array.isArray(liveCached) && liveCached.length > 0) {
-          const des = Array.from(new Set(liveCached.filter((c) => c.module === "design").map((c) => c.name.trim()).filter(Boolean)));
-          if (des.length > 0) return des;
-        }
-        const cached = getTenantItem<string[]>("texaflow_design_categories");
-        if (Array.isArray(cached) && cached.length > 0) return cached;
-      } catch {}
-    }
-    return DEFAULT_DESIGN_CATEGORIES;
-  });
+  const initialData = useRef(getInitialCategories());
+  const [isLoading, setIsLoading] = useState<boolean>(() => !initialData.current.hasCache);
+  const [materialCategories, setMaterialCategories] = useState<string[]>(() => initialData.current.mat);
+  const [expenseCategories, setExpenseCategories] = useState<string[]>(() => initialData.current.exp);
+  const [designCategories, setDesignCategories] = useState<string[]>(() => initialData.current.des);
 
   // Multi-select state for bulk deletion
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -199,7 +166,7 @@ export default function CategoriesPage() {
   const [addModule, setAddModule] = useState<"material" | "expense" | "design">("material");
 
   // Edit category state
-  const [editingItem, setEditingItem] = useState<{ name: string; module: "material" | "expense" | "design" } | null>(null);
+  const [editingItem, setEditingItem] = useState<{ id?: string; name: string; module: "material" | "expense" | "design" } | null>(null);
   const [editValue, setEditValue] = useState("");
 
   // Three dots action menu
@@ -229,16 +196,16 @@ export default function CategoriesPage() {
   // Load strictly from backend Supabase Database with fallback to tenantStorage
   const loadCategories = async () => {
     try {
-      const live = await fetchApi<Array<{ id: string; name: string; module: string; color?: string; is_system?: boolean }>>("/categories").catch(() => null);
-      if (Array.isArray(live) && live.length > 0) {
+      const live = await fetchApi<Array<{ id: string; name: string; module: string; is_system?: boolean }>>("/categories").catch(() => null);
+      if (Array.isArray(live)) {
         setCachedApi("/categories", live);
         const mat = Array.from(new Set(live.filter((c) => c.module === "material").map((c) => c.name.trim()).filter(Boolean)));
         const exp = Array.from(new Set(live.filter((c) => c.module === "expense").map((c) => c.name.trim()).filter(Boolean)));
         const des = Array.from(new Set(live.filter((c) => c.module === "design").map((c) => c.name.trim()).filter(Boolean)));
 
-        const finalMat = mat.length > 0 ? mat : DEFAULT_MATERIAL_CATEGORIES;
+        const finalMat = mat;
         const finalExp = exp.length > 0 ? exp : DEFAULT_EXPENSE_CATEGORIES;
-        const finalDes = des.length > 0 ? des : DEFAULT_DESIGN_CATEGORIES;
+        const finalDes = des;
 
         setMaterialCategories(finalMat);
         setExpenseCategories(finalExp);
@@ -264,6 +231,8 @@ export default function CategoriesPage() {
       else setDesignCategories(DEFAULT_DESIGN_CATEGORIES);
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -355,7 +324,7 @@ export default function CategoriesPage() {
     try {
       await fetchApi("/categories", {
         method: "POST",
-        body: JSON.stringify({ name: trimmed, module: addModule, color: "blue" })
+        body: JSON.stringify({ name: trimmed, module: addModule })
       });
       invalidateApiCache("/categories");
     } catch (err) {
@@ -442,7 +411,7 @@ export default function CategoriesPage() {
   };
 
   // Edit handler
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingItem) return;
     const trimmed = editValue.trim();
     if (!trimmed || trimmed === editingItem.name) {
@@ -460,14 +429,39 @@ export default function CategoriesPage() {
       return;
     }
 
-    const updated = targetList.map((c) => (c === editingItem.name ? trimmed : c));
-    saveCategoryList(editingItem.module, updated);
-    fetchApi(`/categories/${encodeURIComponent(editingItem.name)}`, { method: "DELETE" })
-      .then(() => fetchApi("/categories", { method: "POST", body: JSON.stringify({ name: trimmed, module: editingItem.module }) }))
-      .catch(() => {});
+    const oldName = editingItem.name;
+    const oldId = editingItem.id;
+    const mod = editingItem.module;
+
+    // 1. Instant in-place UI update (exact same index, position and serial number remain unchanged)
+    const updated = targetList.map((c) => (c === oldName ? trimmed : c));
+    saveCategoryList(mod, updated);
+
+    // 2. Synchronously update live API cache so table never flips or reverts on reload
+    const currentCached = getCachedApi<Array<{ id: string; name: string; module: string; is_system?: boolean }>>("/categories");
+    if (Array.isArray(currentCached)) {
+      const updatedCache = currentCached.map((item) => {
+        if ((oldId && item.id === oldId) || (item.name === oldName && item.module === mod)) {
+          return { ...item, name: trimmed };
+        }
+        return item;
+      });
+      setCachedApi("/categories", updatedCache);
+    }
 
     setEditingItem(null);
     showToast(`Renamed to "${trimmed}"`);
+
+    // 3. Persist update in-place in Supabase via PUT (position, ID and created_at stay untouched)
+    try {
+      const targetParam = oldId || encodeURIComponent(oldName);
+      await fetchApi(`/categories/${targetParam}`, {
+        method: "PUT",
+        body: JSON.stringify({ name: trimmed, module: mod })
+      });
+    } catch (err) {
+      console.error("Category update sync error:", err);
+    }
   };
 
   const handleRefresh = () => {
@@ -561,10 +555,10 @@ export default function CategoriesPage() {
               value={moduleFilter}
               onChange={(val) => setModuleFilter(val as ModuleType)}
               options={[
-                { value: "all", label: `All Categories (${allRecords.length})` },
-                { value: "material", label: `Material & Purchase (${materialCategories.length})` },
-                { value: "expense", label: `Expenses (${expenseCategories.length})` },
-                { value: "design", label: `Design Library (${designCategories.length})` }
+                { value: "all", label: isLoading ? "All Categories" : `All Categories (${allRecords.length})` },
+                { value: "material", label: isLoading ? "Material & Purchase" : `Material & Purchase (${materialCategories.length})` },
+                { value: "expense", label: isLoading ? "Expenses" : `Expenses (${expenseCategories.length})` },
+                { value: "design", label: isLoading ? "Design Library" : `Design Library (${designCategories.length})` }
               ]}
             />
           </div>
@@ -661,7 +655,33 @@ export default function CategoriesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-xs bg-white">
-              {filteredRecords.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={`skeleton-${i}`} className="animate-pulse">
+                    <td className="py-3 px-3 text-center border-r border-slate-200/70">
+                      <div className="w-4 h-4 bg-slate-200/70 rounded mx-auto" />
+                    </td>
+                    <td className="py-3 px-4 text-center border-r border-slate-200/70">
+                      <div className="w-5 h-3 bg-slate-200/70 rounded mx-auto" />
+                    </td>
+                    <td className="py-3 px-4 border-r border-slate-200/70">
+                      <div
+                        className="h-3.5 bg-slate-200/70 rounded"
+                        style={{ width: `${50 + (i % 4) * 15}%`, maxWidth: "200px" }}
+                      />
+                    </td>
+                    <td className="py-3 px-4 border-r border-slate-200/70">
+                      <div className="w-24 h-3 bg-slate-200/70 rounded" />
+                    </td>
+                    <td className="py-3 px-4 text-center border-r border-slate-200/70">
+                      <div className="w-14 h-3 bg-slate-200/70 rounded mx-auto" />
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <div className="w-12 h-3 bg-slate-200/70 rounded mx-auto" />
+                    </td>
+                  </tr>
+                ))
+              ) : filteredRecords.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400 font-medium text-xs">
                     No category records found matching your filters. Click &quot;+ Add Category&quot; to add a record.
@@ -765,7 +785,7 @@ export default function CategoriesPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              setEditingItem({ name: rec.name, module: rec.module });
+                              setEditingItem({ id: rec.id, name: rec.name, module: rec.module });
                               setEditValue(rec.name);
                             }}
                             className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"

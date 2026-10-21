@@ -5,7 +5,6 @@ from datetime import datetime
 class CategoryBase(BaseModel):
     name: str
     module: str  # material, expense, design
-    color: Optional[str] = None
     is_system: Optional[bool] = False
 
 class CategoryCreate(CategoryBase):
@@ -14,7 +13,6 @@ class CategoryCreate(CategoryBase):
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None
     module: Optional[str] = None
-    color: Optional[str] = None
 
 class CategoryResponse(CategoryBase):
     id: str

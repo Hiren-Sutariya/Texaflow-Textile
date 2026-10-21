@@ -109,33 +109,21 @@ def init_db():
                 db.commit()
                 print("✅ Default company settings initialized (comp-001 / Shiv Creation)")
 
-            # 3. Ensure default categories exist
+            # 3. Ensure default categories exist (Only expenses by default)
             if db.query(Category).count() == 0:
                 default_categories = [
-                    # Materials
-                    Category(id="cat-mat-1", company_id="comp-001", name="Raw Material & Fabric", module="material", color="blue", is_system=True),
-                    Category(id="cat-mat-2", company_id="comp-001", name="Yarn & Threads", module="material", color="purple", is_system=True),
-                    Category(id="cat-mat-3", company_id="comp-001", name="Zari & Metallic", module="material", color="amber", is_system=True),
-                    Category(id="cat-mat-4", company_id="comp-001", name="Lace & Borders", module="material", color="emerald", is_system=True),
-                    Category(id="cat-mat-5", company_id="comp-001", name="Chemicals & Dyes", module="material", color="cyan", is_system=True),
-                    # Expenses
-                    Category(id="cat-exp-1", company_id="comp-001", name="Karigar Salary", module="expense", color="emerald", is_system=True),
-                    Category(id="cat-exp-2", company_id="comp-001", name="Electricity & Power", module="expense", color="amber", is_system=True),
-                    Category(id="cat-exp-3", company_id="comp-001", name="Worker Advance / Upad", module="expense", color="cyan", is_system=True),
-                    Category(id="cat-exp-4", company_id="comp-001", name="Machine Maintenance & Repairs", module="expense", color="rose", is_system=True),
-                    Category(id="cat-exp-5", company_id="comp-001", name="Packaging Materials", module="expense", color="indigo", is_system=True),
-                    Category(id="cat-exp-6", company_id="comp-001", name="Dhaga & Consumables", module="expense", color="violet", is_system=True),
-                    Category(id="cat-exp-7", company_id="comp-001", name="Logistics & Courier", module="expense", color="blue", is_system=True),
-                    # Designs
-                    Category(id="cat-des-1", company_id="comp-001", name="Saree", module="design", color="purple", is_system=True),
-                    Category(id="cat-des-2", company_id="comp-001", name="Choli & Blouse", module="design", color="pink", is_system=True),
-                    Category(id="cat-des-3", company_id="comp-001", name="Kurti & Suit", module="design", color="indigo", is_system=True),
-                    Category(id="cat-des-4", company_id="comp-001", name="Dupatta", module="design", color="teal", is_system=True),
-                    Category(id="cat-des-5", company_id="comp-001", name="Lehenga", module="design", color="amber", is_system=True),
+                    # Expenses (Only default categories)
+                    Category(id="cat-exp-1", company_id="comp-001", name="Karigar Salary", module="expense", is_system=True),
+                    Category(id="cat-exp-2", company_id="comp-001", name="Electricity & Power", module="expense", is_system=True),
+                    Category(id="cat-exp-3", company_id="comp-001", name="Worker Advance / Upad", module="expense", is_system=True),
+                    Category(id="cat-exp-4", company_id="comp-001", name="Machine Maintenance & Repairs", module="expense", is_system=True),
+                    Category(id="cat-exp-5", company_id="comp-001", name="Packaging Materials", module="expense", is_system=True),
+                    Category(id="cat-exp-6", company_id="comp-001", name="Dhaga & Consumables", module="expense", is_system=True),
+                    Category(id="cat-exp-7", company_id="comp-001", name="Logistics & Courier", module="expense", is_system=True),
                 ]
                 db.add_all(default_categories)
                 db.commit()
-                print("✅ Default master categories seeded.")
+                print("✅ Default expense categories seeded.")
         finally:
             db.close()
     except Exception as e:

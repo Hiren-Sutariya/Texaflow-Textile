@@ -10,5 +10,4 @@ class Category(Base, TimestampMixin, SoftDeleteMixin):
     company_id = Column(String(50), nullable=False, default="comp-001", index=True)
     name = Column(String(100), nullable=False, index=True)
     module = Column(String(50), nullable=False, index=True) # material, expense, design
-    color = Column(String(50), nullable=True)
     is_system = Column(Boolean, default=False)
