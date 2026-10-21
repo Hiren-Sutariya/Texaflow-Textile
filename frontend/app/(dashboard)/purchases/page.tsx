@@ -396,23 +396,52 @@ export default function PurchasesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedBillImage, setSelectedBillImage] = useState<{ image: string; purchase_no: string; notes?: string } | null>(null);
   const [previewBill, setPreviewBill] = useState<PurchaseItem | null>(null);
-  const [materialCategoriesList, setMaterialCategoriesList] = useState<string[]>([]);
+  const getInitialMaterialCategories = (): string[] => {
+    if (typeof window === "undefined") return [];
+    try {
+      const liveCached = getCachedApi<Array<{ id: string; name: string; module: string }>>("/categories");
+      if (Array.isArray(liveCached)) {
+        const mat = liveCached.filter((c) => c.module === "material").map((c) => c.name?.trim()).filter(Boolean);
+        if (mat.length > 0) return Array.from(new Set(mat));
+      }
+      const stored = getTenantItem<string[]>("texaflow_material_categories");
+      if (Array.isArray(stored) && stored.length > 0) {
+        return Array.from(new Set(stored.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean)));
+      }
+    } catch {}
+    return [];
+  };
+
+  const [materialCategoriesList, setMaterialCategoriesList] = useState<string[]>(getInitialMaterialCategories);
 
   useEffect(() => {
-    const loadCats = () => {
-      const stored = getTenantItem<string[]>("texaflow_material_categories", "om_sai_material_categories");
-      if (Array.isArray(stored) && stored.length > 0) {
-        setMaterialCategoriesList(stored);
-      } else {
-        setMaterialCategoriesList([
-          "Raw Material & Fabric",
-          "Yarn & Threads",
-          "Zari & Metallic Trims",
-          "Lace, Borders & Latkan",
-          "Choli & Garment Trims",
-          "Packaging Materials"
-        ]);
-      }
+    const loadCats = async () => {
+      try {
+        const live = await fetchApi<Array<{ id: string; name: string; module: string }>>("/categories?module=material").catch(() => null);
+        if (Array.isArray(live)) {
+          const mat = Array.from(
+            new Set(
+              live
+                .filter((c) => c.module === "material")
+                .map((c) => c.name?.trim())
+                .filter(Boolean)
+            )
+          );
+          setMaterialCategoriesList(mat);
+          setTenantItem("texaflow_material_categories", mat);
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("om_sai_material_categories");
+          }
+          return;
+        }
+
+        const stored = getTenantItem<string[]>("texaflow_material_categories");
+        if (Array.isArray(stored)) {
+          setMaterialCategoriesList(Array.from(new Set(stored.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean))));
+        } else {
+          setMaterialCategoriesList([]);
+        }
+      } catch {}
     };
     loadCats();
     window.addEventListener("texaflow_material_categories_changed", loadCats);

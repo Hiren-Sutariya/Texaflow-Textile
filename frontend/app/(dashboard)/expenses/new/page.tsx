@@ -42,7 +42,8 @@ import {
   Star,
   Trash2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Users
 } from "lucide-react";
 
 interface CategoryCardItem {
@@ -52,20 +53,13 @@ interface CategoryCardItem {
 }
 
 const defaultCategories: CategoryCardItem[] = [
-  { id: "cat-raw", name: "Raw Material & Fabric", icon: Layers },
-  { id: "cat-yarn", name: "Yarn & Threads", icon: Layers },
-  { id: "cat-zari", name: "Zari & Metallic Trims", icon: Sparkles },
-  { id: "cat-lace", name: "Lace, Borders & Latkan", icon: Tag },
-  { id: "cat-choli", name: "Choli & Garment Trims", icon: Package },
-  { id: "cat-1", name: "Packaging Materials", icon: Package },
-  { id: "cat-2", name: "Dhaga & Consumables", icon: Layers },
-  { id: "cat-3", name: "Machine Maintenance & Repairs", icon: Wrench },
-  { id: "cat-4", name: "Electricity & Power", icon: Zap },
-  { id: "cat-5", name: "Tea & Refreshments", icon: Coffee },
-  { id: "cat-6", name: "Logistics & Courier", icon: Truck },
-  { id: "cat-7", name: "Factory / Office Rent", icon: Building2 },
-  { id: "cat-8", name: "Stationery & Printing", icon: FileText },
-  { id: "cat-9", name: "Miscellaneous / Other", icon: HelpCircle },
+  { id: "cat-1", name: "Karigar Salary", icon: Users },
+  { id: "cat-2", name: "Electricity & Power", icon: Zap },
+  { id: "cat-3", name: "Worker Advance / Upad", icon: Tag },
+  { id: "cat-4", name: "Machine Maintenance & Repairs", icon: Wrench },
+  { id: "cat-5", name: "Packaging Materials", icon: Package },
+  { id: "cat-6", name: "Dhaga & Consumables", icon: Layers },
+  { id: "cat-7", name: "Logistics & Courier", icon: Truck },
 ];
 
 const getCategoryIcon = (name: string): LucideIcon => {
@@ -128,8 +122,8 @@ function NewExpenseVoucherForm() {
 
   // 3. Category & Custom Arrangement
   const [isMounted, setIsMounted] = useState(false);
-  const [category, setCategory] = useState<string>(() => defaultCategories[0]?.name || "Raw Material & Fabric");
-  const [defaultCategory, setDefaultCategory] = useState<string>(() => defaultCategories[0]?.name || "Raw Material & Fabric");
+  const [category, setCategory] = useState<string>(() => defaultCategories[0]?.name || "Karigar Salary");
+  const [defaultCategory, setDefaultCategory] = useState<string>(() => defaultCategories[0]?.name || "Karigar Salary");
   const [categoryPage, setCategoryPage] = useState(0); // 0-indexed page (9 items per page)
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [categoryOrder, setCategoryOrder] = useState<string[]>(() => defaultCategories.map((c) => c.name));
@@ -195,9 +189,9 @@ function NewExpenseVoucherForm() {
       setTenantItem("texaflow_expense_categories_order", finalOrder);
     } catch {}
 
-    // Strictly default to the 1st category (finalOrder[0] / Raw Material & Fabric)
+    // Strictly default to the 1st category (finalOrder[0] / Karigar Salary)
     // Only use custom default if explicitly saved by the active tenant
-    let initialDefault = finalOrder[0] || defaultCategories[0]?.name || "Raw Material & Fabric";
+    let initialDefault = finalOrder[0] || defaultCategories[0]?.name || "Karigar Salary";
     try {
       const savedDefault = getTenantItem<string>("texaflow_default_expense_category");
       if (savedDefault && typeof savedDefault === "string" && allAvailable.includes(savedDefault)) {
@@ -599,7 +593,7 @@ function NewExpenseVoucherForm() {
     setCategoryPage((prev) => Math.min(prev, newTotalPages - 1));
 
     if (defaultCategory === nameToRemove) {
-      const fallbackDef = updatedOrder[0] || defaultCategories[0]?.name || "Raw Material & Fabric";
+      const fallbackDef = updatedOrder[0] || defaultCategories[0]?.name || "Karigar Salary";
       setDefaultCategory(fallbackDef);
       try {
         setTenantItem("texaflow_default_expense_category", fallbackDef);
@@ -607,7 +601,7 @@ function NewExpenseVoucherForm() {
     }
 
     if (category === nameToRemove) {
-      setCategory(updatedOrder[0] || defaultCategories[0]?.name || "Raw Material & Fabric");
+      setCategory(updatedOrder[0] || defaultCategories[0]?.name || "Karigar Salary");
     }
   };
 
@@ -1260,7 +1254,7 @@ function NewExpenseVoucherForm() {
                       setIsAddInputOpen(false);
                       setNewCatName("");
                       if (category === "Miscellaneous / Other") {
-                        setCategory(categoryOrder[0] || defaultCategories[0]?.name || "Raw Material & Fabric");
+                        setCategory(categoryOrder[0] || defaultCategories[0]?.name || "Karigar Salary");
                       }
                     }}
                     className="h-9 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0 border border-slate-200"

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { fetchApi, invalidateApiCache } from "@/lib/api";
+import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import { VoiceTextarea } from "@/components/ui/VoiceTextarea";
@@ -421,17 +421,24 @@ function NewPurchaseContent() {
   const [billDate, setBillDate] = useState(() => getTodayStr());
   const [purchaseNo, setPurchaseNo] = useState("");
   const [vendorName, setVendorName] = useState("");
-  const DEFAULT_CATEGORIES = [
-    "Raw Material & Fabric",
-    "Yarn & Threads",
-    "Zari & Metallic Trims",
-    "Lace, Borders & Latkan",
-    "Choli & Garment Trims",
-    "Packaging Materials"
-  ];
+  const getInitialMaterialCategories = (): string[] => {
+    if (typeof window === "undefined") return [];
+    try {
+      const liveCached = getCachedApi<Array<{ id: string; name: string; module: string }>>("/categories");
+      if (Array.isArray(liveCached)) {
+        const mat = liveCached.filter((c) => c.module === "material").map((c) => c.name?.trim()).filter(Boolean);
+        if (mat.length > 0) return Array.from(new Set(mat));
+      }
+      const stored = getTenantItem<string[]>("texaflow_material_categories");
+      if (Array.isArray(stored) && stored.length > 0) {
+        return Array.from(new Set(stored.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean)));
+      }
+    } catch {}
+    return [];
+  };
 
   const [category, setCategory] = useState("");
-  const [categoriesList, setCategoriesList] = useState<string[]>([]);
+  const [categoriesList, setCategoriesList] = useState<string[]>(getInitialMaterialCategories);
   const [categorySearch, setCategorySearch] = useState("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
@@ -489,19 +496,40 @@ function NewPurchaseContent() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openCategoryItemId]);
 
-  const loadStoredCategories = () => {
-    const currentCid = getStoredCompanyId() || "comp-001";
+  const loadStoredCategories = async () => {
     try {
-      const stored = getTenantItem<string[]>("texaflow_material_categories", currentCid === "comp-001" ? "om_sai_material_categories" : undefined);
-      if (Array.isArray(stored)) {
-        setCategoriesList(stored);
-      } else {
-        setCategoriesList(DEFAULT_CATEGORIES);
+      // 1. Fetch live from backend
+      const live = await fetchApi<Array<{ id: string; name: string; module: string }>>("/categories?module=material").catch(() => null);
+      if (Array.isArray(live)) {
+        const mat = Array.from(
+          new Set(
+            live
+              .filter((c) => c.module === "material")
+              .map((c) => c.name?.trim())
+              .filter(Boolean)
+          )
+        );
+        setCategoriesList(mat);
+        setTenantItem("texaflow_material_categories", mat);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("om_sai_material_categories");
+        }
+        return;
       }
-    } catch { }
+
+      // 2. Fallback to tenant storage
+      const stored = getTenantItem<string[]>("texaflow_material_categories");
+      if (Array.isArray(stored)) {
+        setCategoriesList(Array.from(new Set(stored.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean))));
+      } else {
+        setCategoriesList([]);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  // Load custom categories from tenant storage on mount and when event fires
+  // Load custom categories from backend / tenant storage on mount and when event fires
   useEffect(() => {
     loadStoredCategories();
     const handleCategoryUpdate = () => loadStoredCategories();
@@ -530,31 +558,43 @@ function NewPurchaseContent() {
     setIsCategoryDropdownOpen(false);
   };
 
-  const handleAddNewCategory = (newCatName: string) => {
+  const handleAddNewCategory = async (newCatName: string) => {
     const trimmed = newCatName.trim();
     if (!trimmed) return;
-    const currentCid = getStoredCompanyId() || "comp-001";
-    const updated = Array.from(new Set([trimmed, ...categoriesList]));
+    const updated = Array.from(new Set([...categoriesList, trimmed]));
     setCategoriesList(updated);
-    setTenantItem("texaflow_material_categories", updated, currentCid === "comp-001" ? "om_sai_material_categories" : undefined);
+    setTenantItem("texaflow_material_categories", updated);
     window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
     setCategory(trimmed);
     setCategorySearch(trimmed);
     setIsCategoryDropdownOpen(false);
+
+    try {
+      await fetchApi("/categories", {
+        method: "POST",
+        body: JSON.stringify({ name: trimmed, module: "material" })
+      });
+      invalidateApiCache("/categories");
+    } catch (err) {
+      console.error("Failed to sync new category to backend:", err);
+    }
   };
 
-  const handleDeleteCategory = (catToDelete: string, e: React.MouseEvent) => {
+  const handleDeleteCategory = async (catToDelete: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm(`Are you sure you want to remove "${catToDelete}"?`)) return;
-    const currentCid = getStoredCompanyId() || "comp-001";
     const updated = categoriesList.filter((c) => c !== catToDelete);
     setCategoriesList(updated);
-    setTenantItem("texaflow_material_categories", updated, currentCid === "comp-001" ? "om_sai_material_categories" : undefined);
+    setTenantItem("texaflow_material_categories", updated);
     window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
     if (category === catToDelete) {
       setCategory("");
       setCategorySearch("");
     }
+    try {
+      await fetchApi(`/categories/${encodeURIComponent(catToDelete)}`, { method: "DELETE" });
+      invalidateApiCache("/categories");
+    } catch {}
   };
 
   // Line items handlers
@@ -808,8 +848,8 @@ function NewPurchaseContent() {
       setPurchaseNo(matched.purchase_no || "");
       setBillDate(matched.date || getTodayStr());
       setVendorName(matched.vendor_name || "");
-      setCategory(matched.category || "Raw Material & Fabric");
-      setCategorySearch(matched.category || "Raw Material & Fabric");
+      setCategory(matched.category || "");
+      setCategorySearch(matched.category || "");
       setItemsDescription(matched.items_description || "");
       setAmount(String(matched.amount || ""));
       if (matched.tax_mode) {
@@ -853,7 +893,7 @@ function NewPurchaseContent() {
             }
             return {
               id: it.id || `item-${idx + 1}`,
-              category: it.category || matched.category || "Raw Material & Fabric",
+              category: it.category || matched.category || "",
               description: it.description || it.items_description || "",
               quantity: qty,
               rate: rate,
@@ -878,7 +918,7 @@ function NewPurchaseContent() {
               }
               return {
                 id: `item-${idx + 1}`,
-                category: matched.category || "Raw Material & Fabric",
+                category: matched.category || "",
                 description: sub.shade || "",
                 quantity: qty,
                 rate: rate,
@@ -890,7 +930,7 @@ function NewPurchaseContent() {
           setLineItems([
             {
               id: "item-1",
-              category: matched.category || "Raw Material & Fabric",
+              category: matched.category || "",
               description: matched.items_description || "",
               quantity: "",
               rate: "",
@@ -902,7 +942,7 @@ function NewPurchaseContent() {
         setLineItems([
           {
             id: "item-1",
-            category: matched.category || "Raw Material & Fabric",
+            category: matched.category || "",
             description: "",
             quantity: "",
             rate: "",
@@ -991,7 +1031,7 @@ function NewPurchaseContent() {
 
     // Derived category string (unique categories joined by comma, or primary category)
     const distinctCategories = Array.from(new Set(itemsToSave.map((it) => it.category.trim()).filter(Boolean)));
-    const primaryCategory = distinctCategories.length > 0 ? distinctCategories.join(", ") : (category || "Raw Material & Fabric");
+    const primaryCategory = distinctCategories.length > 0 ? distinctCategories.join(", ") : (category || "");
 
     // Derived items_description: e.g. "124-LL - 14 Box, 351 - 17 Box"
     let derivedDescription = itemsToSave
@@ -1274,24 +1314,30 @@ function NewPurchaseContent() {
 
                         {openCategoryItemId === item.id && (
                           <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-[100] w-full bg-white border border-slate-200 rounded-xl shadow-2xl p-1.5 max-h-60 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
-                            {categoriesList.map((c) => {
-                              const isSelected = item.category === c;
-                              return (
-                                <button
-                                  key={c}
-                                  type="button"
-                                  onClick={() => {
-                                    handleUpdateLineItem(item.id, "category", c);
-                                    setOpenCategoryItemId(null);
-                                  }}
-                                  className={`w-full text-left px-3 py-2 hover:bg-blue-50/70 rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors ${isSelected ? "bg-blue-50 text-blue-900 font-extrabold" : ""
-                                    }`}
-                                >
-                                  <span className="truncate">{c}</span>
-                                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
-                                </button>
-                              );
-                            })}
+                            {categoriesList.length === 0 ? (
+                              <div className="px-3 py-3 text-slate-400 text-xs font-medium text-center">
+                                No material categories found.
+                              </div>
+                            ) : (
+                              categoriesList.map((c) => {
+                                const isSelected = item.category === c;
+                                return (
+                                  <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => {
+                                      handleUpdateLineItem(item.id, "category", c);
+                                      setOpenCategoryItemId(null);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 hover:bg-blue-50/70 rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors ${isSelected ? "bg-blue-50 text-blue-900 font-extrabold" : ""
+                                      }`}
+                                  >
+                                    <span className="truncate">{c}</span>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
+                                  </button>
+                                );
+                              })
+                            )}
                           </div>
                         )}
                       </div>
