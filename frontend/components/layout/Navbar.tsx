@@ -27,6 +27,7 @@ const pageTitles: Record<string, string> = {
   "/payments": "Payments & Vouchers Ledger",
   "/ledger": "General Ledger & Accounts",
   "/categories": "Master Categories & Classifications",
+  "/recycle-bin": "Recycle Bin & Data Vault",
   "/settings": "System & Company Settings",
   "/designs": "Design Library",
   "/job-works": "Job Work Directory",

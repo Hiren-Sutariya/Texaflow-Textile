@@ -804,84 +804,68 @@ export default function LedgerPage() {
     <div className="space-y-4 max-w-[1600px] mx-auto select-none pb-12">
       
       {/* ------------------------------------------------------------- */}
-      {/* 1. TOP 4 SUMMARY KPI CARDS (MATCHING PAYMENTS PAGE)           */}
+      {/* 1. TOP 4 SUMMARY KPI CARDS                                     */}
       {/* ------------------------------------------------------------- */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-        
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* BOX 1: TOTAL INWARD BILLS (DR) */}
-        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-blue-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate mr-1">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
               {isGujarati ? "કુલ ખરીદી બિલ (DR)" : "TOTAL INWARD BILLS (DR)"}
-            </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-              <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
-            </div>
-          </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-base sm:text-xl font-black text-slate-900 tracking-tight font-mono">
+            </p>
+            <p className="text-xl font-black text-slate-900 mt-0.5">
               ₹{stats.totalBills.toLocaleString("en-IN")}
-            </span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+            <Receipt className="w-4 h-4" />
           </div>
         </div>
 
         {/* BOX 2: TOTAL PAID OUT (CR) */}
-        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-emerald-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate mr-1">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
               {isGujarati ? "કુલ ચૂકવેલ પેમેન્ટ (CR)" : "TOTAL PAID OUT (CR)"}
-            </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
-            </div>
-          </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-base sm:text-xl font-black text-emerald-600 tracking-tight font-mono">
+            </p>
+            <p className="text-xl font-black text-emerald-600 mt-0.5">
               ₹{stats.totalPaid.toLocaleString("en-IN")}
-            </span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
         </div>
 
         {/* BOX 3: NET PAYABLE BALANCE */}
-        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-rose-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-rose-600 uppercase tracking-wider truncate mr-1">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider truncate">
               {isGujarati ? "ચોખ્ખી બાકી શાખ (NET)" : "NET PAYABLE BALANCE"}
-            </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
-              <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
-          </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-base sm:text-xl font-black text-rose-600 tracking-tight font-mono">
+            </p>
+            <p className="text-xl font-black text-rose-600 mt-0.5">
               ₹{stats.netOutstanding.toLocaleString("en-IN")}
-            </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 border border-rose-200">
-              {isGujarati ? "બાકી" : "Payable"}
-            </span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+            <CreditCard className="w-4 h-4" />
           </div>
         </div>
 
         {/* BOX 4: OVERDUE MUDAT AMOUNT */}
-        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-amber-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate mr-1">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate">
               {isGujarati ? "મુદત વીતી ગયેલ રકમ" : "OVERDUE MUDAT"}
-            </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
-          </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-base sm:text-xl font-black text-amber-600 tracking-tight font-mono">
+            </p>
+            <p className="text-xl font-black text-amber-600 mt-0.5">
               ₹{stats.overdueAmt.toLocaleString("en-IN")}
-            </span>
-            <span className="text-[11px] font-bold text-amber-700">
-              {stats.overdueAmt > 0 ? (isGujarati ? "ઓવરડ્યૂ" : "Overdue") : (isGujarati ? "સમયસર" : "On track")}
-            </span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+            <AlertTriangle className="w-4 h-4" />
           </div>
         </div>
-
       </div>
 
       {/* ------------------------------------------------------------- */}

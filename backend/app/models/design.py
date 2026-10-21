@@ -1,8 +1,8 @@
 from sqlalchemy import Column, String, Float, Text
 from app.core.database import Base
-from app.models.base import TimestampMixin
+from app.models.base import TimestampMixin, SoftDeleteMixin
 
-class Design(Base, TimestampMixin):
+class Design(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "07_design_library"
 
     id = Column(String(64), primary_key=True)

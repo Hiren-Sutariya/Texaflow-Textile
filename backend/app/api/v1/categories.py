@@ -72,7 +72,7 @@ def get_categories(
     if cat_count == 0:
         seed_default_categories_for_tenant(db, active_cid)
 
-    query = db.query(Category).filter(Category.company_id == active_cid)
+    query = db.query(Category).filter(Category.company_id == active_cid, Category.is_deleted == False)
     if module and module != "all":
         query = query.filter(Category.module == module)
     results = query.order_by(Category.created_at.asc(), Category.id.asc()).all()
@@ -104,6 +104,12 @@ def create_category(
         Category.module == cat_in.module
     ).first()
     if existing:
+        if existing.is_deleted:
+            existing.is_deleted = False
+            existing.deleted_at = None
+            existing.deleted_by = None
+            db.commit()
+            db.refresh(existing)
         return existing
 
     new_cat = Category(
@@ -112,7 +118,8 @@ def create_category(
         name=clean_name,
         module=cat_in.module,
         color=cat_in.color or "blue",
-        is_system=cat_in.is_system or False
+        is_system=cat_in.is_system or False,
+        is_deleted=False
     )
     db.add(new_cat)
     db.commit()
@@ -126,18 +133,22 @@ def delete_category(
     tenant_cid: str = Depends(get_tenant_company_id),
     db: Session = Depends(get_db)
 ):
-    """Delete a category by ID or by exact name strictly for the active tenant."""
+    """Soft delete a category by moving it to Recycle Bin."""
     active_cid = company_id.strip() if company_id and company_id.strip() else tenant_cid
     clean_target = category_id.strip()
 
     cat = db.query(Category).filter(
         (Category.id == clean_target) | (Category.name.ilike(clean_target)),
-        Category.company_id == active_cid
+        Category.company_id == active_cid,
+        Category.is_deleted == False
     ).first()
 
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    db.delete(cat)
+    from datetime import datetime
+    cat.is_deleted = True
+    cat.deleted_at = datetime.utcnow()
+    cat.deleted_by = "Admin"
     db.commit()
-    return {"success": True, "message": f"Category '{clean_target}' deleted successfully"}
+    return {"success": True, "message": f"Category '{clean_target}' moved to Recycle Bin"}

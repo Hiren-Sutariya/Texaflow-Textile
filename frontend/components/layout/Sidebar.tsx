@@ -21,7 +21,8 @@ import {
   TrendingUp,
   LogOut,
   BookOpen,
-  Tags
+  Tags,
+  Trash2
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -61,6 +62,7 @@ const menuGroups: MenuGroup[] = [
     groupTitle: "Settings",
     items: [
       { name: "Categories", href: "/categories", icon: Tags },
+      { name: "Recycle Bin", href: "/recycle-bin", icon: Trash2 },
       { name: "Settings", href: "/settings", icon: Settings },
     ]
   },

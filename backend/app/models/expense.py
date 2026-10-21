@@ -1,9 +1,9 @@
 from sqlalchemy import Column, String, Float, Text
 from app.core.database import Base
-from app.models.base import TimestampMixin
+from app.models.base import TimestampMixin, SoftDeleteMixin
 import uuid
 
-class Expense(Base, TimestampMixin):
+class Expense(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "03_expenses"
 
     id = Column(String(64), primary_key=True, default=lambda: f"exp-{uuid.uuid4().hex[:12]}")

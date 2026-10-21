@@ -297,76 +297,66 @@ export default function PaymentsAndVouchersPage() {
   return (
     <div suppressHydrationWarning className="space-y-4 max-w-[1600px] mx-auto select-none pb-12">
       {/* ------------------------------------------------------------- */}
-      {/* 1. TOP 4 SUMMARY BOXES (KPI CARDS - EXACT MATCHING KARIGAR)    */}
+      {/* 1. TOP 4 SUMMARY BOXES (KPI CARDS)                           */}
       {/* ------------------------------------------------------------- */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* BOX 1: TOTAL PAYMENT OUT */}
-        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-rose-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate mr-1">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
               TOTAL PAYMENT OUT
-            </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
-              <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
-            </div>
-          </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span suppressHydrationWarning className="text-base sm:text-xl font-black text-rose-600 tracking-tight">
+            </p>
+            <p suppressHydrationWarning className="text-xl font-black text-rose-600 mt-0.5">
               ₹{stats.totalOut.toLocaleString("en-IN")}
-            </span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+            <ArrowUpRight className="w-4 h-4" />
           </div>
         </div>
 
         {/* BOX 2: TOTAL PAYMENT IN */}
-        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-blue-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate mr-1">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
               TOTAL PAYMENT IN
-            </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-              <ArrowDownLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
-            </div>
-          </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span suppressHydrationWarning className="text-base sm:text-xl font-black text-blue-600 tracking-tight">
+            </p>
+            <p suppressHydrationWarning className="text-xl font-black text-blue-600 mt-0.5">
               ₹{stats.totalIn.toLocaleString("en-IN")}
-            </span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+            <ArrowDownLeft className="w-4 h-4" />
           </div>
         </div>
 
         {/* BOX 3: ACTIVE PARTIES */}
-        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-sky-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate mr-1">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
               ACTIVE PARTIES
-            </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
-              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
-          </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span suppressHydrationWarning className="text-base sm:text-xl font-black text-slate-900 tracking-tight">
+            </p>
+            <p suppressHydrationWarning className="text-xl font-black text-slate-900 mt-0.5">
               {stats.activeParties}
-            </span>
-            <span className="text-[11px] sm:text-xs font-bold text-slate-400">Parties</span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0">
+            <Users className="w-4 h-4" />
           </div>
         </div>
 
         {/* BOX 4: TOTAL VOUCHERS */}
-        <div className="p-3 sm:p-3.5 bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-2xs relative overflow-hidden group hover:border-purple-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate mr-1">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
               TOTAL VOUCHERS
-            </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
-              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
-          </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span suppressHydrationWarning className="text-base sm:text-xl font-black text-slate-900 tracking-tight">
+            </p>
+            <p suppressHydrationWarning className="text-xl font-black text-slate-900 mt-0.5">
               {stats.totalVouchers}
-            </span>
-            <span className="text-[11px] sm:text-xs font-bold text-slate-400">Vouchers</span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+            <FileText className="w-4 h-4" />
           </div>
         </div>
       </div>

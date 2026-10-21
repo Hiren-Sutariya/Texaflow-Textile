@@ -1,8 +1,8 @@
 from sqlalchemy import Column, String, Float, Text
 from app.core.database import Base
-from app.models.base import TimestampMixin
+from app.models.base import TimestampMixin, SoftDeleteMixin
 
-class Worker(Base, TimestampMixin):
+class Worker(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "02_workers"
 
     id = Column(String(64), primary_key=True)

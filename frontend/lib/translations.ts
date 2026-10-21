@@ -31,6 +31,8 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "OMS Performance": { en: "OMS Performance", gu: "OMS ઓપરેશન્સ" },
   "Reports": { en: "Reports", gu: "રિપોર્ટ્સ અને એનાલિટિક્સ" },
   "Settings": { en: "Settings", gu: "સિસ્ટમ સેટિંગ્સ" },
+  "Recycle Bin": { en: "Recycle Bin", gu: "રીસાઇકલ બિન (કચરાપેટી)" },
+  "Recycle Bin & Data Vault": { en: "Recycle Bin & Data Vault", gu: "રીસાઇકલ બિન અને ડેટા વોલ્ટ" },
   "Upcoming": { en: "Upcoming", gu: "ટૂંક સમયમાં" },
   "UPCOMING": { en: "UPCOMING", gu: "ટૂંક સમયમાં" },
   "Create new service": { en: "Create new service", gu: "+ નવું સર્વિસ / એન્ટ્રી" },

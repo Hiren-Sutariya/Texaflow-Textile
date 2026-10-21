@@ -63,7 +63,7 @@ def get_expenses(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    query = db.query(Expense).filter(Expense.company_id == company_id)
+    query = db.query(Expense).filter(Expense.company_id == company_id, Expense.is_deleted == False)
 
     if category and category != "All":
         query = query.filter(Expense.category == category)
@@ -101,7 +101,7 @@ def create_expense(
         expense_data["due_date"] = format_to_dd_mm_yyyy(expense_data["due_date"])
 
     # 2. Synchronized 3-digit zero-padded ID and expense_no scoped to company_id
-    existing_records = db.query(Expense.expense_no, Expense.id).filter(Expense.company_id == company_id).all()
+    existing_records = db.query(Expense.expense_no, Expense.id).filter(Expense.company_id == company_id, Expense.is_deleted == False).all()
     max_num = 0
     for (eno, eid) in existing_records:
         if eno and eno.startswith("EB-"):
@@ -122,6 +122,7 @@ def create_expense(
 
     expense_data["id"] = candidate_id
     expense_data["expense_no"] = f"EB-{next_num:03d}"
+    expense_data["is_deleted"] = False
 
     # 3. Clean General Vendor
     vname = expense_data.get("vendor_name")
@@ -140,7 +141,7 @@ def get_expense(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    expense = db.query(Expense).filter(Expense.id == expense_id, Expense.company_id == company_id).first()
+    expense = db.query(Expense).filter(Expense.id == expense_id, Expense.company_id == company_id, Expense.is_deleted == False).first()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
     return expense
@@ -152,7 +153,7 @@ def update_expense(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    expense = db.query(Expense).filter(Expense.id == expense_id, Expense.company_id == company_id).first()
+    expense = db.query(Expense).filter(Expense.id == expense_id, Expense.company_id == company_id, Expense.is_deleted == False).first()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
@@ -177,10 +178,12 @@ def delete_expense(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    expense = db.query(Expense).filter(Expense.id == expense_id, Expense.company_id == company_id).first()
+    expense = db.query(Expense).filter(Expense.id == expense_id, Expense.company_id == company_id, Expense.is_deleted == False).first()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    db.delete(expense)
+    expense.is_deleted = True
+    expense.deleted_at = datetime.utcnow()
+    expense.deleted_by = "Admin"
     db.commit()
     return None

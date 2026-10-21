@@ -8,6 +8,8 @@ from app.schemas.worker import WorkerCreate, WorkerUpdate, WorkerResponse
 from app.core.formatters import generate_short_id
 from app.core.tenant import get_tenant_company_id
 
+from datetime import datetime
+
 router = APIRouter(prefix="/workers", tags=["Workers"])
 
 @router.get("", response_model=List[WorkerResponse])
@@ -17,7 +19,7 @@ def get_workers(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    query = db.query(Worker).filter(Worker.company_id == company_id)
+    query = db.query(Worker).filter(Worker.company_id == company_id, Worker.is_deleted == False)
     if role and role != "All":
         query = query.filter(Worker.role == role)
     if status and status != "All":
@@ -32,6 +34,7 @@ def create_worker(
 ):
     data = worker_in.model_dump()
     data["company_id"] = company_id
+    data["is_deleted"] = False
     if not data.get("id") or len(str(data.get("id"))) > 10:
         data["id"] = generate_short_id(db, Worker, "wrk")
     worker = Worker(**data)
@@ -47,7 +50,7 @@ def update_worker(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    worker = db.query(Worker).filter(Worker.id == worker_id, Worker.company_id == company_id).first()
+    worker = db.query(Worker).filter(Worker.id == worker_id, Worker.company_id == company_id, Worker.is_deleted == False).first()
     if not worker:
         raise HTTPException(status_code=404, detail="Worker not found")
     update_data = worker_in.model_dump(exclude_unset=True)
@@ -63,9 +66,11 @@ def delete_worker(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    worker = db.query(Worker).filter(Worker.id == worker_id, Worker.company_id == company_id).first()
+    worker = db.query(Worker).filter(Worker.id == worker_id, Worker.company_id == company_id, Worker.is_deleted == False).first()
     if not worker:
         raise HTTPException(status_code=404, detail="Worker not found")
-    db.delete(worker)
+    worker.is_deleted = True
+    worker.deleted_at = datetime.utcnow()
+    worker.deleted_by = "Admin"
     db.commit()
     return None

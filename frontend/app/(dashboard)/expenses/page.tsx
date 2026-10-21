@@ -586,11 +586,11 @@ export default function ExpensesPage() {
   return (
     <div suppressHydrationWarning className="space-y-4 font-sans text-slate-800 pb-12">
       {/* 1. TOP 4 ERP METRIC SUMMARY CARDS */}
-      <div suppressHydrationWarning className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+      <div suppressHydrationWarning className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* CARD 1: TOTAL EXPENSES */}
-        <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
           <div className="overflow-hidden">
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate mr-1">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
               {periodFilter === "all"
                 ? "TOTAL (ALL TIME)"
                 : periodFilter === "this_week"
@@ -601,51 +601,45 @@ export default function ExpensesPage() {
                       ? "TOTAL (2026)"
                       : "TOTAL EXPENSES"}
             </p>
-            <p suppressHydrationWarning className="text-base sm:text-xl font-black text-slate-900 mt-0.5">₹{totalExpenseAmount.toLocaleString("en-IN")}</p>
-            <span suppressHydrationWarning className="text-[10px] sm:text-[11px] font-semibold text-slate-500 mt-0.5 block truncate">{periodExpenses.length} Records</span>
+            <p suppressHydrationWarning className="text-xl font-black text-slate-900 mt-0.5">₹{totalExpenseAmount.toLocaleString("en-IN")}</p>
           </div>
-          <div className="p-2 sm:p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 shrink-0">
-            <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+            <Receipt className="w-4 h-4" />
           </div>
         </div>
 
         {/* CARD 2: TOTAL PAID */}
-        <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
           <div className="overflow-hidden">
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate mr-1">TOTAL PAID</p>
-            <p suppressHydrationWarning className="text-base sm:text-xl font-black text-blue-700 mt-0.5">₹{totalPaidAmount.toLocaleString("en-IN")}</p>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-blue-600 mt-0.5 block truncate">Bank & Cash</span>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">TOTAL PAID</p>
+            <p suppressHydrationWarning className="text-xl font-black text-blue-700 mt-0.5">₹{totalPaidAmount.toLocaleString("en-IN")}</p>
           </div>
-          <div className="p-2 sm:p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0">
-            <Check className="w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+            <Check className="w-4 h-4" />
           </div>
         </div>
 
         {/* CARD 3: PENDING / UNPAID */}
-        <div className="bg-white p-3 sm:p-4 rounded-xl border border-amber-200/90 shadow-2xs flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
           <div className="overflow-hidden">
-            <p className="text-[9px] sm:text-[10px] font-bold text-amber-600 uppercase tracking-wider truncate mr-1">PENDING / DUE</p>
-            <p suppressHydrationWarning className="text-base sm:text-xl font-black text-amber-700 mt-0.5">₹{unpaidExpensesAmount.toLocaleString("en-IN")}</p>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-amber-600 mt-0.5 block truncate">{t("Party Due")}</span>
+            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate">PENDING / DUE</p>
+            <p suppressHydrationWarning className="text-xl font-black text-amber-700 mt-0.5">₹{unpaidExpensesAmount.toLocaleString("en-IN")}</p>
           </div>
-          <div className="p-2 sm:p-3 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 shrink-0">
-            <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+            <Clock className="w-4 h-4" />
           </div>
         </div>
 
         {/* CARD 4: TOP CATEGORY */}
-        <div className="bg-white p-3 sm:p-4 rounded-xl border border-purple-200/90 shadow-2xs flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
           <div className="overflow-hidden">
-            <p className="text-[9px] sm:text-[10px] font-bold text-purple-700 uppercase tracking-wider truncate mr-1">TOP CATEGORY</p>
-            <p suppressHydrationWarning className="text-sm sm:text-lg font-black text-purple-900 mt-0.5 truncate max-w-[170px]" title={topCategory}>
-              {topCategory}
+            <p className="text-[11px] font-bold text-purple-700 uppercase tracking-wider truncate">TOP CATEGORY</p>
+            <p suppressHydrationWarning className="text-xl font-black text-purple-900 mt-0.5 truncate max-w-[150px]" title={topCategory}>
+              {topCategory || "None"}
             </p>
-            <span suppressHydrationWarning className="text-[10px] sm:text-[11px] font-bold text-purple-700 mt-0.5 block truncate">
-              ₹{topCategoryAmount.toLocaleString("en-IN")} Spent
-            </span>
           </div>
-          <div className="p-2 sm:p-3 bg-purple-50 text-purple-600 rounded-xl border border-purple-100 shrink-0">
-            <Tag className="w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+            <Tag className="w-4 h-4" />
           </div>
         </div>
       </div>

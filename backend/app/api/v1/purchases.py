@@ -23,7 +23,7 @@ def get_purchases(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    query = db.query(Purchase).filter(Purchase.company_id == company_id)
+    query = db.query(Purchase).filter(Purchase.company_id == company_id, Purchase.is_deleted == False)
 
     if category and category != "All":
         query = query.filter(Purchase.category == category)
@@ -52,6 +52,7 @@ def create_purchase(
 ):
     purchase_data = purchase_in.model_dump()
     purchase_data["company_id"] = company_id
+    purchase_data["is_deleted"] = False
 
     if purchase_data.get("items") is not None:
         if isinstance(purchase_data["items"], (list, dict)):
@@ -63,7 +64,7 @@ def create_purchase(
     if purchase_data.get("due_date"):
         purchase_data["due_date"] = format_to_dd_mm_yyyy(purchase_data["due_date"])
 
-    existing_purchases = db.query(Purchase).filter(Purchase.company_id == company_id).all()
+    existing_purchases = db.query(Purchase).filter(Purchase.company_id == company_id, Purchase.is_deleted == False).all()
     max_id = 0
     for p in existing_purchases:
         if p.id and p.id.startswith("pur-"):
@@ -98,7 +99,8 @@ def get_purchase(
 ):
     purchase = db.query(Purchase).filter(
         Purchase.id == purchase_id,
-        Purchase.company_id == company_id
+        Purchase.company_id == company_id,
+        Purchase.is_deleted == False
     ).first()
     if not purchase:
         raise HTTPException(status_code=404, detail="Purchase record not found")
@@ -113,7 +115,8 @@ def update_purchase(
 ):
     purchase = db.query(Purchase).filter(
         Purchase.id == purchase_id,
-        Purchase.company_id == company_id
+        Purchase.company_id == company_id,
+        Purchase.is_deleted == False
     ).first()
     if not purchase:
         raise HTTPException(status_code=404, detail="Purchase record not found")
@@ -147,12 +150,15 @@ def delete_purchase(
 ):
     purchase = db.query(Purchase).filter(
         Purchase.id == purchase_id,
-        Purchase.company_id == company_id
+        Purchase.company_id == company_id,
+        Purchase.is_deleted == False
     ).first()
     if not purchase:
         raise HTTPException(status_code=404, detail="Purchase record not found")
 
-    db.delete(purchase)
+    purchase.is_deleted = True
+    purchase.deleted_at = datetime.utcnow()
+    purchase.deleted_by = "Admin"
     db.commit()
     return None
 

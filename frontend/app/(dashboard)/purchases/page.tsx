@@ -594,52 +594,64 @@ export default function PurchasesPage() {
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto select-none pb-12">
       {/* 4 Stat KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-            {t("TOTAL PURCHASES")}
-          </span>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-black font-mono text-slate-900">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* CARD 1: TOTAL PURCHASES */}
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
+              {t("TOTAL PURCHASES")}
+            </p>
+            <p className="text-xl font-black text-slate-900 mt-0.5">
               ₹{totalPurchasesAmount.toLocaleString("en-IN")}
-            </span>
-            <span className="text-[11px] text-slate-500">({purchases.length})</span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+            <ShoppingCart className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-wider block">
-            {t("PENDING CREDIT")}
-          </span>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-black font-mono text-amber-600">
+        {/* CARD 2: PENDING CREDIT */}
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate">
+              {t("PENDING CREDIT")}
+            </p>
+            <p className="text-xl font-black text-amber-600 mt-0.5">
               ₹{pendingCreditAmount.toLocaleString("en-IN")}
-            </span>
-            <span className="text-[11px] text-amber-700 font-bold">({pendingCreditPurchases.length})</span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+            <Clock className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-extrabold text-rose-600 uppercase tracking-wider block">
-            {t("OVERDUE BILLS")}
-          </span>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className={`text-xl sm:text-2xl font-black font-mono ${overdueCount > 0 ? "text-rose-600" : "text-slate-900"}`}>
+        {/* CARD 3: OVERDUE BILLS */}
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider truncate">
+              {t("OVERDUE BILLS")}
+            </p>
+            <p className={`text-xl font-black ${overdueCount > 0 ? "text-rose-600" : "text-slate-900"} mt-0.5`}>
               {overdueCount}
-            </span>
-            <span className="text-[11px] text-slate-500">{t("Require Settlement")}</span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+            <AlertTriangle className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider block">
-            {t("PAID / SETTLED")}
-          </span>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-black font-mono text-emerald-600">
+        {/* CARD 4: PAID / SETTLED */}
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider truncate">
+              {t("PAID / SETTLED")}
+            </p>
+            <p className="text-xl font-black text-emerald-600 mt-0.5">
               {purchases.length - pendingCreditPurchases.length}
-            </span>
-            <span className="text-[11px] text-emerald-700">{t("Bills Cleared")}</span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
         </div>
       </div>

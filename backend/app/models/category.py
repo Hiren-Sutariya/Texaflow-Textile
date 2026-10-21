@@ -1,9 +1,9 @@
 from sqlalchemy import Column, String, Boolean
 from app.core.database import Base
-from app.models.base import TimestampMixin
+from app.models.base import TimestampMixin, SoftDeleteMixin
 import uuid
 
-class Category(Base, TimestampMixin):
+class Category(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "06_categories"
 
     id = Column(String(50), primary_key=True, default=lambda: f"cat-{uuid.uuid4().hex[:12]}")

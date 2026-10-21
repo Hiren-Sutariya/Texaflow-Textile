@@ -1,8 +1,8 @@
 from sqlalchemy import Column, String, Float, Boolean, Text, Integer
 from app.core.database import Base
-from app.models.base import TimestampMixin
+from app.models.base import TimestampMixin, SoftDeleteMixin
 
-class Party(Base, TimestampMixin):
+class Party(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "01_parties"
 
     id = Column(String(64), primary_key=True)
