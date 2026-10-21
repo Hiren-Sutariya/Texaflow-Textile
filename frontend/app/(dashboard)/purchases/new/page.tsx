@@ -225,13 +225,17 @@ interface CustomDatePickerProps {
   onChange: (val: string) => void;
   placeholder?: string;
   className?: string;
+  id?: string;
+  onEnterNext?: () => void;
 }
 
 function CustomDatePicker({
   value,
   onChange,
   placeholder = "DD-MM-YYYY",
-  className = ""
+  className = "",
+  id,
+  onEnterNext
 }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -275,9 +279,21 @@ function CustomDatePicker({
   return (
     <div ref={containerRef} className={`relative inline-block w-full text-xs select-none ${className}`}>
       <button
+        id={id || "bill-date-btn"}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-slate-400 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer ${isOpen ? "border-slate-500 ring-1 ring-slate-400" : ""
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            setIsOpen(false);
+            if (onEnterNext) {
+              onEnterNext();
+            } else {
+              document.getElementById("item-desc-0")?.focus();
+            }
+          }
+        }}
+        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer ${isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
           }`}
       >
         <span className={`font-mono font-bold text-xs ${formattedDisplay ? "text-slate-900" : "text-slate-400"}`}>
@@ -599,17 +615,21 @@ function NewPurchaseContent() {
 
   // Line items handlers
   const handleAddLineItem = () => {
+    const nextIdx = lineItems.length;
     setLineItems((prev) => [
       ...prev,
       {
         id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        category: "",
+        category: categoriesList[0] || "",
         description: "",
         quantity: "",
         rate: "",
         amount: ""
       }
     ]);
+    setTimeout(() => {
+      document.getElementById(`item-desc-${nextIdx}`)?.focus();
+    }, 50);
   };
 
   const calculateTotalWithTax = (sub: number, mode: "none" | "cgst_sgst" | "igst", rate: number) => {
@@ -1000,8 +1020,10 @@ function NewPurchaseContent() {
     }
   };
 
-  const handleSavePurchase = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSavePurchase = async (e?: React.FormEvent | React.KeyboardEvent | React.MouseEvent) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+    }
     if (isSaving) return;
 
     if (!purchaseNo.trim()) {
@@ -1013,7 +1035,11 @@ function NewPurchaseContent() {
       alert(t("Please select or enter party name."));
       return;
     }
-    const numAmount = parseFloat(amount);
+    let numAmount = parseFloat(amount);
+    if ((isNaN(numAmount) || numAmount <= 0) && totalWithTax > 0) {
+      numAmount = totalWithTax;
+      setAmount(String(totalWithTax));
+    }
     if (isNaN(numAmount) || numAmount <= 0) {
       alert(t("Please enter a valid bill amount."));
       return;
@@ -1124,7 +1150,16 @@ function NewPurchaseContent() {
         </Link>
       </div>
 
-      <form onSubmit={handleSavePurchase} className="space-y-3.5 pb-28">
+      <form
+        onSubmit={handleSavePurchase}
+        onKeyDown={(e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            handleSavePurchase();
+          }
+        }}
+        className="space-y-3.5 pb-28"
+      >
         {/* BOX 1: SUPPLIER & BILL SPECIFICATIONS */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs relative z-30">
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200">
@@ -1138,6 +1173,7 @@ function NewPurchaseContent() {
                 <div className="relative">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
+                    id="supplier-party-input"
                     type="text"
                     value={vendorName}
                     onChange={(e) => {
@@ -1145,6 +1181,23 @@ function NewPurchaseContent() {
                       setIsVendorDropdownOpen(true);
                     }}
                     onFocus={() => setIsVendorDropdownOpen(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (isVendorDropdownOpen && filteredVendors.length > 0) {
+                          const exact = filteredVendors.find(v => v.toLowerCase() === vendorName.toLowerCase().trim());
+                          if (exact) {
+                            handleVendorSelect(exact);
+                          } else if (vendorName.trim().length > 0) {
+                            handleVendorSelect(filteredVendors[0]);
+                          }
+                        }
+                        setIsVendorDropdownOpen(false);
+                        setTimeout(() => {
+                          document.getElementById("bill-no-input")?.focus();
+                        }, 50);
+                      }
+                    }}
                     placeholder={t("Search or enter party name...")}
                     className="w-full h-9 pl-9 pr-14 bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-bold text-slate-900 text-xs shadow-2xs focus:outline-none transition-all"
                     required
@@ -1215,9 +1268,16 @@ function NewPurchaseContent() {
                     {t("Bill / Challan No*")}
                   </span>
                   <input
+                    id="bill-no-input"
                     type="text"
                     value={purchaseNo}
                     onChange={(e) => setPurchaseNo(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        document.getElementById("bill-date-btn")?.focus();
+                      }
+                    }}
                     placeholder="e.g. PB-001"
                     className="w-full h-9 px-3 bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-900 text-xs shadow-2xs focus:outline-none transition-all"
                     required
@@ -1230,8 +1290,12 @@ function NewPurchaseContent() {
                     {t("Bill / Inward Date*")}
                   </span>
                   <CustomDatePicker
+                    id="bill-date-btn"
                     value={billDate}
                     onChange={(newDate) => setBillDate(newDate)}
+                    onEnterNext={() => {
+                      document.getElementById("item-desc-0")?.focus();
+                    }}
                     placeholder="DD-MM-YYYY"
                   />
                 </div>
@@ -1346,9 +1410,16 @@ function NewPurchaseContent() {
                     {/* DESCRIPTION / SHADE */}
                     <td className="py-2 px-3">
                       <input
+                        id={`item-desc-${index}`}
                         type="text"
                         value={item.description}
                         onChange={(e) => handleUpdateLineItem(item.id, "description", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            document.getElementById(`item-qty-${index}`)?.focus();
+                          }
+                        }}
                         placeholder={t("e.g. 124-LL, 370 White")}
                         className="w-full h-9 px-3 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-bold text-slate-900 text-xs focus:outline-none transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
                         required={index === 0}
@@ -1358,9 +1429,16 @@ function NewPurchaseContent() {
                     {/* QUANTITY */}
                     <td className="py-2 px-3">
                       <input
+                        id={`item-qty-${index}`}
                         type="text"
                         value={item.quantity}
                         onChange={(e) => handleUpdateLineItem(item.id, "quantity", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            document.getElementById(`item-rate-${index}`)?.focus();
+                          }
+                        }}
                         placeholder={t("e.g. 10 Box")}
                         className="w-full h-9 px-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-800 text-xs focus:outline-none transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
                       />
@@ -1371,11 +1449,18 @@ function NewPurchaseContent() {
                       <div className="relative">
                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">₹</span>
                         <input
+                          id={`item-rate-${index}`}
                           type="number"
                           step="any"
                           min="0"
                           value={item.rate || ""}
                           onChange={(e) => handleUpdateLineItem(item.id, "rate", e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              document.getElementById(`item-amt-${index}`)?.focus();
+                            }
+                          }}
                           placeholder="0.00"
                           className="w-full h-9 pl-6 pr-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-800 text-xs focus:outline-none transition-all shadow-2xs text-right placeholder:text-slate-400 placeholder:font-normal"
                         />
@@ -1387,11 +1472,22 @@ function NewPurchaseContent() {
                       <div className="relative">
                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">₹</span>
                         <input
+                          id={`item-amt-${index}`}
                           type="number"
                           step="any"
                           min="0"
                           value={item.amount}
                           onChange={(e) => handleUpdateLineItem(item.id, "amount", e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              if (index < lineItems.length - 1) {
+                                document.getElementById(`item-desc-${index + 1}`)?.focus();
+                              } else {
+                                document.getElementById("notes-input")?.focus();
+                              }
+                            }
+                          }}
                           placeholder="0.00"
                           className="w-full h-9 pl-6 pr-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-black text-slate-900 text-xs focus:outline-none transition-all shadow-2xs text-right placeholder:text-slate-400 placeholder:font-normal"
                         />
@@ -1545,10 +1641,17 @@ function NewPurchaseContent() {
                   {t("Remarks / Notes")}:
                 </label>
                 <VoiceTextarea
+                  id="notes-input"
                   rows={2}
-                  placeholder={t("Add optional notes...")}
+                  placeholder={t("Add optional notes (Press Enter to Save Bill)...")}
                   value={notes}
                   onChangeValue={(val) => setNotes(val)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSavePurchase();
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -1665,12 +1768,19 @@ function NewPurchaseContent() {
                 <div className="w-52 sm:w-60 shrink-0 relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">₹</span>
                   <input
+                    id="total-bill-amount-input"
                     type="number"
                     step="any"
                     min="0"
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSavePurchase();
+                      }
+                    }}
                     className="w-full h-9 pl-7 pr-3 bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-900 text-xs shadow-2xs focus:outline-none transition-all text-right"
                     required
                   />
@@ -1707,6 +1817,7 @@ function NewPurchaseContent() {
               {t("Cancel")}
             </Link>
             <button
+              id="save-purchase-btn"
               type="button"
               disabled={isSaving}
               onClick={handleSavePurchase}
