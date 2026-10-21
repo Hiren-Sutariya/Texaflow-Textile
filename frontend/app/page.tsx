@@ -3,89 +3,76 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { getStoredFirmName, getStoredUserName, getStoredCompanyId } from "@/lib/tenantStorage";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { 
   Users, 
-  Palette, 
-  Briefcase, 
   UserCheck, 
-  CreditCard, 
   Receipt, 
-  Wallet, 
-  TrendingUp, 
+  ShoppingCart, 
+  CreditCard, 
+  BookOpen, 
+  Tags, 
+  Trash2, 
+  Settings,
   ShieldCheck,
-  LogOut,
-  Building2,
-  BarChart3,
-  Settings
+  LogOut
 } from "lucide-react";
 
 const destinationModules = [
-  // Row 1: 4 Cards (Workable Core Masters & Accounts)
+  // 1. Masters
   {
-    title: "Vendors",
+    title: "Parties",
     href: "/vendors",
-    icon: Building2,
+    icon: Users,
     isUpcoming: false
   },
   {
-    title: "Staff & Karigars",
+    title: "Workers",
     href: "/employees",
     icon: UserCheck,
     isUpcoming: false
   },
-  {
-    title: "Design Library",
-    href: "/designs",
-    icon: Palette,
-    isUpcoming: false
-  },
-  {
-    title: "Payments & Vouchers",
-    href: "/payments",
-    icon: CreditCard,
-    isUpcoming: false
-  },
 
-  // Row 2: 4 Cards (Factory Finance & Workable/Upcoming Operations)
+  // 2. Finance
   {
-    title: "Factory Expenses",
+    title: "Expenses",
     href: "/expenses",
     icon: Receipt,
     isUpcoming: false
   },
   {
-    title: "Parties Master",
-    href: "/parties",
-    icon: Users,
-    isUpcoming: true
+    title: "Purchases",
+    href: "/purchases",
+    icon: ShoppingCart,
+    isUpcoming: false
   },
   {
-    title: "Karigar Issue",
-    href: "/job-works",
-    icon: Briefcase,
-    isUpcoming: true
+    title: "Payments",
+    href: "/payments",
+    icon: CreditCard,
+    isUpcoming: false
   },
   {
-    title: "Worker Payout",
-    href: "/worker-payout",
-    icon: Wallet,
-    isUpcoming: true
+    title: "Ledger",
+    href: "/ledger",
+    icon: BookOpen,
+    isUpcoming: false
   },
 
-  // Row 3: 4 Cards (Performance, Reporting & Settings in 4-col Grid)
+  // 3. Settings
   {
-    title: "OMS Performance",
-    href: "/oms-performance",
-    icon: TrendingUp,
-    isUpcoming: true
+    title: "Categories",
+    href: "/categories",
+    icon: Tags,
+    isUpcoming: false
   },
   {
-    title: "Reports",
-    href: "/reports",
-    icon: BarChart3,
-    isUpcoming: true
+    title: "Recycle Bin",
+    href: "/recycle-bin",
+    icon: Trash2,
+    isUpcoming: false
   },
   {
     title: "Settings",
@@ -97,6 +84,7 @@ const destinationModules = [
 
 export default function Home() {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -185,9 +173,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 4-COLUMN MODULE CARDS GRID (4 boxes per row on desktop matching original spacious design) */}
-      <div className="w-full max-w-6xl">
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 w-full">
+      {/* 3x3 MODULE CARDS GRID (9 Active Modules Matching Sidebar Order) */}
+      <div className="w-full max-w-5xl">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3.5 sm:gap-4.5 w-full">
           {destinationModules.map((item) => {
             const Icon = item.icon;
             return (
@@ -195,24 +183,14 @@ export default function Home() {
                 key={item.title}
                 href={item.href}
                 prefetch={true}
-                className="group relative bg-white border border-slate-200/80 rounded-2xl p-3.5 sm:p-5 flex flex-col items-center text-center justify-center h-[145px] sm:h-[180px] min-h-[145px] sm:min-h-[180px] shadow-2xs hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
+                className="group relative bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 flex flex-col items-center text-center justify-center h-[140px] sm:h-[165px] min-h-[140px] sm:min-h-[165px] shadow-2xs hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
               >
-                {item.isUpcoming && (
-                  <span className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/90 shadow-2xs">
-                    Upcoming
-                  </span>
-                )}
-
-                <div className={`w-10 h-10 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl border flex items-center justify-center mb-2.5 sm:mb-3.5 transition-colors shrink-0 ${
-                  item.isUpcoming
-                    ? "bg-slate-50 border-slate-100 text-slate-500 group-hover:bg-amber-50 group-hover:text-amber-700 group-hover:border-amber-200"
-                    : "bg-slate-50 border-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-100"
-                }`}>
+                <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl border flex items-center justify-center mb-2.5 sm:mb-3.5 bg-slate-50 border-slate-100 text-slate-700 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors shrink-0">
                   <Icon className="w-5 h-5 sm:w-6 sm:h-6 stroke-[1.75]" />
                 </div>
 
                 <h2 className="font-bold text-slate-900 text-xs sm:text-sm group-hover:text-blue-600 transition-colors leading-tight">
-                  {item.title}
+                  {t(item.title)}
                 </h2>
               </Link>
             );

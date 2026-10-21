@@ -18,58 +18,92 @@ import {
   CreditCard,
   Calculator,
   Palette,
-  Receipt,
-  Wallet
+  Receipt, 
+  ShoppingCart, 
+  BookOpen, 
+  Tags, 
+  Trash2, 
+  Settings,
+  UserCheck
 } from "lucide-react";
 
 const destinationModules = [
+  // 1. Masters
   {
     title: "Parties",
-    description: "Register Vepari clients, suppliers, dyeing mills, job workers & brokers",
+    description: "Register clients, suppliers, dyeing mills, job workers & brokers",
     href: "/vendors",
     icon: Users,
-    color: "bg-cyan-50 text-cyan-600 border-cyan-100",
-    isUpcoming: false
-  },
-  {
-    title: "Design Library",
-    description: "Stitch counts, thread colors & garment specs (Blouse Front/Back)",
-    href: "/designs",
-    icon: Palette,
-    color: "bg-indigo-50 text-indigo-600 border-indigo-100",
-    isUpcoming: false
-  },
-  {
-    title: "Karigar Issue",
-    description: "Create order linking Vepari + Design + Fabric receipt",
-    href: "/job-works",
-    icon: Briefcase,
     color: "bg-blue-50 text-blue-600 border-blue-100",
-    isUpcoming: true
+    isUpcoming: false
+  },
+  {
+    title: "Workers",
+    description: "Factory karigar, helper & staff directory with piece rates",
+    href: "/employees",
+    icon: UserCheck,
+    color: "bg-sky-50 text-sky-600 border-sky-100",
+    isUpcoming: false
+  },
+
+  // 2. Finance
+  {
+    title: "Expenses",
+    description: "Factory overhead, maintenance & daily operational expenses",
+    href: "/expenses",
+    icon: Receipt,
+    color: "bg-rose-50 text-rose-600 border-rose-100",
+    isUpcoming: false
+  },
+  {
+    title: "Purchases",
+    description: "Material purchase orders, raw fabric inwards & bills",
+    href: "/purchases",
+    icon: ShoppingCart,
+    color: "bg-purple-50 text-purple-600 border-purple-100",
+    isUpcoming: false
   },
   {
     title: "Payments",
-    description: "Party payments, receipts & white/black ledger vouchers",
+    description: "Bank & cash vouchers, receipts & payment transactions",
     href: "/payments",
     icon: CreditCard,
     color: "bg-emerald-50 text-emerald-600 border-emerald-100",
     isUpcoming: false
   },
   {
-    title: "Worker Payout",
-    description: "Manufacturing karigar piece-rate salary & advance payouts",
-    href: "/worker-payout",
-    icon: Wallet,
+    title: "Ledger",
+    description: "Party accounts, running statements & credit terms",
+    href: "/ledger",
+    icon: BookOpen,
+    color: "bg-indigo-50 text-indigo-600 border-indigo-100",
+    isUpcoming: false
+  },
+
+  // 3. Settings
+  {
+    title: "Categories",
+    description: "Master classifications for materials, expenses and designs",
+    href: "/categories",
+    icon: Tags,
     color: "bg-amber-50 text-amber-700 border-amber-100",
-    isUpcoming: true
+    isUpcoming: false
   },
   {
-    title: "OMS Performance",
-    description: "Order management system analytics, machine RPM & speed",
-    href: "/oms-performance",
-    icon: TrendingUp,
-    color: "bg-purple-50 text-purple-600 border-purple-100",
-    isUpcoming: true
+    title: "Recycle Bin",
+    description: "Deleted records vault with 30-day auto retention guarantee",
+    href: "/recycle-bin",
+    icon: Trash2,
+    color: "bg-rose-50 text-rose-600 border-rose-100",
+    isUpcoming: false
+  },
+  {
+    title: "Settings",
+    description: "Company profile, invoice prefixes & GST configuration",
+    href: "/settings",
+    icon: Settings,
+    color: "bg-slate-50 text-slate-700 border-slate-200",
+    isUpcoming: false
   }
 ];
 
