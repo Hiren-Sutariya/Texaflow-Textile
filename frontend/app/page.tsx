@@ -173,9 +173,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 3x3 MODULE CARDS GRID (9 Active Modules Matching Sidebar Order) */}
-      <div className="w-full max-w-5xl">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3.5 sm:gap-4.5 w-full">
+      {/* 4-COLUMN MODULE CARDS GRID (4 boxes per row on desktop matching original design) */}
+      <div className="w-full max-w-6xl">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 w-full">
           {destinationModules.map((item) => {
             const Icon = item.icon;
             return (
@@ -183,9 +183,9 @@ export default function Home() {
                 key={item.title}
                 href={item.href}
                 prefetch={true}
-                className="group relative bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 flex flex-col items-center text-center justify-center h-[140px] sm:h-[165px] min-h-[140px] sm:min-h-[165px] shadow-2xs hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
+                className="group relative bg-white border border-slate-200/80 rounded-2xl p-3.5 sm:p-5 flex flex-col items-center text-center justify-center h-[145px] sm:h-[180px] min-h-[145px] sm:min-h-[180px] shadow-2xs hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
               >
-                <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl border flex items-center justify-center mb-2.5 sm:mb-3.5 bg-slate-50 border-slate-100 text-slate-700 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors shrink-0">
+                <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl border flex items-center justify-center mb-2.5 sm:mb-3.5 bg-slate-50 border-slate-100 text-slate-700 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors shrink-0">
                   <Icon className="w-5 h-5 sm:w-6 sm:h-6 stroke-[1.75]" />
                 </div>
 
