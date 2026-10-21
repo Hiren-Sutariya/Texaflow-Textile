@@ -933,7 +933,7 @@ export default function PurchasesPage() {
                 {/* 4. CATEGORY */}
                 <th className="py-2.5 px-3.5 w-[140px] min-w-[140px] max-w-[140px] border-r border-slate-200/80">{t("CATEGORY")}</th>
                 {/* 5. ITEM */}
-                <th className="py-2.5 px-3.5 text-center w-[80px] min-w-[80px] border-r border-slate-200/80">{t("ITEM")}</th>
+                <th className="py-2.5 px-3.5 text-center w-[110px] min-w-[110px] border-r border-slate-200/80">{t("ITEM")}</th>
                 {/* 6. QUANTITY */}
                 <th className="py-2.5 px-3.5 text-center w-[110px] min-w-[110px] border-r border-slate-200/80">{t("QUANTITY")}</th>
                 {/* 7. AMOUNT (₹) */}
@@ -962,7 +962,9 @@ export default function PurchasesPage() {
                     <tr
                       key={item.id}
                       onClick={() => setPreviewBill(item)}
-                      className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
+                      className={`transition-colors cursor-pointer group ${
+                        dueInfo.isOverdue ? "hover:bg-red-50" : "hover:bg-blue-50/50"
+                      }`}
                     >
                       {/* 1. DATE */}
                       <td className="py-3 px-3.5 font-mono font-bold text-slate-700 whitespace-nowrap align-middle w-[100px] min-w-[100px] border-r border-slate-200/70">
@@ -989,7 +991,7 @@ export default function PurchasesPage() {
                       </td>
 
                       {/* 5. ITEM */}
-                      <td className="py-3 px-3.5 text-center align-middle whitespace-nowrap w-[80px] min-w-[80px] border-r border-slate-200/70">
+                      <td className="py-3 px-3.5 text-center align-middle whitespace-nowrap w-[110px] min-w-[110px] border-r border-slate-200/70">
                         <ItemDescriptionDisplayCell item={item} />
                       </td>
 
@@ -1096,162 +1098,293 @@ export default function PurchasesPage() {
         </div>
       </div>
 
-      {/* 4. PURCHASE BILL SLIP PREVIEW MODAL */}
-      {previewBill && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <style>{`
-            @media print {
-              body * {
-                visibility: hidden;
-              }
-              #printable-bill-slip, #printable-bill-slip * {
-                visibility: visible;
-              }
-              #printable-bill-slip {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                border: none !important;
-                box-shadow: none !important;
-                margin: 0 !important;
-              }
-              .no-print {
-                display: none !important;
-              }
-            }
-          `}</style>
+      {/* 4. PURCHASE BILL PREVIEW MODAL */}
+      {previewBill && (() => {
+        const modalDueInfo = getPurchaseDueInfo(previewBill);
 
-          <div id="printable-bill-slip" className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-blue-600" />
-                <h2 className="text-sm font-extrabold text-slate-900">{t("Purchase Bill Slip")}</h2>
-              </div>
-              <button
-                onClick={() => setPreviewBill(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer no-print"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        let parsedItems: any[] = [];
+        if (Array.isArray(previewBill.items)) {
+          parsedItems = previewBill.items;
+        } else if (typeof previewBill.items === "string") {
+          try {
+            parsedItems = JSON.parse(previewBill.items);
+          } catch {
+            parsedItems = [];
+          }
+        }
 
-            {/* Authentic Bill Card */}
-            <div className="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 space-y-3.5 shadow-2xs">
-              <div className="flex items-start justify-between pb-3 border-b border-slate-200">
+        const validItems = parsedItems.filter(
+          (it: any) =>
+            (it.description && it.description.trim()) ||
+            (it.quantity && it.quantity.toString().trim()) ||
+            (it.amount && it.amount.toString().trim())
+        );
+
+        let totalQtySum = 0;
+        let qtyUnit = "";
+        let hasNumericQty = false;
+
+        validItems.forEach((it: any) => {
+          const rawQ = (it.quantity || "").toString().trim();
+          const match = rawQ.match(/^([\d.]+)\s*(.*)$/);
+          if (match) {
+            hasNumericQty = true;
+            totalQtySum += parseFloat(match[1]);
+            if (!qtyUnit && match[2]) qtyUnit = match[2].trim();
+          }
+        });
+
+        const displayTotalQty = hasNumericQty && totalQtySum > 0
+          ? (qtyUnit ? `${totalQtySum} ${qtyUnit}` : `${totalQtySum}`)
+          : validItems.length > 0
+          ? `${validItems.length}`
+          : "-";
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+            <style>{`
+              @media print {
+                @page {
+                  size: A4 portrait;
+                  margin: 8mm;
+                }
+                html, body {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  background: white !important;
+                  width: 100% !important;
+                }
+                body * {
+                  visibility: hidden !important;
+                }
+                #printable-bill-slip, #printable-bill-slip * {
+                  visibility: visible !important;
+                }
+                #printable-bill-slip {
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                  padding: 0 !important;
+                  margin: 0 !important;
+                  border-radius: 0 !important;
+                  background: white !important;
+                }
+                .no-print {
+                  display: none !important;
+                }
+              }
+            `}</style>
+
+            <div
+              id="printable-bill-slip"
+              className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-4xl w-full p-6 sm:p-10 space-y-6 animate-in fade-in zoom-in-95 duration-150 my-auto text-slate-900"
+            >
+              {/* Modal / Bill Top Header */}
+              <div className="flex items-start justify-between pb-4 border-b border-slate-200">
                 <div>
-                  <div className="font-black text-slate-900 text-sm tracking-wide uppercase">OM SAI TEXTILES</div>
-                  <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{t("Raw Material Purchase Inward")}</div>
+                  <h2 className="font-black text-2xl text-slate-900 tracking-wide uppercase">
+                    OM SAI TEXTILES
+                  </h2>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                    {t("Raw Material Purchase Inward")}
+                  </p>
                 </div>
-                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold border ${previewBill.payment_status === "Paid"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-amber-50 text-amber-700 border-amber-200"
-                  }`}>
-                  {previewBill.payment_status === "Paid" ? t("Paid") : t("Pending / Credit")}
-                </span>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${
+                      modalDueInfo.isPaid
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : modalDueInfo.isOverdue
+                        ? "bg-rose-50 text-rose-700 border-rose-300"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}
+                  >
+                    {modalDueInfo.isPaid
+                      ? t("Paid")
+                      : modalDueInfo.isOverdue
+                      ? `${t("Overdue")} (${modalDueInfo.text})`
+                      : t("Pending / Credit")}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setPreviewBill(null)}
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer no-print ml-2"
+                    title={t("Close")}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
-              <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 text-xs shadow-2xs overflow-hidden">
-                <div className="p-3 flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">{t("Bill No")}</span>
-                  <span className="font-extrabold font-mono text-blue-700">{previewBill.purchase_no}</span>
-                </div>
-                <div className="p-3 flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">{t("Date")}</span>
-                  <span className="font-extrabold text-slate-800">{previewBill.date}</span>
-                </div>
-                <div className="p-3 flex items-center justify-between gap-4">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{t("Supplier / Mill")}</span>
-                  <span className="font-extrabold text-slate-900 text-right">{previewBill.vendor_name}</span>
-                </div>
-                <div className="p-3 flex items-center justify-between gap-4">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{t("Category")}</span>
-                  <span className="font-extrabold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">{t(previewBill.category)}</span>
-                </div>
-                {previewBill.items && Array.isArray(previewBill.items) && previewBill.items.length > 0 ? (
-                  <div className="p-3 space-y-1.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">{t("Items / Material Details")}</span>
-                    <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden text-xs">
-                      {previewBill.items.map((it: any, idx: number) => (
-                        <div key={idx} className="p-2 flex items-center justify-between bg-slate-50/50">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-extrabold text-slate-900">{it.description || it.category}</span>
-                            {it.quantity && (
-                              <span className="text-blue-700 font-mono font-bold text-[10px] bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                                {it.quantity}
-                              </span>
-                            )}
-                          </div>
-                          {it.amount && (
-                            <span className="font-mono font-bold text-slate-800">
-                              ₹{parseFloat(String(it.amount)).toLocaleString("en-IN")}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+              {/* Bill Meta Details Box */}
+              <div className="bg-slate-50/80 rounded-2xl border border-slate-200 p-5 divide-y divide-slate-200/80 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-4">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">{t("Bill No")}</span>
+                    <span className="font-extrabold font-mono text-blue-700 text-sm">{previewBill.purchase_no}</span>
                   </div>
-                ) : previewBill.items_description ? (
-                  <div className="p-3 flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">{t("Items / Material Details")}</span>
-                    <span className="font-medium text-slate-800">{previewBill.items_description}</span>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">{t("Date")}</span>
+                    <span className="font-extrabold text-slate-800 text-sm">{previewBill.date}</span>
                   </div>
-                ) : null}
-                <div className="p-3 flex items-center justify-between gap-4">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{t("Due Date / Mudat")}</span>
-                  <span className="font-bold text-slate-800 font-mono">
-                    {previewBill.due_date ? `${previewBill.due_date} (${previewBill.credit_days || 0}d)` : "-"}
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">{t("Due Date / Mudat")}</span>
+                    <span className="font-bold text-slate-800 text-sm font-mono">
+                      {previewBill.due_date ? `${previewBill.due_date} (${previewBill.credit_days || 0}d)` : "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">{t("Status")}</span>
+                    <span className={`font-bold text-sm ${modalDueInfo.statusClass}`}>
+                      {modalDueInfo.isPaid ? t("Paid & Settled") : modalDueInfo.text}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">{t("Supplier / Mill")}</span>
+                    <span className="font-extrabold text-slate-900 text-base block truncate" title={previewBill.vendor_name}>
+                      {previewBill.vendor_name}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">{t("Category")}</span>
+                    <span className="font-extrabold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200 inline-block text-xs mt-0.5">
+                      {t(previewBill.category)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items Details Table */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-100 border-b border-slate-200 text-[10px] font-black text-slate-700 uppercase tracking-wider">
+                    <tr>
+                      <th className="py-3 px-3.5 text-center w-[54px] border-r border-slate-200">#</th>
+                      <th className="py-3 px-4 border-r border-slate-200">{t("ITEM")} / DESCRIPTION</th>
+                      <th className="py-3 px-4 border-r border-slate-200 w-[160px]">{t("CATEGORY")}</th>
+                      <th className="py-3 px-4 text-center border-r border-slate-200 w-[120px]">{t("QUANTITY")}</th>
+                      <th className="py-3 px-4 text-right w-[140px]">{t("AMOUNT (₹)")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-800 bg-white">
+                    {validItems.length > 0 ? (
+                      validItems.map((it: any, idx: number) => {
+                        const desc = it.description || it.item_name || it.category || "-";
+                        const cat = it.category || previewBill.category || "-";
+                        const qty = it.quantity || "-";
+                        const amt = it.amount ? parseFloat(String(it.amount)) : 0;
+
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50/70">
+                            <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-500 border-r border-slate-200/70">
+                              {idx + 1}
+                            </td>
+                            <td className="py-3 px-4 font-bold text-slate-900 border-r border-slate-200/70">
+                              {desc}
+                            </td>
+                            <td className="py-3 px-4 text-slate-600 font-medium border-r border-slate-200/70">
+                              {t(cat)}
+                            </td>
+                            <td className="py-3 px-4 text-center font-mono font-bold text-blue-700 border-r border-slate-200/70">
+                              {qty}
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono font-black text-slate-900">
+                              {amt > 0 ? `₹${amt.toLocaleString("en-IN")}` : "-"}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr className="hover:bg-slate-50/70">
+                        <td className="py-3.5 px-3.5 text-center font-mono font-bold text-slate-500 border-r border-slate-200/70">
+                          1
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-slate-900 border-r border-slate-200/70">
+                          {previewBill.items_description || previewBill.category}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600 font-medium border-r border-slate-200/70">
+                          {t(previewBill.category)}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-mono font-bold text-blue-700 border-r border-slate-200/70">
+                          -
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900">
+                          ₹{previewBill.amount.toLocaleString("en-IN")}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                  <tfoot className="bg-slate-50 border-t-2 border-slate-200 font-bold text-slate-900">
+                    <tr>
+                      <td colSpan={3} className="py-3.5 px-4 text-right uppercase text-xs font-black tracking-wider border-r border-slate-200">
+                        {t("Total Bill Amount")}:
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-mono font-black text-blue-800 border-r border-slate-200">
+                        {displayTotalQty}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-mono text-base font-black text-slate-950 bg-slate-100/60">
+                        ₹{previewBill.amount.toLocaleString("en-IN")}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Remarks / Notes */}
+              {previewBill.notes && (
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-start gap-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0 pt-0.5">
+                    {t("Remarks / Notes")}:
                   </span>
+                  <span className="font-medium text-slate-700">{previewBill.notes}</span>
                 </div>
-                <div className="p-3.5 flex items-center justify-between bg-slate-50/50">
-                  <span className="text-xs font-black text-slate-700 uppercase">{t("Total Bill Amount")}</span>
-                  <span className="text-base font-black font-mono text-slate-900">₹{previewBill.amount.toLocaleString("en-IN")}</span>
-                </div>
-                {previewBill.notes && (
-                  <div className="p-3 flex flex-col gap-1 bg-white border-t border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">{t("Remarks / Notes")}</span>
-                    <span className="font-medium text-slate-700 text-xs">{previewBill.notes}</span>
+              )}
+
+              {/* Modal Bottom Actions */}
+              <div className="flex items-center gap-2 pt-2 no-print">
+                <button
+                  type="button"
+                  onClick={() => setPreviewBill(null)}
+                  className="px-5 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
+                >
+                  {t("Close")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>{t("Print")}</span>
+                </button>
+                {(previewBill.payment_status === "Pending" || previewBill.payment_status === "Unpaid") ? (
+                  <Link
+                    href={`/payments/new?vendor=${encodeURIComponent(previewBill.vendor_name)}&amount=${previewBill.amount}&source=Purchase+Bill&ref=${previewBill.purchase_no}`}
+                    className="flex-1 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>{t("Pay Voucher")}</span>
+                  </Link>
+                ) : (
+                  <div className="flex-1 py-2.5 px-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-bold border border-emerald-200 flex items-center justify-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{t("Paid & Settled")}</span>
                   </div>
                 )}
               </div>
             </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center gap-2 pt-2 no-print">
-              <button
-                type="button"
-                onClick={() => setPreviewBill(null)}
-                className="px-4 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
-              >
-                {t("Close")}
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>{t("Print")}</span>
-              </button>
-              {(previewBill.payment_status === "Pending" || previewBill.payment_status === "Unpaid") ? (
-                <Link
-                  href={`/payments/new?vendor=${encodeURIComponent(previewBill.vendor_name)}&amount=${previewBill.amount}&source=Purchase+Bill&ref=${previewBill.purchase_no}`}
-                  className="flex-1 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <CreditCard className="w-3.5 h-3.5" />
-                  <span>{t("Pay Voucher")}</span>
-                </Link>
-              ) : (
-                <div className="flex-1 py-2.5 px-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-bold border border-emerald-200 flex items-center justify-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{t("Paid & Settled")}</span>
-                </div>
-              )}
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
