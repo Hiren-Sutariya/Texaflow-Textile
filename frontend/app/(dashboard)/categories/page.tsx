@@ -92,7 +92,10 @@ function CustomSelect({
           isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
         }`}
       >
-        <span className={`truncate ${selectedOption ? "font-bold text-slate-900" : "font-medium text-slate-400"}`}>
+        <span
+          suppressHydrationWarning
+          className={`truncate ${selectedOption ? "font-bold text-slate-900" : "font-medium text-slate-400"}`}
+        >
           {selectedOption ? selectedOption.label : "Select module"}
         </span>
         <ChevronDown
@@ -133,8 +136,13 @@ function CustomSelect({
 
 export default function CategoriesPage() {
   const { t } = useLanguage();
+  const [hasMounted, setHasMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [moduleFilter, setModuleFilter] = useState<ModuleType>("all");
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Storage states with 0ms synchronous initialization to prevent refresh flicker
   const [materialCategories, setMaterialCategories] = useState<string[]>(() => {
@@ -326,7 +334,7 @@ export default function CategoriesPage() {
   };
 
   // Add handler
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = addName.trim();
     if (!trimmed) return;
@@ -343,14 +351,19 @@ export default function CategoriesPage() {
 
     const updated = [trimmed, ...targetList];
     saveCategoryList(addModule, updated);
-    fetchApi("/categories", {
-      method: "POST",
-      body: JSON.stringify({ name: trimmed, module: addModule, color: "blue" })
-    }).catch((err) => console.error("Category create sync error:", err));
-
     setAddName("");
     setIsAddModalOpen(false);
     showToast(`Category "${trimmed}" added successfully!`);
+
+    try {
+      await fetchApi("/categories", {
+        method: "POST",
+        body: JSON.stringify({ name: trimmed, module: addModule, color: "blue" })
+      });
+      invalidateApiCache("/categories");
+    } catch (err) {
+      console.error("Category create sync error:", err);
+    }
   };
 
   // Multi-select handlers
@@ -487,6 +500,8 @@ export default function CategoriesPage() {
   const isAllFilteredSelected =
     filteredRecords.length > 0 &&
     filteredRecords.every((r) => selectedCategoryIds.includes(r.id));
+
+  if (!hasMounted) return null;
 
   return (
     <div className="space-y-4 pb-12">
