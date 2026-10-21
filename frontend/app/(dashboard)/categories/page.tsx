@@ -14,11 +14,9 @@ import {
   RotateCcw,
   CheckCircle2
 } from "lucide-react";
-import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
+import { getTenantItem, setTenantItem } from "@/lib/tenantStorage";
 import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
-
-const DEFAULT_MATERIAL_CATEGORIES: string[] = [];
 
 const DEFAULT_EXPENSE_CATEGORIES = [
   "Karigar Salary",
@@ -30,8 +28,6 @@ const DEFAULT_EXPENSE_CATEGORIES = [
   "Logistics & Courier"
 ];
 
-const DEFAULT_DESIGN_CATEGORIES: string[] = [];
-
 type ModuleType = "all" | "material" | "expense" | "design";
 
 interface CategoryRecord {
@@ -40,12 +36,20 @@ interface CategoryRecord {
   module: "material" | "expense" | "design";
   moduleLabel: string;
   status: "Active";
+  srNo: number;
 }
 
 interface CustomSelectOption {
   value: string;
   label: string;
 }
+
+const getModuleLabel = (mod: string) => {
+  if (mod === "material") return "Material & Purchase";
+  if (mod === "expense") return "Expenses";
+  if (mod === "design") return "Design Library";
+  return mod;
+};
 
 function CustomSelect({
   value,
@@ -132,30 +136,64 @@ export default function CategoriesPage() {
     setHasMounted(true);
   }, []);
 
-  // Load initial cached categories synchronously if available for 0ms transition
-  const getInitialCategories = () => {
+  // Helper to sync cross-page tenant storage for purchases and expenses
+  const syncToTenantStorage = (items: CategoryRecord[]) => {
+    setTenantItem("texaflow_all_categories_unified", items);
+    setTenantItem(
+      "texaflow_material_categories",
+      items.filter((c) => c.module === "material").map((c) => c.name)
+    );
+    setTenantItem(
+      "texaflow_expense_categories_order",
+      items.filter((c) => c.module === "expense").map((c) => c.name)
+    );
+    setTenantItem(
+      "texaflow_design_categories",
+      items.filter((c) => c.module === "design").map((c) => c.name)
+    );
+    window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
+  };
+
+  // Synchronously load initial cached categories for 0ms transition
+  const getInitialCategories = (): { items: CategoryRecord[]; hasCache: boolean } => {
     if (typeof window === "undefined") {
-      return { mat: [], exp: [], des: [], hasCache: false };
+      return { items: [], hasCache: false };
     }
     try {
-      const liveCached = getCachedApi<Array<{ name: string; module: string }>>("/categories");
+      const liveCached = getCachedApi<Array<{ id: string; name: string; module: string; is_system?: boolean }>>("/categories");
       if (Array.isArray(liveCached) && liveCached.length > 0) {
-        return {
-          mat: Array.from(new Set(liveCached.filter((c) => c.module === "material").map((c) => c.name.trim()).filter(Boolean))),
-          exp: Array.from(new Set(liveCached.filter((c) => c.module === "expense").map((c) => c.name.trim()).filter(Boolean))),
-          des: Array.from(new Set(liveCached.filter((c) => c.module === "design").map((c) => c.name.trim()).filter(Boolean))),
-          hasCache: true
-        };
+        const seen = new Set<string>();
+        const items: CategoryRecord[] = [];
+        let count = 1;
+        for (const c of liveCached) {
+          const trimmed = c.name?.trim();
+          if (!trimmed) continue;
+          const key = `${c.module}_${trimmed.toLowerCase()}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          items.push({
+            id: c.id || `cat-${(c.module || "mat").slice(0, 3)}-${trimmed}`,
+            name: trimmed,
+            module: (c.module as "material" | "expense" | "design") || "material",
+            moduleLabel: getModuleLabel(c.module),
+            status: "Active",
+            srNo: count++,
+          });
+        }
+        return { items, hasCache: true };
+      }
+
+      const stored = getTenantItem<CategoryRecord[]>("texaflow_all_categories_unified");
+      if (Array.isArray(stored) && stored.length > 0) {
+        return { items: stored, hasCache: true };
       }
     } catch {}
-    return { mat: [], exp: [], des: [], hasCache: false };
+    return { items: [], hasCache: false };
   };
 
   const initialData = useRef(getInitialCategories());
   const [isLoading, setIsLoading] = useState<boolean>(() => !initialData.current.hasCache);
-  const [materialCategories, setMaterialCategories] = useState<string[]>(() => initialData.current.mat);
-  const [expenseCategories, setExpenseCategories] = useState<string[]>(() => initialData.current.exp);
-  const [designCategories, setDesignCategories] = useState<string[]>(() => initialData.current.des);
+  const [categories, setCategories] = useState<CategoryRecord[]>(() => initialData.current.items);
 
   // Multi-select state for bulk deletion
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -166,7 +204,7 @@ export default function CategoriesPage() {
   const [addModule, setAddModule] = useState<"material" | "expense" | "design">("material");
 
   // Edit category state
-  const [editingItem, setEditingItem] = useState<{ id?: string; name: string; module: "material" | "expense" | "design" } | null>(null);
+  const [editingItem, setEditingItem] = useState<{ id: string; name: string; module: "material" | "expense" | "design" } | null>(null);
   const [editValue, setEditValue] = useState("");
 
   // Three dots action menu
@@ -193,42 +231,59 @@ export default function CategoriesPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Load strictly from backend Supabase Database with fallback to tenantStorage
+  // Load strictly from backend Supabase Database in chronological creation order
   const loadCategories = async () => {
     try {
       const live = await fetchApi<Array<{ id: string; name: string; module: string; is_system?: boolean }>>("/categories").catch(() => null);
       if (Array.isArray(live)) {
         setCachedApi("/categories", live);
-        const mat = Array.from(new Set(live.filter((c) => c.module === "material").map((c) => c.name.trim()).filter(Boolean)));
-        const exp = Array.from(new Set(live.filter((c) => c.module === "expense").map((c) => c.name.trim()).filter(Boolean)));
-        const des = Array.from(new Set(live.filter((c) => c.module === "design").map((c) => c.name.trim()).filter(Boolean)));
+        
+        // Supabase returns items ordered strictly by created_at.asc(), id.asc()
+        // We preserve this permanent creation sequence and assign each category its permanent SR NO
+        const seen = new Set<string>();
+        const unified: CategoryRecord[] = [];
+        let count = 1;
 
-        const finalMat = mat;
-        const finalExp = exp.length > 0 ? exp : DEFAULT_EXPENSE_CATEGORIES;
-        const finalDes = des;
+        for (const c of live) {
+          const trimmed = c.name?.trim();
+          if (!trimmed) continue;
+          const key = `${c.module}_${trimmed.toLowerCase()}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
 
-        setMaterialCategories(finalMat);
-        setExpenseCategories(finalExp);
-        setDesignCategories(finalDes);
+          unified.push({
+            id: c.id || `cat-${(c.module || "mat").slice(0, 3)}-${trimmed}`,
+            name: trimmed,
+            module: (c.module as "material" | "expense" | "design") || "material",
+            moduleLabel: getModuleLabel(c.module),
+            status: "Active",
+            srNo: count++,
+          });
+        }
 
-        setTenantItem("texaflow_material_categories", finalMat);
-        setTenantItem("texaflow_expense_categories_order", finalExp);
-        setTenantItem("texaflow_design_categories", finalDes);
+        setCategories(unified);
+        syncToTenantStorage(unified);
         return;
       }
 
       // Offline / network fallback
-      const mat = getTenantItem<string[]>("texaflow_material_categories");
-      if (Array.isArray(mat)) setMaterialCategories(Array.from(new Set(mat.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean))));
-      else setMaterialCategories(DEFAULT_MATERIAL_CATEGORIES);
+      const stored = getTenantItem<CategoryRecord[]>("texaflow_all_categories_unified");
+      if (Array.isArray(stored) && stored.length > 0) {
+        setCategories(stored);
+        return;
+      }
 
-      const exp = getTenantItem<string[]>("texaflow_expense_categories_order");
-      if (Array.isArray(exp)) setExpenseCategories(Array.from(new Set(exp.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean))));
-      else setExpenseCategories(DEFAULT_EXPENSE_CATEGORIES);
-
-      const des = getTenantItem<string[]>("texaflow_design_categories");
-      if (Array.isArray(des)) setDesignCategories(Array.from(new Set(des.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean))));
-      else setDesignCategories(DEFAULT_DESIGN_CATEGORIES);
+      // Fallback defaults if table is empty
+      const defaults: CategoryRecord[] = DEFAULT_EXPENSE_CATEGORIES.map((name, idx) => ({
+        id: `cat-exp-${idx + 1}`,
+        name,
+        module: "expense" as const,
+        moduleLabel: "Expenses",
+        status: "Active" as const,
+        srNo: idx + 1,
+      }));
+      setCategories(defaults);
+      syncToTenantStorage(defaults);
     } catch (e) {
       console.error(e);
     } finally {
@@ -245,87 +300,61 @@ export default function CategoriesPage() {
     };
   }, []);
 
-  // Combine into unified table records with guaranteed uniqueness
-  const allRecords: CategoryRecord[] = useMemo(() => {
-    const records: CategoryRecord[] = [];
-    const seen = new Set<string>();
-
-    const addRecord = (cat: string, mod: "material" | "expense" | "design", modLabel: string, prefix: string) => {
-      const trimmed = typeof cat === "string" ? cat.trim() : "";
-      if (!trimmed) return;
-      const key = `${mod}_${trimmed.toLowerCase()}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-
-      records.push({
-        id: `${prefix}-${trimmed}`,
-        name: trimmed,
-        module: mod,
-        moduleLabel: modLabel,
-        status: "Active"
-      });
-    };
-
-    materialCategories.forEach((cat) => addRecord(cat, "material", "Material & Purchase", "mat"));
-    expenseCategories.forEach((cat) => addRecord(cat, "expense", "Expenses", "exp"));
-    designCategories.forEach((cat) => addRecord(cat, "design", "Design Library", "des"));
-
-    return records;
-  }, [materialCategories, expenseCategories, designCategories]);
-
-  // Filtered by search and module
+  // Filtered by search and module (preserves permanent assigned srNo)
   const filteredRecords = useMemo(() => {
-    return allRecords.filter((rec) => {
+    return categories.filter((rec) => {
       const matchSearch = !search || rec.name.toLowerCase().includes(search.toLowerCase().trim());
       const matchModule = moduleFilter === "all" || rec.module === moduleFilter;
       return matchSearch && matchModule;
     });
-  }, [allRecords, search, moduleFilter]);
+  }, [categories, search, moduleFilter]);
 
-  // Save to storage
-  const saveCategoryList = (module: "material" | "expense" | "design", updated: string[]) => {
-    invalidateApiCache("/categories");
-    if (module === "material") {
-      setMaterialCategories(updated);
-      setTenantItem("texaflow_material_categories", updated);
-    } else if (module === "expense") {
-      setExpenseCategories(updated);
-      setTenantItem("texaflow_expense_categories_order", updated);
-    } else {
-      setDesignCategories(updated);
-      setTenantItem("texaflow_design_categories", updated);
-    }
-    window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
-  };
+  const materialCount = useMemo(() => categories.filter((c) => c.module === "material").length, [categories]);
+  const expenseCount = useMemo(() => categories.filter((c) => c.module === "expense").length, [categories]);
+  const designCount = useMemo(() => categories.filter((c) => c.module === "design").length, [categories]);
 
-  // Add handler
+  // Add handler - Appends new category to the end with the next sequential SR NO (e.g. #08 or #09)
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = addName.trim();
     if (!trimmed) return;
 
-    let targetList: string[] = [];
-    if (addModule === "material") targetList = materialCategories;
-    else if (addModule === "expense") targetList = expenseCategories;
-    else targetList = designCategories;
-
-    if (targetList.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+    if (categories.some((c) => c.module === addModule && c.name.toLowerCase() === trimmed.toLowerCase())) {
       showToast(`Category "${trimmed}" already exists in this module!`);
       return;
     }
 
-    // Append to end so it appears sequentially at the next serial number (e.g., #07)
-    const updated = [...targetList, trimmed];
-    saveCategoryList(addModule, updated);
+    // Next sequential SR NO (e.g. if 8 categories exist, next is 9)
+    const nextSrNo = categories.length > 0 ? Math.max(...categories.map((c) => c.srNo)) + 1 : 1;
+    const tempId = `cat-${addModule.slice(0, 3)}-${Date.now()}`;
+    
+    const newRecord: CategoryRecord = {
+      id: tempId,
+      name: trimmed,
+      module: addModule,
+      moduleLabel: getModuleLabel(addModule),
+      status: "Active",
+      srNo: nextSrNo,
+    };
+
+    // Appended to the end so existing categories' numbers and positions NEVER change
+    const updated = [...categories, newRecord];
+    setCategories(updated);
+    syncToTenantStorage(updated);
     setAddName("");
     setIsAddModalOpen(false);
-    showToast(`Category "${trimmed}" added successfully!`);
+    showToast(`Category "${trimmed}" added as #${String(nextSrNo).padStart(2, "0")}!`);
 
     try {
-      await fetchApi("/categories", {
+      const res = await fetchApi<{ id: string; name: string; module: string }>("/categories", {
         method: "POST",
         body: JSON.stringify({ name: trimmed, module: addModule })
       });
+      if (res && res.id) {
+        setCategories((prev) =>
+          prev.map((c) => (c.id === tempId ? { ...c, id: res.id } : c))
+        );
+      }
       invalidateApiCache("/categories");
     } catch (err) {
       console.error("Category create sync error:", err);
@@ -367,26 +396,13 @@ export default function CategoriesPage() {
       return;
     }
 
-    const selectedRecords = allRecords.filter((r) => selectedCategoryIds.includes(r.id));
-    const matToDelete = new Set(selectedRecords.filter((r) => r.module === "material").map((r) => r.name));
-    const expToDelete = new Set(selectedRecords.filter((r) => r.module === "expense").map((r) => r.name));
-    const desToDelete = new Set(selectedRecords.filter((r) => r.module === "design").map((r) => r.name));
+    const toDeleteSet = new Set(selectedCategoryIds);
+    const updated = categories.filter((c) => !toDeleteSet.has(c.id));
+    setCategories(updated);
+    syncToTenantStorage(updated);
 
-    if (matToDelete.size > 0) {
-      const updatedMat = materialCategories.filter((c) => !matToDelete.has(c));
-      saveCategoryList("material", updatedMat);
-    }
-    if (expToDelete.size > 0) {
-      const updatedExp = expenseCategories.filter((c) => !expToDelete.has(c));
-      saveCategoryList("expense", updatedExp);
-    }
-    if (desToDelete.size > 0) {
-      const updatedDes = designCategories.filter((c) => !desToDelete.has(c));
-      saveCategoryList("design", updatedDes);
-    }
-
-    selectedRecords.forEach((r) => {
-      fetchApi(`/categories/${encodeURIComponent(r.name)}`, { method: "DELETE" }).catch(() => {});
+    selectedCategoryIds.forEach((id) => {
+      fetchApi(`/categories/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
     });
 
     setSelectedCategoryIds([]);
@@ -398,19 +414,15 @@ export default function CategoriesPage() {
     if (!window.confirm(`Are you sure you want to remove "${rec.name}"?`)) {
       return;
     }
-    let targetList: string[] = [];
-    if (rec.module === "material") targetList = materialCategories;
-    else if (rec.module === "expense") targetList = expenseCategories;
-    else targetList = designCategories;
-
-    const updated = targetList.filter((c) => c !== rec.name);
-    saveCategoryList(rec.module, updated);
-    fetchApi(`/categories/${encodeURIComponent(rec.name)}`, { method: "DELETE" }).catch(() => {});
+    const updated = categories.filter((c) => c.id !== rec.id);
+    setCategories(updated);
+    syncToTenantStorage(updated);
+    fetchApi(`/categories/${encodeURIComponent(rec.id)}`, { method: "DELETE" }).catch(() => {});
     setSelectedCategoryIds((prev) => prev.filter((id) => id !== rec.id));
     showToast(`Removed "${rec.name}".`);
   };
 
-  // Edit handler
+  // Edit handler - In-place rename preserving exact SR NO, position, and ID
   const handleSaveEdit = async () => {
     if (!editingItem) return;
     const trimmed = editValue.trim();
@@ -419,29 +431,30 @@ export default function CategoriesPage() {
       return;
     }
 
-    let targetList: string[] = [];
-    if (editingItem.module === "material") targetList = materialCategories;
-    else if (editingItem.module === "expense") targetList = expenseCategories;
-    else targetList = designCategories;
-
-    if (targetList.some((c) => c.toLowerCase() === trimmed.toLowerCase() && c !== editingItem.name)) {
-      showToast(`Category "${trimmed}" already exists!`);
+    if (categories.some((c) => c.module === editingItem.module && c.name.toLowerCase() === trimmed.toLowerCase() && c.id !== editingItem.id)) {
+      showToast(`Category "${trimmed}" already exists in this module!`);
       return;
     }
 
-    const oldName = editingItem.name;
     const oldId = editingItem.id;
+    const oldName = editingItem.name;
     const mod = editingItem.module;
 
-    // 1. Instant in-place UI update (exact same index, position and serial number remain unchanged)
-    const updated = targetList.map((c) => (c === oldName ? trimmed : c));
-    saveCategoryList(mod, updated);
+    // 1. Instant in-place UI update (exact position and SR NO remain completely untouched)
+    const updated = categories.map((c) => {
+      if (c.id === oldId || (c.name === oldName && c.module === mod)) {
+        return { ...c, name: trimmed };
+      }
+      return c;
+    });
+    setCategories(updated);
+    syncToTenantStorage(updated);
 
-    // 2. Synchronously update live API cache so table never flips or reverts on reload
+    // 2. Synchronously update live API cache
     const currentCached = getCachedApi<Array<{ id: string; name: string; module: string; is_system?: boolean }>>("/categories");
     if (Array.isArray(currentCached)) {
       const updatedCache = currentCached.map((item) => {
-        if ((oldId && item.id === oldId) || (item.name === oldName && item.module === mod)) {
+        if (item.id === oldId || (item.name === oldName && item.module === mod)) {
           return { ...item, name: trimmed };
         }
         return item;
@@ -476,13 +489,16 @@ export default function CategoriesPage() {
 
   const handleResetDefaults = () => {
     if (!window.confirm("Reset all categories to system defaults?")) return;
-    setMaterialCategories(DEFAULT_MATERIAL_CATEGORIES);
-    setExpenseCategories(DEFAULT_EXPENSE_CATEGORIES);
-    setDesignCategories(DEFAULT_DESIGN_CATEGORIES);
-    setTenantItem("texaflow_material_categories", DEFAULT_MATERIAL_CATEGORIES);
-    setTenantItem("texaflow_expense_categories_order", DEFAULT_EXPENSE_CATEGORIES);
-    setTenantItem("texaflow_design_categories", DEFAULT_DESIGN_CATEGORIES);
-    window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
+    const defaults: CategoryRecord[] = DEFAULT_EXPENSE_CATEGORIES.map((name, idx) => ({
+      id: `cat-exp-${idx + 1}`,
+      name,
+      module: "expense" as const,
+      moduleLabel: "Expenses",
+      status: "Active" as const,
+      srNo: idx + 1,
+    }));
+    setCategories(defaults);
+    syncToTenantStorage(defaults);
     setSelectedCategoryIds([]);
     setIsActionMenuOpen(false);
     showToast("Reset to default categories.");
@@ -533,7 +549,7 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      {/* SEARCH & ACTIONS TOOLBAR CARD (MATCHING OTHER MODULES) */}
+      {/* SEARCH & ACTIONS TOOLBAR CARD */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
         {/* Left Side: Search Input */}
         <div className="relative w-full md:w-72">
@@ -555,10 +571,10 @@ export default function CategoriesPage() {
               value={moduleFilter}
               onChange={(val) => setModuleFilter(val as ModuleType)}
               options={[
-                { value: "all", label: isLoading ? "All Categories" : `All Categories (${allRecords.length})` },
-                { value: "material", label: isLoading ? "Material & Purchase" : `Material & Purchase (${materialCategories.length})` },
-                { value: "expense", label: isLoading ? "Expenses" : `Expenses (${expenseCategories.length})` },
-                { value: "design", label: isLoading ? "Design Library" : `Design Library (${designCategories.length})` }
+                { value: "all", label: isLoading ? "All Categories" : `All Categories (${categories.length})` },
+                { value: "material", label: isLoading ? "Material & Purchase" : `Material & Purchase (${materialCount})` },
+                { value: "expense", label: isLoading ? "Expenses" : `Expenses (${expenseCount})` },
+                { value: "design", label: isLoading ? "Design Library" : `Design Library (${designCount})` }
               ]}
             />
           </div>
@@ -631,7 +647,7 @@ export default function CategoriesPage() {
         </div>
       </div>
 
-      {/* TABLE CARD CONTAINER (MATCHING OTHER MODULES) - EXCEL-STYLE BOX GRID */}
+      {/* TABLE CARD CONTAINER - EXCEL-STYLE BOX GRID */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
@@ -688,13 +704,13 @@ export default function CategoriesPage() {
                   </td>
                 </tr>
               ) : (
-                filteredRecords.map((rec, index) => {
-                  const isEditing = editingItem?.name === rec.name && editingItem?.module === rec.module;
+                filteredRecords.map((rec) => {
+                  const isEditing = editingItem?.id === rec.id || (editingItem?.name === rec.name && editingItem?.module === rec.module);
                   const isRowSelected = selectedCategoryIds.includes(rec.id);
 
                   return (
                     <tr
-                      key={`${rec.id}_${index}`}
+                      key={rec.id}
                       className={`transition-colors ${
                         isRowSelected ? "bg-blue-50/60" : "hover:bg-blue-50/40"
                       }`}
@@ -709,9 +725,9 @@ export default function CategoriesPage() {
                         />
                       </td>
 
-                      {/* SR NO. */}
+                      {/* SR NO. - Permanent assigned sequence number */}
                       <td className="py-3 px-4 text-center font-mono font-bold text-slate-400 text-xs border-r border-slate-200/70">
-                        {String(index + 1).padStart(2, "0")}
+                        {String(rec.srNo).padStart(2, "0")}
                       </td>
 
                       {/* CATEGORY NAME */}
