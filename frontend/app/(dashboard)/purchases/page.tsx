@@ -175,7 +175,7 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
       if (desc) itemNames.push(desc);
     });
 
-    // Check quantities - ONLY use if user explicitly entered a quantity
+    // Check quantities - Sum total quantity across all items
     const hasAnyExplicitQty = validLineItems.some(
       (it: any) => it.quantity && it.quantity.toString().trim()
     );
@@ -184,7 +184,6 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
       let totalNumeric = 0;
       let hasNumeric = false;
       let detectedUnit = "";
-      let mixedUnits = false;
       const rawQtyList: string[] = [];
 
       for (const it of validLineItems) {
@@ -199,18 +198,14 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
           const unit = match[2]?.trim() || "";
           if (!detectedUnit && unit) {
             detectedUnit = unit;
-          } else if (detectedUnit && unit && detectedUnit.toLowerCase() !== unit.toLowerCase()) {
-            mixedUnits = true;
           }
         }
       }
 
-      if (hasNumeric && !mixedUnits && detectedUnit && totalNumeric > 0) {
-        quantityDisplay = `${totalNumeric} ${detectedUnit}`;
-      } else if (hasNumeric && detectedUnit && mixedUnits) {
-        quantityDisplay = rawQtyList.slice(0, 2).join(", ");
+      if (hasNumeric && totalNumeric > 0) {
+        quantityDisplay = detectedUnit ? `${totalNumeric} ${detectedUnit}` : `${totalNumeric}`;
       } else if (rawQtyList.length > 0) {
-        quantityDisplay = rawQtyList.slice(0, 2).join(", ");
+        quantityDisplay = rawQtyList.join(", ");
       }
     }
   }
@@ -252,8 +247,8 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
           const name = cleanSub.slice(0, lastDash).trim();
           const q = cleanSub.slice(lastDash + 1).trim();
           if (name) itemNames.push(name);
-          // Only treat as quantity if it has an explicit unit
-          if (q && /^[\d.]+\s*[a-zA-Z]+$/.test(q)) {
+          // Only treat as quantity if it has numbers
+          if (q && /^[\d.]+\s*[a-zA-Z]*$/.test(q)) {
             extractedQtys.push(q);
           }
         } else {
@@ -265,20 +260,18 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
         quantityDisplay = explicitTotal;
       } else if (!quantityDisplay && extractedQtys.length > 0) {
         let sumNum = 0;
-        let canSum = true;
+        let canSum = false;
         let unit = "";
         for (const q of extractedQtys) {
-          const m = q.match(/^([\d.]+)\s*(.+)$/);
-          if (m && m[2].trim()) {
+          const m = q.match(/^([\d.]+)\s*(.*)$/);
+          if (m) {
+            canSum = true;
             sumNum += parseFloat(m[1]);
-            if (!unit) unit = m[2].trim();
-            else if (unit.toLowerCase() !== m[2].trim().toLowerCase()) canSum = false;
-          } else {
-            canSum = false;
+            if (!unit && m[2]) unit = m[2].trim();
           }
         }
-        if (canSum && sumNum > 0 && unit) {
-          quantityDisplay = `${sumNum} ${unit}`;
+        if (canSum && sumNum > 0) {
+          quantityDisplay = unit ? `${sumNum} ${unit}` : `${sumNum}`;
         } else {
           quantityDisplay = extractedQtys.join(", ");
         }
@@ -330,31 +323,13 @@ function ItemDescriptionDisplayCell({
   item: PurchaseItem;
 }) {
   const { itemNames, itemCount } = parsePurchaseRecord(item);
-
-  if (itemNames.length === 0) {
-    return <span className="text-slate-400 font-bold text-xs select-none">-</span>;
-  }
-
-  const count = itemCount || itemNames.length;
+  const count = itemCount || itemNames.length || 0;
 
   return (
-    <div className="py-0.5 max-w-[170px]">
-      <span
-        className="font-extrabold text-slate-900 text-xs truncate block tracking-tight"
-        title={itemNames.join(", ")}
-      >
-        {itemNames.slice(0, 2).join(", ")}
-        {itemNames.length > 2 && (
-          <span className="text-slate-500 font-semibold text-[11px] ml-1">
-            (+{itemNames.length - 2})
-          </span>
-        )}
+    <div className="text-center py-0.5">
+      <span className="font-mono text-xs font-black text-slate-900 whitespace-nowrap">
+        {count > 0 ? count : "-"}
       </span>
-      {count > 0 && (
-        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 mt-1 whitespace-nowrap">
-          {count} {count === 1 ? "item" : "items"}
-        </span>
-      )}
     </div>
   );
 }
@@ -838,17 +813,18 @@ export default function PurchasesPage() {
               const dueInfo = getPurchaseDueInfo(item);
 
               return (
-                <div key={item.id} className={`p-3.5 bg-white rounded-2xl border space-y-2.5 shadow-2xs ${dueInfo.isOverdue ? "border-rose-300 bg-rose-50/15" : "border-slate-200"}`}>
+                <div key={item.id} className="p-3.5 bg-white rounded-2xl border border-slate-200 space-y-2.5 shadow-2xs">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-mono font-bold text-slate-500">{item.date}</span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${
                       dueInfo.isPaid
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        ? "text-emerald-600"
                         : dueInfo.isOverdue
-                        ? "bg-rose-50 text-rose-700 border-rose-300"
-                        : "bg-amber-50 text-amber-700 border-amber-200"
+                        ? "text-rose-600"
+                        : "text-amber-600"
                     }`}>
-                      {dueInfo.isPaid ? t("Paid") : dueInfo.isOverdue ? t("Overdue") : t("Pending / Credit")}
+                      <span className={`w-1.5 h-1.5 rounded-full ${dueInfo.isPaid ? "bg-emerald-500" : dueInfo.isOverdue ? "bg-rose-600" : "bg-amber-500"}`}></span>
+                      <span>{dueInfo.isPaid ? t("Paid") : dueInfo.isOverdue ? t("Overdue") : t("Pending / Credit")}</span>
                     </span>
                   </div>
 
@@ -871,29 +847,32 @@ export default function PurchasesPage() {
                     </div>
                   </div>
 
-                  {/* Category & Quantity Row */}
+                  {/* Category, Items & Quantity Row */}
                   <div className="p-2.5 bg-slate-50/80 rounded-xl border border-slate-200 flex items-center justify-between gap-2">
                     <CategoryDisplayCell item={item} t={t} />
-                    <div className="text-right shrink-0">
-                      <QuantityDisplayCell item={item} />
+                    <div className="flex items-center gap-4 text-right">
+                      <div>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase block">{t("ITEM")}</span>
+                        <ItemDescriptionDisplayCell item={item} />
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase block">{t("QUANTITY")}</span>
+                        <QuantityDisplayCell item={item} />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Items / Description Row */}
-                  <div className="px-1 text-xs">
-                    <ItemDescriptionDisplayCell item={item} />
-                  </div>
-
                   {/* Due Date Info */}
-                  <div className={`p-2 rounded-lg border flex items-center justify-between text-xs ${
-                    dueInfo.isOverdue ? "bg-rose-50 border-rose-200" : "bg-blue-50/50 border-blue-100"
-                  }`}>
+                  <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
                     <span className="text-slate-600 flex items-center gap-1 font-mono">
-                      <Calendar className={`w-3.5 h-3.5 ${dueInfo.isOverdue ? "text-rose-600" : "text-blue-600"}`} />
+                      <Calendar className="w-3.5 h-3.5 text-slate-500" />
                       {t("Due")}: {item.due_date || (item.credit_days ? calculateDueDate(item.date, item.credit_days) : item.date)}
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${dueInfo.badgeClass}`}>
-                      {dueInfo.text}
+                    <span className={`font-mono text-xs font-bold inline-flex items-center gap-1 ${
+                      dueInfo.isPaid ? "text-emerald-600" : dueInfo.isOverdue ? "text-rose-600" : "text-amber-700"
+                    }`}>
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{dueInfo.text}</span>
                     </span>
                   </div>
 
@@ -954,7 +933,7 @@ export default function PurchasesPage() {
                 {/* 4. CATEGORY */}
                 <th className="py-2.5 px-3.5 w-[140px] min-w-[140px] max-w-[140px] border-r border-slate-200/80">{t("CATEGORY")}</th>
                 {/* 5. ITEM */}
-                <th className="py-2.5 px-3.5 w-[170px] min-w-[170px] max-w-[170px] border-r border-slate-200/80">{t("ITEM")}</th>
+                <th className="py-2.5 px-3.5 text-center w-[80px] min-w-[80px] border-r border-slate-200/80">{t("ITEM")}</th>
                 {/* 6. QUANTITY */}
                 <th className="py-2.5 px-3.5 text-center w-[110px] min-w-[110px] border-r border-slate-200/80">{t("QUANTITY")}</th>
                 {/* 7. AMOUNT (₹) */}
@@ -983,9 +962,7 @@ export default function PurchasesPage() {
                     <tr
                       key={item.id}
                       onClick={() => setPreviewBill(item)}
-                      className={`transition-colors cursor-pointer group ${
-                        dueInfo.isOverdue ? "bg-rose-50/25 hover:bg-rose-50/55" : "hover:bg-blue-50/40"
-                      }`}
+                      className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
                     >
                       {/* 1. DATE */}
                       <td className="py-3 px-3.5 font-mono font-bold text-slate-700 whitespace-nowrap align-middle w-[100px] min-w-[100px] border-r border-slate-200/70">
@@ -1012,7 +989,7 @@ export default function PurchasesPage() {
                       </td>
 
                       {/* 5. ITEM */}
-                      <td className="py-3 px-3.5 align-middle w-[170px] min-w-[170px] max-w-[170px] border-r border-slate-200/70">
+                      <td className="py-3 px-3.5 text-center align-middle whitespace-nowrap w-[80px] min-w-[80px] border-r border-slate-200/70">
                         <ItemDescriptionDisplayCell item={item} />
                       </td>
 
@@ -1045,12 +1022,12 @@ export default function PurchasesPage() {
                             <span>{t("Settled")}</span>
                           </span>
                         ) : dueInfo.isOverdue ? (
-                          <span className="font-mono text-xs font-black text-rose-600 inline-flex items-center gap-1.5 justify-center bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 shadow-2xs">
-                            <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                          <span className="font-mono text-xs font-bold text-rose-600 inline-flex items-center gap-1.5 justify-center">
+                            <Clock className="w-3.5 h-3.5 text-rose-600" />
                             <span>{dueInfo.text}</span>
                           </span>
                         ) : dueInfo.isDueToday ? (
-                          <span className="font-mono text-xs font-black text-amber-800 inline-flex items-center gap-1.5 justify-center bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300 animate-pulse">
+                          <span className="font-mono text-xs font-bold text-amber-700 inline-flex items-center gap-1.5 justify-center">
                             <Clock className="w-3.5 h-3.5 text-amber-600" />
                             <span>{t("Due Today")}</span>
                           </span>
@@ -1070,8 +1047,8 @@ export default function PurchasesPage() {
                             <span>{t("Paid")}</span>
                           </span>
                         ) : dueInfo.isOverdue ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 shadow-2xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
                             <span>{t("Overdue")}</span>
                           </span>
                         ) : (
