@@ -403,9 +403,8 @@ export default function PurchasesPage() {
 
   useEffect(() => {
     const loadCats = () => {
-      const currentCid = getStoredCompanyId() || "comp-001";
-      const stored = getTenantItem<string[]>("texaflow_material_categories", currentCid === "comp-001" ? "om_sai_material_categories" : undefined);
-      if (Array.isArray(stored)) {
+      const stored = getTenantItem<string[]>("texaflow_material_categories", "om_sai_material_categories");
+      if (Array.isArray(stored) && stored.length > 0) {
         setMaterialCategoriesList(stored);
       } else {
         setMaterialCategoriesList([
@@ -428,8 +427,22 @@ export default function PurchasesPage() {
   }, []);
 
   const purchaseCategories = useMemo(() => {
-    return ["All", ...materialCategoriesList];
-  }, [materialCategoriesList]);
+    const catSet = new Set<string>();
+    materialCategoriesList.forEach((c) => catSet.add(c));
+    purchases.forEach((p) => {
+      if (p.category) {
+        p.category.split(",").map((c) => c.trim()).filter(Boolean).forEach((c) => catSet.add(c));
+      }
+      if (Array.isArray(p.items)) {
+        p.items.forEach((it: any) => {
+          if (it?.category && typeof it.category === "string" && it.category.trim()) {
+            catSet.add(it.category.trim());
+          }
+        });
+      }
+    });
+    return ["All", ...Array.from(catSet)];
+  }, [materialCategoriesList, purchases]);
 
   useEffect(() => {
     let isMounted = true;
@@ -437,7 +450,24 @@ export default function PurchasesPage() {
 
     const loadLocal = () => {
       try {
-        const stored = getTenantItem<PurchaseItem[]>("texaflow_purchases", currentCid === "comp-001" ? "om_sai_purchases" : undefined);
+        let stored = getTenantItem<PurchaseItem[]>("texaflow_purchases", "om_sai_purchases");
+        if (!stored || !Array.isArray(stored) || stored.length === 0) {
+          try {
+            const raw1 = localStorage.getItem(`texaflow_purchases_${currentCid}`);
+            const raw2 = localStorage.getItem("texaflow_purchases_comp-001");
+            const raw3 = localStorage.getItem("texaflow_purchases_comp-002");
+            const raw4 = localStorage.getItem("om_sai_purchases");
+            const raw5 = localStorage.getItem("texaflow_purchases");
+            const candidate = raw1 || raw2 || raw3 || raw4 || raw5;
+            if (candidate) {
+              const parsed = JSON.parse(candidate);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                stored = parsed;
+              }
+            }
+          } catch {}
+        }
+
         if (stored && Array.isArray(stored) && stored.length > 0) {
           setPurchases(stored);
           return stored;
@@ -462,20 +492,22 @@ export default function PurchasesPage() {
     async function loadLive() {
       try {
         const live = await fetchApi<PurchaseItem[]>("/purchases");
-        if (isMounted && Array.isArray(live) && live.length > 0) {
-          // Preserve local payment_status overrides so a paid bill is never reset to pending by stale backend
-          const currentLocal = getTenantItem<PurchaseItem[]>("texaflow_purchases", currentCid === "comp-001" ? "om_sai_purchases" : undefined) || [];
-          const localStatusMap = new Map(currentLocal.map((p) => [p.purchase_no || p.id, p.payment_status]));
+        if (isMounted && Array.isArray(live)) {
+          if (live.length > 0) {
+            // Preserve local payment_status overrides so a paid bill is never reset to pending by stale backend
+            const currentLocal = getTenantItem<PurchaseItem[]>("texaflow_purchases", "om_sai_purchases") || [];
+            const localStatusMap = new Map(currentLocal.map((p) => [p.purchase_no || p.id, p.payment_status]));
 
-          const merged = live.map((p) => ({
-            ...p,
-            payment_status: localStatusMap.get(p.purchase_no || p.id) || p.payment_status
-          }));
+            const merged = live.map((p) => ({
+              ...p,
+              payment_status: localStatusMap.get(p.purchase_no || p.id) || p.payment_status
+            }));
 
-          setPurchases(merged);
-          try {
-            setTenantItem("texaflow_purchases", merged, currentCid === "comp-001" ? "om_sai_purchases" : undefined);
-          } catch {}
+            setPurchases(merged);
+            try {
+              setTenantItem("texaflow_purchases", merged, "om_sai_purchases");
+            } catch {}
+          }
         }
       } catch (err) {
         console.warn("Backend purchase load notice:", err);
@@ -505,15 +537,13 @@ export default function PurchasesPage() {
     };
   }, []);
 
-
   const handleDeletePurchase = async (id: string) => {
     if (!confirm(t("Are you sure you want to delete this purchase bill?"))) return;
 
-    const currentCid = getStoredCompanyId() || "comp-001";
     const updated = purchases.filter((p) => p.id !== id);
     setPurchases(updated);
     try {
-      setTenantItem("texaflow_purchases", updated, currentCid === "comp-001" ? "om_sai_purchases" : undefined);
+      setTenantItem("texaflow_purchases", updated, "om_sai_purchases");
       invalidateApiCache("/purchases");
       window.dispatchEvent(new CustomEvent("texaflow_purchases_updated"));
       window.dispatchEvent(new Event("app_data_update"));
@@ -556,7 +586,11 @@ export default function PurchasesPage() {
           ? isUnpaid && dueInfo?.status === "Overdue"
           : isUnpaid;
 
-      const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
+      const { categories } = parsePurchaseRecord(item);
+      const matchesCategory =
+        selectedCategory === "All" ||
+        item.category === selectedCategory ||
+        categories.includes(selectedCategory);
 
       return matchesSearch && matchesStatus && matchesCategory;
     });

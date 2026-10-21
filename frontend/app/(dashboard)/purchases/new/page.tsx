@@ -1057,11 +1057,12 @@ function NewPurchaseContent() {
     }
 
     try {
-      const saved = getTenantItem<any[]>("texaflow_purchases", currentCid === "comp-001" ? "om_sai_purchases" : undefined) || [];
+      const saved = getTenantItem<any[]>("texaflow_purchases", "om_sai_purchases") || [];
       const updatedList = isEditMode
         ? saved.map((p: any) => (p.id === recordId || p.purchase_no === recordId ? purchasePayload : p))
         : [purchasePayload, ...saved];
-      setTenantItem("texaflow_purchases", updatedList, currentCid === "comp-001" ? "om_sai_purchases" : undefined);
+      setTenantItem("texaflow_purchases", updatedList, "om_sai_purchases");
+      window.dispatchEvent(new CustomEvent("texaflow_purchases_updated"));
       window.dispatchEvent(new Event("app_data_update"));
     } catch {}
 
