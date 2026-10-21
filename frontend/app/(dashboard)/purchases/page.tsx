@@ -385,8 +385,6 @@ export interface PurchaseItem {
   payment_terms?: string;
   credit_days?: number;
   due_date?: string;
-  linked_order?: string;
-  bill_image?: string;
   notes?: string;
 }
 
@@ -544,7 +542,6 @@ export default function PurchasesPage() {
         (item.vendor_name && item.vendor_name.toLowerCase().includes(q)) ||
         (item.category && item.category.toLowerCase().includes(q)) ||
         (item.items_description && item.items_description.toLowerCase().includes(q)) ||
-        (item.linked_order && item.linked_order.toLowerCase().includes(q)) ||
         (item.notes && item.notes.toLowerCase().includes(q));
 
       const isUnpaid = item.payment_status === "Pending" || item.payment_status === "Unpaid";
@@ -749,17 +746,6 @@ export default function PurchasesPage() {
                           {language === "gu" ? dueInfo.labelGu : dueInfo.label}
                         </span>
                       )}
-                    </div>
-                  )}
-
-                  {item.linked_order && (
-                    <div className="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-slate-700">{t("Linked Order")}:</span>
-                      <span
-                        className="font-bold text-slate-700 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 inline-flex items-center gap-1"
-                      >
-                        <span>📦 {item.linked_order}</span>
-                      </span>
                     </div>
                   )}
 
@@ -1070,12 +1056,6 @@ export default function PurchasesPage() {
                     <span className="font-medium text-slate-800">{previewBill.items_description}</span>
                   </div>
                 ) : null}
-                {previewBill.linked_order && (
-                  <div className="p-3 flex items-center justify-between gap-4">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{t("Linked Order")}</span>
-                    <span className="font-bold text-blue-700">📦 {previewBill.linked_order}</span>
-                  </div>
-                )}
                 <div className="p-3 flex items-center justify-between gap-4">
                   <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{t("Due Date / Mudat")}</span>
                   <span className="font-bold text-slate-800 font-mono">

@@ -16,8 +16,6 @@ class PurchaseBase(BaseModel):
     payment_terms: Optional[str] = "Net 45"
     credit_days: Optional[int] = 45
     due_date: Optional[str] = None
-    linked_order: Optional[str] = None
-    bill_image: Optional[str] = None
     notes: Optional[str] = None
 
 class PurchaseCreate(PurchaseBase):
@@ -36,8 +34,6 @@ class PurchaseUpdate(BaseModel):
     payment_terms: Optional[str] = None
     credit_days: Optional[int] = None
     due_date: Optional[str] = None
-    linked_order: Optional[str] = None
-    bill_image: Optional[str] = None
     notes: Optional[str] = None
 
 class PurchaseResponse(PurchaseBase):

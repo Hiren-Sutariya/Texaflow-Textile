@@ -458,8 +458,6 @@ function NewPurchaseContent() {
   const [paymentTerms, setPaymentTerms] = useState("Cash / Immediate");
   const [creditDays, setCreditDays] = useState(0);
   const [dueDate, setDueDate] = useState("");
-  const [linkedOrder, setLinkedOrder] = useState("");
-  const [billImage, setBillImage] = useState("");
   const [notes, setNotes] = useState("");
 
   // Tax / GST state
@@ -832,8 +830,6 @@ function NewPurchaseContent() {
       setPaymentTerms(matched.payment_terms || (matched.payment_status === "Pending" ? "Net 45" : "Cash / Immediate"));
       setCreditDays(matched.credit_days !== undefined ? matched.credit_days : (matched.payment_status === "Pending" ? 45 : 0));
       setDueDate(matched.due_date || "");
-      setLinkedOrder(matched.linked_order || "");
-      setBillImage(matched.bill_image || "");
       setNotes(matched.notes || "");
 
       // Load line items if present (handling JSON string or array)
@@ -1032,22 +1028,29 @@ function NewPurchaseContent() {
       payment_terms: paymentStatus === "Paid" ? "Cash / Immediate" : paymentTerms,
       credit_days: paymentStatus === "Paid" ? 0 : creditDays,
       due_date: paymentStatus === "Paid" ? billDate : calculateDueDate(billDate, creditDays),
-      linked_order: linkedOrder.trim(),
-      bill_image: billImage,
       notes: notes.trim()
     };
 
     try {
       if (isEditMode) {
-        await fetchApi(`/purchases/${recordId}`, {
+        const res = await fetchApi<any>(`/purchases/${recordId}`, {
           method: "PUT",
           body: JSON.stringify(purchasePayload)
         });
+        if (res && res.purchase_no) {
+          purchasePayload.purchase_no = res.purchase_no;
+        }
       } else {
-        await fetchApi("/purchases", {
+        const res = await fetchApi<any>("/purchases", {
           method: "POST",
           body: JSON.stringify(purchasePayload)
         });
+        if (res && res.id) {
+          purchasePayload.id = res.id;
+          if (res.purchase_no) {
+            purchasePayload.purchase_no = res.purchase_no;
+          }
+        }
       }
     } catch (err) {
       console.warn("Backend save notice:", err);

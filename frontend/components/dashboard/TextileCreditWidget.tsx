@@ -32,7 +32,6 @@ interface PurchaseItem {
   payment_terms?: string;
   credit_days?: number;
   due_date?: string;
-  linked_order?: string;
 }
 
 export default function TextileCreditWidget() {
@@ -266,11 +265,6 @@ export default function TextileCreditWidget() {
                           <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
                             {bill.purchase_no}
                           </span>
-                          {bill.linked_order && (
-                            <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
-                              {bill.linked_order}
-                            </span>
-                          )}
                         </div>
 
                         <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-1 flex-wrap">

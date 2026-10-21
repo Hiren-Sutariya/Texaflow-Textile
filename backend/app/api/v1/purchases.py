@@ -11,41 +11,6 @@ from app.core.tenant import get_tenant_company_id
 
 router = APIRouter(prefix="/purchases", tags=["Purchases"])
 
-def renumber_all_purchases(db: Session, company_id: str):
-    purchases = db.query(Purchase).filter(Purchase.company_id == company_id).all()
-    if not purchases:
-        return
-
-    def parse_d(d_str):
-        if not d_str:
-            return datetime(2026, 1, 1)
-        parts = d_str.strip().split("-")
-        if len(parts) == 3:
-            if len(parts[0]) == 4:
-                return datetime.strptime(d_str, "%Y-%m-%d")
-            return datetime.strptime(d_str, "%d-%m-%Y")
-        return datetime(2026, 1, 1)
-
-    sorted_pur = sorted(
-        purchases,
-        key=lambda x: (
-            parse_d(x.date),
-            int(x.id.split("-")[-1]) if x.id and x.id.split("-")[-1].isdigit() else 0
-        )
-    )
-
-    needs_renumber = False
-    for idx, pur in enumerate(sorted_pur, start=1):
-        expected_no = f"PB-{idx:03d}"
-        if pur.purchase_no != expected_no:
-            needs_renumber = True
-            break
-
-    if needs_renumber:
-        for idx, pur in enumerate(sorted_pur, start=1):
-            pur.purchase_no = f"PB-{idx:03d}"
-        db.commit()
-
 @router.get("", response_model=List[PurchaseResponse])
 def get_purchases(
     category: Optional[str] = None,
@@ -74,8 +39,7 @@ def get_purchases(
             (Purchase.vendor_name.ilike(search_pattern)) |
             (Purchase.category.ilike(search_pattern)) |
             (Purchase.notes.ilike(search_pattern)) |
-            (Purchase.purchase_no.ilike(search_pattern)) |
-            (Purchase.linked_order.ilike(search_pattern))
+            (Purchase.purchase_no.ilike(search_pattern))
         )
 
     return query.order_by(Purchase.purchase_no.desc(), Purchase.id.desc()).offset(skip).limit(limit).all()
@@ -86,7 +50,6 @@ def create_purchase(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    renumber_all_purchases(db, company_id)
     purchase_data = purchase_in.model_dump()
     purchase_data["company_id"] = company_id
 
@@ -115,14 +78,16 @@ def create_purchase(
     new_id = f"pur-{new_id_num:03d}"
     purchase_data["id"] = new_id
 
-    if not purchase_data.get("purchase_no") or purchase_data.get("purchase_no") == "PB-NEW":
+    user_bill_no = (purchase_data.get("purchase_no") or "").strip()
+    if not user_bill_no or user_bill_no in ["PB-NEW", "e.g. PB-001"]:
         purchase_data["purchase_no"] = f"PB-{new_id_num:03d}"
+    else:
+        purchase_data["purchase_no"] = user_bill_no
 
     new_purchase = Purchase(**purchase_data)
     db.add(new_purchase)
     db.commit()
     db.refresh(new_purchase)
-    renumber_all_purchases(db, company_id)
     return new_purchase
 
 @router.get("/{purchase_id}", response_model=PurchaseResponse)
@@ -164,6 +129,9 @@ def update_purchase(
     if "due_date" in update_data and update_data["due_date"]:
         update_data["due_date"] = format_to_dd_mm_yyyy(update_data["due_date"])
 
+    if "purchase_no" in update_data and update_data["purchase_no"]:
+        update_data["purchase_no"] = update_data["purchase_no"].strip()
+
     for field, value in update_data.items():
         setattr(purchase, field, value)
 
@@ -186,5 +154,5 @@ def delete_purchase(
 
     db.delete(purchase)
     db.commit()
-    renumber_all_purchases(db, company_id)
     return None
+
