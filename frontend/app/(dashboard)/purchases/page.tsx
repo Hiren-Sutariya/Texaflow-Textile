@@ -5,7 +5,7 @@ import Link from "next/link";
 import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { useLanguage } from "@/context/LanguageContext";
-import { getDueStatus, calculateDueDate } from "@/lib/creditTerms";
+import { getDueStatus, calculateDueDate, parseAnyDate } from "@/lib/creditTerms";
 import {
   Plus,
   Search,
@@ -24,6 +24,7 @@ import {
   CreditCard,
   Edit3,
   AlertTriangle,
+  AlertCircle,
   ArrowRight,
   TrendingUp,
   FileSpreadsheet,
@@ -174,40 +175,42 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
       if (desc) itemNames.push(desc);
     });
 
-    // Check quantities
-    let totalNumeric = 0;
-    let hasNumeric = false;
-    let detectedUnit = "";
-    let mixedUnits = false;
-    const rawQtyList: string[] = [];
+    // Check quantities - ONLY use if user explicitly entered a quantity
+    const hasAnyExplicitQty = validLineItems.some(
+      (it: any) => it.quantity && it.quantity.toString().trim()
+    );
 
-    for (const it of validLineItems) {
-      const rawQty = (it.quantity || "").toString().trim();
-      if (!rawQty) continue;
-      rawQtyList.push(rawQty);
+    if (hasAnyExplicitQty) {
+      let totalNumeric = 0;
+      let hasNumeric = false;
+      let detectedUnit = "";
+      let mixedUnits = false;
+      const rawQtyList: string[] = [];
 
-      const match = rawQty.match(/^([\d.]+)\s*(.*)$/);
-      if (match) {
-        hasNumeric = true;
-        totalNumeric += parseFloat(match[1]);
-        const unit = match[2]?.trim() || "";
-        if (!detectedUnit && unit) {
-          detectedUnit = unit;
-        } else if (detectedUnit && unit && detectedUnit.toLowerCase() !== unit.toLowerCase()) {
-          mixedUnits = true;
+      for (const it of validLineItems) {
+        const rawQty = (it.quantity || "").toString().trim();
+        if (!rawQty) continue;
+        rawQtyList.push(rawQty);
+
+        const match = rawQty.match(/^([\d.]+)\s*(.*)$/);
+        if (match) {
+          hasNumeric = true;
+          totalNumeric += parseFloat(match[1]);
+          const unit = match[2]?.trim() || "";
+          if (!detectedUnit && unit) {
+            detectedUnit = unit;
+          } else if (detectedUnit && unit && detectedUnit.toLowerCase() !== unit.toLowerCase()) {
+            mixedUnits = true;
+          }
         }
       }
-    }
 
-    if (hasNumeric && !mixedUnits && totalNumeric > 0) {
-      quantityDisplay = detectedUnit ? `${totalNumeric} ${detectedUnit}` : `${totalNumeric}`;
-    } else if (hasNumeric && totalNumeric > 0) {
-      quantityDisplay = `${totalNumeric}`;
-    } else if (rawQtyList.length > 0) {
-      if (rawQtyList.length <= 2) {
-        quantityDisplay = rawQtyList.join(", ");
-      } else {
-        quantityDisplay = `${rawQtyList.slice(0, 2).join(", ")} +${rawQtyList.length - 2}`;
+      if (hasNumeric && !mixedUnits && detectedUnit && totalNumeric > 0) {
+        quantityDisplay = `${totalNumeric} ${detectedUnit}`;
+      } else if (hasNumeric && detectedUnit && mixedUnits) {
+        quantityDisplay = rawQtyList.slice(0, 2).join(", ");
+      } else if (rawQtyList.length > 0) {
+        quantityDisplay = rawQtyList.slice(0, 2).join(", ");
       }
     }
   }
@@ -243,13 +246,14 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
           const name = cleanSub.slice(0, lastColon).trim();
           const q = cleanSub.slice(lastColon + 1).trim();
           if (name) itemNames.push(name);
-          if (q) extractedQtys.push(q);
+          if (q && /[a-zA-Z]/.test(q)) extractedQtys.push(q);
         } else if (cleanSub.includes("-")) {
           const lastDash = cleanSub.lastIndexOf("-");
           const name = cleanSub.slice(0, lastDash).trim();
           const q = cleanSub.slice(lastDash + 1).trim();
           if (name) itemNames.push(name);
-          if (q && /^[\d.]+\s*[a-zA-Z]*$/.test(q)) {
+          // Only treat as quantity if it has an explicit unit
+          if (q && /^[\d.]+\s*[a-zA-Z]+$/.test(q)) {
             extractedQtys.push(q);
           }
         } else {
@@ -264,16 +268,17 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
         let canSum = true;
         let unit = "";
         for (const q of extractedQtys) {
-          const m = q.match(/^([\d.]+)\s*(.*)$/);
-          if (m) {
+          const m = q.match(/^([\d.]+)\s*(.+)$/);
+          if (m && m[2].trim()) {
             sumNum += parseFloat(m[1]);
-            if (!unit && m[2]) unit = m[2];
+            if (!unit) unit = m[2].trim();
+            else if (unit.toLowerCase() !== m[2].trim().toLowerCase()) canSum = false;
           } else {
             canSum = false;
           }
         }
-        if (canSum && sumNum > 0) {
-          quantityDisplay = unit ? `${sumNum} ${unit}` : `${sumNum}`;
+        if (canSum && sumNum > 0 && unit) {
+          quantityDisplay = `${sumNum} ${unit}`;
         } else {
           quantityDisplay = extractedQtys.join(", ");
         }
@@ -324,11 +329,13 @@ function ItemDescriptionDisplayCell({
 }: {
   item: PurchaseItem;
 }) {
-  const { itemNames } = parsePurchaseRecord(item);
+  const { itemNames, itemCount } = parsePurchaseRecord(item);
 
   if (itemNames.length === 0) {
     return <span className="text-slate-400 font-bold text-xs select-none">-</span>;
   }
+
+  const count = itemCount || itemNames.length;
 
   return (
     <div className="py-0.5 max-w-[170px]">
@@ -343,15 +350,20 @@ function ItemDescriptionDisplayCell({
           </span>
         )}
       </span>
+      {count > 0 && (
+        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 mt-1 whitespace-nowrap">
+          {count} {count === 1 ? "item" : "items"}
+        </span>
+      )}
     </div>
   );
 }
 
 function QuantityDisplayCell({ item }: { item: PurchaseItem }) {
-  const { quantityDisplay, itemCount } = parsePurchaseRecord(item);
+  const { quantityDisplay } = parsePurchaseRecord(item);
 
-  if (!quantityDisplay || quantityDisplay === "-") {
-    return <span className="text-slate-800 font-black text-sm select-none">-</span>;
+  if (!quantityDisplay || quantityDisplay === "-" || quantityDisplay === "0") {
+    return <span className="text-slate-400 font-bold text-xs select-none">-</span>;
   }
 
   return (
@@ -359,13 +371,89 @@ function QuantityDisplayCell({ item }: { item: PurchaseItem }) {
       <span className="font-mono text-xs font-black text-slate-900 whitespace-nowrap">
         {quantityDisplay}
       </span>
-      {itemCount > 1 && (
-        <span className="text-[10px] text-slate-500 font-bold block whitespace-nowrap leading-none mt-0.5">
-          {itemCount} items
-        </span>
-      )}
     </div>
   );
+}
+
+export function getPurchaseDueInfo(item: PurchaseItem) {
+  if (item.payment_status === "Paid") {
+    return {
+      isPaid: true,
+      isOverdue: false,
+      isDueToday: false,
+      text: "Settled",
+      daysLeft: 0,
+      badgeClass: "text-emerald-700 bg-emerald-50 border-emerald-200",
+      statusClass: "text-emerald-600 font-bold"
+    };
+  }
+
+  // Parse bill date
+  const billD = parseAnyDate(item.date);
+  const creditDays = typeof item.credit_days === "number" ? item.credit_days : parseInt(String(item.credit_days || "0"), 10) || 0;
+
+  let dueD: Date | null = null;
+  if (item.due_date) {
+    dueD = parseAnyDate(item.due_date);
+  }
+  if (!dueD && billD) {
+    dueD = new Date(billD.getTime());
+    if (creditDays > 0) {
+      dueD.setDate(dueD.getDate() + creditDays);
+    }
+  }
+
+  if (!dueD) {
+    return {
+      isPaid: false,
+      isOverdue: false,
+      isDueToday: false,
+      text: creditDays ? `${creditDays}d` : "Immediate",
+      daysLeft: creditDays,
+      badgeClass: "text-slate-700 bg-slate-100 border-slate-200 font-bold",
+      statusClass: "text-amber-600 font-bold"
+    };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  dueD.setHours(0, 0, 0, 0);
+
+  const diffTime = dueD.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    const overdueDays = Math.abs(diffDays);
+    return {
+      isPaid: false,
+      isOverdue: true,
+      isDueToday: false,
+      text: `${overdueDays}d Overdue`,
+      daysLeft: diffDays,
+      badgeClass: "text-rose-700 bg-rose-50 border-rose-300 font-black",
+      statusClass: "text-rose-600 font-black"
+    };
+  } else if (diffDays === 0) {
+    return {
+      isPaid: false,
+      isOverdue: false,
+      isDueToday: true,
+      text: "Due Today",
+      daysLeft: 0,
+      badgeClass: "text-amber-900 bg-amber-100 border-amber-300 font-black animate-pulse",
+      statusClass: "text-amber-700 font-bold"
+    };
+  } else {
+    return {
+      isPaid: false,
+      isOverdue: false,
+      isDueToday: false,
+      text: `${diffDays}d left`,
+      daysLeft: diffDays,
+      badgeClass: diffDays <= 7 ? "text-amber-800 bg-amber-50 border-amber-200 font-bold" : "text-slate-700 bg-slate-100 border-slate-200 font-medium",
+      statusClass: "text-amber-600 font-bold"
+    };
+  }
 }
 
 export interface PurchaseItem {
@@ -747,17 +835,20 @@ export default function PurchasesPage() {
           ) : (
             filteredPurchases.map((item) => {
               const isUnpaid = item.payment_status === "Pending" || item.payment_status === "Unpaid";
-              const dueInfo = item.due_date ? getDueStatus(item.due_date, !isUnpaid) : null;
+              const dueInfo = getPurchaseDueInfo(item);
 
               return (
-                <div key={item.id} className="p-3.5 bg-white rounded-2xl border border-slate-200 space-y-2.5 shadow-2xs">
+                <div key={item.id} className={`p-3.5 bg-white rounded-2xl border space-y-2.5 shadow-2xs ${dueInfo.isOverdue ? "border-rose-300 bg-rose-50/15" : "border-slate-200"}`}>
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-mono font-bold text-slate-500">{item.date}</span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${item.payment_status === "Paid"
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                      dueInfo.isPaid
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : dueInfo.isOverdue
+                        ? "bg-rose-50 text-rose-700 border-rose-300"
                         : "bg-amber-50 text-amber-700 border-amber-200"
-                      }`}>
-                      {item.payment_status === "Paid" ? t("Paid") : t("Pending / Credit")}
+                    }`}>
+                      {dueInfo.isPaid ? t("Paid") : dueInfo.isOverdue ? t("Overdue") : t("Pending / Credit")}
                     </span>
                   </div>
 
@@ -794,19 +885,17 @@ export default function PurchasesPage() {
                   </div>
 
                   {/* Due Date Info */}
-                  {item.due_date && (
-                    <div className="p-2 bg-blue-50/50 rounded-lg border border-blue-100 flex items-center justify-between text-xs">
-                      <span className="text-slate-600 flex items-center gap-1 font-mono">
-                        <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                        {t("Due")}: {item.due_date}
-                      </span>
-                      {dueInfo && (
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${dueInfo.badgeClass}`}>
-                          {language === "gu" ? dueInfo.labelGu : dueInfo.label}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  <div className={`p-2 rounded-lg border flex items-center justify-between text-xs ${
+                    dueInfo.isOverdue ? "bg-rose-50 border-rose-200" : "bg-blue-50/50 border-blue-100"
+                  }`}>
+                    <span className="text-slate-600 flex items-center gap-1 font-mono">
+                      <Calendar className={`w-3.5 h-3.5 ${dueInfo.isOverdue ? "text-rose-600" : "text-blue-600"}`} />
+                      {t("Due")}: {item.due_date || (item.credit_days ? calculateDueDate(item.date, item.credit_days) : item.date)}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${dueInfo.badgeClass}`}>
+                      {dueInfo.text}
+                    </span>
+                  </div>
 
                   <div className="text-[11px] text-slate-600 flex items-start gap-1.5">
                     <span className="font-bold text-slate-400 uppercase text-[10px] shrink-0">{t("Remarks")}:</span>
@@ -864,8 +953,8 @@ export default function PurchasesPage() {
                 <th className="py-2.5 px-3.5 w-[170px] min-w-[170px] max-w-[170px] border-r border-slate-200/80">{t("SUPPLIER / MILL")}</th>
                 {/* 4. CATEGORY */}
                 <th className="py-2.5 px-3.5 w-[140px] min-w-[140px] max-w-[140px] border-r border-slate-200/80">{t("CATEGORY")}</th>
-                {/* 5. ITEM / SHADE DESCRIPTION */}
-                <th className="py-2.5 px-3.5 w-[170px] min-w-[170px] max-w-[170px] border-r border-slate-200/80">{t("ITEM / SHADE DESCRIPTION")}</th>
+                {/* 5. ITEM */}
+                <th className="py-2.5 px-3.5 w-[170px] min-w-[170px] max-w-[170px] border-r border-slate-200/80">{t("ITEM")}</th>
                 {/* 6. QUANTITY */}
                 <th className="py-2.5 px-3.5 text-center w-[110px] min-w-[110px] border-r border-slate-200/80">{t("QUANTITY")}</th>
                 {/* 7. AMOUNT (₹) */}
@@ -889,11 +978,14 @@ export default function PurchasesPage() {
                 </tr>
               ) : (
                 filteredPurchases.map((item) => {
+                  const dueInfo = getPurchaseDueInfo(item);
                   return (
                     <tr
                       key={item.id}
                       onClick={() => setPreviewBill(item)}
-                      className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
+                      className={`transition-colors cursor-pointer group ${
+                        dueInfo.isOverdue ? "bg-rose-50/25 hover:bg-rose-50/55" : "hover:bg-blue-50/40"
+                      }`}
                     >
                       {/* 1. DATE */}
                       <td className="py-3 px-3.5 font-mono font-bold text-slate-700 whitespace-nowrap align-middle w-[100px] min-w-[100px] border-r border-slate-200/70">
@@ -919,7 +1011,7 @@ export default function PurchasesPage() {
                         <CategoryDisplayCell item={item} t={t} />
                       </td>
 
-                      {/* 5. ITEM / SHADE DESCRIPTION */}
+                      {/* 5. ITEM */}
                       <td className="py-3 px-3.5 align-middle w-[170px] min-w-[170px] max-w-[170px] border-r border-slate-200/70">
                         <ItemDescriptionDisplayCell item={item} />
                       </td>
@@ -947,25 +1039,40 @@ export default function PurchasesPage() {
 
                       {/* 9. DUE (DAYS) */}
                       <td className="py-3 px-3.5 text-center align-middle whitespace-nowrap w-[105px] min-w-[105px] border-r border-slate-200/70">
-                        {item.payment_status === "Paid" ? (
+                        {dueInfo.isPaid ? (
                           <span className="text-xs font-bold text-emerald-700 inline-flex items-center gap-1.5 justify-center">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             <span>{t("Settled")}</span>
                           </span>
+                        ) : dueInfo.isOverdue ? (
+                          <span className="font-mono text-xs font-black text-rose-600 inline-flex items-center gap-1.5 justify-center bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 shadow-2xs">
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                            <span>{dueInfo.text}</span>
+                          </span>
+                        ) : dueInfo.isDueToday ? (
+                          <span className="font-mono text-xs font-black text-amber-800 inline-flex items-center gap-1.5 justify-center bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300 animate-pulse">
+                            <Clock className="w-3.5 h-3.5 text-amber-600" />
+                            <span>{t("Due Today")}</span>
+                          </span>
                         ) : (
                           <span className="font-mono text-xs font-bold text-amber-700 inline-flex items-center gap-1.5 justify-center">
                             <Clock className="w-3.5 h-3.5 text-amber-600" />
-                            <span>{item.credit_days ? `${item.credit_days}d` : "0d"}</span>
+                            <span>{dueInfo.text}</span>
                           </span>
                         )}
                       </td>
 
                       {/* 10. STATUS */}
                       <td className="py-3 px-3.5 text-center align-middle whitespace-nowrap w-[95px] min-w-[95px] border-r border-slate-200/70">
-                        {item.payment_status === "Paid" ? (
+                        {dueInfo.isPaid ? (
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                             <span>{t("Paid")}</span>
+                          </span>
+                        ) : dueInfo.isOverdue ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
+                            <span>{t("Overdue")}</span>
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600">

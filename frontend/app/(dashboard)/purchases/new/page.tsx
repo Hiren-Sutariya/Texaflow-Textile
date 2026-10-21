@@ -1338,7 +1338,7 @@ function NewPurchaseContent() {
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-extrabold tracking-wider text-slate-600 uppercase">
                   <th className="py-2.5 px-3 w-12 text-center">{t("SR")}</th>
                   <th className="py-2.5 px-3 w-52">{t("CATEGORY*")}</th>
-                  <th className="py-2.5 px-3 min-w-[220px]">{t("ITEM / SHADE DESCRIPTION*")}</th>
+                  <th className="py-2.5 px-3 min-w-[220px]">{t("ITEM*")}</th>
                   <th className="py-2.5 px-3 w-36">{t("QUANTITY / UNIT")}</th>
                   <th className="py-2.5 px-3 w-32 text-right">{t("RATE (₹)")}</th>
                   <th className="py-2.5 px-3 w-36 text-right">{t("AMOUNT (₹)*")}</th>
