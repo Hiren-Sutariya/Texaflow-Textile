@@ -75,7 +75,7 @@ def get_categories(
     query = db.query(Category).filter(Category.company_id == active_cid)
     if module and module != "all":
         query = query.filter(Category.module == module)
-    results = query.order_by(Category.name.asc()).all()
+    results = query.order_by(Category.created_at.asc(), Category.id.asc()).all()
 
     # Guarantee uniqueness by (module, lowercase name)
     seen = set()

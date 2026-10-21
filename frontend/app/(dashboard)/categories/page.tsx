@@ -19,29 +19,29 @@ import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache } from "@/lib/
 import { useLanguage } from "@/context/LanguageContext";
 
 const DEFAULT_MATERIAL_CATEGORIES = [
-  "Chemicals & Dyes",
-  "Lace & Borders",
   "Raw Material & Fabric",
   "Yarn & Threads",
-  "Zari & Metallic"
+  "Zari & Metallic",
+  "Lace & Borders",
+  "Chemicals & Dyes"
 ];
 
 const DEFAULT_EXPENSE_CATEGORIES = [
-  "Dhaga & Consumables",
-  "Electricity & Power",
   "Karigar Salary",
-  "Logistics & Courier",
+  "Electricity & Power",
+  "Worker Advance / Upad",
   "Machine Maintenance & Repairs",
   "Packaging Materials",
-  "Worker Advance / Upad"
+  "Dhaga & Consumables",
+  "Logistics & Courier"
 ];
 
 const DEFAULT_DESIGN_CATEGORIES = [
+  "Saree",
   "Choli & Blouse",
-  "Dupatta",
   "Kurti & Suit",
-  "Lehenga",
-  "Saree"
+  "Dupatta",
+  "Lehenga"
 ];
 
 type ModuleType = "all" | "material" | "expense" | "design";
@@ -271,10 +271,8 @@ export default function CategoriesPage() {
     loadCategories();
     const handleStorage = () => loadCategories();
     window.addEventListener("storage", handleStorage);
-    window.addEventListener("texaflow_material_categories_changed", handleStorage);
     return () => {
       window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("texaflow_material_categories_changed", handleStorage);
     };
   }, []);
 
@@ -321,16 +319,14 @@ export default function CategoriesPage() {
     if (module === "material") {
       setMaterialCategories(updated);
       setTenantItem("texaflow_material_categories", updated);
-      window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
     } else if (module === "expense") {
       setExpenseCategories(updated);
       setTenantItem("texaflow_expense_categories_order", updated);
-      window.dispatchEvent(new CustomEvent("texaflow_expense_categories_changed"));
     } else {
       setDesignCategories(updated);
       setTenantItem("texaflow_design_categories", updated);
-      window.dispatchEvent(new CustomEvent("texaflow_design_categories_changed"));
     }
+    window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
   };
 
   // Add handler
@@ -349,7 +345,8 @@ export default function CategoriesPage() {
       return;
     }
 
-    const updated = [trimmed, ...targetList];
+    // Append to end so it appears sequentially at the next serial number (e.g., #07)
+    const updated = [...targetList, trimmed];
     saveCategoryList(addModule, updated);
     setAddName("");
     setIsAddModalOpen(false);
