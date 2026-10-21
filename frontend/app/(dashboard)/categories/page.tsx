@@ -164,20 +164,25 @@ export default function CategoriesPage() {
       if (Array.isArray(liveCached) && liveCached.length > 0) {
         const seen = new Set<string>();
         const items: CategoryRecord[] = [];
-        let count = 1;
+        const modCounters: { [key: string]: number } = { expense: 1, material: 1, design: 1 };
         for (const c of liveCached) {
           const trimmed = c.name?.trim();
           if (!trimmed) continue;
-          const key = `${c.module}_${trimmed.toLowerCase()}`;
+          const mod = (c.module as "material" | "expense" | "design") || "material";
+          const key = `${mod}_${trimmed.toLowerCase()}`;
           if (seen.has(key)) continue;
           seen.add(key);
+
+          const sr = modCounters[mod] || 1;
+          modCounters[mod] = sr + 1;
+
           items.push({
-            id: c.id || `cat-${(c.module || "mat").slice(0, 3)}-${trimmed}`,
+            id: c.id || `cat-${mod.slice(0, 3)}-${trimmed}`,
             name: trimmed,
-            module: (c.module as "material" | "expense" | "design") || "material",
-            moduleLabel: getModuleLabel(c.module),
+            module: mod,
+            moduleLabel: getModuleLabel(mod),
             status: "Active",
-            srNo: count++,
+            srNo: sr,
           });
         }
         return { items, hasCache: true };
@@ -239,25 +244,29 @@ export default function CategoriesPage() {
         setCachedApi("/categories", live);
         
         // Supabase returns items ordered strictly by created_at.asc(), id.asc()
-        // We preserve this permanent creation sequence and assign each category its permanent SR NO
+        // Each module starts counting from 1 (e.g. Expenses: 01 to 07, Material: 01...)
         const seen = new Set<string>();
         const unified: CategoryRecord[] = [];
-        let count = 1;
+        const modCounters: { [key: string]: number } = { expense: 1, material: 1, design: 1 };
 
         for (const c of live) {
           const trimmed = c.name?.trim();
           if (!trimmed) continue;
-          const key = `${c.module}_${trimmed.toLowerCase()}`;
+          const mod = (c.module as "material" | "expense" | "design") || "material";
+          const key = `${mod}_${trimmed.toLowerCase()}`;
           if (seen.has(key)) continue;
           seen.add(key);
 
+          const sr = modCounters[mod] || 1;
+          modCounters[mod] = sr + 1;
+
           unified.push({
-            id: c.id || `cat-${(c.module || "mat").slice(0, 3)}-${trimmed}`,
+            id: c.id || `cat-${mod.slice(0, 3)}-${trimmed}`,
             name: trimmed,
-            module: (c.module as "material" | "expense" | "design") || "material",
-            moduleLabel: getModuleLabel(c.module),
+            module: mod,
+            moduleLabel: getModuleLabel(mod),
             status: "Active",
-            srNo: count++,
+            srNo: sr,
           });
         }
 
@@ -300,12 +309,22 @@ export default function CategoriesPage() {
     };
   }, []);
 
-  // Filtered by search and module (preserves permanent assigned srNo)
+  // Filtered by search and module (preserves module-specific assigned srNo)
   const filteredRecords = useMemo(() => {
-    return categories.filter((rec) => {
+    const list = categories.filter((rec) => {
       const matchSearch = !search || rec.name.toLowerCase().includes(search.toLowerCase().trim());
       const matchModule = moduleFilter === "all" || rec.module === moduleFilter;
       return matchSearch && matchModule;
+    });
+
+    const moduleOrder: { [key: string]: number } = { expense: 1, material: 2, design: 3 };
+    return [...list].sort((a, b) => {
+      if (moduleFilter === "all") {
+        const orderA = moduleOrder[a.module] || 99;
+        const orderB = moduleOrder[b.module] || 99;
+        if (orderA !== orderB) return orderA - orderB;
+      }
+      return a.srNo - b.srNo;
     });
   }, [categories, search, moduleFilter]);
 
@@ -313,7 +332,7 @@ export default function CategoriesPage() {
   const expenseCount = useMemo(() => categories.filter((c) => c.module === "expense").length, [categories]);
   const designCount = useMemo(() => categories.filter((c) => c.module === "design").length, [categories]);
 
-  // Add handler - Appends new category to the end with the next sequential SR NO (e.g. #08 or #09)
+  // Add handler - Appends new category with next sequential SR NO in its module (e.g. #08 in Expenses, #02 in Material)
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = addName.trim();
@@ -324,8 +343,9 @@ export default function CategoriesPage() {
       return;
     }
 
-    // Next sequential SR NO (e.g. if 8 categories exist, next is 9)
-    const nextSrNo = categories.length > 0 ? Math.max(...categories.map((c) => c.srNo)) + 1 : 1;
+    // Next sequential SR NO for THIS module (e.g. if 7 expenses exist, next expense is 8; if 1 material exists, next is 2)
+    const sameModuleItems = categories.filter((c) => c.module === addModule);
+    const nextSrNo = sameModuleItems.length > 0 ? Math.max(...sameModuleItems.map((c) => c.srNo)) + 1 : 1;
     const tempId = `cat-${addModule.slice(0, 3)}-${Date.now()}`;
     
     const newRecord: CategoryRecord = {
@@ -337,13 +357,12 @@ export default function CategoriesPage() {
       srNo: nextSrNo,
     };
 
-    // Appended to the end so existing categories' numbers and positions NEVER change
     const updated = [...categories, newRecord];
     setCategories(updated);
     syncToTenantStorage(updated);
     setAddName("");
     setIsAddModalOpen(false);
-    showToast(`Category "${trimmed}" added as #${String(nextSrNo).padStart(2, "0")}!`);
+    showToast(`Category "${trimmed}" added as #${String(nextSrNo).padStart(2, "0")} in ${getModuleLabel(addModule)}!`);
 
     try {
       const res = await fetchApi<{ id: string; name: string; module: string }>("/categories", {
