@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, invalidateApiCache } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import { VoiceTextarea } from "@/components/ui/VoiceTextarea";
@@ -180,17 +180,15 @@ function CustomSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-3 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${
-          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
-        }`}
+        className={`w-full h-9 px-3 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
+          }`}
       >
         <span className={`truncate font-bold ${selectedOption ? "text-slate-900" : "text-slate-400"}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${
-            isOpen ? "rotate-180 text-blue-600" : ""
-          }`}
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${isOpen ? "rotate-180 text-blue-600" : ""
+            }`}
         />
       </button>
 
@@ -206,11 +204,10 @@ function CustomSelect({
                   onChange(opt.value);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-all cursor-pointer ${
-                  isSelected
+                className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-all cursor-pointer ${isSelected
                     ? "bg-blue-50 text-blue-900 font-extrabold"
                     : "text-slate-700 hover:bg-slate-50 font-bold"
-                }`}
+                  }`}
               >
                 <span className="truncate">{opt.label}</span>
                 {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
@@ -280,9 +277,8 @@ function CustomDatePicker({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-slate-400 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer ${
-          isOpen ? "border-slate-500 ring-1 ring-slate-400" : ""
-        }`}
+        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-slate-400 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer ${isOpen ? "border-slate-500 ring-1 ring-slate-400" : ""
+          }`}
       >
         <span className={`font-mono font-bold text-xs ${formattedDisplay ? "text-slate-900" : "text-slate-400"}`}>
           {formattedDisplay || placeholder}
@@ -353,8 +349,8 @@ function CustomDatePicker({
 
                 const isSelected = parsedVal
                   ? parsedVal.getDate() === day &&
-                    parsedVal.getMonth() === viewMonth &&
-                    parsedVal.getFullYear() === viewYear
+                  parsedVal.getMonth() === viewMonth &&
+                  parsedVal.getFullYear() === viewYear
                   : false;
 
                 const isToday = cellDateStr === todayStr;
@@ -367,13 +363,12 @@ function CustomDatePicker({
                       onChange(cellDateStr);
                       setIsOpen(false);
                     }}
-                    className={`h-7 rounded-lg text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
-                      isSelected
+                    className={`h-7 rounded-lg text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${isSelected
                         ? "bg-slate-900 text-white shadow-2xs font-extrabold"
                         : isToday
-                        ? "bg-slate-100 text-slate-900 font-extrabold border border-slate-300"
-                        : "text-slate-700 hover:bg-slate-100"
-                    }`}
+                          ? "bg-slate-100 text-slate-900 font-extrabold border border-slate-300"
+                          : "text-slate-700 hover:bg-slate-100"
+                      }`}
                   >
                     {day}
                   </button>
@@ -503,7 +498,7 @@ function NewPurchaseContent() {
       } else {
         setCategoriesList(DEFAULT_CATEGORIES);
       }
-    } catch {}
+    } catch { }
   };
 
   // Load custom categories from tenant storage on mount and when event fires
@@ -593,15 +588,15 @@ function NewPurchaseContent() {
   const handleRemoveLineItem = (id: string) => {
     const nextItems = lineItems.length <= 1
       ? [
-          {
-            id: "item-1",
-            category: "",
-            description: "",
-            quantity: "",
-            rate: "",
-            amount: ""
-          }
-        ]
+        {
+          id: "item-1",
+          category: "",
+          description: "",
+          quantity: "",
+          rate: "",
+          amount: ""
+        }
+      ]
       : lineItems.filter((item) => item.id !== id);
 
     setLineItems(nextItems);
@@ -773,8 +768,8 @@ function NewPurchaseContent() {
     async function loadVendors() {
       try {
         const live = await fetchApi<any[]>("/vendors");
-        if (Array.isArray(live) && live.length > 0) {
-          const scoped = live.filter((v: any) => (v.company_id || "comp-001") === currentCid);
+        if (Array.isArray(live)) {
+          const scoped = live.filter((v: any) => (v.company_id || currentCid) === currentCid);
           setRawVendors(scoped);
           const names = scoped
             .map((v: any) => v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim())
@@ -782,21 +777,22 @@ function NewPurchaseContent() {
           setVendorsList(Array.from(new Set(names)));
           return;
         }
-      } catch {}
+      } catch { }
 
       try {
-        const localMaster = localStorage.getItem("app_vendors_master");
-        const saved = localMaster 
-          ? JSON.parse(localMaster) 
-          : getTenantItem<any[]>("texaflow_vendors", currentCid === "comp-001" ? "om_sai_vendors" : undefined);
-        if (Array.isArray(saved) && saved.length > 0) {
-          setRawVendors(saved);
-          const names = saved
+        const saved = getTenantItem<any[]>("texaflow_vendors");
+        if (Array.isArray(saved)) {
+          const scoped = saved.filter((v: any) => (v.company_id || currentCid) === currentCid);
+          setRawVendors(scoped);
+          const names = scoped
             .map((v: any) => v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim())
             .filter(Boolean);
           setVendorsList(Array.from(new Set(names)));
+        } else {
+          setRawVendors([]);
+          setVendorsList([]);
         }
-      } catch {}
+      } catch { }
     }
     loadVendors();
   }, []);
@@ -917,7 +913,7 @@ function NewPurchaseContent() {
     };
 
     const currentCid = getStoredCompanyId() || "comp-001";
-    const list = getTenantItem<any[]>("texaflow_purchases", currentCid === "comp-001" ? "om_sai_purchases" : undefined) || [];
+    const list = getTenantItem<any[]>("texaflow_purchases") || [];
     const localMatched = list.find((item: any) => item.id === editId || item.purchase_no === editId);
     if (localMatched) {
       populateFromRecord(localMatched);
@@ -936,7 +932,7 @@ function NewPurchaseContent() {
             const m = all.find((p: any) => p.id === editId || p.purchase_no === editId);
             if (m) populateFromRecord(m);
           }
-        } catch {}
+        } catch { }
       }
     }
     fetchFromApi();
@@ -974,7 +970,7 @@ function NewPurchaseContent() {
     }
 
     if (!vendorName.trim()) {
-      alert(t("Please select or enter supplier/vendor name."));
+      alert(t("Please select or enter party name."));
       return;
     }
     const numAmount = parseFloat(amount);
@@ -1057,14 +1053,15 @@ function NewPurchaseContent() {
     }
 
     try {
-      const saved = getTenantItem<any[]>("texaflow_purchases", "om_sai_purchases") || [];
+      const saved = getTenantItem<any[]>("texaflow_purchases") || [];
       const updatedList = isEditMode
         ? saved.map((p: any) => (p.id === recordId || p.purchase_no === recordId ? purchasePayload : p))
         : [purchasePayload, ...saved];
-      setTenantItem("texaflow_purchases", updatedList, "om_sai_purchases");
+      setTenantItem("texaflow_purchases", updatedList);
+      invalidateApiCache("/purchases");
       window.dispatchEvent(new CustomEvent("texaflow_purchases_updated"));
       window.dispatchEvent(new Event("app_data_update"));
-    } catch {}
+    } catch { }
 
     router.push("/purchases");
   };
@@ -1091,10 +1088,10 @@ function NewPurchaseContent() {
         {/* BOX 1: SUPPLIER & BILL SPECIFICATIONS */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs relative z-30">
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200">
-            {/* LEFT COLUMN: SUPPLIER / VENDOR */}
+            {/* LEFT COLUMN: SUPPLIER / PARTY */}
             <div className="p-4 sm:p-5 md:pr-8 space-y-3">
               <label className="text-xs font-bold text-slate-800 uppercase tracking-wide block">
-                {t("Supplier / Vendor*")}
+                {t("Supplier / Party*")}
               </label>
 
               <div className="relative" ref={vendorDropdownRef}>
@@ -1108,7 +1105,7 @@ function NewPurchaseContent() {
                       setIsVendorDropdownOpen(true);
                     }}
                     onFocus={() => setIsVendorDropdownOpen(true)}
-                    placeholder={t("Search or enter vendor name...")}
+                    placeholder={t("Search or enter party name...")}
                     className="w-full h-9 pl-9 pr-14 bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-bold text-slate-900 text-xs shadow-2xs focus:outline-none transition-all"
                     required
                   />
@@ -1141,7 +1138,7 @@ function NewPurchaseContent() {
                   <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-full bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 max-h-60 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
                     {filteredVendors.length === 0 ? (
                       <div className="p-3 text-center text-slate-400 text-xs font-medium">
-                        {vendorName ? `No registered vendor matching "${vendorName}". Keep typing to use custom name.` : t("No vendors found.")}
+                        {vendorName ? `No registered party matching "${vendorName}". Keep typing to use custom name.` : t("No parties found.")}
                       </div>
                     ) : (
                       filteredVendors.map((v) => {
@@ -1151,9 +1148,8 @@ function NewPurchaseContent() {
                             key={v}
                             type="button"
                             onClick={() => handleVendorSelect(v)}
-                            className={`w-full text-left px-3 py-2 hover:bg-blue-50/70 rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                              isSelected ? "bg-blue-50 text-blue-900 font-extrabold" : ""
-                            }`}
+                            className={`w-full text-left px-3 py-2 hover:bg-blue-50/70 rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors ${isSelected ? "bg-blue-50 text-blue-900 font-extrabold" : ""
+                              }`}
                           >
                             <span className="truncate">{v}</span>
                             {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
@@ -1258,7 +1254,7 @@ function NewPurchaseContent() {
 
                     {/* CATEGORY (CUSTOM MODERN DROPDOWN) */}
                     <td className={`py-2 px-3 ${openCategoryItemId === item.id ? "relative z-40" : ""}`}>
-                      <div 
+                      <div
                         className="relative w-full"
                         ref={(el) => {
                           categoryItemDropdownRefs.current[item.id] = el;
@@ -1267,9 +1263,8 @@ function NewPurchaseContent() {
                         <button
                           type="button"
                           onClick={() => setOpenCategoryItemId(openCategoryItemId === item.id ? null : item.id)}
-                          className={`w-full h-9 px-3 bg-white hover:bg-slate-50 border rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between shadow-2xs cursor-pointer transition-all ${
-                            openCategoryItemId === item.id ? "border-blue-500 ring-2 ring-blue-500/20" : "border-slate-300"
-                          }`}
+                          className={`w-full h-9 px-3 bg-white hover:bg-slate-50 border rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between shadow-2xs cursor-pointer transition-all ${openCategoryItemId === item.id ? "border-blue-500 ring-2 ring-blue-500/20" : "border-slate-300"
+                            }`}
                         >
                           <span className={`truncate ${item.category ? "text-slate-900" : "text-slate-400 font-normal"}`}>
                             {item.category || t("Select Category...")}
@@ -1289,9 +1284,8 @@ function NewPurchaseContent() {
                                     handleUpdateLineItem(item.id, "category", c);
                                     setOpenCategoryItemId(null);
                                   }}
-                                  className={`w-full text-left px-3 py-2 hover:bg-blue-50/70 rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                                    isSelected ? "bg-blue-50 text-blue-900 font-extrabold" : ""
-                                  }`}
+                                  className={`w-full text-left px-3 py-2 hover:bg-blue-50/70 rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors ${isSelected ? "bg-blue-50 text-blue-900 font-extrabold" : ""
+                                    }`}
                                 >
                                   <span className="truncate">{c}</span>
                                   {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
@@ -1363,11 +1357,10 @@ function NewPurchaseContent() {
                       <button
                         type="button"
                         onClick={() => handleRemoveLineItem(item.id)}
-                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                          lineItems.length > 1
+                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${lineItems.length > 1
                             ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                             : "text-slate-300 hover:text-slate-500 hover:bg-slate-100"
-                        }`}
+                          }`}
                         title="Remove Row"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1420,11 +1413,10 @@ function NewPurchaseContent() {
                       setCreditDays(0);
                       setPaymentTerms("Cash / Immediate");
                     }}
-                    className={`flex-1 h-9 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
-                      paymentStatus === "Paid"
+                    className={`flex-1 h-9 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${paymentStatus === "Paid"
                         ? "bg-blue-600 text-white border-blue-600 shadow-2xs font-extrabold"
                         : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     <Check className="w-3.5 h-3.5" />
                     <span>{t("Paid")}</span>
@@ -1438,11 +1430,10 @@ function NewPurchaseContent() {
                       if (creditDays === 0) setCreditDays(45);
                       setPaymentTerms("Net 45");
                     }}
-                    className={`flex-1 h-9 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
-                      paymentStatus === "Pending"
+                    className={`flex-1 h-9 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${paymentStatus === "Pending"
                         ? "bg-amber-600 text-white border-amber-600 shadow-2xs font-extrabold"
                         : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     <Clock className="w-3.5 h-3.5" />
                     <span>{t("Pending / Credit")}</span>
@@ -1473,11 +1464,10 @@ function NewPurchaseContent() {
                             setCreditDays(days);
                             setPaymentTerms(`Net ${days}`);
                           }}
-                          className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer border ${
-                            isSelected
+                          className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer border ${isSelected
                               ? "bg-blue-600 text-white border-blue-600 shadow-2xs font-extrabold"
                               : "bg-white text-slate-700 border-amber-200 hover:bg-amber-100/50"
-                          }`}
+                            }`}
                         >
                           {days}d
                         </button>
@@ -1674,11 +1664,10 @@ function NewPurchaseContent() {
               type="button"
               disabled={isSaving}
               onClick={handleSavePurchase}
-              className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
-                isSaving
+              className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${isSaving
                   ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
                   : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
-              }`}
+                }`}
             >
               {isSaving ? (
                 <>

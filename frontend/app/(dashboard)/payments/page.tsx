@@ -147,14 +147,9 @@ export default function PaymentsAndVouchersPage() {
 
     // Instant 0ms Sync Check on mount
     try {
-      const saved = getTenantItem<PaymentVoucherItem[]>("texaflow_vouchers", "om_sai_vouchers");
-      let list = Array.isArray(saved) ? saved : [];
-      if (!list.some((p: any) => (p.company_id || currentCid) === currentCid && (p.voucher_no === "REC-2026-084" || p.voucher_no === "REC-084")) && seedForTenant.length > 0) {
-        list = [...seedForTenant, ...list];
-        setTenantItem("texaflow_vouchers", list, "om_sai_vouchers");
-      }
-      const scoped = list.filter((p: any) => (p.company_id || currentCid) === currentCid);
-      if (scoped.length > 0) {
+      const saved = getTenantItem<PaymentVoucherItem[]>("texaflow_vouchers");
+      if (saved && Array.isArray(saved)) {
+        const scoped = saved.filter((p: any) => (p.company_id || currentCid) === currentCid);
         setVouchers(scoped);
       }
     } catch {}
@@ -163,7 +158,7 @@ export default function PaymentsAndVouchersPage() {
       try {
         const live = await fetchApi<any[]>("/payments");
         if (!isMounted) return;
-        if (Array.isArray(live) && live.length > 0) {
+        if (Array.isArray(live)) {
           const scoped = live.filter((p: any) => (p.company_id || currentCid) === currentCid);
           const mapped: PaymentVoucherItem[] = scoped.map((p: any) => ({
             id: p.id,
@@ -184,14 +179,10 @@ export default function PaymentsAndVouchersPage() {
             notes: p.notes || p.remarks || "",
             company_id: p.company_id || currentCid
           }));
-          if (mapped.length > 0) {
-            const hasDummy = mapped.some((m) => m.voucher_no === "REC-2026-084" || m.voucher_no === "REC-084");
-            const finalMerged = hasDummy ? mapped : [...seedForTenant, ...mapped];
-            setVouchers(finalMerged);
-            try {
-              setTenantItem("texaflow_vouchers", finalMerged, "om_sai_vouchers");
-            } catch {}
-          }
+          setVouchers(mapped);
+          try {
+            setTenantItem("texaflow_vouchers", mapped);
+          } catch {}
         }
       } catch (err) {
         console.warn("Backend payments load notice (using instant cached data):", err);
@@ -944,7 +935,7 @@ export default function PaymentsAndVouchersPage() {
                 {/* PARTY / VENDOR */}
                 <div className="p-3 flex items-center justify-between gap-4">
                   <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">
-                    {previewVoucher.type === "Receipt In" ? "Party Name" : "Supplier / Vendor"}
+                    {previewVoucher.type === "Receipt In" ? t("Party Name") : t("Supplier / Party")}
                   </span>
                   <span className="font-extrabold text-slate-900 text-right">{previewVoucher.party_name}</span>
                 </div>

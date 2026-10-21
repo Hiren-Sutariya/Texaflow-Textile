@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
-import { fetchApi, getCachedApi, invalidateApiCache } from "@/lib/api";
+import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { useLanguage } from "@/context/LanguageContext";
 import { getDueStatus, calculateDueDate } from "@/lib/creditTerms";
@@ -72,17 +72,15 @@ function CustomSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${
-          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
-        }`}
+        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
+          }`}
       >
         <span className={`truncate font-bold ${selectedOption ? "text-slate-900" : "text-slate-400"}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${
-            isOpen ? "rotate-180 text-blue-600" : ""
-          }`}
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${isOpen ? "rotate-180 text-blue-600" : ""
+            }`}
         />
       </button>
 
@@ -99,11 +97,10 @@ function CustomSelect({
                     onChange(opt.value);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
-                    isSelected
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${isSelected
                       ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                       : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
-                  }`}
+                    }`}
                 >
                   <span className="truncate">{opt.label}</span>
                   {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
@@ -450,40 +447,25 @@ export default function PurchasesPage() {
 
     const loadLocal = () => {
       try {
-        let stored = getTenantItem<PurchaseItem[]>("texaflow_purchases", "om_sai_purchases");
-        if (!stored || !Array.isArray(stored) || stored.length === 0) {
-          try {
-            const raw1 = localStorage.getItem(`texaflow_purchases_${currentCid}`);
-            const raw2 = localStorage.getItem("texaflow_purchases_comp-001");
-            const raw3 = localStorage.getItem("texaflow_purchases_comp-002");
-            const raw4 = localStorage.getItem("om_sai_purchases");
-            const raw5 = localStorage.getItem("texaflow_purchases");
-            const candidate = raw1 || raw2 || raw3 || raw4 || raw5;
-            if (candidate) {
-              const parsed = JSON.parse(candidate);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                stored = parsed;
-              }
-            }
-          } catch {}
+        const stored = getTenantItem<PurchaseItem[]>("texaflow_purchases");
+        if (stored && Array.isArray(stored)) {
+          const scoped = stored.filter((p: any) => !p.company_id || p.company_id === currentCid);
+          setPurchases(scoped);
+          return scoped;
         }
 
-        if (stored && Array.isArray(stored) && stored.length > 0) {
-          setPurchases(stored);
-          return stored;
-        } else {
-          const cached = getCachedApi<PurchaseItem[]>("/purchases");
-          if (cached && Array.isArray(cached) && cached.length > 0) {
-            setPurchases(cached);
-            return cached;
-          } else {
-            setPurchases(defaultSeedPurchases);
-            return defaultSeedPurchases;
-          }
+        const cached = getCachedApi<PurchaseItem[]>("/purchases");
+        if (cached && Array.isArray(cached)) {
+          const scoped = cached.filter((p: any) => !p.company_id || p.company_id === currentCid);
+          setPurchases(scoped);
+          return scoped;
         }
+
+        setPurchases([]);
+        return [];
       } catch {
-        setPurchases(defaultSeedPurchases);
-        return defaultSeedPurchases;
+        setPurchases([]);
+        return [];
       }
     };
 
@@ -493,21 +475,23 @@ export default function PurchasesPage() {
       try {
         const live = await fetchApi<PurchaseItem[]>("/purchases");
         if (isMounted && Array.isArray(live)) {
-          if (live.length > 0) {
-            // Preserve local payment_status overrides so a paid bill is never reset to pending by stale backend
-            const currentLocal = getTenantItem<PurchaseItem[]>("texaflow_purchases", "om_sai_purchases") || [];
-            const localStatusMap = new Map(currentLocal.map((p) => [p.purchase_no || p.id, p.payment_status]));
+          // Strictly scope records to this active tenant
+          const scoped = live.filter((p: any) => !p.company_id || p.company_id === currentCid);
 
-            const merged = live.map((p) => ({
-              ...p,
-              payment_status: localStatusMap.get(p.purchase_no || p.id) || p.payment_status
-            }));
+          // Preserve local payment_status overrides so a paid bill is never reset to pending by stale backend
+          const currentLocal = getTenantItem<PurchaseItem[]>("texaflow_purchases") || [];
+          const localStatusMap = new Map(currentLocal.map((p) => [p.purchase_no || p.id, p.payment_status]));
 
-            setPurchases(merged);
-            try {
-              setTenantItem("texaflow_purchases", merged, "om_sai_purchases");
-            } catch {}
-          }
+          const merged = scoped.map((p) => ({
+            ...p,
+            payment_status: localStatusMap.get(p.purchase_no || p.id) || p.payment_status
+          }));
+
+          setPurchases(merged);
+          try {
+            setTenantItem("texaflow_purchases", merged);
+            setCachedApi("/purchases", merged);
+          } catch { }
         }
       } catch (err) {
         console.warn("Backend purchase load notice:", err);
@@ -543,11 +527,12 @@ export default function PurchasesPage() {
     const updated = purchases.filter((p) => p.id !== id);
     setPurchases(updated);
     try {
-      setTenantItem("texaflow_purchases", updated, "om_sai_purchases");
+      setTenantItem("texaflow_purchases", updated);
+      setCachedApi("/purchases", updated);
       invalidateApiCache("/purchases");
       window.dispatchEvent(new CustomEvent("texaflow_purchases_updated"));
       window.dispatchEvent(new Event("app_data_update"));
-    } catch {}
+    } catch { }
 
     try {
       await fetchApi(`/purchases/${id}`, { method: "DELETE" });
@@ -581,10 +566,10 @@ export default function PurchasesPage() {
         statusFilter === "All"
           ? true
           : statusFilter === "Paid"
-          ? item.payment_status === "Paid"
-          : statusFilter === "Overdue"
-          ? isUnpaid && dueInfo?.status === "Overdue"
-          : isUnpaid;
+            ? item.payment_status === "Paid"
+            : statusFilter === "Overdue"
+              ? isUnpaid && dueInfo?.status === "Overdue"
+              : isUnpaid;
 
       const { categories } = parsePurchaseRecord(item);
       const matchesCategory =
@@ -600,7 +585,7 @@ export default function PurchasesPage() {
   const totalPurchasesAmount = purchases.reduce((acc, curr) => acc + (curr.amount || 0), 0);
   const pendingCreditPurchases = purchases.filter((p) => p.payment_status === "Pending" || p.payment_status === "Unpaid");
   const pendingCreditAmount = pendingCreditPurchases.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  
+
   const overdueCount = pendingCreditPurchases.filter((p) => {
     if (!p.due_date) return false;
     return getDueStatus(p.due_date, false).status === "Overdue";
@@ -727,11 +712,10 @@ export default function PurchasesPage() {
                 <div key={item.id} className="p-3.5 bg-white rounded-2xl border border-slate-200 space-y-2.5 shadow-2xs">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-mono font-bold text-slate-500">{item.date}</span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                      item.payment_status === "Paid"
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${item.payment_status === "Paid"
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                         : "bg-amber-50 text-amber-700 border-amber-200"
-                    }`}>
+                      }`}>
                       {item.payment_status === "Paid" ? t("Paid") : t("Pending / Credit")}
                     </span>
                   </div>
@@ -1035,11 +1019,10 @@ export default function PurchasesPage() {
                   <div className="font-black text-slate-900 text-sm tracking-wide uppercase">OM SAI TEXTILES</div>
                   <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{t("Raw Material Purchase Inward")}</div>
                 </div>
-                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold border ${
-                  previewBill.payment_status === "Paid"
+                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold border ${previewBill.payment_status === "Paid"
                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                     : "bg-amber-50 text-amber-700 border-amber-200"
-                }`}>
+                  }`}>
                   {previewBill.payment_status === "Paid" ? t("Paid") : t("Pending / Credit")}
                 </span>
               </div>

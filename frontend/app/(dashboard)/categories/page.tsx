@@ -15,42 +15,33 @@ import {
   CheckCircle2
 } from "lucide-react";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
 
 const DEFAULT_MATERIAL_CATEGORIES = [
+  "Chemicals & Dyes",
+  "Lace & Borders",
   "Raw Material & Fabric",
   "Yarn & Threads",
-  "Zari & Metallic Trims",
-  "Lace, Borders & Latkan",
-  "Choli & Garment Trims",
-  "Packaging Materials"
+  "Zari & Metallic"
 ];
 
 const DEFAULT_EXPENSE_CATEGORIES = [
+  "Dhaga & Consumables",
+  "Electricity & Power",
+  "Karigar Salary",
+  "Logistics & Courier",
+  "Machine Maintenance & Repairs",
   "Packaging Materials",
-  "Machinery / Maintenance",
-  "Electricity / Power",
-  "Factory Rent",
-  "Office / Stationary",
-  "Tea / Coffee / Refreshments",
-  "Logistics & Freight",
-  "Diamond / Jari Material",
-  "Thread / Dhaga",
-  "Software / Subscriptions",
-  "Miscellaneous / Other"
+  "Worker Advance / Upad"
 ];
 
 const DEFAULT_DESIGN_CATEGORIES = [
-  "Saree",
+  "Choli & Blouse",
   "Dupatta",
-  "Choli",
-  "Suit",
-  "Kurti",
+  "Kurti & Suit",
   "Lehenga",
-  "Front Daman",
-  "Back Patta",
-  "Latkan & Trims"
+  "Saree"
 ];
 
 type ModuleType = "all" | "material" | "expense" | "design";
@@ -145,10 +136,51 @@ export default function CategoriesPage() {
   const [search, setSearch] = useState("");
   const [moduleFilter, setModuleFilter] = useState<ModuleType>("all");
 
-  // Storage states
-  const [materialCategories, setMaterialCategories] = useState<string[]>(DEFAULT_MATERIAL_CATEGORIES);
-  const [expenseCategories, setExpenseCategories] = useState<string[]>(DEFAULT_EXPENSE_CATEGORIES);
-  const [designCategories, setDesignCategories] = useState<string[]>(DEFAULT_DESIGN_CATEGORIES);
+  // Storage states with 0ms synchronous initialization to prevent refresh flicker
+  const [materialCategories, setMaterialCategories] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const liveCached = getCachedApi<Array<{ name: string; module: string }>>("/categories");
+        if (Array.isArray(liveCached) && liveCached.length > 0) {
+          const mat = Array.from(new Set(liveCached.filter((c) => c.module === "material").map((c) => c.name.trim()).filter(Boolean)));
+          if (mat.length > 0) return mat;
+        }
+        const cached = getTenantItem<string[]>("texaflow_material_categories");
+        if (Array.isArray(cached) && cached.length > 0) return cached;
+      } catch {}
+    }
+    return DEFAULT_MATERIAL_CATEGORIES;
+  });
+
+  const [expenseCategories, setExpenseCategories] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const liveCached = getCachedApi<Array<{ name: string; module: string }>>("/categories");
+        if (Array.isArray(liveCached) && liveCached.length > 0) {
+          const exp = Array.from(new Set(liveCached.filter((c) => c.module === "expense").map((c) => c.name.trim()).filter(Boolean)));
+          if (exp.length > 0) return exp;
+        }
+        const cached = getTenantItem<string[]>("texaflow_expense_categories_order");
+        if (Array.isArray(cached) && cached.length > 0) return cached;
+      } catch {}
+    }
+    return DEFAULT_EXPENSE_CATEGORIES;
+  });
+
+  const [designCategories, setDesignCategories] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const liveCached = getCachedApi<Array<{ name: string; module: string }>>("/categories");
+        if (Array.isArray(liveCached) && liveCached.length > 0) {
+          const des = Array.from(new Set(liveCached.filter((c) => c.module === "design").map((c) => c.name.trim()).filter(Boolean)));
+          if (des.length > 0) return des;
+        }
+        const cached = getTenantItem<string[]>("texaflow_design_categories");
+        if (Array.isArray(cached) && cached.length > 0) return cached;
+      } catch {}
+    }
+    return DEFAULT_DESIGN_CATEGORIES;
+  });
 
   // Multi-select state for bulk deletion
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -191,9 +223,10 @@ export default function CategoriesPage() {
     try {
       const live = await fetchApi<Array<{ id: string; name: string; module: string; color?: string; is_system?: boolean }>>("/categories").catch(() => null);
       if (Array.isArray(live) && live.length > 0) {
-        const mat = live.filter((c) => c.module === "material").map((c) => c.name);
-        const exp = live.filter((c) => c.module === "expense").map((c) => c.name);
-        const des = live.filter((c) => c.module === "design").map((c) => c.name);
+        setCachedApi("/categories", live);
+        const mat = Array.from(new Set(live.filter((c) => c.module === "material").map((c) => c.name.trim()).filter(Boolean)));
+        const exp = Array.from(new Set(live.filter((c) => c.module === "expense").map((c) => c.name.trim()).filter(Boolean)));
+        const des = Array.from(new Set(live.filter((c) => c.module === "design").map((c) => c.name.trim()).filter(Boolean)));
 
         const finalMat = mat.length > 0 ? mat : DEFAULT_MATERIAL_CATEGORIES;
         const finalExp = exp.length > 0 ? exp : DEFAULT_EXPENSE_CATEGORIES;
@@ -211,15 +244,15 @@ export default function CategoriesPage() {
 
       // Offline / network fallback
       const mat = getTenantItem<string[]>("texaflow_material_categories");
-      if (Array.isArray(mat)) setMaterialCategories(mat);
+      if (Array.isArray(mat)) setMaterialCategories(Array.from(new Set(mat.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean))));
       else setMaterialCategories(DEFAULT_MATERIAL_CATEGORIES);
 
       const exp = getTenantItem<string[]>("texaflow_expense_categories_order");
-      if (Array.isArray(exp)) setExpenseCategories(exp);
+      if (Array.isArray(exp)) setExpenseCategories(Array.from(new Set(exp.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean))));
       else setExpenseCategories(DEFAULT_EXPENSE_CATEGORIES);
 
       const des = getTenantItem<string[]>("texaflow_design_categories");
-      if (Array.isArray(des)) setDesignCategories(des);
+      if (Array.isArray(des)) setDesignCategories(Array.from(new Set(des.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean))));
       else setDesignCategories(DEFAULT_DESIGN_CATEGORIES);
     } catch (e) {
       console.error(e);
@@ -237,36 +270,31 @@ export default function CategoriesPage() {
     };
   }, []);
 
-  // Combine into unified table records
+  // Combine into unified table records with guaranteed uniqueness
   const allRecords: CategoryRecord[] = useMemo(() => {
     const records: CategoryRecord[] = [];
-    materialCategories.forEach((cat) => {
+    const seen = new Set<string>();
+
+    const addRecord = (cat: string, mod: "material" | "expense" | "design", modLabel: string, prefix: string) => {
+      const trimmed = typeof cat === "string" ? cat.trim() : "";
+      if (!trimmed) return;
+      const key = `${mod}_${trimmed.toLowerCase()}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+
       records.push({
-        id: `mat-${cat}`,
-        name: cat,
-        module: "material",
-        moduleLabel: "Material & Purchase",
+        id: `${prefix}-${trimmed}`,
+        name: trimmed,
+        module: mod,
+        moduleLabel: modLabel,
         status: "Active"
       });
-    });
-    expenseCategories.forEach((cat) => {
-      records.push({
-        id: `exp-${cat}`,
-        name: cat,
-        module: "expense",
-        moduleLabel: "Expenses",
-        status: "Active"
-      });
-    });
-    designCategories.forEach((cat) => {
-      records.push({
-        id: `des-${cat}`,
-        name: cat,
-        module: "design",
-        moduleLabel: "Design Library",
-        status: "Active"
-      });
-    });
+    };
+
+    materialCategories.forEach((cat) => addRecord(cat, "material", "Material & Purchase", "mat"));
+    expenseCategories.forEach((cat) => addRecord(cat, "expense", "Expenses", "exp"));
+    designCategories.forEach((cat) => addRecord(cat, "design", "Design Library", "des"));
+
     return records;
   }, [materialCategories, expenseCategories, designCategories]);
 
@@ -281,6 +309,7 @@ export default function CategoriesPage() {
 
   // Save to storage
   const saveCategoryList = (module: "material" | "expense" | "design", updated: string[]) => {
+    invalidateApiCache("/categories");
     if (module === "material") {
       setMaterialCategories(updated);
       setTenantItem("texaflow_material_categories", updated);
@@ -633,7 +662,7 @@ export default function CategoriesPage() {
 
                   return (
                     <tr
-                      key={rec.id}
+                      key={`${rec.id}_${index}`}
                       className={`transition-colors ${
                         isRowSelected ? "bg-blue-50/60" : "hover:bg-blue-50/40"
                       }`}

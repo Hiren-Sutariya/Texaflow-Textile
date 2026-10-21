@@ -128,8 +128,8 @@ function NewExpenseVoucherForm() {
 
   // 3. Category & Custom Arrangement
   const [isMounted, setIsMounted] = useState(false);
-  const [category, setCategory] = useState("Packaging Materials");
-  const [defaultCategory, setDefaultCategory] = useState<string>("Packaging Materials");
+  const [category, setCategory] = useState<string>(() => defaultCategories[0]?.name || "Raw Material & Fabric");
+  const [defaultCategory, setDefaultCategory] = useState<string>(() => defaultCategories[0]?.name || "Raw Material & Fabric");
   const [categoryPage, setCategoryPage] = useState(0); // 0-indexed page (9 items per page)
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [categoryOrder, setCategoryOrder] = useState<string[]>(() => defaultCategories.map((c) => c.name));
@@ -140,45 +140,66 @@ function NewExpenseVoucherForm() {
   const refreshFormState = useCallback(() => {
     let loadedCats: string[] = [];
     try {
-      const savedCats = getTenantItem<string[]>("texaflow_custom_expense_categories", "om_sai_custom_expense_categories")
-        || (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("texaflow_custom_expense_categories") || "[]") : []);
+      const savedCats = getTenantItem<string[]>("texaflow_custom_expense_categories");
       if (Array.isArray(savedCats) && savedCats.length > 0) {
         loadedCats = savedCats;
-        setCustomCategories(savedCats);
-      } else {
-        setCustomCategories([]);
       }
     } catch {}
 
-    const allAvailable = [
-      ...defaultCategories.map((c) => c.name),
-      ...loadedCats
-    ];
+    const defaultNames = defaultCategories.map((c) => c.name.trim());
+    const defaultNamesLower = new Set(defaultNames.map((n) => n.toLowerCase()));
 
-    let finalOrder = allAvailable;
+    // Custom categories must only be unique names not in defaultCategories
+    const cleanCustom = Array.from(
+      new Set(
+        loadedCats
+          .map((c) => (typeof c === "string" ? c.trim() : ""))
+          .filter((c) => c && !defaultNamesLower.has(c.toLowerCase()))
+      )
+    );
+    setCustomCategories(cleanCustom);
+
+    // 100% unique list of available categories
+    const allAvailable = Array.from(new Set([...defaultNames, ...cleanCustom]));
+
+    let finalOrder = [...allAvailable];
     try {
-      const cid = getStoredCompanyId();
-      const savedOrder = getTenantItem<string[]>("texaflow_expense_categories_order", "om_sai_expense_categories_order")
-        || (cid && typeof window !== "undefined" ? JSON.parse(localStorage.getItem(`texaflow_expense_categories_order_${cid}`) || "null") : null)
-        || (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("texaflow_expense_categories_order") || "null") : null);
-
+      const savedOrder = getTenantItem<string[]>("texaflow_expense_categories_order");
       if (Array.isArray(savedOrder) && savedOrder.length > 0) {
-        const valid = savedOrder.filter((name) => allAvailable.includes(name));
-        allAvailable.forEach((name) => {
-          if (!valid.includes(name)) {
+        const seen = new Set<string>();
+        const valid: string[] = [];
+        for (const rawName of savedOrder) {
+          const name = typeof rawName === "string" ? rawName.trim() : "";
+          if (name && allAvailable.includes(name) && !seen.has(name.toLowerCase())) {
+            seen.add(name.toLowerCase());
             valid.push(name);
           }
-        });
-        finalOrder = valid;
+        }
+        for (const name of allAvailable) {
+          if (!seen.has(name.toLowerCase())) {
+            seen.add(name.toLowerCase());
+            valid.push(name);
+          }
+        }
+        if (valid.length > 0) {
+          finalOrder = valid;
+        }
       }
     } catch {}
 
     setCategoryOrder(finalOrder);
 
-    // Load custom default category selection if set
-    let initialDefault = "Packaging Materials";
+    // Auto-heal localStorage by persisting the deduplicated arrays
     try {
-      const savedDefault = getTenantItem<string>("texaflow_default_expense_category", "om_sai_default_expense_category");
+      setTenantItem("texaflow_custom_expense_categories", cleanCustom);
+      setTenantItem("texaflow_expense_categories_order", finalOrder);
+    } catch {}
+
+    // Strictly default to the 1st category (finalOrder[0] / Raw Material & Fabric)
+    // Only use custom default if explicitly saved by the active tenant
+    let initialDefault = finalOrder[0] || defaultCategories[0]?.name || "Raw Material & Fabric";
+    try {
+      const savedDefault = getTenantItem<string>("texaflow_default_expense_category");
       if (savedDefault && typeof savedDefault === "string" && allAvailable.includes(savedDefault)) {
         initialDefault = savedDefault;
       }
@@ -191,6 +212,8 @@ function NewExpenseVoucherForm() {
       const defIdx = finalOrder.indexOf(initialDefault);
       if (defIdx >= 0) {
         setCategoryPage(Math.floor(defIdx / 9));
+      } else {
+        setCategoryPage(0);
       }
       setAmount("");
       setRemarks("");
@@ -309,12 +332,9 @@ function NewExpenseVoucherForm() {
 
       if (!isMounted) return;
       try {
-        const saved = getTenantItem<any[]>(
-          "texaflow_vendors",
-          currentCid === "comp-002" ? "om_sai_vendors" : undefined
-        );
+        const saved = getTenantItem<any[]>("texaflow_vendors");
         if (saved && Array.isArray(saved) && saved.length > 0) {
-          const scoped = saved.filter((v: any) => (v.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001")) === currentCid);
+          const scoped = saved.filter((v: any) => (v.company_id || currentCid) === currentCid);
           setRawVendorsData(scoped);
           const names = scoped
             .map((v: any) => v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim())
@@ -398,7 +418,7 @@ function NewExpenseVoucherForm() {
             if (!prev.some((p) => p.trim().toLowerCase() === exp.category.trim().toLowerCase())) {
               const updated = [...prev, exp.category.trim()];
               try {
-                setTenantItem("texaflow_custom_expense_categories", updated, "om_sai_custom_expense_categories");
+                setTenantItem("texaflow_custom_expense_categories", updated);
               } catch {}
               return updated;
             }
@@ -450,12 +470,9 @@ function NewExpenseVoucherForm() {
     // 1. Immediate retrieval from localStorage
     const currentCid = getStoredCompanyId();
     try {
-      const list = getTenantItem<any[]>(
-        "texaflow_expenses",
-        currentCid === "comp-002" ? "om_sai_expenses" : undefined
-      );
+      const list = getTenantItem<any[]>("texaflow_expenses");
       if (list && Array.isArray(list)) {
-        const scoped = list.filter((item: any) => (item.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001")) === currentCid);
+        const scoped = list.filter((item: any) => (item.company_id || currentCid) === currentCid);
         const found = scoped.find((item: any) => String(item.id) === String(editId) || item.expense_no === editId);
         if (found) {
           populateExpenseData(found);
@@ -486,12 +503,9 @@ function NewExpenseVoucherForm() {
     if (!isEditMode) {
       try {
         const currentCid = getStoredCompanyId();
-        const saved = getTenantItem<any[]>(
-          "texaflow_expenses",
-          currentCid === "comp-002" ? "om_sai_expenses" : undefined
-        );
+        const saved = getTenantItem<any[]>("texaflow_expenses");
         const list = Array.isArray(saved)
-          ? saved.filter((item: any) => (item.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001")) === currentCid)
+          ? saved.filter((item: any) => (item.company_id || currentCid) === currentCid)
           : [];
         let maxSeq = 0;
         list.forEach((item: any) => {
@@ -518,18 +532,23 @@ function NewExpenseVoucherForm() {
   const handleAddCategory = (toTop: boolean = false) => {
     const trimmed = newCatName.trim();
     if (!trimmed) return;
+
+    if (categoryOrder.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      setCategory(trimmed);
+      setNewCatName("");
+      setIsAddInputOpen(false);
+      const existingIdx = categoryOrder.findIndex((c) => c.toLowerCase() === trimmed.toLowerCase());
+      if (existingIdx >= 0) {
+        setCategoryPage(Math.floor(existingIdx / ITEMS_PER_PAGE));
+      }
+      return;
+    }
+
     if (!customCategories.includes(trimmed)) {
       const updated = [...customCategories, trimmed];
       setCustomCategories(updated);
       try {
-        setTenantItem("texaflow_custom_expense_categories", updated, "om_sai_custom_expense_categories");
-        const cid = getStoredCompanyId();
-        if (cid && typeof window !== "undefined") {
-          localStorage.setItem(`texaflow_custom_expense_categories_${cid}`, JSON.stringify(updated));
-        }
-        if (typeof window !== "undefined") {
-          localStorage.setItem("texaflow_custom_expense_categories", JSON.stringify(updated));
-        }
+        setTenantItem("texaflow_custom_expense_categories", updated);
       } catch (err) {
         console.error(err);
       }
@@ -539,14 +558,7 @@ function NewExpenseVoucherForm() {
       : [...categoryOrder.filter((c) => c !== trimmed), trimmed];
     setCategoryOrder(updatedOrder);
     try {
-      setTenantItem("texaflow_expense_categories_order", updatedOrder, "om_sai_expense_categories_order");
-      const cid = getStoredCompanyId();
-      if (cid && typeof window !== "undefined") {
-        localStorage.setItem(`texaflow_expense_categories_order_${cid}`, JSON.stringify(updatedOrder));
-      }
-      if (typeof window !== "undefined") {
-        localStorage.setItem("texaflow_expense_categories_order", JSON.stringify(updatedOrder));
-      }
+      setTenantItem("texaflow_expense_categories_order", updatedOrder);
     } catch {}
 
     setCategory(trimmed);
@@ -571,28 +583,14 @@ function NewExpenseVoucherForm() {
     const updated = customCategories.filter((c) => c !== nameToRemove);
     setCustomCategories(updated);
     try {
-      setTenantItem("texaflow_custom_expense_categories", updated, "om_sai_custom_expense_categories");
-      const cid = getStoredCompanyId();
-      if (cid && typeof window !== "undefined") {
-        localStorage.setItem(`texaflow_custom_expense_categories_${cid}`, JSON.stringify(updated));
-      }
-      if (typeof window !== "undefined") {
-        localStorage.setItem("texaflow_custom_expense_categories", JSON.stringify(updated));
-      }
+      setTenantItem("texaflow_custom_expense_categories", updated);
     } catch (err) {
       console.error(err);
     }
     const updatedOrder = categoryOrder.filter((c) => c !== nameToRemove);
     setCategoryOrder(updatedOrder);
     try {
-      setTenantItem("texaflow_expense_categories_order", updatedOrder, "om_sai_expense_categories_order");
-      const cid = getStoredCompanyId();
-      if (cid && typeof window !== "undefined") {
-        localStorage.setItem(`texaflow_expense_categories_order_${cid}`, JSON.stringify(updatedOrder));
-      }
-      if (typeof window !== "undefined") {
-        localStorage.setItem("texaflow_expense_categories_order", JSON.stringify(updatedOrder));
-      }
+      setTenantItem("texaflow_expense_categories_order", updatedOrder);
     } catch {}
     setTempOrder((prev) => prev.filter((c) => c !== nameToRemove));
 
@@ -601,15 +599,15 @@ function NewExpenseVoucherForm() {
     setCategoryPage((prev) => Math.min(prev, newTotalPages - 1));
 
     if (defaultCategory === nameToRemove) {
-      const fallbackDef = updatedOrder[0] || "Packaging Materials";
+      const fallbackDef = updatedOrder[0] || defaultCategories[0]?.name || "Raw Material & Fabric";
       setDefaultCategory(fallbackDef);
       try {
-        setTenantItem("texaflow_default_expense_category", fallbackDef, "om_sai_default_expense_category");
+        setTenantItem("texaflow_default_expense_category", fallbackDef);
       } catch {}
     }
 
     if (category === nameToRemove) {
-      setCategory(updatedOrder[0] || "Packaging Materials");
+      setCategory(updatedOrder[0] || defaultCategories[0]?.name || "Raw Material & Fabric");
     }
   };
 
@@ -617,7 +615,7 @@ function NewExpenseVoucherForm() {
     setDefaultCategory(catName);
     setCategory(catName);
     try {
-      setTenantItem("texaflow_default_expense_category", catName, "om_sai_default_expense_category");
+      setTenantItem("texaflow_default_expense_category", catName);
     } catch {}
     setDefaultSavedToast(true);
     setTimeout(() => setDefaultSavedToast(false), 2500);
@@ -642,14 +640,7 @@ function NewExpenseVoucherForm() {
   const handleSaveOrder = () => {
     setCategoryOrder(tempOrder);
     try {
-      setTenantItem("texaflow_expense_categories_order", tempOrder, "om_sai_expense_categories_order");
-      const cid = getStoredCompanyId();
-      if (cid && typeof window !== "undefined") {
-        localStorage.setItem(`texaflow_expense_categories_order_${cid}`, JSON.stringify(tempOrder));
-      }
-      if (typeof window !== "undefined") {
-        localStorage.setItem("texaflow_expense_categories_order", JSON.stringify(tempOrder));
-      }
+      setTenantItem("texaflow_expense_categories_order", tempOrder);
     } catch {}
     setIsArrangeModalOpen(false);
     setCategoryPage(0);
@@ -658,10 +649,10 @@ function NewExpenseVoucherForm() {
   };
 
   const handleResetOrder = () => {
-    const defaultSeq = [
-      ...defaultCategories.map((c) => c.name),
-      ...customCategories
-    ];
+    const defaultSeq = Array.from(new Set([
+      ...defaultCategories.map((c) => c.name.trim()),
+      ...customCategories.map((c) => c.trim())
+    ]));
     setTempOrder(defaultSeq);
   };
 
@@ -757,19 +748,11 @@ function NewExpenseVoucherForm() {
 
         // 2. Update localStorage
         try {
-          const currentCid = getStoredCompanyId();
-          const list = getTenantItem<any[]>(
-            "texaflow_expenses",
-            currentCid === "comp-002" ? "om_sai_expenses" : undefined
-          ) || [];
+          const list = getTenantItem<any[]>("texaflow_expenses") || [];
           const updatedList = list.map((item: any) =>
             String(item.id) === String(editId) || item.expense_no === editId ? updatedExpense : item
           );
-          setTenantItem(
-            "texaflow_expenses",
-            updatedList,
-            currentCid === "comp-002" ? "om_sai_expenses" : undefined
-          );
+          setTenantItem("texaflow_expenses", updatedList);
           window.dispatchEvent(new Event("app_data_update"));
           window.dispatchEvent(new Event("storage"));
         } catch (err) {
@@ -784,12 +767,9 @@ function NewExpenseVoucherForm() {
       const currentCid = getStoredCompanyId();
       let existingList: any[] = [];
       try {
-        const saved = getTenantItem<any[]>(
-          "texaflow_expenses",
-          currentCid === "comp-002" ? "om_sai_expenses" : undefined
-        );
+        const saved = getTenantItem<any[]>("texaflow_expenses");
         if (saved && Array.isArray(saved)) {
-          existingList = saved.filter((item: any) => (item.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001")) === currentCid);
+          existingList = saved.filter((item: any) => (item.company_id || currentCid) === currentCid);
         }
       } catch {}
 
@@ -869,18 +849,11 @@ function NewExpenseVoucherForm() {
 
       // 2. Keep local cache updated
       try {
-        const existing = getTenantItem<any[]>(
-          "texaflow_expenses",
-          currentCid === "comp-002" ? "om_sai_expenses" : undefined
-        ) || [];
-        const scoped = existing.filter((item: any) => (item.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001")) === currentCid);
+        const existing = getTenantItem<any[]>("texaflow_expenses") || [];
+        const scoped = existing.filter((item: any) => (item.company_id || currentCid) === currentCid);
         const list = [...scoped];
         list.unshift(newExpense);
-        setTenantItem(
-          "texaflow_expenses",
-          list,
-          currentCid === "comp-002" ? "om_sai_expenses" : undefined
-        );
+        setTenantItem("texaflow_expenses", list);
         window.dispatchEvent(new Event("app_data_update"));
         window.dispatchEvent(new Event("storage"));
       } catch (err) {
@@ -1190,7 +1163,7 @@ function NewExpenseVoucherForm() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2">
-                    {activePageCategories.map((catName) => {
+                    {activePageCategories.map((catName, catIdx) => {
                       const IconComp = getCategoryIcon(catName);
                       const isSelected = category === catName;
                       const isCustom = !isStandardCategory(catName);
@@ -1198,7 +1171,7 @@ function NewExpenseVoucherForm() {
 
                       return (
                         <div
-                          key={catName}
+                          key={`${catName}_${catIdx}`}
                           className={`h-10 px-2 sm:px-3 rounded-xl border flex items-center justify-between gap-1.5 sm:gap-2 transition-all group relative ${
                             isSelected
                               ? "border-2 border-blue-600 bg-blue-50/70 text-blue-950 font-bold shadow-2xs ring-1 ring-blue-500/20"
@@ -1287,7 +1260,7 @@ function NewExpenseVoucherForm() {
                       setIsAddInputOpen(false);
                       setNewCatName("");
                       if (category === "Miscellaneous / Other") {
-                        setCategory(categoryOrder[0] || "Packaging Materials");
+                        setCategory(categoryOrder[0] || defaultCategories[0]?.name || "Raw Material & Fabric");
                       }
                     }}
                     className="h-9 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0 border border-slate-200"
@@ -1338,7 +1311,7 @@ function NewExpenseVoucherForm() {
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5 font-bold text-slate-800">
                       <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Vendor / Supplier</span>
+                      <span>Party / Supplier</span>
                     </div>
                     <button
                       type="button"
@@ -1346,7 +1319,7 @@ function NewExpenseVoucherForm() {
                       className="text-blue-600 hover:text-blue-700 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
                     >
                       <Building2 className="w-3.5 h-3.5" />
-                      <span>{isRegisteredVendorMode ? "Enter Custom Payee / Shop" : "Select Registered Vendor"}</span>
+                      <span>{isRegisteredVendorMode ? "Enter Custom Payee / Shop" : "Select Registered Party"}</span>
                     </button>
                   </div>
 
@@ -1364,7 +1337,7 @@ function NewExpenseVoucherForm() {
                           }`}
                         >
                           <span className={vendorName ? "font-bold text-slate-900 truncate" : "text-slate-400 font-normal truncate"}>
-                            {vendorName || "Select registered vendor from list..."}
+                            {vendorName || "Select registered party from list..."}
                           </span>
                           <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
                         </button>
@@ -1651,7 +1624,7 @@ function NewExpenseVoucherForm() {
 
                     return (
                       <div
-                        key={catName}
+                        key={`${catName}_${originalIndex}`}
                         draggable
                         onDragStart={() => setDraggedIndex(originalIndex)}
                         onDragOver={(e) => {

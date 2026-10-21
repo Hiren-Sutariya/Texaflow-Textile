@@ -10,8 +10,9 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "Upcoming Modules": { en: "Upcoming Modules", gu: "આગામી મોડ્યુલ્સ" },
 
   // Sidebar Menu Items
-  "Vendors": { en: "Vendors", gu: "વેન્ડર્સ (વેપારીઓ)" },
-  "Parties & Vendors": { en: "Vendors", gu: "વેન્ડર્સ (વેપારીઓ)" },
+  "Vendors": { en: "Parties", gu: "પાર્ટીઓ" },
+  "Parties & Vendors": { en: "Parties", gu: "પાર્ટીઓ" },
+  "Parties Directory": { en: "Parties Directory", gu: "પાર્ટી ડિરેક્ટરી" },
   "Workers": { en: "Workers", gu: "કારીગરો / વર્કર્સ" },
   "Workers & Karigars": { en: "Workers", gu: "કારીગરો અને વર્કર્સ" },
   "Categories Master": { en: "Categories", gu: "કેટેગરી માસ્ટર" },
@@ -60,11 +61,10 @@ export const translations: Record<string, { en: string; gu: string }> = {
 
   // Navbar & Header Titles
   "Owner Command Center": { en: "Owner Command Center", gu: "ઓનર કમાન્ડ સેન્ટર" },
-  "Vendor Master": { en: "Vendor Master", gu: "વેન્ડર માસ્ટર ડિરેક્ટરી" },
+  "Vendor Master": { en: "Parties Directory", gu: "પાર્ટી માસ્ટર ડિરેક્ટરી" },
   "Staff & Karigar Directory": { en: "Staff & Karigar Directory", gu: "સ્ટાફ અને કારીગર ડિરેક્ટરી" },
   "Factory & Overhead Expenses": { en: "Factory & Overhead Expenses", gu: "ફેક્ટરી અને પરચુરણ ખર્ચાઓ" },
   "Payments & Vouchers Ledger": { en: "Payments & Vouchers Ledger", gu: "ચુકવણી અને વાઉચર ખાતાવહી" },
-  "Parties Directory": { en: "Parties Directory", gu: "પાર્ટી ડિરેક્ટરી" },
   "Worker Payout & Karigar Salary Ledger": { en: "Worker Payout & Karigar Salary Ledger", gu: "કારીગર પગાર અને ચૂકવણી ખાતાવહી" },
   "Job Work Directory": { en: "Job Work Directory", gu: "જોબ વર્ક ડિરેક્ટરી" },
   "Create New Job Work Order": { en: "Create New Job Work Order", gu: "નવો જોબ વર્ક ઓર્ડર" },
@@ -92,12 +92,16 @@ export const translations: Record<string, { en: string; gu: string }> = {
   // New Registration Page Headers & Navigation
   "NEW WORKER & STAFF REGISTRATION": { en: "NEW WORKER & STAFF REGISTRATION", gu: "નવા કારીગર અને સ્ટાફની નોંધણી" },
   "New Worker & Staff Registration": { en: "New Worker & Staff Registration", gu: "નવા કારીગર અને સ્ટાફની નોંધણી" },
-  "NEW VENDOR & SUPPLIER REGISTRATION": { en: "NEW VENDOR & SUPPLIER REGISTRATION", gu: "નવા વેન્ડર અને સપ્લાયરની નોંધણી" },
-  "New Vendor & Supplier Registration": { en: "New Vendor & Supplier Registration", gu: "નવા વેન્ડર અને સપ્લાયરની નોંધણી" },
+  "NEW VENDOR & SUPPLIER REGISTRATION": { en: "NEW PARTY REGISTRATION", gu: "નવી પાર્ટી નોંધણી" },
+  "New Vendor & Supplier Registration": { en: "New Party Registration", gu: "નવી પાર્ટી નોંધણી" },
+  "NEW PARTY REGISTRATION": { en: "NEW PARTY REGISTRATION", gu: "નવી પાર્ટી નોંધણી" },
+  "New Party Registration": { en: "New Party Registration", gu: "નવી પાર્ટી નોંધણી" },
+  "EDIT PARTY DETAILS": { en: "EDIT PARTY DETAILS", gu: "પાર્ટી વિગતો સુધારો" },
   "NEW PAYMENT VOUCHER REGISTRATION": { en: "NEW PAYMENT VOUCHER REGISTRATION", gu: "નવા પેમેન્ટ વાઉચરની નોંધણી" },
   "New Payment Voucher Registration": { en: "New Payment Voucher Registration", gu: "નવા પેમેન્ટ વાઉચરની નોંધણી" },
   "Back to Worker List": { en: "Back to Worker List", gu: "કારીગર લિસ્ટ પર પાછા જાઓ" },
-  "Back to Vendor List": { en: "Back to Vendor List", gu: "વેન્ડર લિસ્ટ પર પાછા જાઓ" },
+  "Back to Vendor List": { en: "Back to Parties List", gu: "પાર્ટી લિસ્ટ પર પાછા જાઓ" },
+  "Back to Parties List": { en: "Back to Parties List", gu: "પાર્ટી લિસ્ટ પર પાછા જાઓ" },
   "Back to Voucher List": { en: "Back to Voucher List", gu: "વાઉચર લિસ્ટ પર પાછા જાઓ" },
   "Create New Record": { en: "Create New Record", gu: "નવો રેકોર્ડ બનાવો" },
 
@@ -114,7 +118,8 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "DATE": { en: "DATE", gu: "તારીખ" },
   "EXPENSE / BILL": { en: "EXPENSE / BILL", gu: "ખર્ચ / બિલ નં." },
   "CATEGORY": { en: "CATEGORY", gu: "કેટેગરી" },
-  "VENDOR / PAYEE": { en: "VENDOR / PAYEE", gu: "વેન્ડર / પ્રાપ્તકર્તા" },
+  "VENDOR / PAYEE": { en: "PARTY / PAYEE", gu: "પાર્ટી / પ્રાપ્તકર્તા" },
+  "PARTY / PAYEE": { en: "PARTY / PAYEE", gu: "પાર્ટી / પ્રાપ્તકર્તા" },
   "PAYMENT MODE": { en: "PAYMENT MODE", gu: "ચુકવણી પદ્ધતિ" },
   "STATUS": { en: "STATUS", gu: "સ્થિતિ" },
   "REMARKS / NOTES": { en: "REMARKS / NOTES", gu: "નોંધ / વિગત" },
@@ -134,7 +139,11 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "PAID TO": { en: "PAID TO", gu: "કોને ચૂકવ્યા" },
   "PAID BY": { en: "PAID BY", gu: "કોના દ્વારા ચૂકવાયા" },
   "MSME STATUS": { en: "MSME STATUS", gu: "MSME સ્થિતિ" },
-  "VENDOR NAME": { en: "VENDOR NAME", gu: "વેન્ડરનું નામ" },
+  "VENDOR NAME": { en: "PARTY NAME", gu: "પાર્ટીનું નામ" },
+  "PARTY NAME": { en: "PARTY NAME", gu: "પાર્ટીનું નામ" },
+  "New Party": { en: "New Party", gu: "+ નવી પાર્ટી" },
+  "Save Party": { en: "Save Party", gu: "પાર્ટી સાચવો" },
+  "Saving Party...": { en: "Saving Party...", gu: "પાર્ટી સાચવી રહ્યા છીએ..." },
   "PHONE / CONTACT": { en: "PHONE / CONTACT", gu: "મોબાઇલ / સંપર્ક" },
   "CITY / ADDRESS": { en: "CITY / ADDRESS", gu: "શહેર / સરનામું" },
 
@@ -176,11 +185,18 @@ export const translations: Record<string, { en: string; gu: string }> = {
   // Vendor Form Fields
   "Primary Information": { en: "Primary Information", gu: "પ્રાથમિક માહિતી" },
   "Account Type": { en: "Account Type", gu: "ખાતાનો પ્રકાર" },
-  "Supplier / Vendor": { en: "Supplier / Vendor", gu: "સપ્લાયર / વેન્ડર" },
-  "Customer / Client": { en: "Customer / Client", gu: "ગ્રાહક / ક્લાયન્ટ" },
+  "Account Type*": { en: "Account Type*", gu: "ખાતાનો પ્રકાર*" },
+  "Supplier": { en: "Supplier", gu: "સપ્લાયર" },
+  "Customer": { en: "Customer", gu: "કસ્ટમર" },
+  "Dyeing & Printing Mill": { en: "Dyeing & Printing Mill", gu: "ડાઇંગ અને પ્રિન્ટિંગ મિલ" },
+  "Job Work": { en: "Job Work", gu: "જોબ વર્ક" },
+  "Broker": { en: "Broker", gu: "દલાલ / બ્રોકર" },
   "Trading Partner": { en: "Trading Partner", gu: "ટ્રેડિંગ પાર્ટનર" },
   "Internal Firm": { en: "Internal Firm", gu: "ઇન્ટરનલ ફર્મ" },
-  "Job Work": { en: "Job Work", gu: "જોબ વર્ક" },
+  "Supplier / Vendor": { en: "Supplier", gu: "સપ્લાયર" },
+  "Supplier / Party": { en: "Supplier", gu: "સપ્લાયર" },
+  "Customer / Client": { en: "Customer", gu: "કસ્ટમર" },
+  "Broker / Dalal": { en: "Broker", gu: "દલાલ / બ્રોકર" },
   "Primary Contact": { en: "Primary Contact", gu: "મુખ્ય સંપર્ક" },
   "Salutation": { en: "Salutation", gu: "સંબોધન" },
   "First Name": { en: "First Name", gu: "પ્રથમ નામ" },
@@ -190,7 +206,8 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "If left blank, Company Name will be used.": { en: "If left blank, Company Name will be used.", gu: "ખાલી રાખશો તો કંપનીનું નામ વપરાશે." },
   "Work Phone": { en: "Work Phone", gu: "ઓફિસ ફોન" },
   "Mobile": { en: "Mobile", gu: "મોબાઇલ" },
-  "Vendor Language": { en: "Vendor Language", gu: "વેન્ડર ભાષા" },
+  "Vendor Language": { en: "Party Language", gu: "પાર્ટી ભાષા" },
+  "Party Language": { en: "Party Language", gu: "પાર્ટી ભાષા" },
   "ENGLISH": { en: "ENGLISH", gu: "અંગ્રેજી (English)" },
   "GUJARATI": { en: "GUJARATI", gu: "ગુજરાતી (Gujarati)" },
   "HINDI": { en: "HINDI", gu: "હિન્દી (Hindi)" },
@@ -203,9 +220,11 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "Accounts Payable": { en: "Accounts Payable", gu: "લેણી રકમ ખાતું (Accounts Payable)" },
   "SELECT AN ACCOUNT": { en: "SELECT AN ACCOUNT", gu: "ખાતું પસંદ કરો" },
   "Due on Receipt": { en: "Due on Receipt", gu: "બિલ મળતાં જ ચુકવણી (Due on Receipt)" },
-  "This vendor is MSME registered": { en: "This vendor is MSME registered", gu: "આ વેન્ડર MSME રજિસ્ટર્ડ છે" },
-  "Allow portal access for this vendor": { en: "Allow portal access for this vendor", gu: "આ વેન્ડરને પોર્ટલ એક્સેસની મંજૂરી આપો" },
-  "Save Vendor": { en: "Save Vendor", gu: "વેન્ડર સાચવો" },
+  "This vendor is MSME registered": { en: "This party is MSME registered", gu: "આ પાર્ટી MSME રજિસ્ટર્ડ છે" },
+  "This party is MSME registered": { en: "This party is MSME registered", gu: "આ પાર્ટી MSME રજિસ્ટર્ડ છે" },
+  "Allow portal access for this vendor": { en: "Allow portal access for this party", gu: "આ પાર્ટીને પોર્ટલ એક્સેસની મંજૂરી આપો" },
+  "Allow portal access for this party": { en: "Allow portal access for this party", gu: "આ પાર્ટીને પોર્ટલ એક્સેસની મંજૂરી આપો" },
+  "Save Vendor": { en: "Save Party", gu: "પાર્ટી સાચવો" },
 
   // Payment Voucher Form Fields
   "Voucher Type": { en: "Voucher Type", gu: "વાઉચર પ્રકાર" },
@@ -234,12 +253,15 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "TOTAL PAID": { en: "TOTAL PAID", gu: "કુલ ચુકવેલ" },
   "PENDING / DUE": { en: "PENDING / DUE", gu: "બાકી રકમ" },
   "TOP CATEGORY": { en: "TOP CATEGORY", gu: "મુખ્ય કેટેગરી" },
-  "Vendor Due": { en: "Vendor Due", gu: "વેન્ડર બાકી" },
+  "Vendor Due": { en: "Party Due", gu: "પાર્ટી બાકી" },
+  "Party Due": { en: "Party Due", gu: "પાર્ટી બાકી" },
   "Bank & Cash": { en: "Bank & Cash", gu: "બેંક અને રોકડ" },
   "Records": { en: "Records", gu: "રેકોર્ડ્સ" },
   "Spent": { en: "Spent", gu: "ખર્ચાયેલ" },
-  "Total Vendors": { en: "Total Vendors", gu: "કુલ વેન્ડર્સ" },
-  "Active Vendors": { en: "Active Vendors", gu: "સક્રિય વેન્ડર્સ" },
+  "Total Vendors": { en: "Total Parties", gu: "કુલ પાર્ટીઓ" },
+  "Total Parties": { en: "Total Parties", gu: "કુલ પાર્ટીઓ" },
+  "Active Vendors": { en: "Active Parties", gu: "સક્રિય પાર્ટીઓ" },
+  "Active Parties": { en: "Active Parties", gu: "સક્રિય પાર્ટીઓ" },
   "Total Karigars": { en: "Total Karigars", gu: "કુલ કારીગરો" },
   "Active Karigars": { en: "Active Karigars", gu: "સક્રિય કારીગરો" },
   "Total Outstanding": { en: "Total Outstanding", gu: "કુલ બાકી લેણું" },
@@ -256,8 +278,10 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "Export Excel": { en: "Export Excel", gu: "એક્સેલ ડાઉનલોડ" },
   "Add Expense": { en: "Add Expense", gu: "+ ખર્ચ ઉમેરો" },
   "+ Add Expense": { en: "+ Add Expense", gu: "+ ખર્ચ ઉમેરો" },
-  "Add Vendor": { en: "Add Vendor", gu: "+ વેન્ડર ઉમેરો" },
-  "+ Add Vendor": { en: "+ Add Vendor", gu: "+ વેન્ડર ઉમેરો" },
+  "Add Vendor": { en: "Add Party", gu: "+ પાર્ટી ઉમેરો" },
+  "+ Add Vendor": { en: "+ Add Party", gu: "+ પાર્ટી ઉમેરો" },
+  "Add Party": { en: "Add Party", gu: "+ પાર્ટી ઉમેરો" },
+  "+ Add Party": { en: "+ Add Party", gu: "+ પાર્ટી ઉમેરો" },
   "Add Karigar": { en: "Add Karigar", gu: "+ કારીગર ઉમેરો" },
   "+ Add Karigar": { en: "+ Add Karigar", gu: "+ કારીગર ઉમેરો" },
   "Add Worker": { en: "Add Worker", gu: "+ કારીગર ઉમેરો" },
@@ -351,12 +375,16 @@ export const translations: Record<string, { en: string; gu: string }> = {
 
   // Placeholders
   "Search by vendor, category, invoice #, remarks.": {
-    en: "Search by vendor, category, invoice #, remarks.",
-    gu: "વેન્ડર, કેટેગરી, ઇનવોઇસ અથવા નોંધ દ્વારા શોધો..."
+    en: "Search by party, category, invoice #, remarks.",
+    gu: "પાર્ટી, કેટેગરી, ઇનવોઇસ અથવા નોંધ દ્વારા શોધો..."
   },
   "Search by vendor, category, invoice #, remarks...": {
-    en: "Search by vendor, category, invoice #, remarks...",
-    gu: "વેન્ડર, કેટેગરી, ઇનવોઇસ અથવા નોંધ દ્વારા શોધો..."
+    en: "Search by party, category, invoice #, remarks...",
+    gu: "પાર્ટી, કેટેગરી, ઇનવોઇસ અથવા નોંધ દ્વારા શોધો..."
+  },
+  "Search by party, category, invoice #, remarks...": {
+    en: "Search by party, category, invoice #, remarks...",
+    gu: "પાર્ટી, કેટેગરી, ઇનવોઇસ અથવા નોંધ દ્વારા શોધો..."
   },
   "Search by name, phone, GSTIN, city...": {
     en: "Search by name, phone, GSTIN, city...",
@@ -379,8 +407,36 @@ export const translations: Record<string, { en: string; gu: string }> = {
     gu: "પસંદ કરો અથવા લખીને ઉમેરો"
   },
   "Type supplier / vendor name manually...": {
-    en: "Type supplier / vendor name manually...",
-    gu: "સપ્લાયર અથવા વેન્ડરનું નામ લખો..."
+    en: "Type party name manually...",
+    gu: "સપ્લાયર અથવા પાર્ટીનું નામ લખો..."
+  },
+  "Type party name manually...": {
+    en: "Type party name manually...",
+    gu: "સપ્લાયર અથવા પાર્ટીનું નામ લખો..."
+  },
+  "Search or enter party name...": {
+    en: "Search or enter party name...",
+    gu: "પાર્ટીનું નામ શોધો અથવા લખો..."
+  },
+  "Search or enter vendor name...": {
+    en: "Search or enter party name...",
+    gu: "પાર્ટીનું નામ શોધો અથવા લખો..."
+  },
+  "Please select or enter party name.": {
+    en: "Please select or enter party name.",
+    gu: "કૃપા કરીને પાર્ટીનું નામ પસંદ કરો અથવા લખો."
+  },
+  "Please select or enter supplier/vendor name.": {
+    en: "Please select or enter party name.",
+    gu: "કૃપા કરીને પાર્ટીનું નામ પસંદ કરો અથવા લખો."
+  },
+  "No parties found.": {
+    en: "No parties found.",
+    gu: "કોઈ પાર્ટી મળી નથી."
+  },
+  "No vendors found.": {
+    en: "No parties found.",
+    gu: "કોઈ પાર્ટી મળી નથી."
   },
   "Add optional payment notes...": {
     en: "Add optional payment notes...",
@@ -462,10 +518,11 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "BILL NO": { en: "BILL NO", gu: "બિલ નં." },
   "REMARKS": { en: "REMARKS", gu: "રિમાર્ક્સ" },
   "ITEM / SHADE DESCRIPTION": { en: "ITEM / SHADE DESCRIPTION", gu: "આઇટમ / શેડ વિગત" },
-  "ITEM / SHADE DESCRIPTION*": { en: "ITEM / SHADE DESCRIPTION*", gu: "આઇટમ / શેડ વિગત*" },
-  "SUPPLIER / VENDOR": { en: "SUPPLIER / VENDOR", gu: "સપ્લાયર / વેપારી (મિલ)" },
-  "Supplier / Vendor*": { en: "Supplier / Vendor*", gu: "સપ્લાયર / વેપારી (મિલ)*" },
-  "Supplier / Vendor (વેપારી / મિલ)*": { en: "Supplier / Vendor*", gu: "સપ્લાયર / વેપારી (મિલ)*" },
+  "SUPPLIER / VENDOR": { en: "SUPPLIER / PARTY", gu: "સપ્લાયર / પાર્ટી (મિલ)" },
+  "SUPPLIER / PARTY": { en: "SUPPLIER / PARTY", gu: "સપ્લાયર / પાર્ટી (મિલ)" },
+  "Supplier / Vendor*": { en: "Supplier / Party*", gu: "સપ્લાયર / પાર્ટી (મિલ)*" },
+  "Supplier / Party*": { en: "Supplier / Party*", gu: "સપ્લાયર / પાર્ટી (મિલ)*" },
+  "Supplier / Vendor (વેપારી / મિલ)*": { en: "Supplier / Party*", gu: "સપ્લાયર / પાર્ટી (મિલ)*" },
   "INVOICE SPECIFICATIONS": { en: "INVOICE SPECIFICATIONS", gu: "ઇન્વોઇસ વિગત (બિલ વિગત)" },
   "Invoice Specifications": { en: "Invoice Specifications", gu: "ઇન્વોઇસ વિગત (બિલ વિગત)" },
   "Invoice Specifications*": { en: "Invoice Specifications*", gu: "ઇન્વોઇસ વિગત (બિલ વિગત)*" },

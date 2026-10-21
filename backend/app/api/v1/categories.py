@@ -34,9 +34,15 @@ DEFAULT_CATEGORIES_TEMPLATE = [
 ]
 
 def seed_default_categories_for_tenant(db: Session, company_id: str):
+    existing_names = {
+        (c[0], c[1].strip().lower())
+        for c in db.query(Category.module, Category.name).filter(Category.company_id == company_id).all()
+    }
     new_cats = []
     suffix = company_id.replace("comp-", "") if "comp-" in company_id else company_id[:6]
     for item in DEFAULT_CATEGORIES_TEMPLATE:
+        if (item["module"], item["name"].strip().lower()) in existing_names:
+            continue
         mod_prefix = item["module"][:3]
         uid = f"cat-{mod_prefix}-{suffix}-{uuid.uuid4().hex[:6]}"
         new_cats.append(Category(
@@ -47,8 +53,9 @@ def seed_default_categories_for_tenant(db: Session, company_id: str):
             color=item["color"],
             is_system=True
         ))
-    db.add_all(new_cats)
-    db.commit()
+    if new_cats:
+        db.add_all(new_cats)
+        db.commit()
 
 @router.get("", response_model=List[CategoryResponse])
 def get_categories(
@@ -68,7 +75,17 @@ def get_categories(
     query = db.query(Category).filter(Category.company_id == active_cid)
     if module and module != "all":
         query = query.filter(Category.module == module)
-    return query.order_by(Category.name.asc()).all()
+    results = query.order_by(Category.name.asc()).all()
+
+    # Guarantee uniqueness by (module, lowercase name)
+    seen = set()
+    unique_res = []
+    for r in results:
+        key = (r.module, r.name.strip().lower())
+        if key not in seen:
+            seen.add(key)
+            unique_res.append(r)
+    return unique_res
 
 @router.post("", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
 def create_category(

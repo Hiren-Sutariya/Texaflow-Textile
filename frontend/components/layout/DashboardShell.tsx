@@ -35,21 +35,31 @@ export function DashboardShell({
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Automatically purge legacy test dummy data from browser localStorage on load
+  // Automatically purge legacy test dummy data and unscoped keys from browser localStorage on load
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      if (!localStorage.getItem("texaflow_all_data_wiped_v5")) {
+      // Unconditionally remove cross-tenant legacy keys that cause data leakage between users
+      const unscopedLeakKeys = [
+        "om_sai_purchases",
+        "texaflow_purchases",
+        "om_sai_vouchers",
+        "texaflow_vouchers",
+        "om_sai_expenses",
+        "texaflow_expenses",
+        "om_sai_vendors",
+        "app_vendors_master",
+        "texaflow_vendors",
+        "app_parties",
+        "app_parties_list",
+        "parties_register_data"
+      ];
+      unscopedLeakKeys.forEach((k) => localStorage.removeItem(k));
+
+      if (!localStorage.getItem("texaflow_all_data_wiped_v8")) {
         const keysToRemove = [
-          "om_sai_purchases",
-          "texaflow_purchases",
-          "om_sai_vouchers",
-          "texaflow_vouchers",
+          ...unscopedLeakKeys,
           "texaflow_ledger_opening_balances",
-          "app_vendors_master",
-          "om_sai_vendors",
-          "texaflow_expenses",
-          "om_sai_expenses",
           "app_employees_data",
           "app_attendance_data",
           "app_tasks_data",
@@ -67,6 +77,7 @@ export function DashboardShell({
           "app_machines_unit_2"
         ];
         keysToRemove.forEach((k) => localStorage.removeItem(k));
+
         const toDelete: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
@@ -75,13 +86,13 @@ export function DashboardShell({
             !key.includes("auth") &&
             !key.includes("token") &&
             !key.includes("user") &&
-            (key.startsWith("api_cache_") || key.includes("dummy") || key.startsWith("texaflow_") || key.startsWith("om_sai_"))
+            (key.startsWith("api_cache_") || key.includes("dummy") || key.startsWith("om_sai_"))
           ) {
             toDelete.push(key);
           }
         }
         toDelete.forEach((k) => localStorage.removeItem(k));
-        localStorage.setItem("texaflow_all_data_wiped_v5", "true");
+        localStorage.setItem("texaflow_all_data_wiped_v8", "true");
         window.dispatchEvent(new Event("app_data_update"));
       }
 

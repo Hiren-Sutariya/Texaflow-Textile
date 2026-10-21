@@ -76,9 +76,17 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
   const tenantCompanyId = getStoredCompanyId() || "comp-001";
   const method = (options.method || "GET").toUpperCase();
 
+  let authToken = "";
+  if (typeof window !== "undefined") {
+    try {
+      authToken = sessionStorage.getItem("texaflow_auth_token") || localStorage.getItem("texaflow_auth_token") || "";
+    } catch {}
+  }
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "X-Company-Id": tenantCompanyId,
+    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
     ...((options.headers as Record<string, string>) || {})
   };
 

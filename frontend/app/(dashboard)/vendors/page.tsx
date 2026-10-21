@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
-import { fetchApi } from "@/lib/api";
+import { useLanguage } from "@/context/LanguageContext";
+import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache } from "@/lib/api";
+import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import {
   Building2,
@@ -196,10 +198,33 @@ export interface BankDetail {
   qr_setup: "Auto Generate from UPI" | "Upload Custom QR";
 }
 
+export const ACCOUNT_TYPES = [
+  "Supplier",
+  "Customer",
+  "Dyeing & Printing Mill",
+  "Job Work",
+  "Broker",
+  "Trading Partner",
+  "Internal Firm"
+] as const;
+
+export function normalizeAccountType(type?: string): string {
+  if (!type) return "Supplier";
+  const t = type.trim();
+  if (t === "Supplier / Vendor" || t === "Supplier / Party" || t === "Supplier") return "Supplier";
+  if (t === "Customer / Client" || t === "Customer") return "Customer";
+  if (t === "Dyeing & Printing Mill" || t === "Dyeing Mill" || t === "Mill") return "Dyeing & Printing Mill";
+  if (t === "Job Work / Karigar" || t === "Job Work") return "Job Work";
+  if (t === "Broker / Dalal" || t === "Broker" || t === "Dalal") return "Broker";
+  if (t === "Trading Partner" || t === "Trading") return "Trading Partner";
+  if (t === "Internal Firm" || t === "Internal") return "Internal Firm";
+  return t;
+}
+
 export interface Vendor {
   id: string;
   srNo: number;
-  account_type: "Supplier / Vendor" | "Customer / Client" | "Dyeing & Printing Mill" | "Job Work" | "Broker / Dalal" | "Trading Partner" | "Internal Firm";
+  account_type: string;
   salutation: string;
   first_name: string;
   last_name: string;
@@ -267,18 +292,15 @@ export interface Vendor {
 const initialVendors: Vendor[] = [];
 
 export default function VendorsPage() {
+  const { t } = useLanguage();
   const [hasMounted, setHasMounted] = useState(false);
   const [vendors, setVendors] = useState<Vendor[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem("app_vendors_master");
-        if (saved !== null) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            if (parsed.length === 0) return [];
-            return parsed;
-          }
-        }
+        const cached = getCachedApi<Vendor[]>("/vendors");
+        if (cached && Array.isArray(cached)) return cached;
+        const saved = getTenantItem<Vendor[]>("texaflow_vendors");
+        if (saved && Array.isArray(saved)) return saved;
       } catch {}
     }
     return [];
@@ -327,7 +349,7 @@ export default function VendorsPage() {
   const [filterMsme, setFilterMsme] = useState<string>("ALL");
 
   // Form State matching screenshots exactly
-  const [formAccountType, setFormAccountType] = useState<Vendor["account_type"]>("Supplier / Vendor");
+  const [formAccountType, setFormAccountType] = useState<string>("Supplier");
   const [formSalutation, setFormSalutation] = useState<string>("");
   const [formFirstName, setFormFirstName] = useState("");
   const [formLastName, setFormLastName] = useState("");
@@ -424,12 +446,14 @@ export default function VendorsPage() {
   const [remarks, setRemarks] = useState("");
 
   const loadVendorsFromApi = async () => {
+    const currentCid = getStoredCompanyId() || "comp-001";
     try {
       const live = await fetchApi<any[]>("/vendors");
       if (Array.isArray(live)) {
         if (live.length === 0) {
           setVendors([]);
-          localStorage.setItem("app_vendors_master", "[]");
+          setTenantItem("texaflow_vendors", []);
+          setCachedApi("/vendors", []);
           setIsLoading(false);
           return;
         }
@@ -504,27 +528,25 @@ export default function VendorsPage() {
           };
         });
         setVendors(mapped);
-        localStorage.setItem("app_vendors_master", JSON.stringify(mapped));
+        setTenantItem("texaflow_vendors", mapped);
+        setCachedApi("/vendors", mapped);
         setIsLoading(false);
         return;
       }
     } catch (e) {
-      console.warn("Backend vendors fetch fallback to local storage", e);
+      console.warn("Backend vendors fetch notice:", e);
     }
 
     try {
-      const saved = localStorage.getItem("app_vendors_master");
-      if (saved !== null) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setVendors(parsed);
-          setIsLoading(false);
-          return;
-        }
+      const saved = getTenantItem<Vendor[]>("texaflow_vendors");
+      if (saved && Array.isArray(saved)) {
+        setVendors(saved);
+        setIsLoading(false);
+        return;
       }
       setVendors([]);
     } catch (e) {
-      console.error("Error loading app_vendors_master", e);
+      console.error("Error loading texaflow_vendors", e);
     } finally {
       setIsLoading(false);
     }
@@ -539,24 +561,29 @@ export default function VendorsPage() {
   const saveVendorsList = (newList: Vendor[]) => {
     setVendors(newList);
     try {
-      localStorage.setItem("app_vendors_master", JSON.stringify(newList));
-      localStorage.setItem("texaflow_vendors", JSON.stringify(newList));
-      // Seamlessly sync Customer / Client, Trading Partner, and Job Work to app_parties so Orders & Designs see them immediately
+      setTenantItem("texaflow_vendors", newList);
+      setCachedApi("/vendors", newList);
+      invalidateApiCache("/vendors");
+      invalidateApiCache("/parties");
+
+      // Seamlessly sync Customer, Trading Partner, and Job Work to texaflow_parties so Orders & Designs see them immediately
       const clientParties = newList
-        .filter((v) => v.account_type === "Customer / Client" || v.account_type === "Trading Partner" || v.account_type === "Job Work")
+        .filter((v) => {
+          const norm = normalizeAccountType(v.account_type);
+          return norm === "Customer" || norm === "Trading Partner" || norm === "Job Work";
+        })
         .map((v) => ({
           id: v.id,
           name: v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`.trim(),
-          account_type: v.account_type,
+          account_type: normalizeAccountType(v.account_type),
           city: v.billing_address?.city || "",
           mobile: v.mobile || ""
         }))
         .filter((p) => p.name);
-      localStorage.setItem("app_parties", JSON.stringify(clientParties));
-      localStorage.setItem("app_parties_list", JSON.stringify(clientParties));
+      setTenantItem("texaflow_parties", clientParties);
       window.dispatchEvent(new Event("app_data_update"));
     } catch (e) {
-      console.error("Error saving app_vendors_master", e);
+      console.error("Error saving texaflow_vendors", e);
     }
   };
 
@@ -573,7 +600,7 @@ export default function VendorsPage() {
 
   const openNewVendorForm = () => {
     setEditingVendorId(null);
-    setFormAccountType("Supplier / Vendor");
+    setFormAccountType("Supplier");
     setFormSalutation("");
     setFormFirstName("");
     setFormLastName("");
@@ -656,7 +683,7 @@ export default function VendorsPage() {
 
   const openEditVendorForm = (v: Vendor) => {
     setEditingVendorId(v.id);
-    setFormAccountType(v.account_type);
+    setFormAccountType(normalizeAccountType(v.account_type));
     setFormSalutation(v.salutation);
     setFormFirstName(v.first_name);
     setFormLastName(v.last_name);
@@ -904,7 +931,7 @@ export default function VendorsPage() {
   };
 
   const handleDeleteVendor = async (id: string) => {
-    if (confirm("Are you sure you want to delete this Vendor record?")) {
+    if (confirm(t("Are you sure you want to delete this Party record?"))) {
       try {
         await fetchApi(`/vendors/${id}`, { method: "DELETE" });
       } catch (err) {
@@ -923,7 +950,7 @@ export default function VendorsPage() {
 
 
   const handleExportCSV = () => {
-    const headers = ["SR NO", "VENDOR NAME", "ACCOUNT TYPE", "PRIMARY CONTACT", "MOBILE", "GSTIN", "PAN", "PAYMENT TERMS"];
+    const headers = ["SR NO", t("PARTY NAME"), t("ACCOUNT TYPE"), t("PRIMARY CONTACT"), t("MOBILE"), "GSTIN", "PAN", t("PAYMENT TERMS")];
     const rows = filteredVendors.map((v) => [
       v.srNo,
       `"${v.display_name || v.company_name}"`,
@@ -939,7 +966,7 @@ export default function VendorsPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Vendors_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `Parties_Export_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -958,7 +985,7 @@ export default function VendorsPage() {
         v.mobile.includes(q) ||
         v.work_phone.includes(q);
 
-      const matchesType = filterAccountType === "ALL" || (v.account_type || "Supplier / Vendor") === filterAccountType;
+      const matchesType = filterAccountType === "ALL" || normalizeAccountType(v.account_type) === filterAccountType;
       const matchesMsme = filterMsme === "ALL" || (filterMsme === "MSME" ? v.is_msme : !v.is_msme);
 
       return matchesSearch && matchesType && matchesMsme;
@@ -1015,7 +1042,7 @@ export default function VendorsPage() {
         {/* Action Toolbar Header for Full Page Form (Matching Vendor List Toolbar Card Design & Placement) */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-4 py-3 flex items-center justify-between gap-3 text-xs">
           <h2 className="font-extrabold text-slate-800 text-xs tracking-wide uppercase">
-            {editingVendorId ? "EDIT VENDOR DETAILS" : "NEW VENDOR & SUPPLIER REGISTRATION"}
+            {editingVendorId ? t("EDIT PARTY DETAILS") : t("NEW PARTY REGISTRATION")}
           </h2>
           <button
             type="button"
@@ -1023,7 +1050,7 @@ export default function VendorsPage() {
             className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-slate-200"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Vendor List</span>
+            <span>{t("Back to Parties List")}</span>
           </button>
         </div>
 
@@ -1041,30 +1068,25 @@ export default function VendorsPage() {
 
               {/* Account Type Radio Select */}
               <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
-                <label className="font-extrabold text-rose-600">Account Type*</label>
+                <label className="font-extrabold text-rose-600">{t("Account Type*")}</label>
                 <div className="flex items-center gap-4 flex-wrap font-bold text-slate-700">
-                  {[
-                    "Supplier / Vendor",
-                    "Customer / Client",
-                    "Dyeing & Printing Mill",
-                    "Job Work",
-                    "Broker / Dalal",
-                    "Trading Partner",
-                    "Internal Firm"
-                  ].map((type) => (
-                    <label key={type} className="flex items-center gap-1.5 cursor-pointer select-none">
-                      <input
-                        type="radio"
-                        name="account_type"
-                        checked={formAccountType === type}
-                        onChange={() => setFormAccountType(type as any)}
-                        className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span className={formAccountType === type ? "text-blue-900 font-extrabold" : ""}>
-                        {type}
-                      </span>
-                    </label>
-                  ))}
+                  {ACCOUNT_TYPES.map((type) => {
+                    const isChecked = normalizeAccountType(formAccountType) === type;
+                    return (
+                      <label key={type} className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name="account_type"
+                          checked={isChecked}
+                          onChange={() => setFormAccountType(type)}
+                          className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className={isChecked ? "text-blue-900 font-extrabold" : ""}>
+                          {t(type)}
+                        </span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1922,12 +1944,12 @@ export default function VendorsPage() {
                   {isSaving ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Saving Vendor...</span>
+                      <span>{t("Saving Party...")}</span>
                     </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      <span>Save Vendor</span>
+                      <span>{t("Save Party")}</span>
                     </>
                   )}
                 </button>
@@ -2114,14 +2136,14 @@ export default function VendorsPage() {
                 value={filterAccountType}
                 onChange={(val) => setFilterAccountType(val)}
                 options={[
-                  { value: "ALL", label: "All Account Types" },
-                  { value: "Customer / Client", label: "Customer / Client (Vepari)" },
-                  { value: "Supplier / Vendor", label: "Supplier / Vendor" },
-                  { value: "Dyeing & Printing Mill", label: "Dyeing & Printing Mill" },
-                  { value: "Job Work", label: "Job Work / Karigar" },
-                  { value: "Broker / Dalal", label: "Broker / Dalal" },
-                  { value: "Trading Partner", label: "Trading Partner" },
-                  { value: "Internal Firm", label: "Internal Firm" }
+                  { value: "ALL", label: t("All Account Types") },
+                  { value: "Supplier", label: t("Supplier") },
+                  { value: "Customer", label: t("Customer") },
+                  { value: "Dyeing & Printing Mill", label: t("Dyeing & Printing Mill") },
+                  { value: "Job Work", label: t("Job Work") },
+                  { value: "Broker", label: t("Broker") },
+                  { value: "Trading Partner", label: t("Trading Partner") },
+                  { value: "Internal Firm", label: t("Internal Firm") }
                 ]}
               />
             </div>
@@ -2148,7 +2170,7 @@ export default function VendorsPage() {
               className="flex-1 sm:flex-none h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>New Party / Vendor</span>
+              <span>{t("New Party")}</span>
             </button>
 
             {/* Action Menu (Three Dots Button matching screenshots) */}
@@ -2525,7 +2547,7 @@ export default function VendorsPage() {
         <div className="block md:hidden p-3 space-y-3">
           {filteredVendors.length === 0 ? (
             <div className="py-8 px-4 text-center text-slate-400 font-medium text-xs">
-              No vendor records found matching your filters. Click &quot;+ New Vendor&quot; to add a record.
+              No party records found matching your filters. Click &quot;+ New Party&quot; to add a record.
             </div>
           ) : (
             filteredVendors.map((v) => (
@@ -2545,7 +2567,7 @@ export default function VendorsPage() {
                     </h3>
                   </div>
                   <span className={`font-mono font-extrabold px-2.5 py-1 rounded-lg text-xs border shrink-0 ${getAccountTypeBadgeClass(v.account_type)}`}>
-                    {v.account_type || "Supplier / Vendor"}
+                    {t(normalizeAccountType(v.account_type))}
                   </span>
                 </div>
 
@@ -2625,7 +2647,7 @@ export default function VendorsPage() {
             <thead className="bg-slate-100/80 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider border-b border-slate-200 whitespace-nowrap">
               <tr>
                 <th className="py-2.5 px-4 text-center w-14 border-r border-slate-200/80">SR NO.</th>
-                <th className="py-2.5 px-5 border-r border-slate-200/80">VENDOR NAME</th>
+                <th className="py-2.5 px-5 border-r border-slate-200/80">{t("PARTY NAME")}</th>
                 <th className="py-2.5 px-4 text-center border-r border-slate-200/80">ACCOUNT TYPE</th>
                 <th className="py-2.5 px-4 border-r border-slate-200/80">PRIMARY CONTACT</th>
                 <th className="py-2.5 px-4 font-mono border-r border-slate-200/80">MOBILE / PHONE</th>
@@ -2638,7 +2660,7 @@ export default function VendorsPage() {
               {filteredVendors.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-slate-400 font-medium text-xs">
-                    No vendor records found matching your filters. Click &quot;+ New Vendor&quot; to add a record.
+                    No party records found matching your filters. Click &quot;+ New Party&quot; to add a record.
                   </td>
                 </tr>
               ) : (
@@ -2657,15 +2679,21 @@ export default function VendorsPage() {
                     <td className="py-3 px-4 text-center whitespace-nowrap border-r border-slate-200/70">
                       <span className="text-xs font-bold text-slate-800 inline-flex items-center gap-1.5">
                         <span className={`w-1.5 h-1.5 rounded-full ${
-                          v.account_type === "Customer / Client"
+                          normalizeAccountType(v.account_type) === "Customer"
                             ? "bg-emerald-500"
-                            : v.account_type === "Dyeing & Printing Mill"
+                            : normalizeAccountType(v.account_type) === "Dyeing & Printing Mill"
                             ? "bg-purple-500"
-                            : v.account_type === "Job Work"
+                            : normalizeAccountType(v.account_type) === "Job Work"
                             ? "bg-amber-500"
+                            : normalizeAccountType(v.account_type) === "Broker"
+                            ? "bg-teal-500"
+                            : normalizeAccountType(v.account_type) === "Trading Partner"
+                            ? "bg-cyan-500"
+                            : normalizeAccountType(v.account_type) === "Internal Firm"
+                            ? "bg-slate-500"
                             : "bg-blue-500"
                         }`} />
-                        <span>{v.account_type || "Supplier / Vendor"}</span>
+                        <span>{t(normalizeAccountType(v.account_type))}</span>
                       </span>
                     </td>
                     <td className="py-3 px-4 font-bold text-slate-800 whitespace-nowrap border-r border-slate-200/70">
@@ -2735,7 +2763,7 @@ export default function VendorsPage() {
                         {previewVendor.display_name || previewVendor.company_name}
                       </h2>
                       <span className={`font-mono font-extrabold px-2.5 py-0.5 rounded-lg text-[11px] border shrink-0 ${getAccountTypeBadgeClass(previewVendor.account_type)}`}>
-                        {previewVendor.account_type}
+                        {t(normalizeAccountType(previewVendor.account_type))}
                       </span>
                       {previewVendor.is_msme && (
                         <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-extrabold rounded-md text-[9px] border border-emerald-200 shrink-0">
@@ -2744,7 +2772,7 @@ export default function VendorsPage() {
                       )}
                     </div>
                     <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
-                      Vendor ID: <span className="font-mono font-bold text-slate-700">{previewVendor.id}</span>
+                      Party ID: <span className="font-mono font-bold text-slate-700">{previewVendor.id}</span>
                     </p>
                   </div>
                 </div>

@@ -275,6 +275,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(session);
+        if (data.token || data.access_token) {
+          const jwtToken = data.token || data.access_token;
+          sessionStorage.setItem("texaflow_auth_token", jwtToken);
+          localStorage.setItem("texaflow_auth_token", jwtToken);
+        }
         sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
         localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
         sessionStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
@@ -337,6 +342,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         setUser(session);
+        if (json.token || json.access_token) {
+          const jwtToken = json.token || json.access_token;
+          sessionStorage.setItem("texaflow_auth_token", jwtToken);
+          localStorage.setItem("texaflow_auth_token", jwtToken);
+        }
         sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
         localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
         setTenantCookie(session.companyId || tenant.resolvedCompanyId, session.firmName, session.name);
@@ -375,6 +385,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setUser(null);
     try {
+      sessionStorage.removeItem("texaflow_auth_token");
+      localStorage.removeItem("texaflow_auth_token");
       sessionStorage.removeItem(SESSION_STORAGE_KEY);
       localStorage.removeItem(SESSION_STORAGE_KEY);
       localStorage.removeItem("texaflow_auth_session");

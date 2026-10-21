@@ -293,36 +293,30 @@ export default function DesignsPage() {
   const loadPartiesInDesigns = () => {
     const partyList: { id?: string; name: string; city?: string; mobile?: string }[] = [];
     try {
-      const saved = localStorage.getItem("app_parties");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          parsed.forEach((p: any) => {
-            if (p.name && !partyList.some((x) => x.name === p.name)) {
-              partyList.push({ id: p.id, name: p.name, city: p.city || "Surat", mobile: p.mobile || "" });
-            }
-          });
-        }
+      const saved = getTenantItem<any[]>("texaflow_parties");
+      if (saved && Array.isArray(saved)) {
+        saved.forEach((p: any) => {
+          if (p.name && !partyList.some((x) => x.name === p.name)) {
+            partyList.push({ id: p.id, name: p.name, city: p.city || "Surat", mobile: p.mobile || "" });
+          }
+        });
       }
     } catch (e) {}
 
     try {
-      const savedVendors = localStorage.getItem("app_vendors_master");
-      if (savedVendors) {
-        const parsedV = JSON.parse(savedVendors);
-        if (Array.isArray(parsedV)) {
-          parsedV.forEach((v: any) => {
-            const name = (v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`).trim();
-            if (name && !partyList.some((p) => p.name === name)) {
-              partyList.push({
-                id: v.id,
-                name,
-                city: v.city || "Surat",
-                mobile: v.mobile || v.phone || ""
-              });
-            }
-          });
-        }
+      const savedVendors = getTenantItem<any[]>("texaflow_vendors");
+      if (savedVendors && Array.isArray(savedVendors)) {
+        savedVendors.forEach((v: any) => {
+          const name = (v.display_name || v.company_name || `${v.first_name || ""} ${v.last_name || ""}`).trim();
+          if (name && !partyList.some((p) => p.name === name)) {
+            partyList.push({
+              id: v.id,
+              name,
+              city: v.city || "Surat",
+              mobile: v.mobile || v.phone || ""
+            });
+          }
+        });
       }
     } catch (e) {}
 

@@ -164,15 +164,9 @@ function NewPaymentVoucherContent() {
 
       if (!isMounted) return;
       try {
-        const localMaster = localStorage.getItem("app_vendors_master");
-        const saved = localMaster
-          ? JSON.parse(localMaster)
-          : getTenantItem<any[]>(
-              "texaflow_vendors",
-              currentCid === "comp-001" ? "om_sai_vendors" : undefined
-            );
+        const saved = getTenantItem<any[]>("texaflow_vendors");
         if (saved && Array.isArray(saved)) {
-          const scoped = saved.filter((v: any) => (v.company_id || "comp-001") === currentCid);
+          const scoped = saved.filter((v: any) => (v.company_id || currentCid) === currentCid);
           const mapped: VendorItemState[] = scoped
             .map((v: any) => ({
               id: v.id || `v-${Math.random()}`,
@@ -361,7 +355,7 @@ function NewPaymentVoucherContent() {
       alert(
         formType === "Receipt In"
           ? "Please select Receiving Company/Account, Party/Customer Name, and enter Amount."
-          : "Please select Paying Company, Supplier/Vendor Name, and enter Amount."
+          : "Please select Paying Company, Party/Supplier Name, and enter Amount."
       );
       return;
     }
@@ -640,7 +634,7 @@ function NewPaymentVoucherContent() {
           {/* ROW 3: PARTY / SUPPLIER NAME * */}
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-center text-xs">
             <label className={formType === "Receipt In" ? "font-extrabold text-blue-700" : "font-extrabold text-rose-600"}>
-              {formType === "Receipt In" ? "Party / Customer Name*" : "Supplier / Vendor*"}
+              {formType === "Receipt In" ? "Party / Customer Name*" : "Party / Supplier Name*"}
             </label>
             <div ref={supplierRef} className="relative max-w-xl w-full">
               <div className="relative flex items-center">
@@ -649,7 +643,7 @@ function NewPaymentVoucherContent() {
                   placeholder={
                     formType === "Receipt In"
                       ? "Search or select party name..."
-                      : "Type supplier / vendor name..."
+                      : "Type party / supplier name..."
                   }
                   value={supplierName}
                   onChange={(e) => {
@@ -671,7 +665,7 @@ function NewPaymentVoucherContent() {
                     setIsDatePickerOpen(false);
                   }}
                   className="absolute right-2 p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                  title="Toggle registered vendor/party list"
+                  title="Toggle registered party list"
                 >
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isSupplierDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
                 </button>

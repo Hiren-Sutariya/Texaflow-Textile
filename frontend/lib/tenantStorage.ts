@@ -64,7 +64,7 @@ export function getStoredCompanyId(): string {
     if (cookieCid === "comp-001" || cookieCid === "comp-002" || /^comp-\d+$/.test(cookieCid)) {
       return cookieCid;
     }
-  } catch {}
+  } catch { }
   return "";
 }
 
@@ -80,9 +80,9 @@ export function getStoredFirmName(): string {
       const parsedSess = JSON.parse(rawSess);
       const firmCandidate = parsedSess?.firmName || parsedSess?.firm_name || parsedSess?.company_name;
       if (
-        firmCandidate && 
-        typeof firmCandidate === "string" && 
-        firmCandidate.trim() && 
+        firmCandidate &&
+        typeof firmCandidate === "string" &&
+        firmCandidate.trim() &&
         !firmCandidate.toLowerCase().includes("texaflow") &&
         firmCandidate.toLowerCase() !== "company"
       ) {
@@ -117,7 +117,7 @@ export function getStoredFirmName(): string {
     // 3. Fallbacks by Company ID
     if (cid === "comp-002") return "Om Sai Enterprise";
     if (cid === "comp-001") return "Shiv Creation";
-  } catch {}
+  } catch { }
   return cid === "comp-002" ? "Om Sai Enterprise" : (cid === "comp-001" ? "Shiv Creation" : "");
 }
 
@@ -133,9 +133,9 @@ export function getStoredUserName(): string {
       const parsedSess = JSON.parse(rawSess);
       const nameCandidate = parsedSess?.name || parsedSess?.owner_name;
       if (
-        nameCandidate && 
-        typeof nameCandidate === "string" && 
-        nameCandidate.trim() && 
+        nameCandidate &&
+        typeof nameCandidate === "string" &&
+        nameCandidate.trim() &&
         nameCandidate !== "Factory Admin" &&
         nameCandidate.toLowerCase() !== "owner"
       ) {
@@ -169,7 +169,7 @@ export function getStoredUserName(): string {
     // 3. Fallbacks by Company ID
     if (cid === "comp-002") return "Nilesh Sutariya";
     if (cid === "comp-001") return "Hiren Sutariya";
-  } catch {}
+  } catch { }
   return cid === "comp-002" ? "Nilesh Sutariya" : (cid === "comp-001" ? "Hiren Sutariya" : "");
 }
 
@@ -178,72 +178,48 @@ export function getTenantStorageKey(baseKey: string, companyId?: string): string
   return `${baseKey}_${cid}`;
 }
 
-export function getTenantItem<T>(baseKey: string, legacyKey?: string): T | null {
+export function getTenantItem<T>(baseKey: string, _legacyKey?: string): T | null {
   if (typeof window === "undefined") return null;
   const cid = getStoredCompanyId() || "comp-001";
   const primaryKey = `${baseKey}_${cid}`;
 
-  // Strict Tenant Isolation: Only check this tenant's primary key
-  // Only allow legacyKey if explicitly in comp-001 for backward compatibility
-  const tryKeys = [
-    primaryKey,
-    ...(cid === "comp-001" && legacyKey ? [legacyKey] : [])
-  ].filter(Boolean) as string[];
-
-  for (const k of tryKeys) {
-    try {
-      const item = localStorage.getItem(k) || sessionStorage.getItem(k);
-      if (item !== null && item !== "" && item !== "undefined" && item !== "null") {
-        let parsed: any;
-        try {
-          parsed = JSON.parse(item);
-        } catch {
-          parsed = item;
-        }
-
-        if (Array.isArray(parsed)) {
-          // If array is empty, return empty array immediately (do not fallback to stale data)
-          if (parsed.length === 0) {
-            return [] as unknown as T;
-          }
-          // Check if items have company_id
-          const hasCompanyId = parsed.some((x: any) => x && typeof x === "object" && x.company_id);
-          if (hasCompanyId) {
-            const matched = parsed.filter((x: any) => !x.company_id || x.company_id === cid);
-            try {
-              localStorage.setItem(primaryKey, JSON.stringify(matched));
-            } catch {}
-            return matched as unknown as T;
-          } else {
-            return parsed as unknown as T;
-          }
-        } else if (parsed && typeof parsed === "object") {
-          return parsed as unknown as T;
-        } else if (parsed !== null && parsed !== undefined) {
-          return parsed as unknown as T;
-        }
+  try {
+    const item = localStorage.getItem(primaryKey) || sessionStorage.getItem(primaryKey);
+    if (item !== null && item !== "" && item !== "undefined" && item !== "null") {
+      let parsed: any;
+      try {
+        parsed = JSON.parse(item);
+      } catch {
+        parsed = item;
       }
-    } catch (e) {
-      // Continue to next fallback key
+
+      if (Array.isArray(parsed)) {
+        if (parsed.length === 0) {
+          return [] as unknown as T;
+        }
+        // Strict tenant isolation: verify every item belongs to cid
+        const matched = parsed.filter((x: any) => !x || typeof x !== "object" || !x.company_id || x.company_id === cid);
+        return matched as unknown as T;
+      } else if (parsed && typeof parsed === "object") {
+        return parsed as unknown as T;
+      } else if (parsed !== null && parsed !== undefined) {
+        return parsed as unknown as T;
+      }
     }
+  } catch (e) {
+    // Return null on parsing errors
   }
 
   return null;
 }
 
-export function setTenantItem<T>(baseKey: string, value: T, legacyKey?: string): void {
+export function setTenantItem<T>(baseKey: string, value: T, _legacyKey?: string): void {
   if (typeof window === "undefined") return;
   const cid = getStoredCompanyId() || "comp-001";
   const key = `${baseKey}_${cid}`;
   try {
     const serialized = JSON.stringify(value);
     localStorage.setItem(key, serialized);
-    // Strictly isolate: only save under legacyKey if explicitly in comp-001
-    if (cid === "comp-001" && legacyKey) {
-      try {
-        localStorage.setItem(legacyKey, serialized);
-      } catch {}
-    }
   } catch (e) {
     console.error(`Error saving tenant item for key: ${key}`, e);
   }
@@ -263,5 +239,5 @@ export function clearTenantData(companyId?: string): void {
       }
     }
     keysToRemove.forEach((k) => localStorage.removeItem(k));
-  } catch {}
+  } catch { }
 }

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { fetchApi, getCachedApi } from "@/lib/api";
+import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import {
   Plus,
@@ -172,9 +172,8 @@ export const normalizeAndRenumberExpenses = (list: ExpenseItem[]): ExpenseItem[]
   });
 
   try {
-    const currentCid = getStoredCompanyId();
-    setTenantItem("texaflow_expenses", updated, currentCid === "comp-001" ? "om_sai_expenses" : undefined);
-  } catch {}
+    setTenantItem("texaflow_expenses", updated);
+  } catch { }
 
   return updated;
 };
@@ -209,12 +208,12 @@ export default function ExpensesPage() {
           if (scoped.length > 0) return normalizeAndRenumberExpenses(scoped);
         }
         // Check tenant storage (0 ms)
-        const saved = getTenantItem<ExpenseItem[]>("texaflow_expenses", "om_sai_expenses");
+        const saved = getTenantItem<ExpenseItem[]>("texaflow_expenses");
         if (Array.isArray(saved) && saved.length > 0) {
           const scoped = saved.filter((item: any) => (item.company_id || currentCid) === currentCid);
           if (scoped.length > 0) return normalizeAndRenumberExpenses(scoped);
         }
-      } catch {}
+      } catch { }
     }
     return [];
   });
@@ -269,31 +268,28 @@ export default function ExpensesPage() {
 
     // Instant 0ms Sync Check on mount
     try {
-      const immediate = getCachedApi<ExpenseItem[]>("/expenses") || 
-        getTenantItem<ExpenseItem[]>("texaflow_expenses", "om_sai_expenses");
-      if (immediate && Array.isArray(immediate) && immediate.length > 0) {
+      const immediate = getCachedApi<ExpenseItem[]>("/expenses") ||
+        getTenantItem<ExpenseItem[]>("texaflow_expenses");
+      if (immediate && Array.isArray(immediate)) {
         const scoped = immediate.filter((item: any) => (item.company_id || currentCid) === currentCid);
-        if (scoped.length > 0) {
-          setExpenses(normalizeAndRenumberExpenses(scoped));
-        }
+        setExpenses(normalizeAndRenumberExpenses(scoped));
       }
-    } catch {}
+    } catch { }
 
     async function loadLiveExpenses() {
       try {
         const live = await fetchApi<ExpenseItem[]>("/expenses");
-        if (isMounted && Array.isArray(live) && live.length > 0) {
+        if (isMounted && Array.isArray(live)) {
           const scoped = live.filter((item: any) => {
-            const itemCid = item.company_id || (currentCid === "comp-002" ? "comp-002" : "comp-001");
+            const itemCid = item.company_id || currentCid;
             return itemCid === currentCid;
           });
-          if (scoped.length > 0) {
-            const cleanList = normalizeAndRenumberExpenses(scoped);
-            setExpenses(cleanList);
-            try {
-              setTenantItem("texaflow_expenses", cleanList, "om_sai_expenses");
-            } catch {}
-          }
+          const cleanList = normalizeAndRenumberExpenses(scoped);
+          setExpenses(cleanList);
+          try {
+            setTenantItem("texaflow_expenses", cleanList);
+            setCachedApi("/expenses", cleanList);
+          } catch { }
         }
       } catch (err) {
         console.warn("Backend load notice (using instant cached data):", err);
@@ -306,7 +302,7 @@ export default function ExpensesPage() {
 
     // Load custom categories
     try {
-      const savedCats = getTenantItem<string[]>("texaflow_custom_expense_categories", "om_sai_custom_expense_categories");
+      const savedCats = getTenantItem<string[]>("texaflow_custom_expense_categories");
       if (savedCats && Array.isArray(savedCats) && savedCats.length > 0) {
         setFormCategories((prev) => {
           const combined = [...prev];
@@ -387,8 +383,8 @@ export default function ExpensesPage() {
         statusFilter === "All"
           ? true
           : statusFilter === "Paid"
-          ? item.payment_status === "Paid"
-          : item.payment_status === "Pending" || item.payment_status === "Unpaid";
+            ? item.payment_status === "Paid"
+            : item.payment_status === "Pending" || item.payment_status === "Unpaid";
 
       const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
       const matchesTime = matchesPeriod(item.date);
@@ -439,15 +435,15 @@ export default function ExpensesPage() {
       periodFilter === "all"
         ? "All_Time"
         : periodFilter === "this_week"
-        ? "This_Week"
-        : periodFilter === "this_month"
-        ? "This_Month"
-        : periodFilter === "this_year"
-        ? "Year_2026"
-        : "Custom_Period";
+          ? "This_Week"
+          : periodFilter === "this_month"
+            ? "This_Month"
+            : periodFilter === "this_year"
+              ? "Year_2026"
+              : "Custom_Period";
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Date,Expense / Bill,Category,Vendor / Payee,Payment Mode,Status,Remarks / Notes,Amount (INR)\n";
+    csvContent += "Date,Expense / Bill,Category,Party / Payee,Payment Mode,Status,Remarks / Notes,Amount (INR)\n";
 
     recordsToExport.forEach((item) => {
       const catClean = `"${(item.category || "").replace(/"/g, '""')}"`;
@@ -533,18 +529,11 @@ export default function ExpensesPage() {
         setExpenses((prev) => prev.map((item) => (item.expense_no === newEntry.expense_no ? { ...item, id: savedRes.id } : item)));
       }
 
-      const currentCid = getStoredCompanyId();
-      const existing = getTenantItem<ExpenseItem[]>(
-        "texaflow_expenses",
-        currentCid === "comp-001" ? "om_sai_expenses" : undefined
-      ) || [];
+      const existing = getTenantItem<ExpenseItem[]>("texaflow_expenses") || [];
       const list = [...existing];
       list.unshift(newEntry);
-      setTenantItem(
-        "texaflow_expenses",
-        list,
-        currentCid === "comp-001" ? "om_sai_expenses" : undefined
-      );
+      setTenantItem("texaflow_expenses", list);
+      invalidateApiCache("/expenses");
     } catch (err) {
       console.warn("Backend sync notice:", err);
     }
@@ -577,19 +566,12 @@ export default function ExpensesPage() {
       const updated = expenses.filter((e) => e.id !== id);
       setExpenses(updated);
       try {
-        const currentCid = getStoredCompanyId();
-        const saved = getTenantItem<ExpenseItem[]>(
-          "texaflow_expenses",
-          currentCid === "comp-002" ? "om_sai_expenses" : undefined
-        );
+        const saved = getTenantItem<ExpenseItem[]>("texaflow_expenses");
         if (saved && Array.isArray(saved)) {
           const parsed = saved.filter((e: any) => e.id !== id);
-          setTenantItem(
-            "texaflow_expenses",
-            parsed,
-            currentCid === "comp-002" ? "om_sai_expenses" : undefined
-          );
+          setTenantItem("texaflow_expenses", parsed);
         }
+        invalidateApiCache("/expenses");
         await fetchApi(`/expenses/${id}`, { method: "DELETE" });
       } catch (err) {
         console.error("Delete sync notice:", err);
@@ -612,12 +594,12 @@ export default function ExpensesPage() {
               {periodFilter === "all"
                 ? "TOTAL (ALL TIME)"
                 : periodFilter === "this_week"
-                ? "TOTAL (THIS WEEK)"
-                : periodFilter === "this_month"
-                ? "TOTAL (THIS MONTH)"
-                : periodFilter === "this_year"
-                ? "TOTAL (2026)"
-                : "TOTAL EXPENSES"}
+                  ? "TOTAL (THIS WEEK)"
+                  : periodFilter === "this_month"
+                    ? "TOTAL (THIS MONTH)"
+                    : periodFilter === "this_year"
+                      ? "TOTAL (2026)"
+                      : "TOTAL EXPENSES"}
             </p>
             <p suppressHydrationWarning className="text-base sm:text-xl font-black text-slate-900 mt-0.5">₹{totalExpenseAmount.toLocaleString("en-IN")}</p>
             <span suppressHydrationWarning className="text-[10px] sm:text-[11px] font-semibold text-slate-500 mt-0.5 block truncate">{periodExpenses.length} Records</span>
@@ -644,7 +626,7 @@ export default function ExpensesPage() {
           <div className="overflow-hidden">
             <p className="text-[9px] sm:text-[10px] font-bold text-amber-600 uppercase tracking-wider truncate mr-1">PENDING / DUE</p>
             <p suppressHydrationWarning className="text-base sm:text-xl font-black text-amber-700 mt-0.5">₹{unpaidExpensesAmount.toLocaleString("en-IN")}</p>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-amber-600 mt-0.5 block truncate">Vendor Due</span>
+            <span className="text-[10px] sm:text-[11px] font-semibold text-amber-600 mt-0.5 block truncate">{t("Party Due")}</span>
           </div>
           <div className="p-2 sm:p-3 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 shrink-0">
             <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -675,7 +657,7 @@ export default function ExpensesPage() {
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by vendor, category, invoice #, remarks..."
+            placeholder={t("Search by party, category, invoice #, remarks...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-8 pr-3 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 font-medium"
@@ -691,11 +673,10 @@ export default function ExpensesPage() {
                 key={st}
                 type="button"
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1 rounded-lg font-extrabold text-xs transition-all cursor-pointer flex-1 sm:flex-none text-center ${
-                  statusFilter === st
+                className={`px-3 py-1 rounded-lg font-extrabold text-xs transition-all cursor-pointer flex-1 sm:flex-none text-center ${statusFilter === st
                     ? "bg-white text-slate-900 shadow-2xs"
                     : "text-slate-500 hover:text-slate-800"
-                }`}
+                  }`}
               >
                 {t(st)}
               </button>
@@ -710,11 +691,10 @@ export default function ExpensesPage() {
                 setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
                 setIsPeriodDropdownOpen(false);
               }}
-              className={`w-full sm:w-auto h-9 px-3.5 bg-white border text-xs font-extrabold rounded-xl flex items-center justify-between sm:justify-start gap-1.5 transition-all shadow-2xs cursor-pointer ${
-                isCategoryDropdownOpen
+              className={`w-full sm:w-auto h-9 px-3.5 bg-white border text-xs font-extrabold rounded-xl flex items-center justify-between sm:justify-start gap-1.5 transition-all shadow-2xs cursor-pointer ${isCategoryDropdownOpen
                   ? "border-2 border-blue-500 ring-2 ring-blue-500/20 text-slate-900"
                   : "border-slate-300 hover:border-slate-400 text-slate-800"
-              }`}
+                }`}
             >
               <div className="flex items-center gap-1.5 truncate">
                 <Tag className="w-3.5 h-3.5 text-blue-600 shrink-0" />
@@ -736,11 +716,10 @@ export default function ExpensesPage() {
                       setSelectedCategory("All");
                       setIsCategoryDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between gap-3 transition-all cursor-pointer border ${
-                      selectedCategory === "All"
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between gap-3 transition-all cursor-pointer border ${selectedCategory === "All"
                         ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                         : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
-                    }`}
+                      }`}
                   >
                     <span>{t("All Categories")}</span>
                     {selectedCategory === "All" && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
@@ -757,11 +736,10 @@ export default function ExpensesPage() {
                           setSelectedCategory(cat);
                           setIsCategoryDropdownOpen(false);
                         }}
-                        className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between gap-3 transition-all cursor-pointer border ${
-                          isSelected
+                        className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between gap-3 transition-all cursor-pointer border ${isSelected
                             ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                             : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
-                        }`}
+                          }`}
                       >
                         <span className="truncate">{t(cat)}</span>
                         {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
@@ -781,11 +759,10 @@ export default function ExpensesPage() {
                 setIsPeriodDropdownOpen(!isPeriodDropdownOpen);
                 setIsCategoryDropdownOpen(false);
               }}
-              className={`w-full sm:w-auto h-9 px-3.5 bg-white border text-xs font-extrabold rounded-xl flex items-center justify-between sm:justify-start gap-1.5 transition-all shadow-2xs cursor-pointer ${
-                isPeriodDropdownOpen
+              className={`w-full sm:w-auto h-9 px-3.5 bg-white border text-xs font-extrabold rounded-xl flex items-center justify-between sm:justify-start gap-1.5 transition-all shadow-2xs cursor-pointer ${isPeriodDropdownOpen
                   ? "border-2 border-blue-500 ring-2 ring-blue-500/20 text-slate-900"
                   : "border-slate-300 hover:border-slate-400 text-slate-800"
-              }`}
+                }`}
             >
               <div className="flex items-center gap-1.5 truncate">
                 <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
@@ -793,12 +770,12 @@ export default function ExpensesPage() {
                   {periodFilter === "all"
                     ? t("ALL TIME")
                     : periodFilter === "this_week"
-                    ? t("THIS WEEK")
-                    : periodFilter === "this_month"
-                    ? t("THIS MONTH")
-                    : periodFilter === "this_year"
-                    ? t("THIS YEAR")
-                    : t("CUSTOM DATES")}
+                      ? t("THIS WEEK")
+                      : periodFilter === "this_month"
+                        ? t("THIS MONTH")
+                        : periodFilter === "this_year"
+                          ? t("THIS YEAR")
+                          : t("CUSTOM DATES")}
                 </span>
               </div>
               <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform shrink-0 ${isPeriodDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
@@ -826,11 +803,10 @@ export default function ExpensesPage() {
                             setIsPeriodDropdownOpen(false);
                           }
                         }}
-                        className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between gap-3 transition-all cursor-pointer border ${
-                          isSelected
+                        className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between gap-3 transition-all cursor-pointer border ${isSelected
                             ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                             : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
-                        }`}
+                          }`}
                       >
                         <span className="whitespace-nowrap">{p.label}</span>
                         {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
@@ -915,11 +891,10 @@ export default function ExpensesPage() {
                   </span>
                   <div className="flex items-center gap-2">
                     <span
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold border ${
-                        item.payment_status === "Paid"
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold border ${item.payment_status === "Paid"
                           ? "bg-blue-50 text-blue-700 border-blue-200"
                           : "bg-amber-50 text-amber-700 border-amber-200"
-                      }`}
+                        }`}
                     >
                       {item.payment_status === "Paid" ? t("Paid") : t("Pending")}
                     </span>
@@ -1028,99 +1003,99 @@ export default function ExpensesPage() {
               ) : (
                 filteredExpenses.map((item) => (
                   <tr key={item.id} className="hover:bg-blue-50/40 transition-colors animate-in fade-in duration-150">
-                  {/* 1. DATE */}
-                  <td className="py-3 px-4 font-mono font-bold text-slate-700 whitespace-nowrap border-r border-slate-200/70">
-                    {formatDateDDMMYYYY(item.date)}
-                  </td>
+                    {/* 1. DATE */}
+                    <td className="py-3 px-4 font-mono font-bold text-slate-700 whitespace-nowrap border-r border-slate-200/70">
+                      {formatDateDDMMYYYY(item.date)}
+                    </td>
 
-                  {/* 2. EXPENSE / BILL */}
-                  <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
-                    <div className="inline-flex items-center gap-1.5">
-                      <span className="font-mono text-xs font-bold text-slate-800">
-                        {item.expense_no || "-"}
+                    {/* 2. EXPENSE / BILL */}
+                    <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
+                      <div className="inline-flex items-center gap-1.5">
+                        <span className="font-mono text-xs font-bold text-slate-800">
+                          {item.expense_no || "-"}
+                        </span>
+                        {item.bill_image && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBillImage({ notes: item.notes, expense_no: item.expense_no, image: item.bill_image! })}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] rounded-md border border-blue-200 transition-colors cursor-pointer"
+                            title="View Bill Photo"
+                          >
+                            <FileText className="w-3 h-3 text-blue-600" />
+                            <span>Bill</span>
+                          </button>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* 3. CATEGORY */}
+                    <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
+                      <span className="text-xs font-semibold text-slate-800">
+                        {t(item.category)}
                       </span>
-                      {item.bill_image && (
+                    </td>
+
+                    {/* 4. VENDOR / PAYEE */}
+                    <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
+                      <span className="font-bold text-slate-900">{t(item.vendor_name || "-")}</span>
+                    </td>
+
+                    {/* 5. PAYMENT MODE */}
+                    <td className="py-3 px-4 whitespace-nowrap text-slate-700 font-semibold text-xs border-r border-slate-200/70">
+                      {t(item.paid_via)}
+                    </td>
+
+                    {/* 6. STATUS */}
+                    <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
+                      {item.payment_status === "Paid" ? (
+                        <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          <span>{t("Paid")}</span>
+                        </span>
+                      ) : (
+                        <span className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                          <span>{t("Pending")}</span>
+                        </span>
+                      )}
+                    </td>
+
+                    {/* 7. REMARKS / NOTES */}
+                    <td className="py-3 px-4 min-w-[200px] max-w-sm border-r border-slate-200/70">
+                      <p className="text-slate-700 text-xs font-medium leading-relaxed break-words">
+                        {t(item.notes || "-")}
+                      </p>
+                    </td>
+
+                    {/* 8. AMOUNT (₹) */}
+                    <td className="py-3 px-4 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap border-r border-slate-200/70">
+                      ₹{item.amount.toLocaleString("en-IN")}
+                    </td>
+
+                    {/* 9. ACTION */}
+                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
+                        <Link
+                          href={`/expenses/new?edit=${item.id}`}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                          title="Edit Expense"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </Link>
                         <button
                           type="button"
-                          onClick={() => setSelectedBillImage({ notes: item.notes, expense_no: item.expense_no, image: item.bill_image! })}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] rounded-md border border-blue-200 transition-colors cursor-pointer"
-                          title="View Bill Photo"
+                          onClick={() => handleDeleteExpense(item.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          title="Delete Record"
                         >
-                          <FileText className="w-3 h-3 text-blue-600" />
-                          <span>Bill</span>
+                          <Trash2 className="w-4 h-4" />
                         </button>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* 3. CATEGORY */}
-                  <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
-                    <span className="text-xs font-semibold text-slate-800">
-                      {t(item.category)}
-                    </span>
-                  </td>
-
-                  {/* 4. VENDOR / PAYEE */}
-                  <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
-                    <span className="font-bold text-slate-900">{t(item.vendor_name || "-")}</span>
-                  </td>
-
-                  {/* 5. PAYMENT MODE */}
-                  <td className="py-3 px-4 whitespace-nowrap text-slate-700 font-semibold text-xs border-r border-slate-200/70">
-                    {t(item.paid_via)}
-                  </td>
-
-                  {/* 6. STATUS */}
-                  <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
-                    {item.payment_status === "Paid" ? (
-                      <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        <span>{t("Paid")}</span>
-                      </span>
-                    ) : (
-                      <span className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                        <span>{t("Pending")}</span>
-                      </span>
-                    )}
-                  </td>
-
-                  {/* 7. REMARKS / NOTES */}
-                  <td className="py-3 px-4 min-w-[200px] max-w-sm border-r border-slate-200/70">
-                    <p className="text-slate-700 text-xs font-medium leading-relaxed break-words">
-                      {t(item.notes || "-")}
-                    </p>
-                  </td>
-
-                  {/* 8. AMOUNT (₹) */}
-                  <td className="py-3 px-4 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap border-r border-slate-200/70">
-                    ₹{item.amount.toLocaleString("en-IN")}
-                  </td>
-
-                  {/* 9. ACTION */}
-                  <td className="py-3 px-4 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1">
-                      <Link
-                        href={`/expenses/new?edit=${item.id}`}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                        title="Edit Expense"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteExpense(item.id)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                        title="Delete Record"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
           </table>
         </div>
       </div>

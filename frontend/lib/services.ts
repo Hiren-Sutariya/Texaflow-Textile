@@ -1,4 +1,5 @@
 import { fetchApi } from "./api";
+import { getTenantItem, setTenantItem } from "./tenantStorage";
 import {
   Party,
   JobOrder,
@@ -31,13 +32,13 @@ export const VendorsService = {
       const data = await fetchApi<any[]>("/vendors");
       return data;
     } catch {
-      const saved = localStorage.getItem("app_vendors_master");
-      return saved ? JSON.parse(saved) : [];
+      const saved = getTenantItem<any[]>("texaflow_vendors");
+      return saved || [];
     }
   },
 
   async saveVendors(vendors: any[]): Promise<void> {
-    localStorage.setItem("app_vendors_master", JSON.stringify(vendors));
+    setTenantItem("texaflow_vendors", vendors);
     window.dispatchEvent(new Event("app_data_update"));
   }
 };

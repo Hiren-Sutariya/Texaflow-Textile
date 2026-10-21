@@ -20,6 +20,7 @@ from app.core.mailer import (
     clear_verified_otp,
     send_registration_otp_email,
 )
+from app.core.jwt import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -143,9 +144,22 @@ def login(req: LoginRequest):
             plain_password=None
         )
 
+        token = create_access_token({
+            "sub": user.id,
+            "user_id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "name": user.name,
+            "company_id": user.company_id or "comp-001",
+            "role": getattr(user, "role", "Owner") or "Owner"
+        })
+
         return {
             "success": True,
             "message": "Login successful",
+            "token": token,
+            "access_token": token,
+            "token_type": "bearer",
             "user": {
                 "id": user.id,
                 "name": user.name,
@@ -234,10 +248,23 @@ def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)):
                 company.owner_name = name
             db.commit()
 
+        token = create_access_token({
+            "sub": user.id,
+            "user_id": user.id,
+            "username": user.username,
+            "email": user.email or clean_email,
+            "name": user.name,
+            "company_id": user.company_id or "comp-001",
+            "role": "Owner"
+        })
+
         return {
             "success": True,
             "message": f"Welcome back, {user.name}!",
             "isNewUser": False,
+            "token": token,
+            "access_token": token,
+            "token_type": "bearer",
             "user": {
                 "id": user.id,
                 "name": user.name,
@@ -304,10 +331,23 @@ def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)):
     db.refresh(new_company)
     db.refresh(new_user)
 
+    token = create_access_token({
+        "sub": new_user.id,
+        "user_id": new_user.id,
+        "username": new_user.username,
+        "email": new_user.email,
+        "name": new_user.name,
+        "company_id": new_company.id,
+        "role": "Owner"
+    })
+
     return {
         "success": True,
         "message": f"Enterprise account created for {firm_name}!",
         "isNewUser": True,
+        "token": token,
+        "access_token": token,
+        "token_type": "bearer",
         "user": {
             "id": new_user.id,
             "name": new_user.name,
@@ -969,9 +1009,22 @@ def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db))
     # Clear OTP from memory
     clear_verified_otp(clean_email)
 
+    token = create_access_token({
+        "sub": new_user.id,
+        "user_id": new_user.id,
+        "username": new_user.username,
+        "email": new_user.email,
+        "name": new_user.name,
+        "company_id": new_user.company_id,
+        "role": "Owner"
+    })
+
     return {
         "success": True,
         "message": f"Company '{new_company.name}' registered successfully with ID {next_comp_id}!",
+        "token": token,
+        "access_token": token,
+        "token_type": "bearer",
         "company": {
             "id": new_company.id,
             "name": new_company.name,
