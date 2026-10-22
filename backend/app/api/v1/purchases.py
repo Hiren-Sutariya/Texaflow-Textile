@@ -61,8 +61,6 @@ def create_purchase(
 
     if purchase_data.get("date"):
         purchase_data["date"] = format_to_dd_mm_yyyy(purchase_data["date"])
-    if purchase_data.get("due_date"):
-        purchase_data["due_date"] = format_to_dd_mm_yyyy(purchase_data["due_date"])
 
     existing_purchases = db.query(Purchase).filter(Purchase.company_id == company_id, Purchase.is_deleted == False).all()
     max_id = 0
@@ -129,8 +127,6 @@ def update_purchase(
 
     if "date" in update_data and update_data["date"]:
         update_data["date"] = format_to_dd_mm_yyyy(update_data["date"])
-    if "due_date" in update_data and update_data["due_date"]:
-        update_data["due_date"] = format_to_dd_mm_yyyy(update_data["due_date"])
 
     if "purchase_no" in update_data and update_data["purchase_no"]:
         update_data["purchase_no"] = update_data["purchase_no"].strip()

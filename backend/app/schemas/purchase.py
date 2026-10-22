@@ -12,10 +12,7 @@ class PurchaseBase(BaseModel):
     items: Optional[Any] = None
     amount: float
     payment_status: Optional[str] = "Pending"
-    paid_via: Optional[str] = "Credit (45 days)"
-    payment_terms: Optional[str] = "Net 45"
     credit_days: Optional[int] = 45
-    due_date: Optional[str] = None
     notes: Optional[str] = None
 
 class PurchaseCreate(PurchaseBase):
@@ -30,10 +27,7 @@ class PurchaseUpdate(BaseModel):
     items: Optional[Any] = None
     amount: Optional[float] = None
     payment_status: Optional[str] = None
-    paid_via: Optional[str] = None
-    payment_terms: Optional[str] = None
     credit_days: Optional[int] = None
-    due_date: Optional[str] = None
     notes: Optional[str] = None
 
 class PurchaseResponse(PurchaseBase):

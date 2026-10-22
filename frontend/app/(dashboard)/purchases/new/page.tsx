@@ -52,6 +52,8 @@ export interface PurchaseLineItem {
   category: string;
   description: string;
   quantity: string;
+  weight?: string;
+  cartoon?: string;
   rate?: string;
   amount: string;
 }
@@ -466,6 +468,8 @@ function NewPurchaseContent() {
       category: "",
       description: "",
       quantity: "",
+      weight: "",
+      cartoon: "",
       amount: ""
     }
   ]);
@@ -623,6 +627,8 @@ function NewPurchaseContent() {
         category: categoriesList[0] || "",
         description: "",
         quantity: "",
+        weight: "",
+        cartoon: "",
         rate: "",
         amount: ""
       }
@@ -635,14 +641,14 @@ function NewPurchaseContent() {
   const calculateTotalWithTax = (sub: number, mode: "none" | "cgst_sgst" | "igst", rate: number) => {
     if (mode === "cgst_sgst") {
       const halfRate = rate / 2;
-      const cgst = Math.round((sub * (halfRate / 100)) * 100) / 100;
-      const sgst = Math.round((sub * (halfRate / 100)) * 100) / 100;
-      return Math.round((sub + cgst + sgst) * 100) / 100;
+      const cgst = (sub * (halfRate / 100));
+      const sgst = (sub * (halfRate / 100));
+      return Math.round(sub + cgst + sgst);
     } else if (mode === "igst") {
-      const igst = Math.round((sub * (rate / 100)) * 100) / 100;
-      return Math.round((sub + igst) * 100) / 100;
+      const igst = (sub * (rate / 100));
+      return Math.round(sub + igst);
     }
-    return sub;
+    return Math.round(sub);
   };
 
   const handleRemoveLineItem = (id: string) => {
@@ -653,6 +659,8 @@ function NewPurchaseContent() {
           category: "",
           description: "",
           quantity: "",
+          weight: "",
+          cartoon: "",
           rate: "",
           amount: ""
         }
@@ -674,14 +682,23 @@ function NewPurchaseContent() {
         if (item.id !== id) return item;
         const updated = { ...item, [field]: val };
 
-        // If rate is modified or quantity is modified, and rate is valid, auto-calculate amount
-        if (field === "rate" || field === "quantity") {
+        // If rate, quantity, or weight is modified, auto-calculate amount
+        if (field === "rate" || field === "quantity" || field === "weight") {
           const r = parseFloat(field === "rate" ? val : updated.rate || "0");
           // Extract numeric quantity if present (e.g. "14 Box" -> 14, "10" -> 10)
           const matchQty = (field === "quantity" ? val : updated.quantity || "").match(/^[\s]*([0-9]+(?:\.[0-9]+)?)/);
           const q = matchQty ? parseFloat(matchQty[1]) : 0;
-          if (r > 0 && q > 0) {
-            updated.amount = String(Math.round(r * q * 100) / 100);
+          const w = parseFloat(field === "weight" ? val : updated.weight || "0");
+
+          if (r > 0) {
+            // Priority: If weight is present and > 0, multiply weight * rate
+            // Otherwise, if quantity is present, multiply quantity * rate
+            // Round to nearest integer (>= .50 rounds up, < .50 rounds down)
+            if (w > 0) {
+              updated.amount = String(Math.round(r * w));
+            } else if (q > 0) {
+              updated.amount = String(Math.round(r * q));
+            }
           }
         }
         return updated;
@@ -696,7 +713,7 @@ function NewPurchaseContent() {
   };
 
   const calculatedTotal = useMemo(() => {
-    return lineItems.reduce((acc, it) => acc + (parseFloat(it.amount || "0") || 0), 0);
+    return Math.round(lineItems.reduce((acc, it) => acc + (parseFloat(it.amount || "0") || 0), 0));
   }, [lineItems]);
 
   const { cgstAmount, sgstAmount, igstAmount, totalWithTax } = useMemo(() => {
@@ -708,7 +725,7 @@ function NewPurchaseContent() {
         cgstAmount: cgst,
         sgstAmount: sgst,
         igstAmount: 0,
-        totalWithTax: Math.round((calculatedTotal + cgst + sgst) * 100) / 100
+        totalWithTax: Math.round(calculatedTotal + cgst + sgst)
       };
     } else if (taxMode === "igst") {
       const igst = Math.round((calculatedTotal * (taxRate / 100)) * 100) / 100;
@@ -716,14 +733,14 @@ function NewPurchaseContent() {
         cgstAmount: 0,
         sgstAmount: 0,
         igstAmount: igst,
-        totalWithTax: Math.round((calculatedTotal + igst) * 100) / 100
+        totalWithTax: Math.round(calculatedTotal + igst)
       };
     }
     return {
       cgstAmount: 0,
       sgstAmount: 0,
       igstAmount: 0,
-      totalWithTax: calculatedTotal
+      totalWithTax: Math.round(calculatedTotal)
     };
   }, [calculatedTotal, taxMode, taxRate]);
 
@@ -885,7 +902,7 @@ function NewPurchaseContent() {
       setPaymentStatus(matched.payment_status === "Pending" ? "Pending" : "Paid");
       setPaymentTerms(matched.payment_terms || (matched.payment_status === "Pending" ? "Net 45" : "Cash / Immediate"));
       setCreditDays(matched.credit_days !== undefined ? matched.credit_days : (matched.payment_status === "Pending" ? 45 : 0));
-      setDueDate(matched.due_date || "");
+      setDueDate(matched.due_date || (matched.credit_days ? calculateDueDate(matched.date, matched.credit_days) : ""));
       setNotes(matched.notes || "");
 
       // Load line items if present (handling JSON string or array)
@@ -904,10 +921,13 @@ function NewPurchaseContent() {
             const qty = it.quantity !== undefined && it.quantity !== null ? String(it.quantity) : "";
             const amt = it.amount !== undefined && it.amount !== null ? String(it.amount) : "";
             let rate = it.rate !== undefined && it.rate !== null ? String(it.rate) : "";
-            if (!rate && qty && amt) {
+            if (!rate && amt) {
+              const wNum = it.weight ? parseFloat(String(it.weight)) : 0;
               const qNum = parseFloat(qty);
               const aNum = parseFloat(amt);
-              if (qNum > 0 && aNum > 0) {
+              if (wNum > 0 && aNum > 0) {
+                rate = String(Math.round((aNum / wNum) * 100) / 100);
+              } else if (qNum > 0 && aNum > 0) {
                 rate = String(Math.round((aNum / qNum) * 100) / 100);
               }
             }
@@ -916,6 +936,8 @@ function NewPurchaseContent() {
               category: it.category || matched.category || "",
               description: it.description || it.items_description || "",
               quantity: qty,
+              weight: it.weight !== undefined && it.weight !== null ? String(it.weight) : "",
+              cartoon: it.cartoon !== undefined && it.cartoon !== null ? String(it.cartoon) : "",
               rate: rate,
               amount: amt
             };
@@ -929,10 +951,13 @@ function NewPurchaseContent() {
               const qty = sub.qty || "";
               const amt = sub.amount || "";
               let rate = sub.rate || "";
-              if (!rate && qty && amt) {
+              if (!rate && amt) {
+                const wNum = sub.weight ? parseFloat(String(sub.weight)) : 0;
                 const qNum = parseFloat(qty);
                 const aNum = parseFloat(amt);
-                if (qNum > 0 && aNum > 0) {
+                if (wNum > 0 && aNum > 0) {
+                  rate = String(Math.round((aNum / wNum) * 100) / 100);
+                } else if (qNum > 0 && aNum > 0) {
                   rate = String(Math.round((aNum / qNum) * 100) / 100);
                 }
               }
@@ -941,6 +966,8 @@ function NewPurchaseContent() {
                 category: matched.category || "",
                 description: sub.shade || "",
                 quantity: qty,
+                weight: sub.weight || "",
+                cartoon: sub.cartoon || "",
                 rate: rate,
                 amount: amt
               };
@@ -953,6 +980,8 @@ function NewPurchaseContent() {
               category: matched.category || "",
               description: matched.items_description || "",
               quantity: "",
+              weight: "",
+              cartoon: "",
               rate: "",
               amount: String(matched.amount || "")
             }
@@ -965,6 +994,8 @@ function NewPurchaseContent() {
             category: matched.category || "",
             description: "",
             quantity: "",
+            weight: "",
+            cartoon: "",
             rate: "",
             amount: String(matched.amount || "")
           }
@@ -1051,7 +1082,7 @@ function NewPurchaseContent() {
 
     // Filter valid line items
     const validItems = lineItems.filter(
-      (it) => it.description.trim() || it.category.trim() || it.quantity.trim() || it.amount.trim()
+      (it) => it.description.trim() || it.category.trim() || it.quantity.trim() || it.amount.trim() || (it.weight && it.weight.trim()) || (it.cartoon && it.cartoon.trim())
     );
     const itemsToSave = validItems.length > 0 ? validItems : lineItems;
 
@@ -1069,6 +1100,9 @@ function NewPurchaseContent() {
       derivedDescription = itemsDescription;
     }
 
+    const totalWeightNum = Math.round(itemsToSave.reduce((acc, it) => acc + (parseFloat(it.weight || "0") || 0), 0) * 1000) / 1000;
+    const totalCartoonNum = itemsToSave.reduce((acc, it) => acc + (parseInt(it.cartoon || "0") || 0), 0);
+
     const purchasePayload = {
       id: recordId,
       company_id: currentCid,
@@ -1078,18 +1112,9 @@ function NewPurchaseContent() {
       category: primaryCategory,
       items_description: derivedDescription,
       items: itemsToSave,
-      amount: numAmount,
-      subtotal: calculatedTotal,
-      tax_mode: taxMode,
-      tax_rate: taxMode !== "none" ? taxRate : 0,
-      cgst_amount: cgstAmount,
-      sgst_amount: sgstAmount,
-      igst_amount: igstAmount,
+      amount: Math.round(numAmount),
       payment_status: paymentStatus,
-      paid_via: paymentStatus === "Paid" ? "Cash / Immediate" : `Credit (${creditDays} days)`,
-      payment_terms: paymentStatus === "Paid" ? "Cash / Immediate" : paymentTerms,
       credit_days: paymentStatus === "Paid" ? 0 : creditDays,
-      due_date: paymentStatus === "Paid" ? billDate : calculateDueDate(billDate, creditDays),
       notes: notes.trim()
     };
 
@@ -1333,15 +1358,17 @@ function NewPurchaseContent() {
 
           {/* TABLE */}
           <div className="overflow-visible">
-            <table className="w-full text-left border-collapse text-xs min-w-[760px]">
+            <table className="w-full text-left border-collapse text-xs min-w-[880px]">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-extrabold tracking-wider text-slate-600 uppercase">
                   <th className="py-2.5 px-3 w-12 text-center">{t("SR")}</th>
-                  <th className="py-2.5 px-3 w-52">{t("CATEGORY*")}</th>
-                  <th className="py-2.5 px-3 min-w-[220px]">{t("ITEM*")}</th>
-                  <th className="py-2.5 px-3 w-36">{t("QUANTITY / UNIT")}</th>
-                  <th className="py-2.5 px-3 w-32 text-right">{t("RATE (₹)")}</th>
-                  <th className="py-2.5 px-3 w-36 text-right">{t("AMOUNT (₹)*")}</th>
+                  <th className="py-2.5 px-3 w-44">{t("CATEGORY*")}</th>
+                  <th className="py-2.5 px-3 min-w-[200px]">{t("ITEM*")}</th>
+                  <th className="py-2.5 px-3 w-32">{t("QUANTITY / UNIT")}</th>
+                  <th className="py-2.5 px-3 w-28">{t("WEIGHT")}</th>
+                  <th className="py-2.5 px-3 w-24">{t("CARTOON")}</th>
+                  <th className="py-2.5 px-3 w-28 text-right">{t("RATE (₹)")}</th>
+                  <th className="py-2.5 px-3 w-32 text-right">{t("AMOUNT (₹)*")}</th>
                   <th className="py-2.5 px-2 w-10 text-center"></th>
                 </tr>
               </thead>
@@ -1436,10 +1463,46 @@ function NewPurchaseContent() {
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
-                            document.getElementById(`item-rate-${index}`)?.focus();
+                            document.getElementById(`item-weight-${index}`)?.focus();
                           }
                         }}
                         placeholder={t("e.g. 10 Box")}
+                        className="w-full h-9 px-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-800 text-xs focus:outline-none transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                      />
+                    </td>
+
+                    {/* WEIGHT */}
+                    <td className="py-2 px-3">
+                      <input
+                        id={`item-weight-${index}`}
+                        type="text"
+                        value={item.weight || ""}
+                        onChange={(e) => handleUpdateLineItem(item.id, "weight", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            document.getElementById(`item-cartoon-${index}`)?.focus();
+                          }
+                        }}
+                        placeholder={t("e.g. 25.50")}
+                        className="w-full h-9 px-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-800 text-xs focus:outline-none transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                      />
+                    </td>
+
+                    {/* CARTOON */}
+                    <td className="py-2 px-3">
+                      <input
+                        id={`item-cartoon-${index}`}
+                        type="text"
+                        value={item.cartoon || ""}
+                        onChange={(e) => handleUpdateLineItem(item.id, "cartoon", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            document.getElementById(`item-rate-${index}`)?.focus();
+                          }
+                        }}
+                        placeholder={t("e.g. 1")}
                         className="w-full h-9 px-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-800 text-xs focus:outline-none transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
                       />
                     </td>
@@ -1515,7 +1578,7 @@ function NewPurchaseContent() {
               {/* TABLE FOOTER */}
               <tfoot>
                 <tr className="border-t border-slate-200 bg-slate-50/90 font-bold text-slate-700">
-                  <td colSpan={4} className="py-2.5 px-4 text-xs text-slate-500 font-mono">
+                  <td colSpan={6} className="py-2.5 px-4 text-xs text-slate-500 font-mono">
                     <span className="inline-flex items-center gap-1.5 font-bold text-slate-600">
                       <span>{lineItems.length}</span>
                       <span>{lineItems.length === 1 ? t("Item") : t("Items")}</span>
