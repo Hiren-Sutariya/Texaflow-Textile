@@ -98,7 +98,7 @@ function CustomSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 left-0 top-full mt-2 w-full min-w-[200px] bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 p-1.5 space-y-1">
+        <div className="absolute z-50 left-0 top-full mt-1 w-full min-w-full bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 p-1.5 space-y-1">
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (

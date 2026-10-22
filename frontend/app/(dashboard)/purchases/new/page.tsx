@@ -195,7 +195,7 @@ function CustomSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute z-[100] right-0 min-w-full w-full sm:min-w-[240px] mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 max-h-64 overflow-y-auto">
+        <div className="absolute z-[100] left-0 min-w-full w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 max-h-64 overflow-y-auto">
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (

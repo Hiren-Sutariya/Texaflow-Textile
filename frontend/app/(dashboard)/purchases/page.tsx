@@ -74,7 +74,7 @@ function CustomSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
+        className={`w-full h-9 px-3 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
           }`}
       >
         <span className={`truncate font-bold ${selectedOption ? "text-slate-900" : "text-slate-400"}`}>
@@ -87,7 +87,7 @@ function CustomSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 left-0 min-w-full sm:min-w-[210px] mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute z-50 left-0 min-w-full w-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
           <div className="max-h-60 overflow-y-auto no-scrollbar space-y-1">
             {options.map((opt) => {
               const isSelected = opt.value === value;
@@ -898,7 +898,7 @@ export default function PurchasesPage() {
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* Status Dropdown (Matching Image 3) */}
-          <div className="w-48 shrink-0">
+          <div className="w-40 shrink-0">
             <CustomSelect
               value={statusFilter}
               onChange={(val) => setStatusFilter(val as any)}
@@ -912,7 +912,7 @@ export default function PurchasesPage() {
           </div>
 
           {/* Category Dropdown (Matching Image 3) */}
-          <div className="w-52 shrink-0">
+          <div className="w-40 shrink-0">
             <CustomSelect
               value={selectedCategory}
               onChange={(val) => setSelectedCategory(val)}

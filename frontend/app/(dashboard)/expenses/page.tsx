@@ -678,14 +678,14 @@ export default function ExpensesPage() {
           </div>
 
           {/* Categories Dropdown */}
-          <div className="relative flex-1 sm:flex-none">
+          <div className="relative flex-1 sm:flex-none w-full sm:w-44">
             <button
               type="button"
               onClick={() => {
                 setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
                 setIsPeriodDropdownOpen(false);
               }}
-              className={`w-full sm:w-auto h-9 px-3.5 bg-white border text-xs font-extrabold rounded-xl flex items-center justify-between sm:justify-start gap-1.5 transition-all shadow-2xs cursor-pointer ${isCategoryDropdownOpen
+              className={`w-full h-9 px-3 bg-white border text-xs font-extrabold rounded-xl flex items-center justify-between gap-1.5 transition-all shadow-2xs cursor-pointer ${isCategoryDropdownOpen
                   ? "border-2 border-blue-500 ring-2 ring-blue-500/20 text-slate-900"
                   : "border-slate-300 hover:border-slate-400 text-slate-800"
                 }`}
@@ -702,7 +702,7 @@ export default function ExpensesPage() {
             {isCategoryDropdownOpen && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setIsCategoryDropdownOpen(false)} />
-                <div className="absolute left-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 max-h-80 overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 duration-100 font-sans">
+                <div className="absolute left-0 top-full mt-1 z-50 w-full min-w-full bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 max-h-80 overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 duration-100 font-sans">
                   {/* Option: All Categories */}
                   <button
                     type="button"
@@ -710,12 +710,12 @@ export default function ExpensesPage() {
                       setSelectedCategory("All");
                       setIsCategoryDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between gap-3 transition-all cursor-pointer border ${selectedCategory === "All"
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-all cursor-pointer border ${selectedCategory === "All"
                         ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                         : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
                       }`}
                   >
-                    <span>{t("All Categories")}</span>
+                    <span className="truncate">{t("All Categories")}</span>
                     {selectedCategory === "All" && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
                   </button>
 
@@ -730,7 +730,7 @@ export default function ExpensesPage() {
                           setSelectedCategory(cat);
                           setIsCategoryDropdownOpen(false);
                         }}
-                        className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between gap-3 transition-all cursor-pointer border ${isSelected
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-all cursor-pointer border ${isSelected
                             ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                             : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
                           }`}
@@ -746,14 +746,14 @@ export default function ExpensesPage() {
           </div>
 
           {/* Period Filter Dropdown */}
-          <div className="relative flex-1 sm:flex-none">
+          <div className="relative flex-1 sm:flex-none w-full sm:w-44">
             <button
               type="button"
               onClick={() => {
                 setIsPeriodDropdownOpen(!isPeriodDropdownOpen);
                 setIsCategoryDropdownOpen(false);
               }}
-              className={`w-full sm:w-auto h-9 px-3.5 bg-white border text-xs font-extrabold rounded-xl flex items-center justify-between sm:justify-start gap-1.5 transition-all shadow-2xs cursor-pointer ${isPeriodDropdownOpen
+              className={`w-full h-9 px-3 bg-white border text-xs font-extrabold rounded-xl flex items-center justify-between gap-1.5 transition-all shadow-2xs cursor-pointer ${isPeriodDropdownOpen
                   ? "border-2 border-blue-500 ring-2 ring-blue-500/20 text-slate-900"
                   : "border-slate-300 hover:border-slate-400 text-slate-800"
                 }`}
@@ -778,7 +778,7 @@ export default function ExpensesPage() {
             {isPeriodDropdownOpen && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setIsPeriodDropdownOpen(false)} />
-                <div className="absolute right-0 sm:left-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100 font-sans">
+                <div className="absolute left-0 top-full mt-1 z-50 w-full min-w-full bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100 font-sans">
                   {[
                     { id: "all", label: t("All Time") },
                     { id: "this_month", label: t("This Month") },
@@ -797,12 +797,12 @@ export default function ExpensesPage() {
                             setIsPeriodDropdownOpen(false);
                           }
                         }}
-                        className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between gap-3 transition-all cursor-pointer border ${isSelected
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-all cursor-pointer border ${isSelected
                             ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                             : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
                           }`}
                       >
-                        <span className="whitespace-nowrap">{p.label}</span>
+                        <span className="truncate">{p.label}</span>
                         {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
                       </button>
                     );
@@ -810,29 +810,29 @@ export default function ExpensesPage() {
 
                   {/* EMBEDDED CUSTOM DATE PICKER SECTION */}
                   {periodFilter === "custom_date" && (
-                    <div className="mt-2 pt-2 border-t border-slate-100 space-y-2 p-2.5 bg-slate-50 rounded-2xl">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">{t("From")}:</span>
+                    <div className="mt-1 pt-1.5 border-t border-slate-100 space-y-1.5 p-2 bg-slate-50 rounded-xl">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-bold text-slate-600">{t("From")}:</span>
                         <input
                           type="date"
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
-                          className="bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-500 w-36"
+                          className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-500"
                         />
                       </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">{t("To")}:</span>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-bold text-slate-600">{t("To")}:</span>
                         <input
                           type="date"
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
-                          className="bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-500 w-36"
+                          className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-500"
                         />
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsPeriodDropdownOpen(false)}
-                        className="w-full mt-1 py-2 text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-2xs cursor-pointer"
+                        className="w-full mt-1 py-1.5 text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-2xs cursor-pointer"
                       >
                         {t("Apply Date Range")}
                       </button>
