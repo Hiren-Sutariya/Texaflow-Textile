@@ -77,7 +77,7 @@ function CustomSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`custom-select-trigger w-full h-9 px-3.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+        className={`custom-select-trigger w-full h-9 px-3 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
           isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
         } ${uppercase && selectedOption ? "uppercase" : ""}`}
       >
@@ -92,7 +92,7 @@ function CustomSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 left-0 top-full mt-[18px] w-full min-w-[180px] bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 p-1.5 max-h-56 overflow-y-auto no-scrollbar space-y-1">
+        <div className="absolute z-50 left-0 top-full mt-[18px] min-w-full bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 p-1.5 max-h-56 overflow-y-auto no-scrollbar space-y-1">
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -110,7 +110,7 @@ function CustomSelect({
                 } ${uppercase ? "uppercase" : ""}`}
               >
                 <span className="truncate">{opt.label}</span>
-                {isSelected && <Check className="w-3.5 h-3.5 text-blue-700 shrink-0 ml-2" />}
+                {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
               </button>
             );
           })}
