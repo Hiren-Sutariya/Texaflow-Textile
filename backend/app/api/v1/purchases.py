@@ -148,7 +148,7 @@ def delete_purchase(
     company_id: str = Depends(get_tenant_company_id)
 ):
     purchase = db.query(Purchase).filter(
-        Purchase.id == purchase_id,
+        (Purchase.id == purchase_id) | (Purchase.purchase_no == purchase_id),
         Purchase.company_id == company_id,
         Purchase.is_deleted == False
     ).first()

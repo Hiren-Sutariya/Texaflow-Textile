@@ -526,6 +526,7 @@ export default function PurchasesPage() {
   const [selectedBillImage, setSelectedBillImage] = useState<{ image: string; purchase_no: string; notes?: string } | null>(null);
   const [previewBill, setPreviewBill] = useState<PurchaseItem | null>(null);
   const [companySettings, setCompanySettings] = useState<CompanySettings>(getStoredCompanySettings);
+  const deletedIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const syncSettings = () => {
@@ -636,14 +637,24 @@ export default function PurchasesPage() {
       try {
         const stored = getTenantItem<PurchaseItem[]>("texaflow_purchases");
         if (stored && Array.isArray(stored)) {
-          const scoped = stored.filter((p: any) => !p.company_id || p.company_id === currentCid);
+          const scoped = stored.filter(
+            (p: any) =>
+              (!p.company_id || p.company_id === currentCid) &&
+              !deletedIdsRef.current.has(p.id) &&
+              (!p.purchase_no || !deletedIdsRef.current.has(p.purchase_no))
+          );
           setPurchases(scoped);
           return scoped;
         }
 
         const cached = getCachedApi<PurchaseItem[]>("/purchases");
         if (cached && Array.isArray(cached)) {
-          const scoped = cached.filter((p: any) => !p.company_id || p.company_id === currentCid);
+          const scoped = cached.filter(
+            (p: any) =>
+              (!p.company_id || p.company_id === currentCid) &&
+              !deletedIdsRef.current.has(p.id) &&
+              (!p.purchase_no || !deletedIdsRef.current.has(p.purchase_no))
+          );
           setPurchases(scoped);
           return scoped;
         }
@@ -662,11 +673,18 @@ export default function PurchasesPage() {
       try {
         const live = await fetchApi<PurchaseItem[]>("/purchases");
         if (isMounted && Array.isArray(live)) {
-          // Strictly scope records to this active tenant
-          const scoped = live.filter((p: any) => !p.company_id || p.company_id === currentCid);
+          // Strictly scope records to this active tenant, excluding deleted
+          const scoped = live.filter(
+            (p: any) =>
+              (!p.company_id || p.company_id === currentCid) &&
+              !deletedIdsRef.current.has(p.id) &&
+              (!p.purchase_no || !deletedIdsRef.current.has(p.purchase_no))
+          );
 
           // Preserve local payment_status overrides so a paid bill is never reset to pending by stale backend
-          const currentLocal = getTenantItem<PurchaseItem[]>("texaflow_purchases") || [];
+          const currentLocal = (getTenantItem<PurchaseItem[]>("texaflow_purchases") || []).filter(
+            (p) => !deletedIdsRef.current.has(p.id) && (!p.purchase_no || !deletedIdsRef.current.has(p.purchase_no))
+          );
           const localStatusMap = new Map(currentLocal.map((p) => [p.purchase_no || p.id, p.payment_status]));
 
           const merged = scoped.map((p) => ({
@@ -716,24 +734,36 @@ export default function PurchasesPage() {
     };
   }, []);
 
-  const handleDeletePurchase = async (id: string) => {
+  const handleDeletePurchase = async (id: string, purchaseNo?: string) => {
     if (!confirm(t("Are you sure you want to delete this purchase bill?"))) return;
 
-    const updated = purchases.filter((p) => p.id !== id);
-    setPurchases(updated);
-    try {
-      setTenantItem("texaflow_purchases", updated);
-      setCachedApi("/purchases", updated);
-      invalidateApiCache("/purchases");
-      window.dispatchEvent(new CustomEvent("texaflow_purchases_updated"));
-      window.dispatchEvent(new Event("app_data_update"));
-    } catch { }
+    // 1. Immediately track deleted ID & bill no so concurrent loads ignore it
+    deletedIdsRef.current.add(id);
+    if (purchaseNo) deletedIdsRef.current.add(purchaseNo);
 
+    // 2. Immediately update state for instant smooth 0ms feedback without blink
+    setPurchases((prev) => {
+      const updated = prev.filter((p) => p.id !== id && (!purchaseNo || p.purchase_no !== purchaseNo));
+      try {
+        setTenantItem("texaflow_purchases", updated);
+        setCachedApi("/purchases", updated);
+      } catch { }
+      return updated;
+    });
+
+    invalidateApiCache("/purchases");
+
+    // 3. Perform backend DELETE
     try {
       await fetchApi(`/purchases/${id}`, { method: "DELETE" });
     } catch (err) {
       console.warn("API delete notice:", err);
     }
+
+    // 4. Invalidate cache and broadcast update to recycle bin & other components
+    invalidateApiCache("/purchases");
+    window.dispatchEvent(new Event("recycle_bin_updated"));
+    window.dispatchEvent(new Event("app_refresh_content"));
   };
 
   const handlePrintBill = (item: any) => {
@@ -1021,7 +1051,7 @@ export default function PurchasesPage() {
                       <Link href={`/purchases/new?edit=${item.id}`} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" title={t("Edit")}>
                         <Edit3 className="w-4 h-4" />
                       </Link>
-                      <button type="button" onClick={() => handleDeletePurchase(item.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title={t("Delete")}>
+                      <button type="button" onClick={() => handleDeletePurchase(item.id, item.purchase_no)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title={t("Delete")}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -1208,7 +1238,7 @@ export default function PurchasesPage() {
                           </Link>
                           <button
                             type="button"
-                            onClick={() => handleDeletePurchase(item.id)}
+                            onClick={() => handleDeletePurchase(item.id, item.purchase_no)}
                             className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                             title={t("Delete")}
                           >
