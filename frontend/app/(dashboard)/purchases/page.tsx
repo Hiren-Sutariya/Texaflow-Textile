@@ -674,10 +674,18 @@ export default function PurchasesPage() {
             payment_status: localStatusMap.get(p.purchase_no || p.id) || p.payment_status
           }));
 
-          setPurchases(merged);
+          // Preserve any newly created local bill that might not yet be in the backend response
+          const backendIds = new Set(merged.map((p) => p.id));
+          const backendNos = new Set(merged.map((p) => p.purchase_no).filter(Boolean));
+          const localOnly = currentLocal.filter(
+            (p) => !backendIds.has(p.id) && (!p.purchase_no || !backendNos.has(p.purchase_no))
+          );
+          const finalPurchases = [...localOnly, ...merged];
+
+          setPurchases(finalPurchases);
           try {
-            setTenantItem("texaflow_purchases", merged);
-            setCachedApi("/purchases", merged);
+            setTenantItem("texaflow_purchases", finalPurchases);
+            setCachedApi("/purchases", finalPurchases);
           } catch { }
         }
       } catch (err) {

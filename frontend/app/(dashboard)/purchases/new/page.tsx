@@ -1139,15 +1139,18 @@ function NewPurchaseContent() {
           }
         }
       }
-    } catch (err) {
-      console.warn("Backend save notice:", err);
+    } catch (err: any) {
+      console.error("Backend save error:", err);
+      setIsSaving(false);
+      alert(t("Error saving purchase bill: ") + (err?.message || "Please check connection"));
+      return;
     }
 
     try {
       const saved = getTenantItem<any[]>("texaflow_purchases") || [];
       const updatedList = isEditMode
         ? saved.map((p: any) => (p.id === recordId || p.purchase_no === recordId ? purchasePayload : p))
-        : [purchasePayload, ...saved];
+        : [purchasePayload, ...saved.filter((p: any) => p.id !== purchasePayload.id && p.purchase_no !== purchasePayload.purchase_no)];
       setTenantItem("texaflow_purchases", updatedList);
       invalidateApiCache("/purchases");
       window.dispatchEvent(new CustomEvent("texaflow_purchases_updated"));

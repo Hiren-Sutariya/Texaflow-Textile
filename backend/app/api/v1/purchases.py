@@ -62,12 +62,12 @@ def create_purchase(
     if purchase_data.get("date"):
         purchase_data["date"] = format_to_dd_mm_yyyy(purchase_data["date"])
 
-    existing_purchases = db.query(Purchase).filter(Purchase.company_id == company_id, Purchase.is_deleted == False).all()
+    existing_all = db.query(Purchase.id).all()
     max_id = 0
-    for p in existing_purchases:
-        if p.id and p.id.startswith("pur-"):
+    for (pid,) in existing_all:
+        if pid and "pur-" in pid:
             try:
-                num = int(p.id.split("-")[-1])
+                num = int(pid.split("-")[-1])
                 if num > max_id:
                     max_id = num
             except ValueError:
@@ -75,6 +75,9 @@ def create_purchase(
 
     new_id_num = max_id + 1
     new_id = f"pur-{new_id_num:03d}"
+    while db.query(Purchase.id).filter(Purchase.id == new_id).first():
+        new_id_num += 1
+        new_id = f"pur-{new_id_num:03d}"
     purchase_data["id"] = new_id
 
     user_bill_no = (purchase_data.get("purchase_no") or "").strip()
