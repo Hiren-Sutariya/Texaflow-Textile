@@ -10,27 +10,39 @@ const getBaseUrl = (): string => {
 export const API_BASE_URL = getBaseUrl();
 
 // Fast in-memory SWR cache for instant 0ms tab switching
+// Cache TTL: 30 seconds — ensures live site always shows fresh data within 30s
+const CACHE_TTL_MS = 30_000;
 const memoryCache = new Map<string, { data: any; time: number }>();
 
 export function getCachedApi<T>(endpoint: string): T | null {
   if (typeof window === "undefined") return null;
   const tenantCompanyId = getStoredCompanyId() || "comp-001";
   const cacheKey = `api_cache_${tenantCompanyId}_${endpoint}`;
+  const now = Date.now();
 
-  // 1. In-memory check (0 ms)
+  // 1. In-memory check (0 ms) — only if not expired
   const inMem = memoryCache.get(cacheKey);
-  if (inMem && Array.isArray(inMem.data) && inMem.data.length > 0) {
+  if (inMem && Array.isArray(inMem.data) && inMem.data.length > 0 && (now - inMem.time) < CACHE_TTL_MS) {
     return inMem.data as T;
   }
 
-  // 2. LocalStorage check (0 ms)
+  // 2. LocalStorage check — only if not expired
   try {
     const raw = localStorage.getItem(cacheKey);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed) {
-        memoryCache.set(cacheKey, { data: parsed, time: Date.now() });
-        return parsed as T;
+    const tsRaw = localStorage.getItem(`${cacheKey}_ts`);
+    if (raw && tsRaw) {
+      const savedTime = parseInt(tsRaw, 10);
+      if ((now - savedTime) < CACHE_TTL_MS) {
+        const parsed = JSON.parse(raw);
+        if (parsed) {
+          memoryCache.set(cacheKey, { data: parsed, time: savedTime });
+          return parsed as T;
+        }
+      } else {
+        // Cache expired — clear it so fresh data loads
+        localStorage.removeItem(cacheKey);
+        localStorage.removeItem(`${cacheKey}_ts`);
+        memoryCache.delete(cacheKey);
       }
     }
   } catch {}
@@ -42,9 +54,11 @@ export function setCachedApi<T>(endpoint: string, data: T): void {
   if (typeof window === "undefined") return;
   const tenantCompanyId = getStoredCompanyId() || "comp-001";
   const cacheKey = `api_cache_${tenantCompanyId}_${endpoint}`;
-  memoryCache.set(cacheKey, { data, time: Date.now() });
+  const now = Date.now();
+  memoryCache.set(cacheKey, { data, time: now });
   try {
     localStorage.setItem(cacheKey, JSON.stringify(data));
+    localStorage.setItem(`${cacheKey}_ts`, String(now));
   } catch {}
 }
 
