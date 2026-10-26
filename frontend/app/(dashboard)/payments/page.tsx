@@ -86,7 +86,8 @@ function renderPaymentModeSimple(mode: string, refNo?: string) {
 }
 
 export default function PaymentsAndVouchersPage() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const isGujarati = language === "gu";
   const [hasMounted, setHasMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [vouchers, setVouchers] = useState<PaymentVoucherItem[]>(() => {
@@ -664,7 +665,7 @@ export default function PaymentsAndVouchersPage() {
                   {/* Details Grid: Design No (DN) & Mode (Simple Clean Text) */}
                   <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100">
                     <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Design No (DN)</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Ref / Bill No</span>
                       <span className="font-mono font-medium text-slate-800 text-xs inline-block mt-0.5">
                         {v.design_no || v.linked_challan || "-"}
                       </span>
@@ -738,7 +739,7 @@ export default function PaymentsAndVouchersPage() {
                 <th className="py-2.5 px-3 border-r border-slate-200/80">{t("Type")}</th>
                 <th className="py-2.5 px-4 border-r border-slate-200/80">{t("Party Name")}</th>
                 <th className="py-2.5 px-3.5 border-r border-slate-200/80">{t("Person / Payer")}</th>
-                <th className="py-2.5 px-3.5 border-r border-slate-200/80">{t("Design No (DN)")}</th>
+                <th className="py-2.5 px-3.5 border-r border-slate-200/80">{isGujarati ? "રેફરન્સ / બિલ નં." : "Ref / Bill No"}</th>
                 <th className="py-2.5 px-3.5 border-r border-slate-200/80">{t("Mode")}</th>
                 <th className="py-2.5 px-3.5 text-right border-r border-slate-200/80">{t("Amount (₹)")}</th>
                 <th className="py-2.5 px-3.5 text-right border-r border-slate-200/80">{t("Discount (₹)")}</th>
@@ -847,18 +848,18 @@ export default function PaymentsAndVouchersPage() {
                           <button
                             type="button"
                             onClick={() => setPreviewVoucher(v)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                             title="View Voucher Slip"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteVoucher(v.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                             title="Delete Voucher"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -941,7 +942,7 @@ export default function PaymentsAndVouchersPage() {
                 {/* DESIGN NO (DN) */}
                 {(previewVoucher.design_no || previewVoucher.linked_challan) && (
                   <div className="p-3 flex items-center justify-between gap-4">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Design No (DN)</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Ref / Bill No</span>
                     <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg text-[11px] border border-indigo-200">
                       {previewVoucher.design_no || previewVoucher.linked_challan}
                     </span>

@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache, API_BASE_URL } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
-import { getStoredCompanySettings, fetchLiveCompanySettings, CompanySettings } from "@/lib/companySettings";
+import { getStoredCompanySettings, fetchLiveCompanySettings, CompanySettings, getFieldLabel } from "@/lib/companySettings";
 import { useLanguage } from "@/context/LanguageContext";
 import { getDueStatus, calculateDueDate, parseAnyDate } from "@/lib/creditTerms";
 import {
@@ -121,7 +121,9 @@ export interface ParsedPurchaseData {
   itemNames: string[];
   quantityDisplay: string;
   weightDisplay: string;
+  kgDisplay?: string;
   cartoonDisplay: string;
+  rateDisplay?: string;
   itemCount: number;
 }
 
@@ -307,6 +309,44 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
     }
   }
 
+  let kgDisplay = "";
+  if ((item as any).total_kg !== undefined && (item as any).total_kg !== null && Number((item as any).total_kg) > 0) {
+    kgDisplay = Number((item as any).total_kg).toFixed(2);
+  } else if ((item as any).kg !== undefined && (item as any).kg !== null && Number((item as any).kg) > 0) {
+    kgDisplay = Number((item as any).kg).toFixed(2);
+  } else if (Array.isArray(lineItems) && lineItems.length > 0) {
+    const kSum = lineItems.reduce((acc: number, it: any) => acc + (parseFloat(it.kg || "0") || 0), 0);
+    if (kSum > 0) {
+      kgDisplay = kSum.toFixed(2);
+    }
+  }
+
+  // 5. Rate extraction
+  let rateDisplay = "";
+  if (Array.isArray(lineItems) && lineItems.length > 0) {
+    const firstWithRate = lineItems.find((it: any) => it.rate && parseFloat(String(it.rate)) > 0);
+    if (firstWithRate?.rate) {
+      const r = parseFloat(String(firstWithRate.rate));
+      rateDisplay = `₹${r.toFixed(2)}`;
+    }
+  }
+
+  if (!rateDisplay && Number(item.amount) > 0) {
+    const amt = Number(item.amount);
+    const w = parseFloat(weightDisplay);
+    if (!isNaN(w) && w > 0) {
+      rateDisplay = `₹${(amt / w).toFixed(2)}`;
+    } else {
+      const matchQ = (quantityDisplay || "").match(/^([\d.]+)/);
+      if (matchQ) {
+        const q = parseFloat(matchQ[1]);
+        if (!isNaN(q) && q > 0) {
+          rateDisplay = `₹${(amt / q).toFixed(2)}`;
+        }
+      }
+    }
+  }
+
   const uniqueItemNames = Array.from(new Set(itemNames)).filter(Boolean);
   if (itemCount === 0) {
     itemCount = uniqueItemNames.length > 0 ? uniqueItemNames.length : 1;
@@ -317,7 +357,9 @@ export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
     itemNames: uniqueItemNames,
     quantityDisplay: quantityDisplay || "-",
     weightDisplay: weightDisplay || "-",
+    kgDisplay: kgDisplay || "-",
     cartoonDisplay: cartoonDisplay || "-",
+    rateDisplay: rateDisplay || "-",
     itemCount
   };
 }
@@ -396,6 +438,22 @@ function WeightDisplayCell({ item }: { item: PurchaseItem }) {
   );
 }
 
+function KgDisplayCell({ item }: { item: PurchaseItem }) {
+  const { kgDisplay } = parsePurchaseRecord(item);
+
+  if (!kgDisplay || kgDisplay === "-") {
+    return <span className="text-slate-400 font-bold text-xs select-none">-</span>;
+  }
+
+  return (
+    <div className="text-center">
+      <span className="font-mono text-xs font-black text-slate-900 whitespace-nowrap">
+        {kgDisplay}
+      </span>
+    </div>
+  );
+}
+
 function CartoonDisplayCell({ item }: { item: PurchaseItem }) {
   const { cartoonDisplay } = parsePurchaseRecord(item);
 
@@ -412,7 +470,36 @@ function CartoonDisplayCell({ item }: { item: PurchaseItem }) {
   );
 }
 
+function RateDisplayCell({ item }: { item: PurchaseItem }) {
+  const { rateDisplay } = parsePurchaseRecord(item);
+
+  if (!rateDisplay || rateDisplay === "-") {
+    return <span className="text-slate-400 font-bold text-xs select-none">-</span>;
+  }
+
+  return (
+    <div className="text-right">
+      <span className="font-mono text-xs font-bold text-slate-800 whitespace-nowrap">
+        {rateDisplay}
+      </span>
+    </div>
+  );
+}
+
 export function getPurchaseDueInfo(item: PurchaseItem) {
+  if (item.payment_status === "Bill Pending" || item.amount === 0) {
+    return {
+      isBillPending: true,
+      isPaid: false,
+      isOverdue: false,
+      isDueToday: false,
+      text: "Bill Pending",
+      daysLeft: 0,
+      badgeClass: "text-amber-800 bg-amber-50 border-amber-300 font-bold",
+      statusClass: "text-amber-700 font-bold"
+    };
+  }
+
   if (item.payment_status === "Paid") {
     return {
       isPaid: true,
@@ -495,6 +582,8 @@ export function getPurchaseDueInfo(item: PurchaseItem) {
 
 export interface PurchaseItem {
   id: string;
+  company_id?: string;
+  record_type?: "challan" | "monthly_bill";
   purchase_no: string;
   date: string;
   category: string;
@@ -502,17 +591,45 @@ export interface PurchaseItem {
   items_description?: string;
   items?: any[];
   amount: number;
+  tax_mode?: "none" | "cgst_sgst" | "igst";
+  tax_rate?: number;
+  cgst_amount?: number;
+  sgst_amount?: number;
+  igst_amount?: number;
   weight?: number;
   cartoon?: number;
   total_weight?: number;
   total_cartoon?: number;
-  payment_status: "Paid" | "Pending" | "Unpaid";
+  payment_status: "Paid" | "Pending" | "Unpaid" | "Bill Pending" | "Billed";
   paid_via?: string;
   payment_terms?: string;
   credit_days?: number;
   due_date?: string;
   notes?: string;
 }
+
+
+export const isMonthlyBillRecord = (item: PurchaseItem) => {
+  if (item.record_type === "monthly_bill") return true;
+  const no = (item.purchase_no || "").trim().toUpperCase();
+  if (no.startsWith("INV-") || no.startsWith("PB-")) return true;
+  return false;
+};
+
+const sanitizeChallanNotes = (rawNotes?: string) => {
+  if (!rawNotes) return "";
+  return rawNotes
+    .replace(/\s*\|\s*Billed in\s+[^\s|]+/gi, "")
+    .replace(/^Billed in\s+[^\s|]+/gi, "")
+    .trim();
+};
+
+const sanitizePaymentStatus = (status: string, amount: number) => {
+  if (status === "Billed") {
+    return amount === 0 ? "Bill Pending" : "Pending";
+  }
+  return status as any;
+};
 
 const defaultSeedPurchases: PurchaseItem[] = [];
 
@@ -521,7 +638,7 @@ export default function PurchasesPage() {
   const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"All" | "Pending" | "Overdue" | "Paid">("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Bill Pending" | "Pending" | "Overdue" | "Paid">("All");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedBillImage, setSelectedBillImage] = useState<{ image: string; purchase_no: string; notes?: string } | null>(null);
   const [previewBill, setPreviewBill] = useState<PurchaseItem | null>(null);
@@ -614,7 +731,7 @@ export default function PurchasesPage() {
   const purchaseCategories = useMemo(() => {
     const catSet = new Set<string>();
     materialCategoriesList.forEach((c) => catSet.add(c));
-    purchases.forEach((p) => {
+    purchases.filter((p) => !isMonthlyBillRecord(p)).forEach((p) => {
       if (p.category) {
         p.category.split(",").map((c) => c.trim()).filter(Boolean).forEach((c) => catSet.add(c));
       }
@@ -637,24 +754,36 @@ export default function PurchasesPage() {
       try {
         const stored = getTenantItem<PurchaseItem[]>("texaflow_purchases");
         if (stored && Array.isArray(stored)) {
-          const scoped = stored.filter(
-            (p: any) =>
-              (!p.company_id || p.company_id === currentCid) &&
-              !deletedIdsRef.current.has(p.id) &&
-              (!p.purchase_no || !deletedIdsRef.current.has(p.purchase_no))
-          );
+          const scoped = stored
+            .filter(
+              (p: any) =>
+                (!p.company_id || p.company_id === currentCid) &&
+                !deletedIdsRef.current.has(p.id) &&
+                (!p.purchase_no || !deletedIdsRef.current.has(p.purchase_no))
+            )
+            .map((p) => ({
+              ...p,
+              notes: sanitizeChallanNotes(p.notes),
+              payment_status: sanitizePaymentStatus(p.payment_status, p.amount)
+            }));
           setPurchases(scoped);
           return scoped;
         }
 
         const cached = getCachedApi<PurchaseItem[]>("/purchases");
         if (cached && Array.isArray(cached)) {
-          const scoped = cached.filter(
-            (p: any) =>
-              (!p.company_id || p.company_id === currentCid) &&
-              !deletedIdsRef.current.has(p.id) &&
-              (!p.purchase_no || !deletedIdsRef.current.has(p.purchase_no))
-          );
+          const scoped = cached
+            .filter(
+              (p: any) =>
+                (!p.company_id || p.company_id === currentCid) &&
+                !deletedIdsRef.current.has(p.id) &&
+                (!p.purchase_no || !deletedIdsRef.current.has(p.purchase_no))
+            )
+            .map((p) => ({
+              ...p,
+              notes: sanitizeChallanNotes(p.notes),
+              payment_status: sanitizePaymentStatus(p.payment_status, p.amount)
+            }));
           setPurchases(scoped);
           return scoped;
         }
@@ -689,15 +818,20 @@ export default function PurchasesPage() {
 
           const merged = scoped.map((p) => ({
             ...p,
-            payment_status: localStatusMap.get(p.purchase_no || p.id) || p.payment_status
+            notes: sanitizeChallanNotes(p.notes),
+            payment_status: sanitizePaymentStatus(localStatusMap.get(p.purchase_no || p.id) || p.payment_status, p.amount)
           }));
 
           // Preserve any newly created local bill that might not yet be in the backend response
           const backendIds = new Set(merged.map((p) => p.id));
           const backendNos = new Set(merged.map((p) => p.purchase_no).filter(Boolean));
-          const localOnly = currentLocal.filter(
-            (p) => !backendIds.has(p.id) && (!p.purchase_no || !backendNos.has(p.purchase_no))
-          );
+          const localOnly = currentLocal
+            .filter((p) => !backendIds.has(p.id) && (!p.purchase_no || !backendNos.has(p.purchase_no)))
+            .map((p) => ({
+              ...p,
+              notes: sanitizeChallanNotes(p.notes),
+              payment_status: sanitizePaymentStatus(p.payment_status, p.amount)
+            }));
           const finalPurchases = [...localOnly, ...merged];
 
           setPurchases(finalPurchases);
@@ -773,9 +907,13 @@ export default function PurchasesPage() {
     }, 250);
   };
 
+  // Delivery Challans only on this page (Monthly Bills are in dedicated sidebar page /purchases/bills)
+  const allChallans = useMemo(() => purchases.filter((p) => !isMonthlyBillRecord(p)), [purchases]);
+  const currentTabItems = allChallans;
+
   // Filter purchases
   const filteredPurchases = useMemo(() => {
-    return purchases.filter((item) => {
+    return currentTabItems.filter((item) => {
       const q = search.toLowerCase();
       const matchesSearch =
         (item.purchase_no && item.purchase_no.toLowerCase().includes(q)) ||
@@ -784,18 +922,21 @@ export default function PurchasesPage() {
         (item.items_description && item.items_description.toLowerCase().includes(q)) ||
         (item.notes && item.notes.toLowerCase().includes(q));
 
-      const isUnpaid = item.payment_status === "Pending" || item.payment_status === "Unpaid";
+      const isBillPending = item.payment_status === "Bill Pending" || item.amount === 0;
+      const isUnpaid = (item.payment_status === "Pending" || item.payment_status === "Unpaid") && !isBillPending;
       const itemDueDate = item.due_date || (item.credit_days ? calculateDueDate(item.date, item.credit_days) : item.date);
       const dueInfo = itemDueDate ? getDueStatus(itemDueDate, !isUnpaid) : null;
 
       const matchesStatus =
         statusFilter === "All"
           ? true
-          : statusFilter === "Paid"
-            ? item.payment_status === "Paid"
-            : statusFilter === "Overdue"
-              ? isUnpaid && dueInfo?.status === "Overdue"
-              : isUnpaid;
+          : statusFilter === "Bill Pending"
+            ? isBillPending
+            : statusFilter === "Paid"
+              ? item.payment_status === "Paid"
+              : statusFilter === "Overdue"
+                ? isUnpaid && dueInfo?.status === "Overdue"
+                : isUnpaid;
 
       const { categories } = parsePurchaseRecord(item);
       const matchesCategory =
@@ -805,11 +946,11 @@ export default function PurchasesPage() {
 
       return matchesSearch && matchesStatus && matchesCategory;
     });
-  }, [purchases, search, statusFilter, selectedCategory]);
+  }, [currentTabItems, search, statusFilter, selectedCategory]);
 
   // Aggregate Stats
-  const totalPurchasesAmount = purchases.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  const pendingCreditPurchases = purchases.filter((p) => p.payment_status === "Pending" || p.payment_status === "Unpaid");
+  const totalPurchasesAmount = currentTabItems.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  const pendingCreditPurchases = currentTabItems.filter((p) => p.payment_status === "Pending" || p.payment_status === "Unpaid");
   const pendingCreditAmount = pendingCreditPurchases.reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
   const overdueCount = pendingCreditPurchases.filter((p) => {
@@ -883,6 +1024,8 @@ export default function PurchasesPage() {
         </div>
       </div>
 
+
+
       {/* Filters & Actions Bar */}
       <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
         <div className="relative flex-1 max-w-md">
@@ -904,6 +1047,7 @@ export default function PurchasesPage() {
               onChange={(val) => setStatusFilter(val as any)}
               options={[
                 { value: "All", label: t("All Status") },
+                { value: "Bill Pending", label: t("Bill Pending") },
                 { value: "Pending", label: t("Pending / Credit") },
                 { value: "Overdue", label: t("Overdue") },
                 { value: "Paid", label: t("Paid") },
@@ -952,14 +1096,16 @@ export default function PurchasesPage() {
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-mono font-bold text-slate-500">{item.date}</span>
                     <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${
-                      dueInfo.isPaid
+                      dueInfo.isBillPending
+                        ? "text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200"
+                        : dueInfo.isPaid
                         ? "text-emerald-600"
                         : dueInfo.isOverdue
                         ? "text-rose-600"
                         : "text-amber-600"
                     }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${dueInfo.isPaid ? "bg-emerald-500" : dueInfo.isOverdue ? "bg-rose-600" : "bg-amber-500"}`}></span>
-                      <span>{dueInfo.isPaid ? t("Paid") : dueInfo.isOverdue ? t("Overdue") : t("Pending / Credit")}</span>
+                      <span className={`w-1.5 h-1.5 rounded-full ${dueInfo.isBillPending ? "bg-amber-500 animate-pulse" : dueInfo.isPaid ? "bg-emerald-500" : dueInfo.isOverdue ? "bg-rose-600" : "bg-amber-500"}`}></span>
+                      <span>{dueInfo.isBillPending ? t("Bill Pending") : dueInfo.isPaid ? t("Paid") : dueInfo.isOverdue ? t("Overdue") : t("Pending / Credit")}</span>
                     </span>
                   </div>
 
@@ -1019,13 +1165,9 @@ export default function PurchasesPage() {
                     </span>
                   </div>
 
-                  <div className="text-[11px] text-slate-600 flex items-start gap-1.5">
-                    <span className="font-bold text-slate-400 uppercase text-[10px] shrink-0">{t("Remarks")}:</span>
-                    {item.notes ? (
-                      <span className="font-medium text-slate-800">{item.notes}</span>
-                    ) : (
-                      <span className="text-slate-900 font-black text-xs">-</span>
-                    )}
+                  <div className="text-[11px] text-slate-600 flex items-center justify-between">
+                    <span className="font-bold text-slate-400 uppercase text-[10px] shrink-0">{t("Rate")}:</span>
+                    <RateDisplayCell item={item} />
                   </div>
 
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
@@ -1062,44 +1204,71 @@ export default function PurchasesPage() {
           )}
         </div>
 
-        {/* Desktop Table View (>= md) - Clean, Modern Space Allocation without Horizontal Scrolling */}
+        {/* Desktop Table View (>= md) - Clean, Modern Space Allocation */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full text-left border-collapse text-xs table-fixed min-w-[1250px]">
             <thead>
               <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
                 {/* 1. DATE */}
-                <th className="py-2.5 px-2.5 w-[88px] min-w-[85px] border-r border-slate-200/80">{t("DATE")}</th>
-                {/* 2. BILL NO */}
-                <th className="py-2.5 px-2 w-[72px] min-w-[68px] border-r border-slate-200/80">{t("BILL NO")}</th>
+                <th className="py-2.5 px-2.5 w-[7%] border-r border-slate-200/80">{t("DATE")}</th>
+                {/* 2. BILL / CHALLAN NO */}
+                <th className="py-2.5 px-2 w-[7.5%] border-r border-slate-200/80">
+                  {getFieldLabel(companySettings, "purchase_bill_no", t("CHALLAN NO"))}
+                </th>
                 {/* 3. SUPPLIER / MILL */}
-                <th className="py-2.5 px-2.5 min-w-[120px] max-w-[170px] border-r border-slate-200/80">{t("SUPPLIER / MILL")}</th>
+                <th className="py-2.5 px-2.5 w-[14.5%] border-r border-slate-200/80">
+                  {getFieldLabel(companySettings, "purchase_supplier", t("SUPPLIER / MILL"))}
+                </th>
                 {/* 4. CATEGORY */}
-                <th className="py-2.5 px-2 w-[100px] max-w-[110px] border-r border-slate-200/80">{t("CATEGORY")}</th>
+                <th className="py-2.5 px-2 w-[10.5%] border-r border-slate-200/80">
+                  {getFieldLabel(companySettings, "item_name", t("CATEGORY"))}
+                </th>
                 {/* 5. ITEM */}
-                <th className="py-2.5 px-2 text-center w-[72px] min-w-[72px] max-w-[72px] border-r border-slate-200/80">{t("ITEM")}</th>
+                <th className="py-2.5 px-1.5 text-center w-[4.5%] border-r border-slate-200/80">
+                  {getFieldLabel(companySettings, "item_unit", t("ITEM"))}
+                </th>
                 {/* 6. QUANTITY */}
-                <th className="py-2.5 px-2 text-center w-[72px] min-w-[72px] max-w-[72px] border-r border-slate-200/80">{t("QUANTITY")}</th>
+                <th className="py-2.5 px-1.5 text-center w-[6.5%] border-r border-slate-200/80">
+                  {getFieldLabel(companySettings, "purchase_qty", t("QUANTITY"))}
+                </th>
                 {/* 7. WEIGHT */}
-                <th className="py-2.5 px-2 text-center w-[72px] min-w-[72px] max-w-[72px] border-r border-slate-200/80">{t("WEIGHT")}</th>
+                <th className="py-2.5 px-1.5 text-center w-[5%] border-r border-slate-200/80">
+                  {getFieldLabel(companySettings, "weight", t("WEIGHT"))}
+                </th>
+                {/* KG */}
+                <th className="py-2.5 px-1.5 text-center w-[5%] border-r border-slate-200/80">
+                  {getFieldLabel(companySettings, "kg", t("KG"))}
+                </th>
                 {/* 8. CARTOON */}
-                <th className="py-2.5 px-2 text-center w-[72px] min-w-[72px] max-w-[72px] border-r border-slate-200/80">{t("CARTOON")}</th>
-                {/* 9. AMOUNT (₹) */}
-                <th className="py-2.5 px-2 text-right w-[92px] min-w-[88px] border-r border-slate-200/80">{t("AMOUNT (₹)")}</th>
-                {/* 10. REMARKS */}
-                <th className="py-2.5 px-2 min-w-[85px] max-w-[120px] border-r border-slate-200/80">{t("REMARKS")}</th>
-                {/* 11. DUE (DAYS) */}
-                <th className="py-2.5 px-1.5 text-center w-[95px] min-w-[90px] border-r border-slate-200/80">{t("DUE (DAYS)")}</th>
-                {/* 12. STATUS */}
-                <th className="py-2.5 px-1.5 text-center w-[75px] min-w-[70px] border-r border-slate-200/80">{t("STATUS")}</th>
-                {/* 13. ACTION */}
-                <th className="py-2.5 px-1.5 text-center w-[80px] min-w-[75px]">{t("ACTION")}</th>
+                <th className="py-2.5 px-1.5 text-center w-[4.5%] border-r border-slate-200/80">
+                  {getFieldLabel(companySettings, "cartoon", t("CARTOON"))}
+                </th>
+                {/* 9. RATE (₹) */}
+                <th className="py-2.5 px-2 text-right w-[7%] border-r border-slate-200/80">
+                  {getFieldLabel(companySettings, "purchase_rate", t("RATE (₹)"))}
+                </th>
+                {/* 10. GST (%) */}
+                <th className="py-2.5 px-1.5 text-center w-[5.5%] border-r border-slate-200/80">
+                  {t("GST (%)")}
+                </th>
+                {/* 11. AMOUNT (₹) */}
+                <th className="py-2.5 px-2 text-right w-[8.5%] border-r border-slate-200/80">
+                  {getFieldLabel(companySettings, "purchase_total", t("AMOUNT (₹)"))}
+                </th>
+                {/* 12. DUE (DAYS) */}
+                <th className="py-2.5 px-1.5 text-center w-[7.5%] border-r border-slate-200/80">{t("DUE (DAYS)")}</th>
+                {/* 13. STATUS */}
+                <th className="py-2.5 px-2 text-center w-[8%] border-r border-slate-200/80">{t("STATUS")}</th>
+                {/* 14. ACTION */}
+                <th className="py-2.5 px-2 text-center w-[6.5%]">{t("ACTION")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
               {filteredPurchases.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="py-12 text-center text-slate-400 font-medium">
-                    {t("No purchase bills found matching your filters. Click \"+ New Purchase Bill\" to add.")}
+                  <td colSpan={14} className="py-12 text-center text-slate-400 font-medium">
+
+                    {t('No delivery challans found matching your filters. Click "+ New Purchase Bill" to add.')}
                   </td>
                 </tr>
               ) : (
@@ -1127,9 +1296,14 @@ export default function PurchasesPage() {
 
                       {/* 3. SUPPLIER / MILL */}
                       <td className="py-2.5 px-2.5 align-middle border-r border-slate-200/70">
-                        <span className="font-bold text-slate-900 text-xs block truncate tracking-tight" title={item.vendor_name}>
+                        <Link
+                          href={`/ledger?party=${encodeURIComponent(item.vendor_name)}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-bold text-slate-900 hover:text-blue-600 hover:underline text-xs block truncate tracking-tight transition-colors cursor-pointer"
+                          title={`View Ledger for ${item.vendor_name}`}
+                        >
                           {item.vendor_name}
-                        </span>
+                        </Link>
                       </td>
 
                       {/* 4. CATEGORY */}
@@ -1138,44 +1312,59 @@ export default function PurchasesPage() {
                       </td>
 
                       {/* 5. ITEM */}
-                      <td className="py-2.5 px-2 text-center align-middle whitespace-nowrap w-[72px] min-w-[72px] max-w-[72px] border-r border-slate-200/70">
+                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
                         <ItemDescriptionDisplayCell item={item} />
                       </td>
 
                       {/* 6. QUANTITY */}
-                      <td className="py-2.5 px-2 text-center align-middle whitespace-nowrap w-[72px] min-w-[72px] max-w-[72px] border-r border-slate-200/70">
+                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
                         <QuantityDisplayCell item={item} />
                       </td>
 
                       {/* 7. WEIGHT */}
-                      <td className="py-2.5 px-2 text-center align-middle whitespace-nowrap w-[72px] min-w-[72px] max-w-[72px] border-r border-slate-200/70">
+                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
                         <WeightDisplayCell item={item} />
                       </td>
 
+                      {/* KG */}
+                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
+                        <KgDisplayCell item={item} />
+                      </td>
+
                       {/* 8. CARTOON */}
-                      <td className="py-2.5 px-2 text-center align-middle whitespace-nowrap w-[72px] min-w-[72px] max-w-[72px] border-r border-slate-200/70">
+                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
                         <CartoonDisplayCell item={item} />
                       </td>
 
-                      {/* 9. AMOUNT (₹) */}
+                      {/* 9. RATE (₹) */}
+                      <td className="py-2.5 px-2 text-right align-middle whitespace-nowrap font-mono font-bold text-slate-800 text-xs tracking-tight border-r border-slate-200/70">
+                        <RateDisplayCell item={item} />
+                      </td>
+
+                      {/* 10. GST (%) */}
+                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
+                        {item.tax_mode && item.tax_mode !== "none" && Number(item.tax_rate || 0) > 0 ? (
+                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                            {item.tax_rate}%
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-bold text-xs select-none">-</span>
+                        )}
+                      </td>
+
+                      {/* 11. AMOUNT (₹) */}
                       <td className="py-2.5 px-2 text-right align-middle whitespace-nowrap font-mono font-black text-slate-950 text-xs tracking-tight border-r border-slate-200/70">
                         ₹{item.amount.toLocaleString("en-IN")}
                       </td>
 
-                      {/* 10. REMARKS */}
-                      <td className="py-2.5 px-2 text-xs align-middle whitespace-normal border-r border-slate-200/70">
-                        {item.notes ? (
-                          <p className="font-medium text-slate-700 text-xs truncate max-w-[120px]" title={item.notes}>
-                            {item.notes}
-                          </p>
-                        ) : (
-                          <span className="text-slate-800 font-black text-sm select-none">-</span>
-                        )}
-                      </td>
 
                       {/* 11. DUE (DAYS) */}
                       <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
-                        {dueInfo.isPaid ? (
+                        {dueInfo.isBillPending ? (
+                          <span className="text-xs font-bold text-amber-700 inline-flex items-center gap-1 justify-center">
+                            <span>-</span>
+                          </span>
+                        ) : dueInfo.isPaid ? (
                           <span className="text-xs font-bold text-emerald-700 inline-flex items-center gap-1 justify-center">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                             <span>{t("Settled")}</span>
@@ -1199,19 +1388,24 @@ export default function PurchasesPage() {
                       </td>
 
                       {/* 12. STATUS */}
-                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
-                        {dueInfo.isPaid ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
+                      <td className="py-2.5 px-2 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
+                        {dueInfo.isBillPending ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            <span>{t("Bill Pending")}</span>
+                          </span>
+                        ) : dueInfo.isPaid ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                             <span>{t("Paid")}</span>
                           </span>
                         ) : dueInfo.isOverdue ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-600">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
                             <span>{t("Overdue")}</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                             <span>{t("Pending")}</span>
                           </span>
@@ -1219,8 +1413,8 @@ export default function PurchasesPage() {
                       </td>
 
                       {/* 13. ACTION */}
-                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-2.5 px-2 text-center align-middle whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={() => handlePrintBill(item)}
@@ -1283,6 +1477,8 @@ export default function PurchasesPage() {
         let hasNumericQty = false;
         let totalWeightSum = 0;
         let hasNumericWeight = false;
+        let totalKgSum = 0;
+        let hasKg = false;
         let totalCartoonSum = 0;
         let hasCartoon = false;
 
@@ -1300,11 +1496,28 @@ export default function PurchasesPage() {
             totalWeightSum += parseFloat(String(it.weight));
           }
 
+          if (it.kg && !isNaN(parseFloat(String(it.kg)))) {
+            hasKg = true;
+            totalKgSum += parseFloat(String(it.kg));
+          }
+
           if (it.cartoon && !isNaN(parseInt(String(it.cartoon)))) {
-            hasCartoon = true;
-            totalCartoonSum += parseInt(String(it.cartoon));
+            const cVal = parseInt(String(it.cartoon));
+            if (cVal > 0) {
+              hasCartoon = true;
+              totalCartoonSum += cVal;
+            }
           }
         });
+
+        if (previewBill.total_cartoon && Number(previewBill.total_cartoon) > 0) {
+          hasCartoon = true;
+          if (totalCartoonSum === 0) totalCartoonSum = Number(previewBill.total_cartoon);
+        }
+        if ((previewBill as any).total_kg && Number((previewBill as any).total_kg) > 0) {
+          hasKg = true;
+          if (totalKgSum === 0) totalKgSum = Number((previewBill as any).total_kg);
+        }
 
         const termsList = (companySettings.terms_conditions && companySettings.terms_conditions.trim())
           ? companySettings.terms_conditions.split("\n").map((t: string) => t.trim()).filter(Boolean)
@@ -1402,77 +1615,83 @@ export default function PurchasesPage() {
                     {/* 1. TOP HEADER GREY BOX (DYNAMIC COMPANY NAME) */}
                     <div className="bg-[#d9d9d9] border-b border-black py-2 text-center">
                       <h1 className="font-extrabold text-xl sm:text-2xl tracking-wider text-black uppercase">
-                        {companySettings.brand_name || companySettings.company_name || "TEXAFLOW"}
+                        {companySettings.brand_name || companySettings.company_name || "SHIV CREATION"}
                       </h1>
                     </div>
 
-                    {/* 2. ADDRESS & MOBILE (DYNAMIC COMPANY ADDRESS & PHONE) */}
-                    <div className="px-4 py-2 border-b border-black text-center relative text-black">
-                      <p className="text-[11px] font-bold tracking-tight">
-                        {companyAddressDisplay}
-                      </p>
-                      <p className="text-right text-[11px] font-bold mt-0.5">
-                        Mo : {companySettings.phone || companySettings.alt_phone || "9099226483"}
-                      </p>
+                    {/* 2. INV NO & DATE ROW (ON BOTH CORNERS) */}
+                    <div className="px-4 py-2 border-b border-black flex justify-between items-center text-xs font-bold text-black bg-white">
+                      <div className="flex items-center gap-1.5">
+                        <span>INV NO. :</span>
+                        <span className="font-mono font-black text-sm">{previewBill.purchase_no}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span>Date :</span>
+                        <span className="font-mono font-bold text-sm">{previewBill.date}</span>
+                      </div>
                     </div>
 
-                    {/* 3. TAX INVOICE & GST BAR */}
-                    <div className="px-3 py-1 border-b border-black flex justify-between items-center text-xs font-bold text-black bg-white">
-                      <span>GST No.{companySettings.gstin ? ` : ${companySettings.gstin}` : ""}</span>
-                      <span className="font-extrabold text-sm tracking-wide">Tax Invoice</span>
-                      <span></span>
+                    {/* 3. TAX INVOICE & CH. NO BAR */}
+                    <div className="px-4 py-1.5 border-b border-black flex justify-between items-center text-xs font-bold text-black bg-white">
+                      <div className="w-1/4"></div>
+                      <div className="text-center flex-1">
+                        <span className="font-extrabold text-sm tracking-wide uppercase">Tax Invoice</span>
+                      </div>
+                      <div className="flex items-center justify-end gap-1.5 w-auto text-right">
+                        <span>Ch. No :</span>
+                        <span className="font-mono font-semibold">
+                          {previewBill.due_date
+                            ? `${previewBill.due_date} (${previewBill.credit_days || 0}d)`
+                            : (previewBill.credit_days ? `${calculateDueDate(previewBill.date, previewBill.credit_days)} (${previewBill.credit_days}d)` : "-")}
+                        </span>
+                      </div>
                     </div>
 
-                    {/* 4. PARTY DETAILS & INVOICE META GRID (60% / 40% SPLIT) */}
-                    <div className="border-b border-black grid grid-cols-[1.4fr_1fr] text-black">
-                      {/* Left Column: Party Details */}
-                      <div className="p-2.5 flex flex-col justify-between border-r border-black min-h-[96px]">
-                        <div>
-                          <span className="font-bold text-xs">M/s. : </span>
-                          <span className="font-bold text-xs text-black">
-                            {previewBill.vendor_name}
-                          </span>
+                    {/* 4. TWO EQUAL BOXES (LEFT: MY COMPANY DETAILS, RIGHT: PARTY / CUSTOMER DETAILS) */}
+                    <div className="border-b border-black grid grid-cols-2 text-black">
+                      {/* Left Box: My Company Details */}
+                      <div className="p-3 border-r border-black flex flex-col justify-between min-h-[110px]">
+                        <div className="space-y-1">
+                          <div className="text-xs">
+                            <span className="font-bold">M/s. : </span>
+                            <span className="font-extrabold uppercase text-black">
+                              {companySettings.company_name || companySettings.brand_name || "SHIV CREATION"}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-medium text-neutral-800 leading-snug">
+                            {companyAddressDisplay}
+                          </p>
+                          <p className="text-[11px] font-bold text-black">
+                            Mo : {companySettings.phone || companySettings.alt_phone || "9099226483"}
+                          </p>
+                        </div>
+                        <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-dashed border-neutral-300">
+                          <span>GST No.{companySettings.gstin ? ` : ${companySettings.gstin}` : ""}</span>
+                          <span>State Code : 24</span>
+                        </div>
+                      </div>
+
+                      {/* Right Box: Client / Party Details */}
+                      <div className="p-3 flex flex-col justify-between min-h-[110px]">
+                        <div className="space-y-1">
+                          <div className="text-xs">
+                            <span className="font-bold">M/s. : </span>
+                            <span className="font-extrabold uppercase text-black">
+                              {previewBill.vendor_name}
+                            </span>
+                          </div>
                           {previewBill.notes && (
-                            <div className="text-[11px] text-neutral-600 pl-4 mt-0.5 italic">
+                            <p className="text-[11px] text-neutral-700 leading-snug italic">
                               {previewBill.notes}
-                            </div>
+                            </p>
                           )}
                         </div>
-                        <div className="flex justify-between items-center text-xs font-bold pt-3">
+                        <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-dashed border-neutral-300">
                           <span>GST No.{(() => {
                             const m = previewBill.notes?.match(/GST[:\s]+([0-9A-Z]{15})/i);
                             return m ? ` : ${m[1]}` : "";
                           })()}</span>
-                          <span className="pr-4">State Code : 24</span>
-                        </div>
-                      </div>
-
-                      {/* Right Column: Invoice Meta Details */}
-                      <div className="flex flex-col justify-between">
-                        {/* Top sub-box with Grey Background exactly as Image 1 */}
-                        <div className="bg-[#d9d9d9] border-b border-black p-2 space-y-1 text-xs font-bold">
-                          <div className="flex justify-between">
-                            <span>INV NO.</span>
-                            <span className="font-mono font-bold">{previewBill.purchase_no}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Date :</span>
-                            <span>{previewBill.date}</span>
-                          </div>
-                        </div>
-
-                        {/* Bottom sub-box with White Background */}
-                        <div className="p-2 space-y-1 text-xs font-bold bg-white">
-                          <div className="flex justify-between">
-                            <span>Ch. No :</span>
-                            <span className="font-mono font-medium">
-                              {previewBill.due_date ? `${previewBill.due_date} (${previewBill.credit_days || 0}d)` : (previewBill.credit_days ? `${calculateDueDate(previewBill.date, previewBill.credit_days)} (${previewBill.credit_days}d)` : "")}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Broker . :</span>
-                            <span className="font-medium"></span>
-                          </div>
+                          <span>State Code : 24</span>
                         </div>
                       </div>
                     </div>
@@ -1482,19 +1701,32 @@ export default function PurchasesPage() {
                       <table className="w-full text-left text-xs border-collapse text-black">
                         <thead>
                           <tr className="border-b border-black text-xs font-bold text-black bg-white">
-                            <th className="py-1.5 px-2 text-center w-[40px] border-r border-black">No</th>
-                            <th className="py-1.5 px-3 border-r border-black">DESCRIPTION</th>
-                            <th className="py-1.5 px-2 text-center w-[65px] border-r border-black">Qty</th>
-                            <th className="py-1.5 px-2 text-right w-[90px] border-r border-black">Weight</th>
-                            <th className="py-1.5 px-2 text-center w-[65px] border-r border-black">Cartoon</th>
-                            <th className="py-1.5 px-2 text-right w-[80px] border-r border-black">Rate</th>
-                            <th className="py-1.5 px-3 text-right w-[115px]">Amount</th>
+                            <th className="py-1.5 px-2 text-center w-[35px] border-r border-black">No</th>
+                            <th className="py-1.5 px-3 border-r border-black">
+                              {getFieldLabel(companySettings, "purchase_item", "DESCRIPTION")}
+                            </th>
+                            <th className="py-1.5 px-2 text-center w-[75px] border-r border-black">HSN Code</th>
+                            <th className="py-1.5 px-2 text-center w-[60px] border-r border-black">
+                              {getFieldLabel(companySettings, "purchase_qty", "Qty")}
+                            </th>
+                            <th className="py-1.5 px-2 text-right w-[85px] border-r border-black">Weight</th>
+                            <th className="py-1.5 px-2 text-right w-[75px] border-r border-black">KG</th>
+                            {hasCartoon && (
+                              <th className="py-1.5 px-2 text-center w-[60px] border-r border-black">Cartoon</th>
+                            )}
+                            <th className="py-1.5 px-2 text-right w-[75px] border-r border-black">
+                              {getFieldLabel(companySettings, "purchase_rate", "Rate")}
+                            </th>
+                            <th className="py-1.5 px-3 text-right w-[110px]">
+                              {getFieldLabel(companySettings, "purchase_total", "Amount")}
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="text-xs font-medium text-black">
                           {validItems.length > 0 ? (
                             validItems.map((it: any, idx: number) => {
                               const desc = it.description || it.item_name || "-";
+                              const hsn = it.hsn_code || it.hsn || (companySettings.hsn_sac_code ? companySettings.hsn_sac_code.split(" ")[0] : "998822");
                               const qty = it.quantity || "-";
                               const amt = it.amount ? parseFloat(String(it.amount)) : 0;
                               let rateDisplay = "-";
@@ -1520,14 +1752,22 @@ export default function PurchasesPage() {
                                     {desc}
                                   </td>
                                   <td className="py-1 px-2 text-center font-mono border-r border-black">
+                                    {hsn}
+                                  </td>
+                                  <td className="py-1 px-2 text-center font-mono border-r border-black">
                                     {qty}
                                   </td>
                                   <td className="py-1 px-2 text-right font-mono border-r border-black">
                                     {it.weight ? Number(it.weight).toFixed(2) : "-"}
                                   </td>
-                                  <td className="py-1 px-2 text-center font-mono border-r border-black">
-                                    {it.cartoon || "0"}
+                                  <td className="py-1 px-2 text-right font-mono border-r border-black">
+                                    {it.kg ? Number(it.kg).toFixed(2) : "-"}
                                   </td>
+                                  {hasCartoon && (
+                                    <td className="py-1 px-2 text-center font-mono border-r border-black">
+                                      {it.cartoon || "-"}
+                                    </td>
+                                  )}
                                   <td className="py-1 px-2 text-right font-mono border-r border-black">
                                     {rateDisplay}
                                   </td>
@@ -1543,9 +1783,17 @@ export default function PurchasesPage() {
                               <td className="py-1 px-3 border-r border-black">
                                 {previewBill.items_description || "-"}
                               </td>
+                              <td className="py-1 px-2 text-center font-mono border-r border-black">
+                                {companySettings.hsn_sac_code ? companySettings.hsn_sac_code.split(" ")[0] : "998822"}
+                              </td>
                               <td className="py-1 px-2 text-center font-mono border-r border-black">-</td>
                               <td className="py-1 px-2 text-right font-mono border-r border-black">-</td>
-                              <td className="py-1 px-2 text-center font-mono border-r border-black">0</td>
+                              <td className="py-1 px-2 text-right font-mono border-r border-black">-</td>
+                              {hasCartoon && (
+                                <td className="py-1 px-2 text-center font-mono border-r border-black">
+                                  {previewBill.total_cartoon || "-"}
+                                </td>
+                              )}
                               <td className="py-1 px-2 text-right font-mono border-r border-black">-</td>
                               <td className="py-1 px-3 text-right font-mono font-bold">
                                 {previewBill.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1561,24 +1809,32 @@ export default function PurchasesPage() {
                             <td className="border-r border-black"></td>
                             <td className="border-r border-black"></td>
                             <td className="border-r border-black"></td>
+                            {hasCartoon && <td className="border-r border-black"></td>}
+                            <td className="border-r border-black"></td>
                             <td></td>
                           </tr>
                         </tbody>
 
-                        {/* Total Row (Grey Background exactly matching Image 1) */}
+                        {/* Total Row (Grey Background) */}
                         <tfoot>
                           <tr className="bg-[#d9d9d9] border-t border-b border-black font-bold text-xs">
                             <td className="py-1.5 px-2 border-r border-black"></td>
                             <td className="py-1.5 px-3 border-r border-black"></td>
+                            <td className="py-1.5 px-2 border-r border-black"></td>
                             <td className="py-1.5 px-2 text-center font-mono border-r border-black">
                               {hasNumericQty ? totalQtySum : ""}
                             </td>
                             <td className="py-1.5 px-2 text-right font-mono border-r border-black">
                               {hasNumericWeight ? totalWeightSum.toFixed(2) : ""}
                             </td>
-                            <td className="py-1.5 px-2 text-center font-mono border-r border-black">
-                              {hasCartoon ? totalCartoonSum : 0}
+                            <td className="py-1.5 px-2 text-right font-mono border-r border-black">
+                              {hasKg ? totalKgSum.toFixed(2) : ""}
                             </td>
+                            {hasCartoon && (
+                              <td className="py-1.5 px-2 text-center font-mono border-r border-black">
+                                {totalCartoonSum}
+                              </td>
+                            )}
                             <td className="py-1.5 px-2 border-r border-black"></td>
                             <td className="py-1.5 px-3 text-right font-mono font-black">
                               {previewBill.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1588,7 +1844,7 @@ export default function PurchasesPage() {
                       </table>
                     </div>
 
-                    {/* 6. BANK DETAILS & SUBTOTAL / GST GRID (60% / 40% SPLIT) */}
+                    {/* 6. BANK DETAILS & GST / SUBTOTAL GRID (60% / 40% SPLIT) */}
                     <div className="grid grid-cols-[1.4fr_1fr] border-b border-black text-black">
                       {/* Left: Bank Details */}
                       <div className="p-2.5 text-xs font-bold space-y-1 border-r border-black">
@@ -1598,18 +1854,18 @@ export default function PurchasesPage() {
                         <div>Bank Ifsc : <span className="font-mono font-medium">{companySettings.ifsc || ""}</span></div>
                       </div>
 
-                      {/* Right: Subtotal & GST */}
+                      {/* Right: GST & Subtotal (GST first, then Subtotal, followed by Total Amount) */}
                       <div className="divide-y divide-black text-xs font-bold flex flex-col justify-center">
+                        <div className="flex justify-between items-center px-3 py-2">
+                          <span>GST</span>
+                          <span className="font-mono">
+                            {companySettings.gst_rate ? companySettings.gst_rate.split(" ")[0] : "5%"}
+                          </span>
+                        </div>
                         <div className="flex justify-between items-center px-3 py-2">
                           <span>Subtotal</span>
                           <span className="font-mono text-sm">
                             {previewBill.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center px-3 py-2">
-                          <span>GST</span>
-                          <span className="font-mono">
-                            {companySettings.gst_rate ? companySettings.gst_rate.split(" ")[0] : "18%"}
                           </span>
                         </div>
                       </div>

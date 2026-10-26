@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
+import { KeyboardShortcutsModal } from "@/components/common/KeyboardShortcutsModal";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -251,6 +252,7 @@ export function DashboardShell({
           </div>
         </main>
       </div>
+      <KeyboardShortcutsModal />
     </div>
   );
 }

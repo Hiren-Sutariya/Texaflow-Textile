@@ -31,8 +31,10 @@ import {
   Eye,
   EyeOff,
   Trash2,
-  Edit3
+  Edit3,
+  Upload
 } from "lucide-react";
+import { ExcelImportModal } from "@/components/common/ExcelImportModal";
 
 interface CustomSelectOption {
   value: string;
@@ -213,6 +215,7 @@ export default function EmployeesPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>([]);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const loadEmployeesFromApi = async () => {
     try {
@@ -349,6 +352,7 @@ export default function EmployeesPage() {
   const [formCategory, setFormCategory] = useState<"Karigar" | "Salaried Staff">("Karigar");
   const [formShift, setFormShift] = useState<"Day Shift" | "Night Shift">("Day Shift");
   const [formSalary, setFormSalary] = useState<string>("");
+  const [formAdvance, setFormAdvance] = useState<string>("");
   const [formPhotoUrl, setFormPhotoUrl] = useState("");
 
   // Machine Management States matching Screenshots 1 & 2
@@ -502,6 +506,7 @@ export default function EmployeesPage() {
     setFormCategory("Karigar");
     setFormShift("Day Shift");
     setFormSalary("");
+    setFormAdvance("");
     setFormPhotoUrl("");
     setHelpersList([]);
     setBankName("");
@@ -527,6 +532,7 @@ export default function EmployeesPage() {
     setFormCategory(emp.employee_type);
     setFormShift(emp.shift);
     setFormSalary(emp.monthly_salary ? String(emp.monthly_salary) : "");
+    setFormAdvance(emp.advance_balance ? String(emp.advance_balance) : "");
     setFormPhotoUrl(emp.photoUrl || "");
     setHelpersList(emp.helpers || []);
     setBankName(emp.bank_details?.bank_name || "");
@@ -617,6 +623,7 @@ export default function EmployeesPage() {
             assigned_machine: formMachineNo.trim() || "Machine 1",
             shift: formShift,
             monthly_salary: Number(formSalary) || 0,
+            advance_balance: Number(formAdvance) || 0,
             status: "Active",
             photo_url: cleanFormPhoto,
             helpers: JSON.stringify(helpersList),
@@ -642,6 +649,7 @@ export default function EmployeesPage() {
                 employee_type: formCategory,
                 shift: formShift,
                 monthly_salary: Number(formSalary) || 0,
+                advance_balance: Number(formAdvance) || 0,
                 photoUrl: cleanFormPhoto ? cleanFormPhoto : undefined,
                 helpers: helpersList,
                 bank_details: compiledBank,
@@ -668,7 +676,7 @@ export default function EmployeesPage() {
             assigned_machine: formMachineNo.trim() || "Machine 1",
             shift: formShift,
             monthly_salary: Number(formSalary) || 0,
-            advance_balance: 0,
+            advance_balance: Number(formAdvance) || 0,
             status: "Active",
             photo_url: cleanFormPhoto,
             helpers: JSON.stringify(helpersList),
@@ -696,7 +704,7 @@ export default function EmployeesPage() {
         assigned_machine: formMachineNo.trim() || "Machine 1",
         shift: formShift,
         monthly_salary: Number(formSalary) || 0,
-        advance_balance: 0,
+        advance_balance: Number(formAdvance) || 0,
         status: "Active",
         photoUrl: cleanFormPhoto ? cleanFormPhoto : undefined,
         helpers: helpersList,
@@ -1118,6 +1126,92 @@ export default function EmployeesPage() {
                       onKeyDown={handleInputKeyDown}
                       className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Category / Role</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormCategory("Karigar")}
+                        className={`h-9 rounded-xl font-bold text-xs flex items-center justify-center border transition-all cursor-pointer ${
+                          formCategory === "Karigar"
+                            ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                            : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        Karigar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormCategory("Salaried Staff")}
+                        className={`h-9 rounded-xl font-bold text-xs flex items-center justify-center border transition-all cursor-pointer ${
+                          formCategory === "Salaried Staff"
+                            ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                            : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        Salaried Staff
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Working Shift</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormShift("Day Shift")}
+                        className={`h-9 rounded-xl font-bold text-xs flex items-center justify-center border transition-all cursor-pointer ${
+                          formShift === "Day Shift"
+                            ? "bg-amber-50 border-amber-500 text-amber-900 font-extrabold shadow-2xs"
+                            : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        ☀️ Day Shift
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormShift("Night Shift")}
+                        className={`h-9 rounded-xl font-bold text-xs flex items-center justify-center border transition-all cursor-pointer ${
+                          formShift === "Night Shift"
+                            ? "bg-indigo-50 border-indigo-500 text-indigo-900 font-extrabold shadow-2xs"
+                            : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        🌙 Night Shift
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Monthly Salary / Wage (₹)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-slate-400 font-bold text-xs">₹</span>
+                      <input
+                        type="number"
+                        placeholder="e.g. 25000"
+                        value={formSalary}
+                        onChange={(e) => setFormSalary(e.target.value)}
+                        onKeyDown={handleInputKeyDown}
+                        className="w-full h-9 pl-7 pr-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Opening Advance / Upad (₹)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-slate-400 font-bold text-xs">₹</span>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={formAdvance}
+                        onChange={(e) => setFormAdvance(e.target.value)}
+                        onKeyDown={handleInputKeyDown}
+                        className="w-full h-9 pl-7 pr-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1703,6 +1797,15 @@ export default function EmployeesPage() {
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               type="button"
+              onClick={() => setIsImportModalOpen(true)}
+              className="h-9 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer shrink-0"
+              title="કારીગરોનું એક્સેલ ઇમ્પોર્ટ"
+            >
+              <Upload className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Import Excel</span>
+            </button>
+            <button
+              type="button"
               onClick={openNewWorkerForm}
               className="flex-1 sm:flex-none h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
             >
@@ -2063,7 +2166,8 @@ export default function EmployeesPage() {
                 <th className="px-4 py-2.5 border-r border-slate-200/80">KHATA NO.</th>
                 <th className="px-4 py-2.5 border-r border-slate-200/80">MACHINE NUMBER</th>
                 <th className="px-4 py-2.5 border-r border-slate-200/80">MOBILE NUMBER</th>
-                <th className="px-4 py-2.5 border-r border-slate-200/80">EMAIL</th>
+                <th className="px-4 py-2.5 text-center border-r border-slate-200/80">SHIFT</th>
+                <th className="px-4 py-2.5 text-right border-r border-slate-200/80">SALARY (₹)</th>
                 <th className="px-4 py-2.5 border-r border-slate-200/80">HELPERS</th>
                 <th className="px-4 py-2.5 text-center border-r border-slate-200/80">STATUS</th>
                 <th className="px-4 py-2.5 text-right">ACTION</th>
@@ -2143,9 +2247,24 @@ export default function EmployeesPage() {
                     )}
                   </td>
 
-                  {/* EMAIL */}
-                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 font-medium border-r border-slate-200/70">
-                    {emp.email ? emp.email : <span className="text-slate-400">-</span>}
+                  {/* SHIFT */}
+                  <td className="px-4 py-3 whitespace-nowrap text-center border-r border-slate-200/70">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-bold border ${
+                      emp.shift === "Night Shift"
+                        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                        : "bg-amber-50 text-amber-800 border-amber-200"
+                    }`}>
+                      {emp.shift === "Night Shift" ? "🌙 Night" : "☀️ Day"}
+                    </span>
+                  </td>
+
+                  {/* MONTHLY SALARY */}
+                  <td className="px-4 py-3 whitespace-nowrap text-right font-mono font-bold text-slate-900 border-r border-slate-200/70">
+                    {emp.monthly_salary > 0 ? (
+                      <span>₹{Number(emp.monthly_salary).toLocaleString("en-IN")}</span>
+                    ) : (
+                      <span className="text-slate-400 font-normal">-</span>
+                    )}
                   </td>
 
                   {/* HELPERS */}
@@ -2183,19 +2302,19 @@ export default function EmployeesPage() {
                       <button
                         type="button"
                         onClick={() => openEditWorkerForm(emp)}
-                        className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                        className="p-1 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
                         title="Edit Worker"
                       >
-                        <Edit3 className="w-4 h-4" />
+                        <Edit3 className="w-3.5 h-3.5" />
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleDeleteWorker(emp.id)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                         title="Delete Worker"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>
@@ -2589,6 +2708,14 @@ export default function EmployeesPage() {
           </div>
         </div>
       )}
+
+      {/* Excel Import Modal for Workers */}
+      <ExcelImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        entityType="workers"
+        onSuccess={() => loadEmployeesFromApi()}
+      />
     </div>
   );
 }

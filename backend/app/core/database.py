@@ -51,12 +51,14 @@ def init_db():
         from app.models.settings import Settings
         from app.models.party import Party
         from app.models.worker import Worker
-        from app.models.design import Design
         from app.models.payment import PaymentVoucher
         from app.models.expense import Expense
         from app.models.purchase import Purchase
         from app.models.category import Category
         from app.models.user import User
+
+        from app.models.sales_challan import SalesChallan
+        from app.models.sales_invoice import SalesInvoice
 
         active_tables = [
             User.__table__,           # 00_auth_users
@@ -67,10 +69,11 @@ def init_db():
             Purchase.__table__,       # 04_purchases
             PaymentVoucher.__table__, # 05_payments
             Category.__table__,       # 06_categories
-            Design.__table__,         # 07_design_library
+            SalesChallan.__table__,   # 08_sales_challans
+            SalesInvoice.__table__,   # 09_sales_invoices
         ]
         Base.metadata.create_all(bind=engine, tables=active_tables)
-        print("✅ All 9 database tables verified / initialized successfully.")
+        print("✅ All 10 active database tables verified / initialized successfully.")
 
         db = SessionLocal()
         try:

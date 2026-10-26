@@ -28,12 +28,12 @@ const DEFAULT_EXPENSE_CATEGORIES = [
   "Logistics & Courier"
 ];
 
-type ModuleType = "all" | "material" | "expense" | "design";
+type ModuleType = "all" | "material" | "expense";
 
 interface CategoryRecord {
   id: string;
   name: string;
-  module: "material" | "expense" | "design";
+  module: "material" | "expense";
   moduleLabel: string;
   status: "Active";
   srNo: number;
@@ -47,7 +47,6 @@ interface CustomSelectOption {
 const getModuleLabel = (mod: string) => {
   if (mod === "material") return "Material & Purchase";
   if (mod === "expense") return "Expenses";
-  if (mod === "design") return "Design Library";
   return mod;
 };
 
@@ -147,10 +146,6 @@ export default function CategoriesPage() {
       "texaflow_expense_categories_order",
       items.filter((c) => c.module === "expense").map((c) => c.name)
     );
-    setTenantItem(
-      "texaflow_design_categories",
-      items.filter((c) => c.module === "design").map((c) => c.name)
-    );
     window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
   };
 
@@ -164,11 +159,11 @@ export default function CategoriesPage() {
       if (Array.isArray(liveCached) && liveCached.length > 0) {
         const seen = new Set<string>();
         const items: CategoryRecord[] = [];
-        const modCounters: { [key: string]: number } = { expense: 1, material: 1, design: 1 };
+        const modCounters: { [key: string]: number } = { expense: 1, material: 1 };
         for (const c of liveCached) {
           const trimmed = c.name?.trim();
           if (!trimmed) continue;
-          const mod = (c.module as "material" | "expense" | "design") || "material";
+          const mod = (c.module as "material" | "expense") || "material";
           const key = `${mod}_${trimmed.toLowerCase()}`;
           if (seen.has(key)) continue;
           seen.add(key);
@@ -206,10 +201,10 @@ export default function CategoriesPage() {
   // Add category modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addName, setAddName] = useState("");
-  const [addModule, setAddModule] = useState<"material" | "expense" | "design">("material");
+  const [addModule, setAddModule] = useState<"material" | "expense">("material");
 
   // Edit category state
-  const [editingItem, setEditingItem] = useState<{ id: string; name: string; module: "material" | "expense" | "design" } | null>(null);
+  const [editingItem, setEditingItem] = useState<{ id: string; name: string; module: "material" | "expense" } | null>(null);
   const [editValue, setEditValue] = useState("");
 
   // Three dots action menu
@@ -247,12 +242,12 @@ export default function CategoriesPage() {
         // Each module starts counting from 1 (e.g. Expenses: 01 to 07, Material: 01...)
         const seen = new Set<string>();
         const unified: CategoryRecord[] = [];
-        const modCounters: { [key: string]: number } = { expense: 1, material: 1, design: 1 };
+        const modCounters: { [key: string]: number } = { expense: 1, material: 1 };
 
         for (const c of live) {
           const trimmed = c.name?.trim();
           if (!trimmed) continue;
-          const mod = (c.module as "material" | "expense" | "design") || "material";
+          const mod = (c.module as "material" | "expense") || "material";
           const key = `${mod}_${trimmed.toLowerCase()}`;
           if (seen.has(key)) continue;
           seen.add(key);
@@ -317,7 +312,7 @@ export default function CategoriesPage() {
       return matchSearch && matchModule;
     });
 
-    const moduleOrder: { [key: string]: number } = { expense: 1, material: 2, design: 3 };
+    const moduleOrder: { [key: string]: number } = { expense: 1, material: 2 };
     return [...list].sort((a, b) => {
       if (moduleFilter === "all") {
         const orderA = moduleOrder[a.module] || 99;
@@ -330,7 +325,6 @@ export default function CategoriesPage() {
 
   const materialCount = useMemo(() => categories.filter((c) => c.module === "material").length, [categories]);
   const expenseCount = useMemo(() => categories.filter((c) => c.module === "expense").length, [categories]);
-  const designCount = useMemo(() => categories.filter((c) => c.module === "design").length, [categories]);
 
   // Add handler - Appends new category with next sequential SR NO in its module (e.g. #08 in Expenses, #02 in Material)
   const handleAddSubmit = async (e: React.FormEvent) => {
@@ -592,8 +586,7 @@ export default function CategoriesPage() {
               options={[
                 { value: "all", label: isLoading ? "All Categories" : `All Categories (${categories.length})` },
                 { value: "material", label: isLoading ? "Material & Purchase" : `Material & Purchase (${materialCount})` },
-                { value: "expense", label: isLoading ? "Expenses" : `Expenses (${expenseCount})` },
-                { value: "design", label: isLoading ? "Design Library" : `Design Library (${designCount})` }
+                { value: "expense", label: isLoading ? "Expenses" : `Expenses (${expenseCount})` }
               ]}
             />
           </div>
@@ -823,7 +816,7 @@ export default function CategoriesPage() {
                               setEditingItem({ id: rec.id, name: rec.name, module: rec.module });
                               setEditValue(rec.name);
                             }}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                             title="Edit Category Name"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
@@ -831,7 +824,7 @@ export default function CategoriesPage() {
                           <button
                             type="button"
                             onClick={() => handleDelete(rec)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                             title="Remove Category"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -870,8 +863,7 @@ export default function CategoriesPage() {
                   onChange={(val) => setAddModule(val as any)}
                   options={[
                     { value: "material", label: t("Material & Purchase") },
-                    { value: "expense", label: t("Company Expenses") },
-                    { value: "design", label: t("Design Library") }
+                    { value: "expense", label: t("Company Expenses") }
                   ]}
                 />
               </div>

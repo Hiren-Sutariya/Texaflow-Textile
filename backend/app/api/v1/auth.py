@@ -561,6 +561,7 @@ class UpdateCompanySettingsRequest(BaseModel):
     eway_threshold: Optional[str] = None
     print_qr: Optional[bool] = None
     terms_conditions: Optional[str] = None
+    custom_labels: Optional[Any] = None
     settings_json: Optional[Any] = None
 
 @router.get("/company-settings")
@@ -642,6 +643,7 @@ def get_company_settings(
         "eway_threshold": comp.eway_threshold if (comp and comp.eway_threshold) else "50000",
         "print_qr": comp.print_qr if (comp and comp.print_qr is not None) else True,
         "terms_conditions": comp.terms_conditions if (comp and comp.terms_conditions) else "",
+        "custom_labels": (comp.settings_json.get("custom_labels") if (comp and isinstance(comp.settings_json, dict)) else None),
         "settings_json": comp.settings_json if comp else None
     }
 
@@ -739,7 +741,13 @@ def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Dep
         if req.terms_conditions is not None:
             comp.terms_conditions = req.terms_conditions.strip()
         if req.settings_json is not None:
+            if req.custom_labels is not None and isinstance(req.settings_json, dict):
+                req.settings_json["custom_labels"] = req.custom_labels
             comp.settings_json = req.settings_json
+        elif req.custom_labels is not None:
+            existing_json = dict(comp.settings_json) if isinstance(comp.settings_json, dict) else {}
+            existing_json["custom_labels"] = req.custom_labels
+            comp.settings_json = existing_json
 
     # Also update firm_name and username on corresponding user(s)
     users = db.query(User).filter((User.company_id == cid) | (User.id == "user-001") | (User.id == "usr-owner-01")).all()

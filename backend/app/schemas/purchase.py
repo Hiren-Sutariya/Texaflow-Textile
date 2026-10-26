@@ -11,6 +11,11 @@ class PurchaseBase(BaseModel):
     items_description: Optional[str] = None
     items: Optional[Any] = None
     amount: float
+    tax_mode: Optional[str] = "none"
+    tax_rate: Optional[float] = 0.0
+    cgst_amount: Optional[float] = 0.0
+    sgst_amount: Optional[float] = 0.0
+    igst_amount: Optional[float] = 0.0
     payment_status: Optional[str] = "Pending"
     credit_days: Optional[int] = 45
     notes: Optional[str] = None
@@ -26,9 +31,15 @@ class PurchaseUpdate(BaseModel):
     items_description: Optional[str] = None
     items: Optional[Any] = None
     amount: Optional[float] = None
+    tax_mode: Optional[str] = None
+    tax_rate: Optional[float] = None
+    cgst_amount: Optional[float] = None
+    sgst_amount: Optional[float] = None
+    igst_amount: Optional[float] = None
     payment_status: Optional[str] = None
     credit_days: Optional[int] = None
     notes: Optional[str] = None
+
 
 class PurchaseResponse(PurchaseBase):
     id: str

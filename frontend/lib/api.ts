@@ -1,8 +1,11 @@
 import { getStoredCompanyId } from "./tenantStorage";
 
 const getBaseUrl = (): string => {
-  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
-    return "http://localhost:8000/api/v1";
+  if (typeof window !== "undefined") {
+    const h = window.location.hostname;
+    if (h === "localhost" || h === "127.0.0.1" || h.startsWith("192.168.") || h.startsWith("10.") || h.endsWith(".local")) {
+      return `http://${h}:8000/api/v1`;
+    }
   }
   return process.env.NEXT_PUBLIC_API_URL || "https://texaflow-backend.onrender.com/api/v1";
 };

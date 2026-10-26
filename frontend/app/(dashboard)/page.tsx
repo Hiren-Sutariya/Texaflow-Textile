@@ -24,7 +24,9 @@ import {
   Tags, 
   Trash2, 
   Settings,
-  UserCheck
+  UserCheck,
+  Truck,
+  FileCheck
 } from "lucide-react";
 
 const destinationModules = [
@@ -46,15 +48,25 @@ const destinationModules = [
     isUpcoming: false
   },
 
-  // 2. Finance
+  // 2. Billing & Factory Movement
   {
-    title: "Expenses",
-    description: "Factory overhead, maintenance & daily operational expenses",
-    href: "/expenses",
-    icon: Receipt,
-    color: "bg-rose-50 text-rose-600 border-rose-100",
+    title: "Sales Challans",
+    description: "Delivery challans, lot dispatch, pieces & meter tracking",
+    href: "/sales",
+    icon: Truck,
+    color: "bg-emerald-50 text-emerald-600 border-emerald-100",
     isUpcoming: false
   },
+  {
+    title: "Sales Invoices",
+    description: "GST tax invoices, monthly bill grouping & tax calculations",
+    href: "/sales-invoices",
+    icon: FileCheck,
+    color: "bg-cyan-50 text-cyan-600 border-cyan-100",
+    isUpcoming: false
+  },
+
+  // 3. Finance & Purchases
   {
     title: "Purchases",
     description: "Material purchase orders, raw fabric inwards & bills",
@@ -68,7 +80,15 @@ const destinationModules = [
     description: "Bank & cash vouchers, receipts & payment transactions",
     href: "/payments",
     icon: CreditCard,
-    color: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    color: "bg-indigo-50 text-indigo-600 border-indigo-100",
+    isUpcoming: false
+  },
+  {
+    title: "Expenses",
+    description: "Factory overhead, maintenance & daily operational expenses",
+    href: "/expenses",
+    icon: Receipt,
+    color: "bg-rose-50 text-rose-600 border-rose-100",
     isUpcoming: false
   },
   {
@@ -76,14 +96,14 @@ const destinationModules = [
     description: "Party accounts, running statements & credit terms",
     href: "/ledger",
     icon: BookOpen,
-    color: "bg-indigo-50 text-indigo-600 border-indigo-100",
+    color: "bg-blue-50 text-blue-700 border-blue-100",
     isUpcoming: false
   },
 
-  // 3. Settings
+  // 4. Settings
   {
     title: "Categories",
-    description: "Master classifications for materials, expenses and designs",
+    description: "Master classifications for fabric materials and expenses",
     href: "/categories",
     icon: Tags,
     color: "bg-amber-50 text-amber-700 border-amber-100",
@@ -118,18 +138,32 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Link
-            href="/purchases/new"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all"
+            href="/sales/new"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all"
           >
-            <Plus className="w-3.5 h-3.5" />
-            New Purchase
+            <Truck className="w-3.5 h-3.5" />
+            નવું ચલણ (Challan)
+          </Link>
+          <Link
+            href="/sales-invoices/new"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all"
+          >
+            <FileCheck className="w-3.5 h-3.5" />
+            નવું બિલ (Invoice)
+          </Link>
+          <Link
+            href="/purchases/new"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all"
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            નવી ખરીદી (Purchase)
           </Link>
           <Link
             href="/payments/new"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all"
           >
             <CreditCard className="w-3.5 h-3.5" />
-            Add Payment
+            વાઉચર (Payment)
           </Link>
         </div>
       </div>

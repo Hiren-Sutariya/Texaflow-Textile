@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
+import { getStoredCompanySettings, CompanySettings, getFieldLabel } from "@/lib/companySettings";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import { VoiceTextarea } from "@/components/ui/VoiceTextarea";
 import { TEXTILE_CREDIT_TERMS, parseCreditDays, calculateDueDate, getDueStatus, parseAnyDate } from "@/lib/creditTerms";
@@ -50,12 +51,41 @@ const getTodayStr = () => {
 export interface PurchaseLineItem {
   id: string;
   category: string;
+  hsn_code?: string;
   description: string;
   quantity: string;
   weight?: string;
+  kg?: string;
   cartoon?: string;
   rate?: string;
   amount: string;
+}
+
+export function getCategoryDefaultHsn(categoryName?: string): string {
+  if (!categoryName) return "5402";
+  const cat = categoryName.trim().toLowerCase();
+  if (cat.includes("dhaga") || cat.includes("thread") || cat.includes("yarn") || cat.includes("sui")) {
+    return "5402";
+  }
+  if (cat.includes("jari") || cat.includes("zari") || cat.includes("metallic") || cat.includes("kasab")) {
+    return "5605";
+  }
+  if (cat.includes("fabric") || cat.includes("cloth") || cat.includes("kapda") || cat.includes("grey") || cat.includes("saree") || cat.includes("dupatta") || cat.includes("dress")) {
+    return "5407";
+  }
+  if (cat.includes("job") || cat.includes("work") || cat.includes("embroidery")) {
+    return "9988";
+  }
+  if (cat.includes("pack") || cat.includes("box") || cat.includes("carton") || cat.includes("bag") || cat.includes("plastic")) {
+    return "3923";
+  }
+  if (cat.includes("oil") || cat.includes("chem") || cat.includes("silicon")) {
+    return "3403";
+  }
+  if (cat.includes("elastic") || cat.includes("lace") || cat.includes("border")) {
+    return "5808";
+  }
+  return "5402";
 }
 
 function parseMaterialDescription(desc?: string) {
@@ -434,6 +464,15 @@ function NewPurchaseContent() {
   const editId = searchParams.get("edit");
   const isEditMode = Boolean(editId);
   const { t } = useLanguage();
+  const [companySettings, setCompanySettings] = useState<CompanySettings>(() => getStoredCompanySettings());
+
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      setCompanySettings(getStoredCompanySettings());
+    };
+    window.addEventListener("app_settings_update", handleSettingsUpdate);
+    return () => window.removeEventListener("app_settings_update", handleSettingsUpdate);
+  }, []);
 
   const [isSaving, setIsSaving] = useState(false);
   const [billDate, setBillDate] = useState(() => getTodayStr());
@@ -466,9 +505,11 @@ function NewPurchaseContent() {
     {
       id: "item-1",
       category: "",
+      hsn_code: "",
       description: "",
       quantity: "",
       weight: "",
+      kg: "",
       cartoon: "",
       amount: ""
     }
@@ -493,9 +534,37 @@ function NewPurchaseContent() {
   const [isVendorDropdownOpen, setIsVendorDropdownOpen] = useState(false);
   const vendorDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Custom Category Dropdown for line items
+  // Floating Fixed Category Dropdown for line items (prevents clipping by overflow containers)
   const [openCategoryItemId, setOpenCategoryItemId] = useState<string | null>(null);
-  const categoryItemDropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [categoryDropdownPos, setCategoryDropdownPos] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const categoryDropdownMenuRef = useRef<HTMLDivElement>(null);
+
+  const closeCategoryDropdown = () => {
+    setOpenCategoryItemId(null);
+    setCategoryDropdownPos(null);
+  };
+
+  const toggleCategoryDropdown = (itemId: string, btnElement: HTMLElement) => {
+    if (openCategoryItemId === itemId) {
+      closeCategoryDropdown();
+    } else {
+      const rect = btnElement.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUp = spaceBelow < 220 && rect.top > 220;
+      setCategoryDropdownPos({
+        top: openUp ? undefined : rect.bottom + 4,
+        bottom: openUp ? window.innerHeight - rect.top + 4 : undefined,
+        left: Math.max(10, Math.min(rect.left, window.innerWidth - 240)),
+        width: Math.max(rect.width, 220)
+      });
+      setOpenCategoryItemId(itemId);
+    }
+  };
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -506,14 +575,30 @@ function NewPurchaseContent() {
       if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
         setIsCategoryDropdownOpen(false);
       }
-      if (openCategoryItemId && categoryItemDropdownRefs.current[openCategoryItemId]) {
-        if (!categoryItemDropdownRefs.current[openCategoryItemId]?.contains(event.target as Node)) {
-          setOpenCategoryItemId(null);
+      if (openCategoryItemId) {
+        const isTrigger = (event.target as HTMLElement).closest?.(`[data-category-trigger="${openCategoryItemId}"]`);
+        if (!isTrigger && categoryDropdownMenuRef.current && !categoryDropdownMenuRef.current.contains(event.target as Node)) {
+          closeCategoryDropdown();
         }
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openCategoryItemId]);
+
+  // Dismiss floating dropdown on window scroll or resize
+  useEffect(() => {
+    const handleScrollOrResize = () => {
+      if (openCategoryItemId) {
+        closeCategoryDropdown();
+      }
+    };
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
   }, [openCategoryItemId]);
 
   const loadStoredCategories = async () => {
@@ -624,17 +709,19 @@ function NewPurchaseContent() {
       ...prev,
       {
         id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        category: categoriesList[0] || "",
+        category: "",
+        hsn_code: "",
         description: "",
         quantity: "",
         weight: "",
+        kg: "",
         cartoon: "",
         rate: "",
         amount: ""
       }
     ]);
     setTimeout(() => {
-      document.getElementById(`item-desc-${nextIdx}`)?.focus();
+      document.getElementById(`purchase-cat-${nextIdx}`)?.focus() || document.getElementById(`item-desc-${nextIdx}`)?.focus();
     }, 50);
   };
 
@@ -657,9 +744,11 @@ function NewPurchaseContent() {
         {
           id: "item-1",
           category: "",
+          hsn_code: "",
           description: "",
           quantity: "",
           weight: "",
+          kg: "",
           cartoon: "",
           rate: "",
           amount: ""
@@ -682,23 +771,43 @@ function NewPurchaseContent() {
         if (item.id !== id) return item;
         const updated = { ...item, [field]: val };
 
-        // If rate, quantity, or weight is modified, auto-calculate amount
-        if (field === "rate" || field === "quantity" || field === "weight") {
+        // Auto-set HSN code when category is selected if HSN is empty or default
+        if (field === "category") {
+          if (!updated.hsn_code || updated.hsn_code.trim() === "" || updated.hsn_code === "5402" || updated.hsn_code === "5407" || updated.hsn_code === "5605") {
+            updated.hsn_code = getCategoryDefaultHsn(val);
+          }
+        }
+
+        // If rate, quantity, weight, or kg is modified, auto-calculate amount
+        if (field === "rate" || field === "quantity" || field === "weight" || field === "kg") {
           const r = parseFloat(field === "rate" ? val : updated.rate || "0");
           // Extract numeric quantity if present (e.g. "14 Box" -> 14, "10" -> 10)
           const matchQty = (field === "quantity" ? val : updated.quantity || "").match(/^[\s]*([0-9]+(?:\.[0-9]+)?)/);
           const q = matchQty ? parseFloat(matchQty[1]) : 0;
           const w = parseFloat(field === "weight" ? val : updated.weight || "0");
 
-          if (r > 0) {
-            // Priority: If weight is present and > 0, multiply weight * rate
-            // Otherwise, if quantity is present, multiply quantity * rate
-            // Round to nearest integer (>= .50 rounds up, < .50 rounds down)
-            if (w > 0) {
-              updated.amount = String(Math.round(r * w));
-            } else if (q > 0) {
-              updated.amount = String(Math.round(r * q));
+          // Auto-calculate KG if Quantity (PCS) and Weight (CON WT) are entered
+          if (field === "quantity" || field === "weight") {
+            if (q > 0 && w > 0) {
+              updated.kg = String(Math.round(q * w * 1000) / 1000);
             }
+          }
+
+          const curKg = parseFloat(field === "kg" ? val : updated.kg || "0");
+
+          if (r > 0) {
+            // Priority: If KG is present and > 0, multiply kg * rate
+            // Otherwise if quantity is present, quantity * rate
+            // Otherwise if weight is present, weight * rate
+            if (curKg > 0) {
+              updated.amount = String(Math.round(r * curKg * 100) / 100);
+            } else if (q > 0) {
+              updated.amount = String(Math.round(r * q * 100) / 100);
+            } else if (w > 0) {
+              updated.amount = String(Math.round(r * w * 100) / 100);
+            }
+          } else if (field === "rate" && (val === "0" || val === "")) {
+            updated.amount = "0";
           }
         }
         return updated;
@@ -707,6 +816,8 @@ function NewPurchaseContent() {
       const sum = next.reduce((acc, it) => acc + (parseFloat(it.amount || "0") || 0), 0);
       if (sum > 0) {
         setAmount(String(calculateTotalWithTax(sum, taxMode, taxRate)));
+      } else {
+        setAmount("0");
       }
       return next;
     });
@@ -934,9 +1045,11 @@ function NewPurchaseContent() {
             return {
               id: it.id || `item-${idx + 1}`,
               category: it.category || matched.category || "",
+              hsn_code: it.hsn_code || getCategoryDefaultHsn(it.category || matched.category),
               description: it.description || it.items_description || "",
               quantity: qty,
               weight: it.weight !== undefined && it.weight !== null ? String(it.weight) : "",
+              kg: it.kg !== undefined && it.kg !== null ? String(it.kg) : "",
               cartoon: it.cartoon !== undefined && it.cartoon !== null ? String(it.cartoon) : "",
               rate: rate,
               amount: amt
@@ -964,9 +1077,11 @@ function NewPurchaseContent() {
               return {
                 id: `item-${idx + 1}`,
                 category: matched.category || "",
+                hsn_code: getCategoryDefaultHsn(matched.category),
                 description: sub.shade || "",
                 quantity: qty,
                 weight: sub.weight || "",
+                kg: sub.kg || "",
                 cartoon: sub.cartoon || "",
                 rate: rate,
                 amount: amt
@@ -978,9 +1093,11 @@ function NewPurchaseContent() {
             {
               id: "item-1",
               category: matched.category || "",
+              hsn_code: getCategoryDefaultHsn(matched.category),
               description: matched.items_description || "",
               quantity: "",
               weight: "",
+              kg: "",
               cartoon: "",
               rate: "",
               amount: String(matched.amount || "")
@@ -992,9 +1109,11 @@ function NewPurchaseContent() {
           {
             id: "item-1",
             category: matched.category || "",
+            hsn_code: getCategoryDefaultHsn(matched.category),
             description: "",
             quantity: "",
             weight: "",
+            kg: "",
             cartoon: "",
             rate: "",
             amount: String(matched.amount || "")
@@ -1067,14 +1186,16 @@ function NewPurchaseContent() {
       return;
     }
     let numAmount = parseFloat(amount);
-    if ((isNaN(numAmount) || numAmount <= 0) && totalWithTax > 0) {
-      numAmount = totalWithTax;
-      setAmount(String(totalWithTax));
+    if (isNaN(numAmount)) {
+      numAmount = totalWithTax > 0 ? totalWithTax : 0;
+      setAmount(String(numAmount));
     }
-    if (isNaN(numAmount) || numAmount <= 0) {
-      alert(t("Please enter a valid bill amount."));
+    if (numAmount < 0) {
+      alert(t("Bill amount cannot be negative."));
       return;
     }
+
+    const effectivePaymentStatus = numAmount === 0 ? "Bill Pending" : paymentStatus;
 
     setIsSaving(true);
     const currentCid = getStoredCompanyId() || "comp-001";
@@ -1082,7 +1203,7 @@ function NewPurchaseContent() {
 
     // Filter valid line items
     const validItems = lineItems.filter(
-      (it) => it.description.trim() || it.category.trim() || it.quantity.trim() || it.amount.trim() || (it.weight && it.weight.trim()) || (it.cartoon && it.cartoon.trim())
+      (it) => it.description.trim() || it.category.trim() || it.quantity.trim() || it.amount.trim() || (it.weight && it.weight.trim()) || (it.kg && it.kg.trim()) || (it.cartoon && it.cartoon.trim())
     );
     const itemsToSave = validItems.length > 0 ? validItems : lineItems;
 
@@ -1113,10 +1234,16 @@ function NewPurchaseContent() {
       items_description: derivedDescription,
       items: itemsToSave,
       amount: Math.round(numAmount),
-      payment_status: paymentStatus,
-      credit_days: paymentStatus === "Paid" ? 0 : creditDays,
+      tax_mode: taxMode,
+      tax_rate: taxMode !== "none" ? taxRate : 0,
+      cgst_amount: taxMode === "cgst_sgst" ? Math.round(cgstAmount * 100) / 100 : 0,
+      sgst_amount: taxMode === "cgst_sgst" ? Math.round(sgstAmount * 100) / 100 : 0,
+      igst_amount: taxMode === "igst" ? Math.round(igstAmount * 100) / 100 : 0,
+      payment_status: effectivePaymentStatus,
+      credit_days: effectivePaymentStatus === "Paid" ? 0 : creditDays,
       notes: notes.trim()
     };
+
 
     try {
       if (isEditMode) {
@@ -1189,12 +1316,12 @@ function NewPurchaseContent() {
         className="space-y-3.5 pb-28"
       >
         {/* BOX 1: SUPPLIER & BILL SPECIFICATIONS */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs relative z-30">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs relative z-20">
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200">
             {/* LEFT COLUMN: SUPPLIER / PARTY */}
             <div className="p-4 sm:p-5 md:pr-8 space-y-3">
               <label className="text-xs font-bold text-slate-800 uppercase tracking-wide block">
-                {t("Supplier / Party*")}
+                {getFieldLabel(companySettings, "purchase_supplier", t("Supplier / Party*"))}
               </label>
 
               <div className="relative" ref={vendorDropdownRef}>
@@ -1293,7 +1420,7 @@ function NewPurchaseContent() {
                 {/* BILL NO */}
                 <div>
                   <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
-                    {t("Bill / Challan No*")}
+                    {getFieldLabel(companySettings, "purchase_bill_no", t("Bill / Challan No*"))}
                   </span>
                   <input
                     id="bill-no-input"
@@ -1322,7 +1449,7 @@ function NewPurchaseContent() {
                     value={billDate}
                     onChange={(newDate) => setBillDate(newDate)}
                     onEnterNext={() => {
-                      document.getElementById("item-desc-0")?.focus();
+                      document.getElementById("purchase-cat-0")?.focus() || document.getElementById("item-desc-0")?.focus();
                     }}
                     placeholder="DD-MM-YYYY"
                   />
@@ -1343,102 +1470,122 @@ function NewPurchaseContent() {
         </div>
 
         {/* BOX 2: PURCHASE ITEMS / MATERIALS BREAKDOWN */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs relative z-20">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden relative z-10">
           {/* HEADER TOOLBAR */}
-          <div className="bg-slate-50/80 px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-2.5 rounded-t-2xl">
+          <div className="bg-slate-50/80 px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-2.5">
             <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-wide">
               {t("Purchase Items / Materials Breakdown")}
             </h3>
             <button
               type="button"
               onClick={handleAddLineItem}
-              className="h-8 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
+              className="h-8.5 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>{t("Add Item Row")}</span>
             </button>
           </div>
 
-          {/* TABLE */}
-          <div className="overflow-visible">
-            <table className="w-full text-left border-collapse text-xs min-w-[880px]">
+          {/* TABLE - SEAMLESS FULL-WIDTH GRID (MATCHING LISTING TABLE STYLE & HEIGHT) */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs min-w-[900px]">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-extrabold tracking-wider text-slate-600 uppercase">
-                  <th className="py-2.5 px-3 w-12 text-center">{t("SR")}</th>
-                  <th className="py-2.5 px-3 w-44">{t("CATEGORY*")}</th>
-                  <th className="py-2.5 px-3 min-w-[200px]">{t("ITEM*")}</th>
-                  <th className="py-2.5 px-3 w-32">{t("QUANTITY / UNIT")}</th>
-                  <th className="py-2.5 px-3 w-28">{t("WEIGHT")}</th>
-                  <th className="py-2.5 px-3 w-24">{t("CARTOON")}</th>
-                  <th className="py-2.5 px-3 w-28 text-right">{t("RATE (₹)")}</th>
-                  <th className="py-2.5 px-3 w-32 text-right">{t("AMOUNT (₹)*")}</th>
-                  <th className="py-2.5 px-2 w-10 text-center"></th>
+                <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold tracking-wider text-slate-600 uppercase select-none">
+                  <th className="py-3 px-2 w-10 text-center border-r border-slate-200/80">{t("SR")}</th>
+                  <th className="py-3 px-3 w-36 border-r border-slate-200/80">
+                    {getFieldLabel(companySettings, "item_name", t("CATEGORY*"))}
+                  </th>
+                  <th className="py-3 px-2 w-24 text-center border-r border-slate-200/80">
+                    {getFieldLabel(companySettings, "hsn_code", t("HSN CODE"))}
+                  </th>
+                  <th className="py-3 px-3 min-w-[180px] border-r border-slate-200/80">
+                    {getFieldLabel(companySettings, "item_unit", t("ITEM*"))}
+                  </th>
+                  <th className="py-3 px-3 w-28 border-r border-slate-200/80">
+                    {getFieldLabel(companySettings, "purchase_qty", t("QUANTITY / UNIT"))}
+                  </th>
+                  <th className="py-3 px-2.5 w-24 text-right border-r border-slate-200/80">
+                    {getFieldLabel(companySettings, "weight", t("WEIGHT"))}
+                  </th>
+                  <th className="py-3 px-2.5 w-24 text-right border-r border-slate-200/80">
+                    {getFieldLabel(companySettings, "kg", t("KG"))}
+                  </th>
+                  <th className="py-3 px-2 w-20 text-center border-r border-slate-200/80">
+                    {getFieldLabel(companySettings, "cartoon", t("CARTOON"))}
+                  </th>
+                  <th className="py-3 px-2.5 w-28 text-right border-r border-slate-200/80">
+                    {getFieldLabel(companySettings, "purchase_rate", t("RATE (₹)"))}
+                  </th>
+                  <th className="py-3 px-3 w-32 text-right border-r border-slate-200/80">
+                    {getFieldLabel(companySettings, "purchase_total", t("AMOUNT (₹)*"))}
+                  </th>
+                  <th className="py-3 px-1 w-10 text-center"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
                 {lineItems.map((item, index) => (
                   <tr
                     key={item.id}
-                    className={`transition-colors ${openCategoryItemId === item.id ? "relative z-30 bg-blue-50/20" : "hover:bg-slate-50/70"}`}
+                    className={`transition-colors ${openCategoryItemId === item.id ? "relative z-30 bg-blue-50/20" : "hover:bg-blue-50/15"}`}
                   >
                     {/* INDEX */}
-                    <td className="py-2 px-3 text-center font-mono font-bold text-slate-400 text-xs">
+                    <td className="p-0 text-center font-mono font-bold text-slate-500 bg-slate-50/60 text-xs border-r border-slate-200/80 select-none align-middle h-11">
                       {String(index + 1).padStart(2, "0")}
                     </td>
 
-                    {/* CATEGORY (CUSTOM MODERN DROPDOWN) */}
-                    <td className={`py-2 px-3 ${openCategoryItemId === item.id ? "relative z-40" : ""}`}>
-                      <div
-                        className="relative w-full"
-                        ref={(el) => {
-                          categoryItemDropdownRefs.current[item.id] = el;
-                        }}
-                      >
+                    {/* CATEGORY (EXCEL CELL WITH FLOATING DROPDOWN) */}
+                    <td className={`p-0 border-r border-slate-200/80 relative bg-white ${openCategoryItemId === item.id ? "z-40" : ""}`}>
+                      <div className="relative w-full h-full">
                         <button
                           type="button"
-                          onClick={() => setOpenCategoryItemId(openCategoryItemId === item.id ? null : item.id)}
-                          className={`w-full h-9 px-3 bg-white hover:bg-slate-50 border rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between shadow-2xs cursor-pointer transition-all ${openCategoryItemId === item.id ? "border-blue-500 ring-2 ring-blue-500/20" : "border-slate-300"
-                            }`}
+                          id={`purchase-cat-${index}`}
+                          data-category-trigger={item.id}
+                          onClick={(e) => toggleCategoryDropdown(item.id, e.currentTarget)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              closeCategoryDropdown();
+                              document.getElementById(`item-hsn-${index}`)?.focus();
+                            } else if (e.key === "ArrowDown" && openCategoryItemId !== item.id) {
+                              e.preventDefault();
+                              toggleCategoryDropdown(item.id, e.currentTarget);
+                            } else if (e.key === "Escape") {
+                              e.preventDefault();
+                              closeCategoryDropdown();
+                            }
+                          }}
+                          className={`w-full h-11 px-3 bg-transparent hover:bg-slate-50 text-xs font-bold flex items-center justify-between cursor-pointer transition-colors focus:outline-none focus:bg-blue-50/20 focus:ring-2 focus:ring-inset focus:ring-blue-600 rounded-none border-0 ${
+                            openCategoryItemId === item.id ? "bg-blue-50/30 ring-2 ring-inset ring-blue-600" : ""
+                          }`}
                         >
                           <span className={`truncate ${item.category ? "text-slate-900" : "text-slate-400 font-normal"}`}>
                             {item.category || t("Select Category...")}
                           </span>
                           <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1 transition-transform ${openCategoryItemId === item.id ? "rotate-180 text-blue-600" : ""}`} />
                         </button>
-
-                        {openCategoryItemId === item.id && (
-                          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-[100] w-full bg-white border border-slate-200 rounded-xl shadow-2xl p-1.5 max-h-60 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
-                            {categoriesList.length === 0 ? (
-                              <div className="px-3 py-3 text-slate-400 text-xs font-medium text-center">
-                                No material categories found.
-                              </div>
-                            ) : (
-                              categoriesList.map((c) => {
-                                const isSelected = item.category === c;
-                                return (
-                                  <button
-                                    key={c}
-                                    type="button"
-                                    onClick={() => {
-                                      handleUpdateLineItem(item.id, "category", c);
-                                      setOpenCategoryItemId(null);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 hover:bg-blue-50/70 rounded-xl font-bold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors ${isSelected ? "bg-blue-50 text-blue-900 font-extrabold" : ""
-                                      }`}
-                                  >
-                                    <span className="truncate">{c}</span>
-                                    {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
-                                  </button>
-                                );
-                              })
-                            )}
-                          </div>
-                        )}
                       </div>
                     </td>
 
+                    {/* HSN CODE */}
+                    <td className="p-0 border-r border-slate-200/80 bg-white">
+                      <input
+                        id={`item-hsn-${index}`}
+                        type="text"
+                        value={item.hsn_code || ""}
+                        onChange={(e) => handleUpdateLineItem(item.id, "hsn_code", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            document.getElementById(`item-desc-${index}`)?.focus();
+                          }
+                        }}
+                        placeholder="5402"
+                        className="w-full h-11 px-2 bg-transparent focus:bg-blue-50/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 font-mono text-center font-bold text-slate-800 text-xs placeholder:text-slate-300 transition-all border-0 rounded-none"
+                      />
+                    </td>
+
                     {/* DESCRIPTION / SHADE */}
-                    <td className="py-2 px-3">
+                    <td className="p-0 border-r border-slate-200/80 bg-white">
                       <input
                         id={`item-desc-${index}`}
                         type="text"
@@ -1451,13 +1598,13 @@ function NewPurchaseContent() {
                           }
                         }}
                         placeholder={t("e.g. 124-LL, 370 White")}
-                        className="w-full h-9 px-3 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-bold text-slate-900 text-xs focus:outline-none transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                        className="w-full h-11 px-3 bg-transparent focus:bg-blue-50/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 font-bold text-slate-900 text-xs placeholder:text-slate-300 transition-all border-0 rounded-none"
                         required={index === 0}
                       />
                     </td>
 
                     {/* QUANTITY */}
-                    <td className="py-2 px-3">
+                    <td className="p-0 border-r border-slate-200/80 bg-white">
                       <input
                         id={`item-qty-${index}`}
                         type="text"
@@ -1470,12 +1617,12 @@ function NewPurchaseContent() {
                           }
                         }}
                         placeholder={t("e.g. 10 Box")}
-                        className="w-full h-9 px-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-800 text-xs focus:outline-none transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                        className="w-full h-11 px-3 bg-transparent focus:bg-blue-50/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 font-mono font-bold text-slate-800 text-xs placeholder:text-slate-300 transition-all border-0 rounded-none"
                       />
                     </td>
 
                     {/* WEIGHT */}
-                    <td className="py-2 px-3">
+                    <td className="p-0 border-r border-slate-200/80 bg-white">
                       <input
                         id={`item-weight-${index}`}
                         type="text"
@@ -1484,16 +1631,34 @@ function NewPurchaseContent() {
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
+                            document.getElementById(`item-kg-${index}`)?.focus();
+                          }
+                        }}
+                        placeholder="0.00"
+                        className="w-full h-11 px-2.5 bg-transparent focus:bg-blue-50/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 font-mono font-bold text-right text-slate-800 text-xs placeholder:text-slate-300 transition-all border-0 rounded-none"
+                      />
+                    </td>
+
+                    {/* KG */}
+                    <td className="p-0 border-r border-slate-200/80 bg-white">
+                      <input
+                        id={`item-kg-${index}`}
+                        type="text"
+                        value={item.kg || ""}
+                        onChange={(e) => handleUpdateLineItem(item.id, "kg", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
                             document.getElementById(`item-cartoon-${index}`)?.focus();
                           }
                         }}
-                        placeholder={t("e.g. 25.50")}
-                        className="w-full h-9 px-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-800 text-xs focus:outline-none transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                        placeholder="0.00"
+                        className="w-full h-11 px-2.5 bg-transparent focus:bg-blue-50/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 font-mono font-bold text-right text-slate-800 text-xs placeholder:text-slate-300 transition-all border-0 rounded-none"
                       />
                     </td>
 
                     {/* CARTOON */}
-                    <td className="py-2 px-3">
+                    <td className="p-0 border-r border-slate-200/80 bg-white">
                       <input
                         id={`item-cartoon-${index}`}
                         type="text"
@@ -1505,15 +1670,15 @@ function NewPurchaseContent() {
                             document.getElementById(`item-rate-${index}`)?.focus();
                           }
                         }}
-                        placeholder={t("e.g. 1")}
-                        className="w-full h-9 px-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-800 text-xs focus:outline-none transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                        placeholder="0"
+                        className="w-full h-11 px-2 bg-transparent focus:bg-blue-50/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 font-mono font-bold text-center text-slate-800 text-xs placeholder:text-slate-300 transition-all border-0 rounded-none"
                       />
                     </td>
 
                     {/* RATE */}
-                    <td className="py-2 px-3">
-                      <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">₹</span>
+                    <td className="p-0 border-r border-slate-200/80 bg-white">
+                      <div className="relative flex items-center h-full">
+                        <span className="absolute left-2.5 font-mono text-xs font-bold text-slate-400 select-none">₹</span>
                         <input
                           id={`item-rate-${index}`}
                           type="number"
@@ -1528,15 +1693,15 @@ function NewPurchaseContent() {
                             }
                           }}
                           placeholder="0.00"
-                          className="w-full h-9 pl-6 pr-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-bold text-slate-800 text-xs focus:outline-none transition-all shadow-2xs text-right placeholder:text-slate-400 placeholder:font-normal"
+                          className="w-full h-11 pl-6 pr-2.5 bg-transparent focus:bg-blue-50/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 font-mono font-bold text-slate-800 text-xs text-right placeholder:text-slate-300 transition-all border-0 rounded-none"
                         />
                       </div>
                     </td>
 
                     {/* AMOUNT */}
-                    <td className="py-2 px-3">
-                      <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">₹</span>
+                    <td className="p-0 border-r border-slate-200/80 bg-white">
+                      <div className="relative flex items-center h-full">
+                        <span className="absolute left-2.5 font-mono text-xs font-black text-slate-400 select-none">₹</span>
                         <input
                           id={`item-amt-${index}`}
                           type="number"
@@ -1548,27 +1713,31 @@ function NewPurchaseContent() {
                             if (e.key === "Enter") {
                               e.preventDefault();
                               if (index < lineItems.length - 1) {
-                                document.getElementById(`item-desc-${index + 1}`)?.focus();
+                                document.getElementById(`purchase-cat-${index + 1}`)?.focus() || document.getElementById(`item-desc-${index + 1}`)?.focus();
                               } else {
-                                document.getElementById("notes-input")?.focus();
+                                handleAddLineItem();
+                                setTimeout(() => {
+                                  document.getElementById(`purchase-cat-${index + 1}`)?.focus() || document.getElementById(`item-desc-${index + 1}`)?.focus();
+                                }, 50);
                               }
                             }
                           }}
                           placeholder="0.00"
-                          className="w-full h-9 pl-6 pr-2.5 bg-white hover:bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono font-black text-slate-900 text-xs focus:outline-none transition-all shadow-2xs text-right placeholder:text-slate-400 placeholder:font-normal"
+                          className="w-full h-11 pl-6 pr-2.5 bg-transparent focus:bg-blue-50/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 font-mono font-black text-slate-900 text-xs text-right placeholder:text-slate-300 transition-all border-0 rounded-none"
                         />
                       </div>
                     </td>
 
                     {/* REMOVE BUTTON */}
-                    <td className="py-2 px-2 text-center">
+                    <td className="p-0 text-center bg-slate-50/40 align-middle">
                       <button
                         type="button"
                         onClick={() => handleRemoveLineItem(item.id)}
-                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${lineItems.length > 1
+                        className={`w-full h-11 flex items-center justify-center transition-colors cursor-pointer ${
+                          lineItems.length > 1
                             ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                             : "text-slate-300 hover:text-slate-500 hover:bg-slate-100"
-                          }`}
+                        }`}
                         title="Remove Row"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1580,30 +1749,85 @@ function NewPurchaseContent() {
 
               {/* TABLE FOOTER */}
               <tfoot>
-                <tr className="border-t border-slate-200 bg-slate-50/90 font-bold text-slate-700">
-                  <td colSpan={6} className="py-2.5 px-4 text-xs text-slate-500 font-mono">
-                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-600">
-                      <span>{lineItems.length}</span>
-                      <span>{lineItems.length === 1 ? t("Item") : t("Items")}</span>
-                    </span>
+                <tr className="border-t-2 border-slate-200 bg-slate-50/90 font-bold text-slate-700 h-11">
+                  <td colSpan={8} className="py-2.5 px-3 text-xs text-slate-600 font-mono border-r border-slate-200/80">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 font-bold">
+                        <span>{lineItems.length}</span>
+                        <span>{lineItems.length === 1 ? t("Item") : t("Items")}</span>
+                      </span>
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                        {t("Total")}:
+                      </span>
+                    </div>
                   </td>
-                  <td className="py-2.5 px-3 text-right text-[11px] font-extrabold uppercase tracking-wide text-slate-500">
-                    {t("Items Total:")}
+                  <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-400 border-r border-slate-200/80">
+                    -
                   </td>
-                  <td className="py-2.5 px-3 text-right">
-                    <span className="font-mono font-black text-slate-900 text-sm">
+                  <td className="py-2.5 px-2 text-right border-r border-slate-200/80">
+                    <span className="font-mono font-black text-slate-900 text-xs">
                       ₹{calculatedTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </td>
-                  <td></td>
+                  <td className="bg-slate-50/90"></td>
                 </tr>
               </tfoot>
             </table>
           </div>
+          {/* FLOATING FIXED CATEGORY DROPDOWN MENU - FLOATS ON TOP OF ALL CARDS (NO OVERFLOW CLIPPING) */}
+          {openCategoryItemId && categoryDropdownPos && (
+            <div
+              ref={categoryDropdownMenuRef}
+              style={{
+                position: "fixed",
+                top: categoryDropdownPos.top !== undefined ? `${categoryDropdownPos.top}px` : undefined,
+                bottom: categoryDropdownPos.bottom !== undefined ? `${categoryDropdownPos.bottom}px` : undefined,
+                left: `${categoryDropdownPos.left}px`,
+                width: `${categoryDropdownPos.width}px`,
+                zIndex: 9999
+              }}
+              className="bg-white border border-slate-200 rounded-xl shadow-2xl p-1.5 max-h-60 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100"
+            >
+              {categoriesList.length === 0 ? (
+                <div className="px-3 py-3 text-slate-400 text-xs font-medium text-center">
+                  No material categories found.
+                </div>
+              ) : (
+                categoriesList.map((c) => {
+                  const currentItem = lineItems.find((it) => it.id === openCategoryItemId);
+                  const isSelected = currentItem?.category === c;
+                  const currentIdx = lineItems.findIndex((it) => it.id === openCategoryItemId);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        if (openCategoryItemId) {
+                          handleUpdateLineItem(openCategoryItemId, "category", c);
+                        }
+                        closeCategoryDropdown();
+                        if (currentIdx !== -1) {
+                          setTimeout(() => {
+                            document.getElementById(`item-hsn-${currentIdx}`)?.focus();
+                          }, 50);
+                        }
+                      }}
+                      className={`w-full text-left px-3 py-2 hover:bg-blue-50/70 rounded-lg font-bold text-slate-800 text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                        isSelected ? "bg-blue-50 text-blue-900 font-extrabold" : ""
+                      }`}
+                    >
+                      <span className="truncate">{c}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
 
         {/* BOX 3: SETTLEMENT & ACCOUNTING SUMMARY */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs relative z-10">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs relative z-0">
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200">
             {/* LEFT COLUMN: PAYMENT TERMS & REMARKS */}
             <div className="p-4 sm:p-5 md:pr-8 space-y-3.5">

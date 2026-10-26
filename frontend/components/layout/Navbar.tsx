@@ -24,6 +24,8 @@ const pageTitles: Record<string, string> = {
   "/employees": "Staff & Karigar Directory",
   "/expenses": "Factory & Overhead Expenses",
   "/purchases": "Purchase Orders & Inward Bills",
+  "/invoices": "Invoices (ઇનવોઇસ)",
+  "/purchases/bills": "Invoices (ઇનવોઇસ)",
   "/payments": "Payments & Vouchers Ledger",
   "/ledger": "General Ledger & Accounts",
   "/categories": "Master Categories & Classifications",
@@ -154,7 +156,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
   }, [handleRefresh]);
 
   return (
-    <header className="h-14 border-b border-slate-200/80 bg-white px-3 sm:px-4 flex items-center justify-between sticky top-0 z-30 shadow-2xs select-none">
+    <header className="h-14 border-b border-slate-200/80 bg-white px-3 sm:px-4 flex items-center justify-between sticky top-0 z-50 shadow-2xs select-none">
       {/* Mobile Menu Button + Single Authoritative Page Title */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <button
@@ -210,7 +212,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           </button>
 
           {isNotifOpen && (
-            <div className="fixed inset-x-3 top-14 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-80 max-w-sm mx-auto sm:mx-0 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="fixed inset-x-3 top-14 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-80 max-w-sm mx-auto sm:mx-0 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-[100] animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-1.5">
                   <Bell className="w-4 h-4 text-blue-600" />
@@ -282,7 +284,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           </button>
 
           {isLangOpen && (
-            <div className="absolute right-0 mt-2 w-40 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 mt-2 w-40 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 z-[100] animate-in fade-in zoom-in-95 duration-150">
               <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
                 {language === "gu" ? "ભાષા પસંદગી" : "Language"}
               </div>

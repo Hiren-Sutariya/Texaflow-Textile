@@ -16,7 +16,7 @@ class Party(Base, TimestampMixin, SoftDeleteMixin):
     email = Column(String(128), nullable=True)
     gstin = Column(String(32), nullable=True, index=True)
     work_phone = Column(String(32), nullable=True)
-    mobile = Column(String(32), nullable=False)
+    mobile = Column(String(32), nullable=True, default="")
     pan = Column(String(32), nullable=True)
     is_msme = Column(Boolean, default=False)
     payment_terms = Column(String(64), nullable=True, default="Net 30")

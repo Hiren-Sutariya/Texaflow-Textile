@@ -5,6 +5,8 @@ from app.schemas.purchase import PurchaseCreate, PurchaseUpdate, PurchaseRespons
 from app.schemas.payment import PaymentVoucherCreate, PaymentVoucherResponse
 from app.schemas.category import CategoryCreate, CategoryResponse
 from app.schemas.design import DesignCreate, DesignUpdate, DesignResponse
+from app.schemas.sales_challan import SalesChallanCreate, SalesChallanUpdate, SalesChallanResponse
+from app.schemas.sales_invoice import SalesInvoiceCreate, SalesInvoiceUpdate, SalesInvoiceResponse
 
 __all__ = [
     "PartyCreate",
@@ -31,5 +33,12 @@ __all__ = [
     "CategoryResponse",
     "DesignCreate",
     "DesignUpdate",
-    "DesignResponse"
+    "DesignResponse",
+    "SalesChallanCreate",
+    "SalesChallanUpdate",
+    "SalesChallanResponse",
+    "SalesInvoiceCreate",
+    "SalesInvoiceUpdate",
+    "SalesInvoiceResponse"
 ]
+

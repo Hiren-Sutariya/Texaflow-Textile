@@ -8,6 +8,8 @@ from app.models.purchase import Purchase
 from app.models.payment import PaymentVoucher
 from app.models.category import Category
 from app.models.design import Design
+from app.models.sales_challan import SalesChallan
+from app.models.sales_invoice import SalesInvoice
 
 __all__ = [
     "Base",
@@ -22,5 +24,8 @@ __all__ = [
     "Purchase",
     "PaymentVoucher",
     "Category",
-    "Design"
+    "Design",
+    "SalesChallan",
+    "SalesInvoice"
 ]
+

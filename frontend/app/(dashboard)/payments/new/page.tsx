@@ -36,15 +36,15 @@ export interface VendorItemState {
 }
 
 const linkedSourceOptionsOut = [
-  "Purchase Bill / Delivery Challan",
-  "Job Process Challan",
-  "ON-ACCOUNT / GENERAL PAYMENT"
+  "ON-ACCOUNT / GENERAL PAYMENT",
+  "Against Purchase Bill (ખરીદી બિલ)",
+  "Job Process Challan"
 ];
 
 const linkedSourceOptionsIn = [
-  "Sales Bill / Delivery Challan (DN)",
-  "Job Work Outward / Delivery Challan",
-  "ON-ACCOUNT / ADVANCE PAYMENT"
+  "ON-ACCOUNT / GENERAL PAYMENT",
+  "Against Sales Invoice (સેલ્સ બિલ)",
+  "Sales Delivery Challan (DN)"
 ];
 
 const paymentModeOptions = [
@@ -91,8 +91,8 @@ function NewPaymentVoucherContent() {
   const [formVoucherDate, setFormVoucherDate] = useState(
     new Date().toISOString().split("T")[0]
   );
-  const [formLinkedSource, setFormLinkedSource] = useState(
-    qType === "Receipt In" ? "Sales Bill / Delivery Challan (DN)" : "Purchase Bill / Delivery Challan"
+  const [formLinkedSource, setFormLinkedSource] = useState<string>(
+    qSource ? (qSource.includes("Purchase") ? "Against Purchase Bill (ખરીદી બિલ)" : qSource) : "ON-ACCOUNT / GENERAL PAYMENT"
   );
   const [formAmount, setFormAmount] = useState("");
   const [formMode, setFormMode] = useState("BANK TRANSFER (NEFT/RTGS/IMPS)");
@@ -291,10 +291,10 @@ function NewPaymentVoucherContent() {
   }, [formLinkedSource]);
 
   const pendingChallansForSupplier = useMemo(() => {
-    if (formLinkedSource === "ON-ACCOUNT / GENERAL PAYMENT") return [];
+    if (formLinkedSource.startsWith("ON-ACCOUNT")) return [];
 
     // 1. If Purchase Bill is selected -> only show Purchase Bills (PB-xxx)
-    if (formLinkedSource === "Purchase Bill / Delivery Challan") {
+    if (formLinkedSource === "Against Purchase Bill (ખરીદી બિલ)" || formLinkedSource === "Purchase Bill / Delivery Challan") {
       const pending = purchasesList.filter(
         (p: any) => p && (p.payment_status === "Pending" || p.payment_status === "Unpaid")
       );
@@ -446,7 +446,7 @@ function NewPaymentVoucherContent() {
 
         // Auto-update purchase payment status to "Paid" if paying out
         const targetBillNo = (selectedChallan || formRefNo || "").trim().toLowerCase();
-        if (formType === "Payment Out" && (formLinkedSource === "Purchase Bill / Delivery Challan" || targetBillNo)) {
+        if (formType === "Payment Out" && (formLinkedSource === "Against Purchase Bill (ખરીદી બિલ)" || formLinkedSource === "Purchase Bill / Delivery Challan" || targetBillNo)) {
           const storedPurchases = getTenantItem<any[]>(
             "texaflow_purchases",
             currentCid === "comp-001" ? "om_sai_purchases" : undefined
@@ -579,7 +579,7 @@ function NewPaymentVoucherContent() {
                 type="button"
                 onClick={() => {
                   setFormType("Payment Out");
-                  setFormLinkedSource("Purchase Bill / Delivery Challan");
+                  setFormLinkedSource("ON-ACCOUNT / GENERAL PAYMENT");
                 }}
                 className={`flex-1 sm:flex-initial justify-center px-3 sm:px-4 py-2 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
                   formType === "Payment Out"
@@ -598,7 +598,7 @@ function NewPaymentVoucherContent() {
                 type="button"
                 onClick={() => {
                   setFormType("Receipt In");
-                  setFormLinkedSource("Sales Bill / Delivery Challan (DN)");
+                  setFormLinkedSource("ON-ACCOUNT / GENERAL PAYMENT");
                 }}
                 className={`flex-1 sm:flex-initial justify-center px-3 sm:px-4 py-2 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
                   formType === "Receipt In"
@@ -972,21 +972,23 @@ function NewPaymentVoucherContent() {
             </div>
           </div>
 
-          {/* CONDITIONAL SUB-BOX: RECEIPT IN - LINK TO SALES DISPATCH / DESIGN NO (DN) */}
-          {formType === "Receipt In" && formLinkedSource === "Sales Bill / Delivery Challan (DN)" && (
+          {/* CONDITIONAL SUB-BOX: RECEIPT IN - LINK TO SALES INVOICE / CHALLAN (DN) */}
+          {formType === "Receipt In" && !formLinkedSource.startsWith("ON-ACCOUNT") && (
             <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs animate-in fade-in duration-150">
               <div />
               <div className="p-3 bg-blue-50/70 rounded-2xl border border-blue-200/90 space-y-2 max-w-xl w-full shadow-2xs">
                 <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-blue-900 uppercase tracking-wider">
                   <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span>LINK SALES DISPATCH / DESIGN NO (DN)</span>
+                  <span>{formLinkedSource.includes("Invoice") ? "LINK SALES INVOICE / BILL" : "LINK SALES DELIVERY CHALLAN (DN)"}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Design No / Order (DN)</label>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">
+                      {formLinkedSource.includes("Invoice") ? "Invoice No / Ref" : "Design No / Order (DN)"}
+                    </label>
                     <input
                       type="text"
-                      placeholder="e.g. DN-1042 / Design-5"
+                      placeholder={formLinkedSource.includes("Invoice") ? "e.g. INV-001" : "e.g. DN-1042 / Design-5"}
                       value={selectedChallan}
                       onChange={(e) => setSelectedChallan(e.target.value)}
                       className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
@@ -1008,7 +1010,7 @@ function NewPaymentVoucherContent() {
           )}
 
           {/* CONDITIONAL SUB-BOX: PAYMENT OUT - SELECT PENDING PURCHASE BILL / JOB PROCESS CHALLAN */}
-          {formType === "Payment Out" && formLinkedSource !== "ON-ACCOUNT / GENERAL PAYMENT" && (
+          {formType === "Payment Out" && !formLinkedSource.startsWith("ON-ACCOUNT") && (
             <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 items-start text-xs">
               <div />
               <div className="p-3 bg-amber-50/60 rounded-2xl border border-amber-200/90 space-y-2 max-w-xl w-full animate-in fade-in duration-150 shadow-2xs">
@@ -1016,7 +1018,7 @@ function NewPaymentVoucherContent() {
                   <div className="flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     <span>
-                      {formLinkedSource === "Purchase Bill / Delivery Challan"
+                      {(formLinkedSource.includes("Purchase") || formLinkedSource === "Purchase Bill / Delivery Challan")
                         ? "SELECT PENDING PURCHASE BILL"
                         : "SELECT PENDING JOB PROCESS CHALLAN"}
                     </span>
@@ -1067,7 +1069,7 @@ function NewPaymentVoucherContent() {
                           </span>
                           <span className="text-slate-800">
                             {(() => {
-                              if (formLinkedSource === "Purchase Bill / Delivery Challan") {
+                              if (formLinkedSource.includes("Purchase") || formLinkedSource === "Purchase Bill / Delivery Challan") {
                                 const found = purchasesList.find((p: any) => p.purchase_no === selectedChallan || p.id === selectedChallan);
                                 return found ? `• ₹${Number(found.amount).toLocaleString("en-IN")} • ${found.category || "Material"}` : "";
                               } else {
@@ -1078,7 +1080,7 @@ function NewPaymentVoucherContent() {
                           </span>
                         </span>
                       ) : (
-                        formLinkedSource === "Purchase Bill / Delivery Challan"
+                        (formLinkedSource.includes("Purchase") || formLinkedSource === "Purchase Bill / Delivery Challan")
                           ? `-- SELECT PENDING PURCHASE BILL (${pendingChallansForSupplier.length} AVAILABLE) --`
                           : `-- SELECT PENDING JOB PROCESS CHALLAN (${pendingChallansForSupplier.length} AVAILABLE) --`
                       )}
@@ -1090,7 +1092,7 @@ function NewPaymentVoucherContent() {
                     <div className="absolute left-0 top-[calc(100%+4px)] z-50 min-w-full w-full bg-white border border-slate-200 rounded-xl shadow-xl p-2 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-100 space-y-1">
                       {pendingChallansForSupplier.length === 0 ? (
                         <div className="py-4 px-3 text-center text-slate-400 text-xs font-semibold">
-                          {formLinkedSource === "Purchase Bill / Delivery Challan"
+                          {(formLinkedSource.includes("Purchase") || formLinkedSource === "Purchase Bill / Delivery Challan")
                             ? (supplierName ? `No pending purchase bills found for "${supplierName}".` : "No pending purchase bills found.")
                             : (supplierName ? `No pending job process challans found for "${supplierName}".` : "No pending job process challans found.")
                           }
@@ -1100,7 +1102,7 @@ function NewPaymentVoucherContent() {
                           const itemNo = item.purchase_no || item.challan_no || item.id;
                           const isSelected = selectedChallan === itemNo;
                           const vendor = item.vendor_name || item.party_name || item.worker_name || "Vendor";
-                          const categoryOrProcess = item.category || item.process_type || (formLinkedSource === "Purchase Bill / Delivery Challan" ? "Material Purchase" : "Job Work");
+                          const categoryOrProcess = item.category || item.process_type || ((formLinkedSource.includes("Purchase") || formLinkedSource === "Purchase Bill / Delivery Challan") ? "Material Purchase" : "Job Work");
                           const amount = Number(item.amount || 0);
 
                           return (

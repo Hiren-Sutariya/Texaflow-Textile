@@ -10,8 +10,9 @@ from app.models.purchase import Purchase
 from app.models.expense import Expense
 from app.models.category import Category
 from app.models.worker import Worker
-from app.models.design import Design
 from app.models.payment import PaymentVoucher
+from app.models.sales_challan import SalesChallan
+from app.models.sales_invoice import SalesInvoice
 
 router = APIRouter(prefix="/recycle-bin", tags=["Recycle Bin"])
 
@@ -31,10 +32,20 @@ def get_model_by_module(module: str):
         "category": Category,
         "workers": Worker,
         "worker": Worker,
-        "designs": Design,
-        "design": Design,
         "payments": PaymentVoucher,
         "payment": PaymentVoucher,
+        "sales-challans": SalesChallan,
+        "sales_challans": SalesChallan,
+        "sales-challan": SalesChallan,
+        "sales_challan": SalesChallan,
+        "challans": SalesChallan,
+        "challan": SalesChallan,
+        "sales-invoices": SalesInvoice,
+        "sales_invoices": SalesInvoice,
+        "sales-invoice": SalesInvoice,
+        "sales_invoice": SalesInvoice,
+        "invoices": SalesInvoice,
+        "invoice": SalesInvoice,
     }
     model = mapping.get(module_lower)
     if not model:
@@ -44,7 +55,7 @@ def get_model_by_module(module: str):
 def auto_purge_expired_records(db: Session, company_id: str):
     """Automatically permanently purge records deleted more than 30 days ago."""
     cutoff_date = datetime.utcnow() - timedelta(days=RETENTION_DAYS)
-    models = [Party, Purchase, Expense, Category, Worker, Design, PaymentVoucher]
+    models = [Party, Purchase, Expense, Category, Worker, PaymentVoucher, SalesChallan, SalesInvoice]
     purged_count = 0
     for model in models:
         try:
@@ -202,9 +213,80 @@ def list_trash_items(
                 "amount": None
             })
 
+    # 6. Sales Challans
+    if not module or module.lower() in ("sales-challans", "sales_challans", "sales-challan", "challans", "challan"):
+        challans = db.query(SalesChallan).filter(
+            SalesChallan.company_id == company_id,
+            SalesChallan.is_deleted == True
+        ).all()
+        for ch in challans:
+            del_at = ch.deleted_at or ch.updated_at or now
+            days_passed = max(0, (now - del_at).days)
+            results.append({
+                "id": ch.id,
+                "module": "sales-challans",
+                "module_label": "Delivery Challan",
+                "title": ch.party_name or "Sales Challan",
+                "subtitle": f"Challan #{ch.challan_no} | Status: {ch.billing_status}",
+                "record_no": ch.challan_no,
+                "party_name": ch.party_name,
+                "category": "Sales Challan",
+                "record_date": ch.date,
+                "deleted_at": del_at.isoformat(),
+                "deleted_by": getattr(ch, "deleted_by", None) or "Admin",
+                "days_remaining": max(0, RETENTION_DAYS - days_passed),
+                "amount": ch.total_amount
+            })
+
+    # 7. Sales Invoices
+    if not module or module.lower() in ("sales-invoices", "sales_invoices", "sales-invoice", "invoices", "invoice"):
+        invoices = db.query(SalesInvoice).filter(
+            SalesInvoice.company_id == company_id,
+            SalesInvoice.is_deleted == True
+        ).all()
+        for inv in invoices:
+            del_at = inv.deleted_at or inv.updated_at or now
+            days_passed = max(0, (now - del_at).days)
+            results.append({
+                "id": inv.id,
+                "module": "sales-invoices",
+                "module_label": "Sales Invoice",
+                "title": inv.customer_name or "Sales Invoice",
+                "subtitle": f"Invoice #{inv.invoice_no} | Payment: {inv.payment_status}",
+                "record_no": inv.invoice_no,
+                "party_name": inv.customer_name,
+                "category": "Sales Invoice",
+                "record_date": inv.date,
+                "deleted_at": del_at.isoformat(),
+                "deleted_by": getattr(inv, "deleted_by", None) or "Admin",
+                "days_remaining": max(0, RETENTION_DAYS - days_passed),
+                "amount": inv.total_amount
+            })
+
     # Sort newest deleted first
     results.sort(key=lambda x: x["deleted_at"], reverse=True)
     return results
+
+@router.post("/{record_id}/restore")
+def restore_item_by_id(
+    record_id: str,
+    db: Session = Depends(get_db),
+    company_id: str = Depends(get_tenant_company_id)
+):
+    models = [SalesChallan, SalesInvoice, Party, Purchase, Expense, Category, Worker, PaymentVoucher]
+    for model in models:
+        item = db.query(model).filter(
+            model.id == record_id,
+            model.company_id == company_id
+        ).first()
+        if item:
+            item.is_deleted = False
+            item.deleted_at = None
+            item.deleted_by = None
+            db.commit()
+            title = getattr(item, "challan_no", None) or getattr(item, "invoice_no", None) or getattr(item, "display_name", None) or getattr(item, "purchase_no", None) or getattr(item, "name", None) or record_id
+            return {"success": True, "message": f"Successfully restored '{title}'"}
+    raise HTTPException(status_code=404, detail="Item not found in Recycle Bin")
 
 @router.post("/{module}/{record_id}/restore")
 def restore_item(
@@ -235,6 +317,24 @@ def restore_item(
         "success": True,
         "message": f"Successfully restored '{title}'"
     }
+
+@router.delete("/{record_id}/permanent", status_code=status.HTTP_200_OK)
+def permanently_delete_item_by_id(
+    record_id: str,
+    db: Session = Depends(get_db),
+    company_id: str = Depends(get_tenant_company_id)
+):
+    models = [SalesChallan, SalesInvoice, Party, Purchase, Expense, Category, Worker, PaymentVoucher]
+    for model in models:
+        item = db.query(model).filter(
+            model.id == record_id,
+            model.company_id == company_id
+        ).first()
+        if item:
+            db.delete(item)
+            db.commit()
+            return {"success": True, "message": "Item permanently deleted"}
+    raise HTTPException(status_code=404, detail="Item not found in Recycle Bin")
 
 @router.delete("/{module}/{record_id}/permanent", status_code=status.HTTP_200_OK)
 def permanently_delete_item(
@@ -270,7 +370,7 @@ def restore_all(
     """
     Restore all items in the Recycle Bin for the active tenant company.
     """
-    models = [Party, Purchase, Expense, Category, Worker, Design, PaymentVoucher]
+    models = [Party, Purchase, Expense, Category, Worker, PaymentVoucher, SalesChallan, SalesInvoice]
     restored_count = 0
     for model in models:
         items = db.query(model).filter(
@@ -296,7 +396,7 @@ def empty_recycle_bin(
     """
     Permanently delete all items currently in the Recycle Bin for the active tenant company.
     """
-    models = [Party, Purchase, Expense, Category, Worker, Design, PaymentVoucher]
+    models = [Party, Purchase, Expense, Category, Worker, PaymentVoucher, SalesChallan, SalesInvoice]
     deleted_count = 0
     for model in models:
         items = db.query(model).filter(

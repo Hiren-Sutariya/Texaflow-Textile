@@ -15,7 +15,8 @@ import {
   ShoppingCart,
   Receipt,
   Tags,
-  Briefcase
+  Briefcase,
+  FileText
 } from "lucide-react";
 
 interface TrashItem {
@@ -35,7 +36,8 @@ interface TrashItem {
 }
 
 export default function RecycleBinPage() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const isGujarati = language === "gu";
   const [items, setItems] = useState<TrashItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -213,6 +215,8 @@ export default function RecycleBinPage() {
       parties: items.filter((i) => i.module === "parties").length,
       purchases: items.filter((i) => i.module === "purchases").length,
       expenses: items.filter((i) => i.module === "expenses").length,
+      challans: items.filter((i) => i.module === "sales-challans").length,
+      invoices: items.filter((i) => i.module === "sales-invoices").length,
       categories: items.filter((i) => i.module === "categories").length
     };
   }, [items]);
@@ -236,6 +240,20 @@ export default function RecycleBinPage() {
           label: t("Expense"),
           icon: Receipt,
           bg: "bg-amber-50 text-amber-700 border-amber-200"
+        };
+      case "sales-challans":
+      case "sales_challans":
+        return {
+          label: isGujarati ? "સેલ્સ ચલણ" : "Sales Challan",
+          icon: FileText,
+          bg: "bg-cyan-50 text-cyan-700 border-cyan-200"
+        };
+      case "sales-invoices":
+      case "sales_invoices":
+        return {
+          label: isGujarati ? "સેલ્સ બિલ" : "Sales Invoice",
+          icon: Receipt,
+          bg: "bg-emerald-50 text-emerald-700 border-emerald-200"
         };
       case "categories":
         return {
@@ -272,6 +290,8 @@ export default function RecycleBinPage() {
     { id: "parties", label: `${t("Parties")} (${counts.parties})` },
     { id: "purchases", label: `${t("Purchases")} (${counts.purchases})` },
     { id: "expenses", label: `${t("Expenses")} (${counts.expenses})` },
+    { id: "sales-challans", label: `${isGujarati ? "સેલ્સ ચલણ" : "Sales Challans"} (${counts.challans})` },
+    { id: "sales-invoices", label: `${isGujarati ? "સેલ્સ બિલ" : "Sales Invoices"} (${counts.invoices})` },
     { id: "categories", label: `${t("Categories")} (${counts.categories})` }
   ];
 

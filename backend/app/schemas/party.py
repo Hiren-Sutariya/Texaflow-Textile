@@ -14,7 +14,7 @@ class PartyBase(BaseModel):
     email: Optional[str] = None
     gstin: Optional[str] = None
     work_phone: Optional[str] = None
-    mobile: str
+    mobile: Optional[str] = ""
     pan: Optional[str] = None
     is_msme: bool = False
     payment_terms: Optional[str] = "Net 30"

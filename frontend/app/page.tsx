@@ -17,7 +17,9 @@ import {
   Trash2, 
   Settings,
   ShieldCheck,
-  LogOut
+  LogOut,
+  Truck,
+  FileCheck
 } from "lucide-react";
 
 const destinationModules = [
@@ -35,17 +37,31 @@ const destinationModules = [
     isUpcoming: false
   },
 
-  // 2. Finance
+  // 2. Factory Movement & Sales
   {
-    title: "Expenses",
-    href: "/expenses",
-    icon: Receipt,
+    title: "Sales Challans",
+    href: "/sales",
+    icon: Truck,
     isUpcoming: false
   },
+  {
+    title: "Sales Invoices",
+    href: "/sales-invoices",
+    icon: FileCheck,
+    isUpcoming: false
+  },
+
+  // 3. Finance & Purchases
   {
     title: "Purchases",
     href: "/purchases",
     icon: ShoppingCart,
+    isUpcoming: false
+  },
+  {
+    title: "Expenses",
+    href: "/expenses",
+    icon: Receipt,
     isUpcoming: false
   },
   {
@@ -61,7 +77,7 @@ const destinationModules = [
     isUpcoming: false
   },
 
-  // 3. Settings
+  // 4. Settings & Vault
   {
     title: "Categories",
     href: "/categories",

@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { fetchApi, getCachedApi } from "@/lib/api";
 import { getTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { useLanguage } from "@/context/LanguageContext";
-import { getDueStatus } from "@/lib/creditTerms";
+import { getDueStatus, calculateDueDate } from "@/lib/creditTerms";
 import {
   BookOpen,
   Search,
@@ -27,8 +27,25 @@ import {
   Eye,
   SlidersHorizontal,
   Check,
-  FileText
+  FileText,
+  Truck,
+  Users,
+  Pencil,
+  ArrowDownLeft,
+  ArrowUpRight
 } from "lucide-react";
+import {
+  getStoredSalesChallans,
+  getStoredSalesInvoices,
+  SalesChallan,
+  SalesInvoice
+} from "@/lib/salesStorage";
+import {
+  CompanySettings,
+  getStoredCompanySettings,
+  fetchLiveCompanySettings,
+  getFieldLabel
+} from "@/lib/companySettings";
 
 export interface PurchaseItem {
   id: string;
@@ -44,6 +61,10 @@ export interface PurchaseItem {
   credit_days?: number;
   due_date?: string;
   notes?: string;
+  items?: any;
+  quantity?: number | string;
+  rate?: number | string;
+  design_no?: string;
 }
 
 export interface PaymentVoucherItem {
@@ -52,7 +73,7 @@ export interface PaymentVoucherItem {
   date: string;
   party_name: string;
   payer_person?: string;
-  design_no?: string;
+  designNo?: string;
   linked_challan?: string;
   kasar_amount?: number;
   type: "Payment Out" | "Receipt In";
@@ -80,28 +101,49 @@ export interface LedgerEntry {
   id: string;
   date: string;
   rawDate: number;
-  type: "BILL" | "PAYMENT";
+  type: "BILL" | "PAYMENT" | "SALES_CHALLAN" | "SALES_INVOICE";
   refNo: string;
   partyName: string;
   payerPerson?: string;
   designNo?: string;
+  quantity?: number | string;
+  rate?: number | string;
+  totalCp?: number;
   paidAmount?: number;
   kasarAmount?: number;
   description: string;
   modeOrTerms?: string;
   openingBalance?: number;
-  debit: number;   // Inward Bill / Purchase (Increases payable)
-  credit: number;  // Payment Voucher (Decreases payable)
+  debit: number;   // Customer: Goods Sold (Receivable) | Supplier: Payment Made
+  credit: number;  // Customer: Payment Received | Supplier: Goods Purchased (Payable)
   runningBalance?: number;
+  balanceType?: "Dr" | "Cr";
   status?: string;
   dueDate?: string;
   isOverdue?: boolean;
   notes?: string;
+  isCustomer?: boolean;
 }
 
 export function formatShortRefNo(ref: string) {
   if (!ref) return "-";
   return ref.replace(/-(?:20\d{2})-/, "-");
+}
+
+export interface PartySummaryItem {
+  partyName: string;
+  category: "Customer" | "Supplier";
+  accountType: string;
+  openingBalance: number;
+  totalBilled: number;
+  totalPaid: number;
+  totalDebit: number;
+  totalCredit: number;
+  closingBalance: number;
+  balanceType: "Dr" | "Cr";
+  status: "Due" | "Settled" | "Advance";
+  transactionCount: number;
+  lastDate?: string;
 }
 
 const SEED_PURCHASES: PurchaseItem[] = [];
@@ -136,24 +178,24 @@ function TxnTypeSelectDropdown({
   }, []);
 
   const options: Array<{ value: "All" | "BILL" | "PAYMENT" | "OVERDUE"; label: string; badge?: string }> = [
-    { value: "All", label: isGujarati ? "બધા વ્યવહારો" : "All Transactions", badge: String(count) },
-    { value: "BILL", label: isGujarati ? "ખરીદી બિલ (Dr)" : "Inward Bills (Dr)" },
-    { value: "PAYMENT", label: isGujarati ? "પેમેન્ટ ચૂકવણી (Cr)" : "Payments (Cr)" },
-    { value: "OVERDUE", label: isGujarati ? "મુદત બાકી બિલ" : "Overdue Mudat" }
+    { value: "All", label: "All Transactions", badge: String(count) },
+    { value: "BILL", label: "Invoices & Bills (+)" },
+    { value: "PAYMENT", label: "Payments & Receipts (-)" },
+    { value: "OVERDUE", label: "Overdue Dues" }
   ];
 
   const selectedOption = options.find((o) => o.value === value) || options[0];
 
   return (
-    <div ref={containerRef} className="relative inline-block w-full sm:w-44 text-xs select-none">
+    <div ref={containerRef} className="relative inline-block w-full sm:w-48 text-xs select-none">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-3 bg-white border rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${
-          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : "border-slate-300"
+        className={`w-full h-9 px-3 bg-white border rounded-xl flex items-center justify-between shadow-2xs hover:border-slate-300 transition-colors focus:outline-none cursor-pointer ${
+          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : "border-slate-200"
         }`}
       >
-        <span className="font-bold text-slate-900 truncate mr-1">{selectedOption.label}</span>
+        <span className="font-bold text-slate-700 truncate mr-1">{selectedOption.label}</span>
         <ChevronDown
           className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${
             isOpen ? "rotate-180 text-blue-600" : ""
@@ -219,11 +261,11 @@ function DateRangeSelectDropdown({
   }, []);
 
   const options: Array<{ value: "ALL" | "THIS_MONTH" | "LAST_30" | "FY_26_27" | "CUSTOM"; label: string }> = [
-    { value: "ALL", label: isGujarati ? "બધો સમય (All Time)" : "All Time" },
-    { value: "THIS_MONTH", label: isGujarati ? "આ મહિનો (This Month)" : "This Month" },
-    { value: "LAST_30", label: isGujarati ? "છેલ્લા ૩૦ દિવસ" : "Last 30 Days" },
-    { value: "FY_26_27", label: isGujarati ? "નાણાકીય વર્ષ ૨૬-૨૭" : "FY 2026-27" },
-    { value: "CUSTOM", label: isGujarati ? "કસ્ટમ તારીખ..." : "Custom Range..." }
+    { value: "ALL", label: "All Time" },
+    { value: "THIS_MONTH", label: "This Month" },
+    { value: "LAST_30", label: "Last 30 Days" },
+    { value: "FY_26_27", label: "FY 2026-27" },
+    { value: "CUSTOM", label: "Custom Range..." }
   ];
 
   const selectedOption = options.find((o) => o.value === value) || options[0];
@@ -233,13 +275,13 @@ function DateRangeSelectDropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-3 bg-white border rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${
-          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : "border-slate-300"
+        className={`w-full h-9 px-3 bg-white border rounded-xl flex items-center justify-between shadow-2xs hover:border-slate-300 transition-colors focus:outline-none cursor-pointer ${
+          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : "border-slate-200"
         }`}
       >
         <div className="flex items-center gap-1.5 truncate mr-1">
           <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-          <span className="font-bold text-slate-900 truncate">{selectedOption.label}</span>
+          <span className="font-bold text-slate-700 truncate">{selectedOption.label}</span>
         </div>
         <ChevronDown
           className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${
@@ -290,6 +332,8 @@ export default function LedgerPage() {
 
   // Data states
   const [purchases, setPurchases] = useState<PurchaseItem[]>(SEED_PURCHASES);
+  const [salesChallans, setSalesChallans] = useState<SalesChallan[]>([]);
+  const [salesInvoices, setSalesInvoices] = useState<SalesInvoice[]>([]);
   const [vouchers, setVouchers] = useState<PaymentVoucherItem[]>(SEED_VOUCHERS);
   const [vendors, setVendors] = useState<VendorMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -297,6 +341,8 @@ export default function LedgerPage() {
   // Search and Filter states
   const [searchQuery, setSearchQuery] = useState(initialPartyQuery);
   const [partyFilter, setPartyFilter] = useState(initialPartyQuery || "All");
+  const [partyCategoryFilter, setPartyCategoryFilter] = useState<"ALL" | "CUSTOMERS" | "SUPPLIERS">("ALL");
+  const [dueFilter, setDueFilter] = useState<"ALL" | "DUE_ONLY" | "SETTLED_ONLY">("ALL");
   const [isPartySearchOpen, setIsPartySearchOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -313,15 +359,21 @@ export default function LedgerPage() {
 
   const [txnTypeFilter, setTxnTypeFilter] = useState<"All" | "BILL" | "PAYMENT" | "OVERDUE">("All");
   const [dateFilter, setDateFilter] = useState<"ALL" | "THIS_MONTH" | "LAST_30" | "FY_26_27" | "CUSTOM">("ALL");
+  const [partySortOrder, setPartySortOrder] = useState<"CHRONOLOGICAL" | "LATEST_FIRST">("CHRONOLOGICAL");
   const [customFromDate, setCustomFromDate] = useState("");
   const [customToDate, setCustomToDate] = useState("");
   const [previewEntry, setPreviewEntry] = useState<LedgerEntry | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [companySettings, setCompanySettings] = useState<CompanySettings>(() => getStoredCompanySettings());
+
+  useEffect(() => {
+    fetchLiveCompanySettings().then((s) => {
+      if (s) setCompanySettings(s);
+    });
+  }, []);
 
   // Custom Opening Balances per party (persisted to localStorage)
   const [customOpeningBalances, setCustomOpeningBalances] = useState<Record<string, number>>({});
-  const [isEditingOpeningBal, setIsEditingOpeningBal] = useState(false);
-  const [tempOpeningBal, setTempOpeningBal] = useState("");
 
   // Load saved custom opening balances
   useEffect(() => {
@@ -346,14 +398,35 @@ export default function LedgerPage() {
     return Number(match?.opening_balance) || 0;
   };
 
-  const handleSaveOpeningBalance = (partyName: string, newAmt: number) => {
-    const norm = partyName.toLowerCase().trim();
-    const updated = { ...customOpeningBalances, [norm]: newAmt };
-    setCustomOpeningBalances(updated);
-    try {
-      localStorage.setItem("texaflow_ledger_opening_balances", JSON.stringify(updated));
-    } catch {}
-    setIsEditingOpeningBal(false);
+  const handleSendDueReminderWhatsApp = (e: React.MouseEvent, p: PartySummaryItem) => {
+    e.stopPropagation();
+    const firmName = companySettings?.company_name || "Om Sai / Shiv Creation";
+    const matchedVendor = vendors.find(
+      (v) => (v.company_name || v.display_name)?.toLowerCase().trim() === p.partyName.toLowerCase().trim()
+    );
+    const phone = (matchedVendor?.mobile || matchedVendor?.work_phone || "").replace(/[^0-9]/g, "");
+
+    const balText = `₹${p.closingBalance.toLocaleString("en-IN")}`;
+    const isCust = p.category === "Customer" || p.balanceType === "Dr";
+
+    const message = isCust
+      ? `*PAYMENT REMINDER - ${firmName.toUpperCase()}*\n\n` +
+        `નમસ્તે *${p.partyName}*,\n` +
+        `આપના ખાતામાં *${balText}* (બાકી રકમ) બોલે છે.\n\n` +
+        `કૃપા કરી વહેલી તકે ચુકવણી કરવા વિનંતી.\n` +
+        `બેંક વિગત અથવા UPI માટે સંપર્ક કરવો.\n\n` +
+        `આભાર! 🙏\n_${firmName}_`
+      : `*ACCOUNT STATEMENT - ${firmName.toUpperCase()}*\n\n` +
+        `નમસ્તે *${p.partyName}*,\n` +
+        `આપના ખાતા મુજબ *${balText}* ચૂકવવાના બાકી બોલે છે.\n\n` +
+        `ખાતાવહી મેળવવા વિનંતી.\n` +
+        `આભાર! 🙏\n_${firmName}_`;
+
+    const waUrl = phone.length >= 10
+      ? `https://wa.me/91${phone.slice(-10)}?text=${encodeURIComponent(message)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+    window.open(waUrl, "_blank");
   };
 
   // Parse Indian date string 'DD-MM-YYYY' or ISO into epoch
@@ -386,7 +459,13 @@ export default function LedgerPage() {
       }
     } catch {}
 
-    // 2. Vouchers
+    // 2. Sales Challans & Invoices
+    try {
+      setSalesChallans(getStoredSalesChallans());
+      setSalesInvoices(getStoredSalesInvoices());
+    } catch {}
+
+    // 3. Vouchers
     try {
       const cachedVou = getCachedApi<PaymentVoucherItem[]>("/payments") || 
         getTenantItem<PaymentVoucherItem[]>("texaflow_vouchers", "om_sai_vouchers");
@@ -395,7 +474,7 @@ export default function LedgerPage() {
       }
     } catch {}
 
-    // 3. Vendors Master
+    // 4. Vendors Master
     try {
       const cachedVen = getCachedApi<VendorMaster[]>("/vendors") || 
         getTenantItem<VendorMaster[]>("app_vendors_master", "om_sai_vendors");
@@ -428,19 +507,46 @@ export default function LedgerPage() {
     }
 
     fetchLiveData();
+
+    const handleSalesSync = () => {
+      try {
+        setSalesChallans(getStoredSalesChallans());
+        setSalesInvoices(getStoredSalesInvoices());
+      } catch {}
+    };
+
+    const handleSettingsSync = () => {
+      try {
+        setCompanySettings(getStoredCompanySettings());
+      } catch {}
+    };
+
+    window.addEventListener("texaflow_sales_updated", handleSalesSync);
+    window.addEventListener("texaflow_sales_invoices_updated", handleSalesSync);
+    window.addEventListener("app_settings_update", handleSettingsSync);
+    window.addEventListener("app_settings_updated", handleSettingsSync);
+
+    return () => {
+      window.removeEventListener("texaflow_sales_updated", handleSalesSync);
+      window.removeEventListener("texaflow_sales_invoices_updated", handleSalesSync);
+      window.removeEventListener("app_settings_update", handleSettingsSync);
+      window.removeEventListener("app_settings_updated", handleSettingsSync);
+    };
   }, []);
 
   // Compile full unique list of all party names for dropdown
   const allPartyNames = useMemo(() => {
     const set = new Set<string>();
     purchases.forEach((p) => { if (p.vendor_name) set.add(p.vendor_name.trim()); });
+    salesChallans.forEach((c) => { if (c.party_name) set.add(c.party_name.trim()); });
+    salesInvoices.forEach((i) => { if (i.customer_name) set.add(i.customer_name.trim()); });
     vouchers.forEach((v) => { if (v.party_name) set.add(v.party_name.trim()); });
     vendors.forEach((v) => {
       const name = v.company_name || v.display_name;
       if (name) set.add(name.trim());
     });
     return Array.from(set).filter(Boolean).sort();
-  }, [purchases, vouchers, vendors]);
+  }, [purchases, salesChallans, salesInvoices, vouchers, vendors]);
 
   // Lookup map of party account types for distinctive visual badges
   const partyTypeMap = useMemo(() => {
@@ -451,8 +557,23 @@ export default function LedgerPage() {
         map[name] = v.account_type || "Supplier / Vendor";
       }
     });
+
+    // Auto mark customers from sales if not explicitly set
+    salesChallans.forEach((c) => {
+      const name = c.party_name?.trim();
+      if (name && !map[name]) {
+        map[name] = "Customer / Client";
+      }
+    });
+    salesInvoices.forEach((i) => {
+      const name = i.customer_name?.trim();
+      if (name && !map[name]) {
+        map[name] = "Customer / Client";
+      }
+    });
+
     return map;
-  }, [vendors]);
+  }, [vendors, salesChallans, salesInvoices]);
 
   const currentPartyAccountType = useMemo(() => {
     if (partyFilter === "All") return null;
@@ -465,14 +586,64 @@ export default function LedgerPage() {
       return [];
     }
     const q = searchQuery.toLowerCase().trim();
-    return allPartyNames.filter((name) => name.toLowerCase().includes(q));
-  }, [allPartyNames, searchQuery, partyFilter]);
+    return allPartyNames.filter((name) => {
+      const matchesSearch = name.toLowerCase().includes(q);
+      if (!matchesSearch) return false;
+      if (partyCategoryFilter === "CUSTOMERS") {
+        return partyTypeMap[name]?.includes("Customer") || salesChallans.some((c) => c.party_name === name) || salesInvoices.some((i) => i.customer_name === name);
+      }
+      if (partyCategoryFilter === "SUPPLIERS") {
+        return !partyTypeMap[name]?.includes("Customer") || purchases.some((p) => p.vendor_name === name);
+      }
+      return true;
+    });
+  }, [allPartyNames, searchQuery, partyFilter, partyCategoryFilter, partyTypeMap, salesChallans, salesInvoices, purchases]);
 
   // Compile Unified Ledger Entries
   const rawLedgerEntries = useMemo(() => {
     const entries: LedgerEntry[] = [];
 
-    // 1. Inward Purchase Bills (Debit - Dr)
+    // 1. Sales Tax Invoices (Customer Debit - Dr)
+    salesInvoices.forEach((inv) => {
+      const dueDate = inv.due_date || (inv.credit_days ? calculateDueDate(inv.date, inv.credit_days) : inv.date);
+      const isPaid = inv.payment_status === "Paid";
+      const dueInfo = dueDate ? getDueStatus(dueDate, isPaid) : null;
+      const challanInfo = inv.linked_challan_nos?.length
+        ? ` (Challans: ${inv.linked_challan_nos.map((c) => `#${c}`).join(", ")})`
+        : "";
+      const firstItem = inv.items?.[0];
+      const dNo = firstItem?.design_no || (inv as any).design_no || (firstItem?.description?.match(/D\.?\s*No\.?\s*\d+/i)?.[0]) || "D.No. 550";
+      const qty = firstItem?.quantity ?? inv.total_quantity ?? 0;
+      const rate = firstItem?.rate ?? (Number(qty) > 0 ? Math.round(Number(inv.total_amount) / Number(qty)) : 0);
+      const totalCp = Number(inv.total_amount) || 0;
+
+      entries.push({
+        id: inv.id || `inv-${inv.invoice_no}`,
+        date: inv.date,
+        rawDate: parseDateEpoch(inv.date),
+        type: "SALES_INVOICE",
+        refNo: inv.invoice_no,
+        partyName: inv.customer_name || "Unknown Customer",
+        designNo: dNo,
+        quantity: qty,
+        rate: rate,
+        totalCp: totalCp,
+        description: `${inv.category || inv.items_description || (isGujarati ? "સેલ્સ પાકું બિલ (Tax Invoice)" : "Sales Tax Invoice")}${challanInfo}`,
+        modeOrTerms: inv.payment_terms || "30d Credit",
+        debit: totalCp, // Goods Sold = Debit to customer
+        credit: 0,
+        status: inv.payment_status,
+        dueDate,
+        isOverdue: dueInfo?.status === "Overdue" && !isPaid,
+        isCustomer: true,
+        notes: inv.notes
+      });
+    });
+
+    // 2. Delivery Challans are intentionally excluded from Ledger as per accounting rules:
+    // Only final sales tax invoices, purchase bills, and payment/receipt vouchers form the legal ledger.
+
+    // 3. Inward Purchase Bills from Suppliers (Supplier Credit - Cr)
     purchases.forEach((p) => {
       let isOverdue = false;
       if (p.due_date && (p.payment_status === "Pending" || p.payment_status === "Unpaid")) {
@@ -481,6 +652,11 @@ export default function LedgerPage() {
           isOverdue = true;
         }
       }
+      const firstItem = Array.isArray(p.items) ? p.items[0] : null;
+      const dNo = p.category || firstItem?.description || (p.items_description?.split("-")?.[0]?.trim()) || "Raw Material";
+      const qty = p.quantity || firstItem?.quantity || (p.items_description?.match(/\d+/)?.[0] || 0);
+      const rate = p.rate || firstItem?.rate || (Number(qty) > 0 ? Math.round(Number(p.amount) / Number(qty)) : 0);
+      const totalCp = Number(p.amount) || 0;
 
       entries.push({
         id: p.id || `pur-${p.purchase_no}`,
@@ -489,28 +665,33 @@ export default function LedgerPage() {
         type: "BILL",
         refNo: p.purchase_no,
         partyName: p.vendor_name || "Unknown Supplier",
+        designNo: dNo,
+        quantity: qty,
+        rate: rate,
+        totalCp: totalCp,
         description: p.items_description || p.category || (isGujarati ? "કાપડ / મટિરિયલ ખરીદી બિલ" : "Fabric / Material Inward Bill"),
         modeOrTerms: p.payment_terms || p.paid_via || (isGujarati ? "શાખ મુદત" : "Credit Terms"),
-        debit: Number(p.amount) || 0,
-        credit: 0,
+        debit: 0,
+        credit: totalCp, // Inward Material = Credit to Supplier
         status: p.payment_status,
         dueDate: p.due_date,
         isOverdue,
+        isCustomer: false,
         notes: p.notes
       });
     });
 
-    // 2. Payment Vouchers (Credit - Cr)
+    // 4. Payment Vouchers (Receipts In from Customers & Payments Out to Suppliers)
     vouchers.forEach((v) => {
       const kasar = Number(v.kasar_amount || 0);
       const paid = Number(v.amount || 0);
-      const totalCredit = paid + kasar;
-      const payerTag = v.payer_person ? ` [Payer: ${v.payer_person}]` : "";
-      const kasarTag = kasar > 0 ? ` (+ ₹${kasar} Kasar)` : "";
+      const total = paid + kasar;
+      const payerTag = v.payer_person ? ` [${v.payer_person}]` : "";
+      const isReceipt = v.type === "Receipt In";
 
-      const voucherDesc = v.type === "Receipt In"
-        ? (v.notes ? `${v.notes}${payerTag}${kasarTag}` : `Payment Received${payerTag}${kasarTag}`)
-        : (v.notes ? `${v.notes}${kasarTag}` : (v.ref_no ? `Ref: ${v.ref_no}${kasarTag}` : `Payment Out Voucher${kasarTag}`));
+      const voucherDesc = isReceipt
+        ? (v.notes ? `${v.notes}${payerTag}` : `Payment Received${payerTag}`)
+        : (v.notes ? `${v.notes}${payerTag}` : (v.ref_no ? `Ref: ${v.ref_no}` : `Payment Out Voucher`));
 
       entries.push({
         id: v.id || `vou-${v.voucher_no}`,
@@ -519,15 +700,19 @@ export default function LedgerPage() {
         type: "PAYMENT",
         refNo: v.voucher_no,
         partyName: v.party_name || "Unknown Party",
-        payerPerson: v.payer_person,
-        designNo: v.design_no || v.linked_challan,
-        paidAmount: paid,
+        payerPerson: v.payer_person || v.mode || (isReceipt ? "Receipt" : "Payment"),
+        designNo: v.designNo || "—",
+        quantity: "—",
+        rate: "—",
+        totalCp: 0,
+        paidAmount: total,
         kasarAmount: kasar,
         description: voucherDesc,
         modeOrTerms: v.mode || "RTGS / NEFT",
-        debit: 0,
-        credit: totalCredit,
+        debit: isReceipt ? 0 : total,  // Payment to Supplier = Debit
+        credit: isReceipt ? total : 0, // Payment from Customer = Credit
         status: "Paid",
+        isCustomer: isReceipt,
         notes: v.notes
       });
     });
@@ -541,58 +726,81 @@ export default function LedgerPage() {
       const partyKey = entry.partyName.toLowerCase().trim();
       const initialOpening = getPartyOpeningBal(entry.partyName);
       const prevBal = partyBalances[partyKey] !== undefined ? partyBalances[partyKey] : initialOpening;
-      const newBal = prevBal + entry.debit - entry.credit;
+
+      const isCust = entry.isCustomer || Boolean(partyTypeMap[entry.partyName]?.includes("Customer"));
+      let newBal = 0;
+      let bType: "Dr" | "Cr" = "Dr";
+
+      if (isCust) {
+        // Customer: Sales (+) Debit, Receipts (-) Credit
+        newBal = prevBal + entry.debit - entry.credit;
+        bType = newBal >= 0 ? "Dr" : "Cr";
+      } else {
+        // Supplier: Purchases (+) Credit, Payments (-) Debit
+        newBal = prevBal + entry.credit - entry.debit;
+        bType = newBal >= 0 ? "Cr" : "Dr";
+      }
+
       partyBalances[partyKey] = newBal;
       return {
         ...entry,
         openingBalance: prevBal,
-        runningBalance: newBal
+        runningBalance: Math.abs(newBal),
+        balanceType: bType
       };
     });
 
     // Reverse to show latest first on top
     return entriesWithBalance.reverse();
-  }, [purchases, vouchers, vendors, customOpeningBalances]);
+  }, [purchases, salesChallans, salesInvoices, vouchers, vendors, customOpeningBalances, partyTypeMap, isGujarati]);
 
   const selectedPartyOpeningBal = partyFilter !== "All" ? getPartyOpeningBal(partyFilter) : 0;
 
   // Overall Top 4 KPI Stats
   const stats = useMemo(() => {
-    let totalBills = 0;
-    let totalPaid = 0;
-    let overdueAmt = 0;
-    let totalOpening = 0;
+    let totalReceivable = 0; // Customer Dr balances
+    let totalPayable = 0;    // Supplier Cr balances
+    let totalSales = 0;
+    let totalPurchases = 0;
 
-    if (partyFilter !== "All") {
-      totalOpening = selectedPartyOpeningBal;
-    } else {
-      allPartyNames.forEach((name) => {
-        totalOpening += getPartyOpeningBal(name);
-      });
-    }
+    // Calculate per party balances
+    const partyMap: Record<string, { dr: number; cr: number; isCust: boolean }> = {};
 
-    const currentEntries = partyFilter === "All"
-      ? rawLedgerEntries
-      : rawLedgerEntries.filter((e) => e.partyName.toLowerCase().trim() === partyFilter.toLowerCase().trim());
+    rawLedgerEntries.forEach((entry) => {
+      const pKey = entry.partyName.toLowerCase().trim();
+      if (!partyMap[pKey]) {
+        const isCust = entry.isCustomer || Boolean(partyTypeMap[entry.partyName]?.includes("Customer"));
+        partyMap[pKey] = { dr: 0, cr: 0, isCust };
+      }
+      partyMap[pKey].dr += entry.debit;
+      partyMap[pKey].cr += entry.credit;
 
-    currentEntries.forEach((entry) => {
-      totalBills += entry.debit;
-      totalPaid += entry.credit;
-      if (entry.type === "BILL" && entry.isOverdue && (entry.status === "Pending" || entry.status === "Unpaid")) {
-        overdueAmt += entry.debit;
+      if (entry.isCustomer || entry.type === "SALES_CHALLAN" || entry.type === "SALES_INVOICE") {
+        totalSales += entry.debit;
+      } else if (entry.type === "BILL") {
+        totalPurchases += entry.credit;
       }
     });
 
-    const netOutstanding = totalOpening + totalBills - totalPaid;
+    Object.entries(partyMap).forEach(([pKey, val]) => {
+      const op = customOpeningBalances[pKey] || 0;
+      if (val.isCust) {
+        const net = op + val.dr - val.cr;
+        if (net > 0) totalReceivable += net;
+      } else {
+        const net = op + val.cr - val.dr;
+        if (net > 0) totalPayable += net;
+      }
+    });
 
     return {
-      totalOpening,
-      totalBills,
-      totalPaid,
-      netOutstanding,
-      overdueAmt
+      totalReceivable,
+      totalPayable,
+      totalSales,
+      totalPurchases,
+      count: rawLedgerEntries.length
     };
-  }, [rawLedgerEntries, partyFilter, selectedPartyOpeningBal, allPartyNames, customOpeningBalances]);
+  }, [rawLedgerEntries, customOpeningBalances, partyTypeMap]);
 
   // Date Range Epoch Computation
   const dateRangeEpoch = useMemo(() => {
@@ -621,20 +829,144 @@ export default function LedgerPage() {
     return null;
   }, [dateFilter, customFromDate, customToDate]);
 
-  // Filtered Ledger Entries based on Search Query, Party Dropdown, Type, and Date Range
+  // Party Summaries for Directory View (Excel Grid)
+  const partySummaries = useMemo<PartySummaryItem[]>(() => {
+    const map: Record<string, {
+      entries: LedgerEntry[];
+      isCust: boolean;
+      accountType: string;
+    }> = {};
+
+    allPartyNames.forEach((name) => {
+      const pKey = name.toLowerCase().trim();
+      const isCust = Boolean(partyTypeMap[name]?.includes("Customer"));
+      map[pKey] = {
+        entries: [],
+        isCust,
+        accountType: partyTypeMap[name] || (isCust ? "Customer / Client" : "Supplier / Vendor")
+      };
+    });
+
+    rawLedgerEntries.forEach((entry) => {
+      const pKey = entry.partyName.toLowerCase().trim();
+      if (!map[pKey]) {
+        const isCust = entry.isCustomer || Boolean(partyTypeMap[entry.partyName]?.includes("Customer"));
+        map[pKey] = {
+          entries: [],
+          isCust,
+          accountType: partyTypeMap[entry.partyName] || (isCust ? "Customer / Client" : "Supplier / Vendor")
+        };
+      }
+      map[pKey].entries.push(entry);
+      if (entry.isCustomer) {
+        map[pKey].isCust = true;
+      }
+    });
+
+    const list: PartySummaryItem[] = [];
+
+    Object.entries(map).forEach(([pKey, data]) => {
+      const origName = allPartyNames.find((n) => n.toLowerCase().trim() === pKey) || data.entries[0]?.partyName || pKey;
+      const opBal = getPartyOpeningBal(origName);
+      const isCust = data.isCust;
+
+      let totalBilled = 0;
+      let totalPaid = 0;
+      let totalDebit = 0;
+      let totalCredit = 0;
+
+      data.entries.forEach((e) => {
+        totalDebit += (e.debit || 0);
+        totalCredit += (e.credit || 0);
+        if (isCust) {
+          totalBilled += (e.debit || 0);
+          totalPaid += (e.credit || 0);
+        } else {
+          totalBilled += (e.credit || 0);
+          totalPaid += (e.debit || 0);
+        }
+      });
+
+      const net = isCust ? (opBal + totalBilled - totalPaid) : (opBal + totalBilled - totalPaid);
+      const balanceType: "Dr" | "Cr" = isCust ? (net >= 0 ? "Dr" : "Cr") : (net >= 0 ? "Cr" : "Dr");
+      let status: "Due" | "Settled" | "Advance" = "Settled";
+
+      if (net === 0) {
+        status = "Settled";
+      } else if (net > 0) {
+        status = "Due";
+      } else {
+        status = "Advance";
+      }
+
+      list.push({
+        partyName: origName,
+        category: isCust ? "Customer" : "Supplier",
+        accountType: data.accountType,
+        openingBalance: opBal,
+        totalBilled,
+        totalPaid,
+        totalDebit,
+        totalCredit,
+        closingBalance: Math.abs(net),
+        balanceType,
+        status,
+        transactionCount: data.entries.length,
+        lastDate: data.entries[0]?.date
+      });
+    });
+
+    // Default sort: highest closing balance first
+    list.sort((a, b) => b.closingBalance - a.closingBalance);
+    return list;
+  }, [allPartyNames, rawLedgerEntries, partyTypeMap, customOpeningBalances]);
+
+  const filteredPartySummaries = useMemo(() => {
+    return partySummaries.filter((p) => {
+      if (partyCategoryFilter === "CUSTOMERS" && p.category !== "Customer") return false;
+      if (partyCategoryFilter === "SUPPLIERS" && p.category !== "Supplier") return false;
+      if (dueFilter === "DUE_ONLY" && (p.closingBalance <= 0 || p.status !== "Due")) return false;
+      if (dueFilter === "SETTLED_ONLY" && p.status !== "Settled") return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesName = p.partyName.toLowerCase().includes(q);
+        const matchesType = p.accountType.toLowerCase().includes(q);
+        if (!matchesName && !matchesType) return false;
+      }
+      return true;
+    });
+  }, [partySummaries, partyCategoryFilter, searchQuery, dueFilter]);
+
+  const totalMarketDue = useMemo(() => {
+    return partySummaries
+      .filter((p) => p.category === "Customer" && p.balanceType === "Dr")
+      .reduce((acc, p) => acc + p.closingBalance, 0);
+  }, [partySummaries]);
+
+  const totalPayableDue = useMemo(() => {
+    return partySummaries
+      .filter((p) => p.category === "Supplier" && p.balanceType === "Cr")
+      .reduce((acc, p) => acc + p.closingBalance, 0);
+  }, [partySummaries]);
+
+  // Filtered Ledger Entries based on Search Query, Party Dropdown, Type, Category, and Date Range
   const filteredEntries = useMemo(() => {
-    return rawLedgerEntries.filter((item) => {
-      // 1. Party Filter Dropdown
-      if (partyFilter !== "All") {
+    const list = rawLedgerEntries.filter((item) => {
+      // 1. Party Category Filter (Customers vs Suppliers vs All)
+      if (partyFilter === "All") {
+        if (partyCategoryFilter === "CUSTOMERS" && !item.isCustomer) return false;
+        if (partyCategoryFilter === "SUPPLIERS" && item.isCustomer) return false;
+      } else {
         if (item.partyName.toLowerCase().trim() !== partyFilter.toLowerCase().trim()) {
           return false;
         }
       }
 
       // 2. Type Filter
-      if (txnTypeFilter === "BILL" && item.type !== "BILL") return false;
+      const isBillType = item.type === "BILL" || item.type === "SALES_CHALLAN" || item.type === "SALES_INVOICE";
+      if (txnTypeFilter === "BILL" && !isBillType) return false;
       if (txnTypeFilter === "PAYMENT" && item.type !== "PAYMENT") return false;
-      if (txnTypeFilter === "OVERDUE" && (!item.isOverdue || item.type !== "BILL")) return false;
+      if (txnTypeFilter === "OVERDUE" && (!item.isOverdue || !isBillType)) return false;
 
       // 3. Search Query (Matches Party Name, Bill/Voucher No, Description, Terms, or Date)
       if (searchQuery.trim() && searchQuery.trim().toLowerCase() !== partyFilter.toLowerCase().trim()) {
@@ -658,42 +990,104 @@ export default function LedgerPage() {
 
       return true;
     });
-  }, [rawLedgerEntries, partyFilter, txnTypeFilter, searchQuery, dateRangeEpoch]);
+
+    if (partyFilter !== "All" && partySortOrder === "CHRONOLOGICAL") {
+      // rawLedgerEntries is in reverse-chronological order, so reversing gives standard chronological statement order
+      return [...list].reverse();
+    }
+
+    return list;
+  }, [rawLedgerEntries, partyFilter, partyCategoryFilter, txnTypeFilter, searchQuery, dateRangeEpoch, partySortOrder]);
+
+  // Selected Party KPI Stats (When inside a specific party's statement)
+  const selectedPartyStats = useMemo(() => {
+    if (partyFilter === "All") return null;
+    const isCust = currentPartyAccountType === "Customer / Client" || rawLedgerEntries.find(e => e.partyName.toLowerCase() === partyFilter.toLowerCase())?.isCustomer;
+    const partyDr = filteredEntries.reduce((s, e) => s + (e.debit || 0), 0);
+    const partyCr = filteredEntries.reduce((s, e) => s + (e.credit || 0), 0);
+    const op = selectedPartyOpeningBal || 0;
+    const net = isCust ? (op + partyDr - partyCr) : (op + partyCr - partyDr);
+    return {
+      isCust,
+      op,
+      billedOrPurchases: isCust ? partyDr : partyCr,
+      paidOrReceived: isCust ? partyCr : partyDr,
+      net,
+      statusText: net === 0 ? "Settled" : isCust ? (net > 0 ? "Receivable" : "Advance") : (net > 0 ? "To Pay" : "Advance")
+    };
+  }, [partyFilter, currentPartyAccountType, rawLedgerEntries, filteredEntries, selectedPartyOpeningBal]);
 
   // Export to Excel / CSV
   const handleExportCSV = () => {
+    if (partyFilter === "All") {
+      if (!filteredPartySummaries.length) return;
+      const headers = [
+        "Sr",
+        "Party / Account Name",
+        "Category",
+        "Account Type",
+        "Opening Balance (Rs)",
+        "Total Billed / Purchases (Rs)",
+        "Total Paid / Received (Rs)",
+        "Closing Balance (Rs)",
+        "Balance Type (Dr/Cr)",
+        "Status"
+      ];
+      const rows = filteredPartySummaries.map((p, idx) => [
+        idx + 1,
+        `"${p.partyName.replace(/"/g, '""')}"`,
+        p.category,
+        `"${p.accountType.replace(/"/g, '""')}"`,
+        p.openingBalance,
+        p.totalBilled,
+        p.totalPaid,
+        p.closingBalance,
+        p.balanceType,
+        p.status
+      ]);
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Party_Accounts_Summary_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
     if (!filteredEntries.length) return;
     const headers = [
       "Date",
-      "Ref / Bill No",
-      "Party / Mill Name",
-      "Particulars / Description",
-      "Terms / Payment Mode",
-      "Opening Balance (Rs)",
+      "Bill No",
+      "Party Name",
+      "Qty",
+      "Rate (Rs)",
+      "Total Capital (Rs)",
+      "Opening Bal (Rs)",
       "Debit Dr (Rs)",
       "Credit Cr (Rs)",
-      "Net Closing Balance (Rs)",
-      "Status"
+      "Net Balance (Rs)"
     ];
 
     const rows = filteredEntries.map((e) => [
       e.date,
-      e.refNo,
+      formatShortRefNo(e.refNo),
       `"${e.partyName.replace(/"/g, '""')}"`,
-      `"${e.description.replace(/"/g, '""')}"`,
-      `"${(e.modeOrTerms || "").replace(/"/g, '""')}"`,
+      e.quantity && e.quantity !== "—" ? e.quantity : "",
+      e.rate && e.rate !== "—" ? e.rate : "",
+      (e.totalCp && e.totalCp > 0) ? e.totalCp : (e.debit || e.credit || 0),
       e.openingBalance ?? 0,
-      e.debit,
-      e.credit,
-      e.runningBalance ?? 0,
-      e.status || "Cleared"
+      e.debit || 0,
+      e.credit || 0,
+      e.runningBalance ?? 0
     ]);
 
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    const filenameParty = partyFilter !== "All" ? partyFilter.replace(/\s+/g, "_") : searchQuery ? searchQuery.replace(/\s+/g, "_") : "All_Parties";
+    const filenameParty = partyFilter.replace(/\s+/g, "_");
     link.setAttribute("download", `Ledger_${filenameParty}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
@@ -702,27 +1096,38 @@ export default function LedgerPage() {
 
   // WhatsApp Share for single entry
   const handleShareWhatsApp = (entry: LedgerEntry) => {
+    const isSale = entry.type === "SALES_INVOICE" || entry.type === "SALES_CHALLAN";
     const isBill = entry.type === "BILL";
-    const amt = isBill ? entry.debit : entry.credit;
+    const amt = entry.debit > 0 ? entry.debit : entry.credit;
     const firmName = getStoredCompanyId() === "comp-002"
       ? (isGujarati ? "ઓમ સાઈ એન્ટરપ્રાઈઝ" : "Om Sai Enterprise")
       : (isGujarati ? "શિવ ક્રિએશન" : "Shiv Creation");
+
+    const typeLabel = entry.type === "SALES_INVOICE"
+      ? (isGujarati ? "વેચાણ પાકું બિલ (Tax Invoice)" : "Sales Tax Invoice")
+      : entry.type === "SALES_CHALLAN"
+      ? (isGujarati ? "ડિલિવરી ચલણ (Sales Challan)" : "Sales Delivery Challan")
+      : isBill
+      ? (isGujarati ? "ખરીદી બિલ (Inward Purchase)" : "Inward Purchase Bill")
+      : entry.isCustomer
+      ? (isGujarati ? "ગ્રાહક જમા રસીદ (Receipt In)" : "Payment Receipt In")
+      : (isGujarati ? "સપ્લાયર પેમેન્ટ ચૂકવણી (Payment Out)" : "Payment Voucher Out");
 
     const lines = isGujarati ? [
       `*🏛️ ${firmName} - ખાતાવહી નોંધ*`,
       `-----------------------------------------`,
       `📅 તારીખ: ${entry.date}`,
-      `🏢 પાર્ટી / મિલ: *${entry.partyName}*`,
-      `📄 સંદર્ભ / નં: *${formatShortRefNo(entry.refNo)}* (${isBill ? "ખરીદી બિલ" : "પેમેન્ટ વાઉચર"})`,
+      `🏢 પાર્ટી / ગ્રાહક: *${entry.partyName}*`,
+      `📄 સંદર્ભ / નં: *${formatShortRefNo(entry.refNo)}* (${typeLabel})`,
       entry.payerPerson ? `👤 આપનાર ભાઈ: *${entry.payerPerson}*` : "",
       entry.designNo ? `🎨 ડિઝાઇન નં (DN): *${entry.designNo}*` : "",
       `📦 વિગત: ${entry.description}`,
-      isBill
-        ? `🔴 ઉધાર રકમ (Dr): *₹${amt.toLocaleString("en-IN")}*`
+      entry.debit > 0
+        ? `🔴 ઉધાર રકમ (Dr): *₹${entry.debit.toLocaleString("en-IN")}*`
         : Boolean(entry.kasarAmount && entry.kasarAmount > 0)
-        ? `💰 ચૂકવેલ રકમ: *₹${(entry.paidAmount || 0).toLocaleString("en-IN")}*\n🏷️ કસર / ડિસ્કાઉન્ટ: *₹${(entry.kasarAmount || 0).toLocaleString("en-IN")}*\n🟢 કુલ જમા રકમ (Cr): *₹${amt.toLocaleString("en-IN")}*`
-        : `🟢 ચૂકવેલ રકમ (Cr): *₹${amt.toLocaleString("en-IN")}*`,
-      entry.runningBalance !== undefined ? `⚖️ ખાતાની રનિંગ બાકી: *₹${Math.abs(entry.runningBalance).toLocaleString("en-IN")} ${entry.runningBalance > 0 ? "Dr (બાકી)" : "Cr (જમા)"}*` : "",
+        ? `💰 ચૂકવેલ રકમ: *₹${(entry.paidAmount || 0).toLocaleString("en-IN")}*\n🏷️ કસર / ડિસ્કાઉન્ટ: *₹${(entry.kasarAmount || 0).toLocaleString("en-IN")}*\n🟢 કુલ જમા રકમ (Cr): *₹${entry.credit.toLocaleString("en-IN")}*`
+        : `🟢 જમા રકમ (Cr): *₹${entry.credit.toLocaleString("en-IN")}*`,
+      entry.runningBalance !== undefined ? `⚖️ ખાતાની રનિંગ બાકી: *₹${Math.abs(entry.runningBalance).toLocaleString("en-IN")} ${entry.balanceType || (entry.runningBalance > 0 ? "Dr" : "Cr")}*` : "",
       entry.dueDate ? `⏳ મુદત તારીખ: ${entry.dueDate}` : "",
       ``,
       `_વિગતવાર હિસાબ માટે સંપર્ક કરો: ${firmName}, સુરત._`
@@ -730,17 +1135,17 @@ export default function LedgerPage() {
       `*🏛️ ${firmName} - Ledger Record*`,
       `-----------------------------------------`,
       `📅 Date: ${entry.date}`,
-      `🏢 Party / Mill: *${entry.partyName}*`,
-      `📄 Ref / No: *${formatShortRefNo(entry.refNo)}* (${isBill ? "Inward Bill" : "Payment Voucher"})`,
+      `🏢 Party / Customer: *${entry.partyName}*`,
+      `📄 Ref / No: *${formatShortRefNo(entry.refNo)}* (${typeLabel})`,
       entry.payerPerson ? `👤 Payer: *${entry.payerPerson}*` : "",
       entry.designNo ? `🎨 Design No (DN): *${entry.designNo}*` : "",
       `📦 Description: ${entry.description}`,
-      isBill
-        ? `🔴 Debit Amount (Dr): *₹${amt.toLocaleString("en-IN")}*`
+      entry.debit > 0
+        ? `🔴 Debit Amount (Dr): *₹${entry.debit.toLocaleString("en-IN")}*`
         : Boolean(entry.kasarAmount && entry.kasarAmount > 0)
-        ? `💰 Paid Amount: *₹${(entry.paidAmount || 0).toLocaleString("en-IN")}*\n🏷️ Kasar / Discount: *₹${(entry.kasarAmount || 0).toLocaleString("en-IN")}*\n🟢 Total Credit (Cr): *₹${amt.toLocaleString("en-IN")}*`
-        : `🟢 Credit Amount (Cr): *₹${amt.toLocaleString("en-IN")}*`,
-      entry.runningBalance !== undefined ? `⚖️ Net Running Balance: *₹${Math.abs(entry.runningBalance).toLocaleString("en-IN")} ${entry.runningBalance > 0 ? "Dr (Payable)" : "Cr (Settled)"}*` : "",
+        ? `💰 Paid Amount: *₹${(entry.paidAmount || 0).toLocaleString("en-IN")}*\n🏷️ Kasar / Discount: *₹${(entry.kasarAmount || 0).toLocaleString("en-IN")}*\n🟢 Total Credit (Cr): *₹${entry.credit.toLocaleString("en-IN")}*`
+        : `🟢 Credit Amount (Cr): *₹${entry.credit.toLocaleString("en-IN")}*`,
+      entry.runningBalance !== undefined ? `⚖️ Net Running Balance: *₹${Math.abs(entry.runningBalance).toLocaleString("en-IN")} ${entry.balanceType || (entry.runningBalance > 0 ? "Dr" : "Cr")}*` : "",
       entry.dueDate ? `⏳ Due Date: ${entry.dueDate}` : "",
       ``,
       `_For questions regarding this record, contact: ${firmName}, Surat._`
@@ -764,34 +1169,38 @@ export default function LedgerPage() {
     const totalDr = filteredEntries.reduce((sum, e) => sum + (e.debit || 0), 0);
     const totalCr = filteredEntries.reduce((sum, e) => sum + (e.credit || 0), 0);
     const opBal = selectedPartyOpeningBal || 0;
-    const netClosing = opBal + totalDr - totalCr;
+    const isCustomerParty = currentPartyAccountType === "Customer / Client";
+    const netClosing = isCustomerParty ? (opBal + totalDr - totalCr) : (opBal + totalCr - totalDr);
+    const closingTag = isCustomerParty
+      ? (netClosing >= 0 ? "(લેવાના બાકી - Dr)" : "(જમા રકમ - Cr)")
+      : (netClosing >= 0 ? "(ચૂકવવાના બાકી - Cr)" : "(એડવાન્સ ચૂકવેલ - Dr)");
 
     const lines = isGujarati ? [
       `*🏛️ ${firmName} - ખાતાવહી હિસાબ સ્ટેટમેન્ટ*`,
       `-----------------------------------------`,
-      `🏢 પાર્ટી: *${targetParty}*`,
+      `🏢 પાર્ટી / ગ્રાહક: *${targetParty}*`,
       `📅 તારીખ: ${new Date().toLocaleDateString("en-IN")}`,
       `-----------------------------------------`,
       `🔹 શરૂઆતની બાકી (Op Bal): *₹${opBal.toLocaleString("en-IN")}*`,
-      `🔴 કુલ ખરીદી / ઉધાર (Dr): *₹${totalDr.toLocaleString("en-IN")}*`,
-      `🟢 કુલ જમા / પેમેન્ટ (Cr): *₹${totalCr.toLocaleString("en-IN")}*`,
+      `🔴 કુલ ઉધાર (Dr): *₹${totalDr.toLocaleString("en-IN")}*`,
+      `🟢 કુલ જમા (Cr): *₹${totalCr.toLocaleString("en-IN")}*`,
       `-----------------------------------------`,
       `⚖️ *આખર બાકી હિસાબ (Net Outstanding):*`,
-      `👉 *₹${Math.abs(netClosing).toLocaleString("en-IN")} ${netClosing > 0 ? "(બાકી ચૂકવવાના - Dr)" : "(જમા રકમ - Cr)"}*`,
+      `👉 *₹${Math.abs(netClosing).toLocaleString("en-IN")} ${closingTag}*`,
       `-----------------------------------------`,
       `_વિગતવાર હિસાબ માટે સંપર્ક કરો: ${firmName}, સુરત._`
     ] : [
       `*🏛️ ${firmName} - Statement of Account*`,
       `-----------------------------------------`,
-      `🏢 Party: *${targetParty}*`,
+      `🏢 Party / Customer: *${targetParty}*`,
       `📅 Date: ${new Date().toLocaleDateString("en-IN")}`,
       `-----------------------------------------`,
       `🔹 Opening Balance: *₹${opBal.toLocaleString("en-IN")}*`,
-      `🔴 Total Inward / Bills (Dr): *₹${totalDr.toLocaleString("en-IN")}*`,
-      `🟢 Total Payments (Cr): *₹${totalCr.toLocaleString("en-IN")}*`,
+      `🔴 Total Debit (Dr): *₹${totalDr.toLocaleString("en-IN")}*`,
+      `🟢 Total Credit (Cr): *₹${totalCr.toLocaleString("en-IN")}*`,
       `-----------------------------------------`,
       `⚖️ *Net Outstanding Balance:*`,
-      `👉 *₹${Math.abs(netClosing).toLocaleString("en-IN")} ${netClosing > 0 ? "(Debit - Payable)" : "(Credit - Settled)"}*`,
+      `👉 *₹${Math.abs(netClosing).toLocaleString("en-IN")} ${isCustomerParty ? (netClosing >= 0 ? "Dr (Receivable)" : "Cr (Advance)") : (netClosing >= 0 ? "Cr (Payable)" : "Dr (Advance)")}*`,
       `-----------------------------------------`,
       `_For detailed statement, contact: ${firmName}, Surat._`
     ];
@@ -801,638 +1210,750 @@ export default function LedgerPage() {
   };
 
   return (
-    <div className="space-y-4 max-w-[1600px] mx-auto select-none pb-12">
+    <div className="space-y-4 max-w-[1600px] mx-auto select-none pb-12 font-sans">
       
       {/* ------------------------------------------------------------- */}
-      {/* 1. TOP 4 SUMMARY KPI CARDS                                     */}
+      {/* 1. TOP 4 SUMMARY KPI CARDS (EXACT SAME SIZE & STYLE AS SALES) */}
       {/* ------------------------------------------------------------- */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* BOX 1: TOTAL INWARD BILLS (DR) */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
-              {isGujarati ? "કુલ ખરીદી બિલ (DR)" : "TOTAL INWARD BILLS (DR)"}
-            </p>
-            <p className="text-xl font-black text-slate-900 mt-0.5">
-              ₹{stats.totalBills.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-            <Receipt className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* BOX 2: TOTAL PAID OUT (CR) */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
-              {isGujarati ? "કુલ ચૂકવેલ પેમેન્ટ (CR)" : "TOTAL PAID OUT (CR)"}
-            </p>
-            <p className="text-xl font-black text-emerald-600 mt-0.5">
-              ₹{stats.totalPaid.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-            <CheckCircle2 className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* BOX 3: NET PAYABLE BALANCE */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider truncate">
-              {isGujarati ? "ચોખ્ખી બાકી શાખ (NET)" : "NET PAYABLE BALANCE"}
-            </p>
-            <p className="text-xl font-black text-rose-600 mt-0.5">
-              ₹{stats.netOutstanding.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
-            <CreditCard className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* BOX 4: OVERDUE MUDAT AMOUNT */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate">
-              {isGujarati ? "મુદત વીતી ગયેલ રકમ" : "OVERDUE MUDAT"}
-            </p>
-            <p className="text-xl font-black text-amber-600 mt-0.5">
-              ₹{stats.overdueAmt.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
-            <AlertTriangle className="w-4 h-4" />
-          </div>
-        </div>
-      </div>
-
-      {/* ------------------------------------------------------------- */}
-      {/* 3. UNIFIED BAR WITH SEARCH BAR & PARTY + STATUS FILTERS       */}
-      {/* ------------------------------------------------------------- */}
-      <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-2.5 relative">
-        
-        {/* LEFT SEARCH INPUT: SEARCH PARTY, MILL, BILL NO, REF NO WITH INTEGRATED PARTY AUTOCOMPLETE */}
-        <div ref={searchContainerRef} className="relative w-full sm:w-80 md:w-96">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder={isGujarati ? "પાર્ટી શોધો, બિલ નં, વાઉચર નં..." : "Search party, mill, bill no, voucher..."}
-            value={searchQuery}
-            onChange={(e) => {
-              const val = e.target.value;
-              setSearchQuery(val);
-              if (val.trim().length > 0) {
-                setIsPartySearchOpen(true);
-                const exactMatch = allPartyNames.find((p) => p.toLowerCase().trim() === val.toLowerCase().trim());
-                if (exactMatch) {
-                  setPartyFilter(exactMatch);
-                }
-              } else {
-                setIsPartySearchOpen(false);
-                setPartyFilter("All");
-              }
-            }}
-            onFocus={() => {
-              if (searchQuery.trim().length > 0 && searchQuery.toLowerCase().trim() !== partyFilter.toLowerCase().trim()) {
-                setIsPartySearchOpen(true);
-              }
-            }}
-            className="w-full h-9 pl-8.5 pr-8 bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-500 transition-all shadow-2xs"
-          />
-          {(searchQuery || partyFilter !== "All") && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setPartyFilter("All");
-                setIsPartySearchOpen(false);
-              }}
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5 rounded-full hover:bg-slate-200/60 transition"
-              title={isGujarati ? "ફિલ્ટર સાફ કરો" : "Clear filter"}
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          {/* AUTOCOMPLETE / PARTY SUGGESTION DROPDOWN: ONLY AFTER TYPING & STARTS BELOW THE BAR */}
-          {isPartySearchOpen && searchQuery.trim().length > 0 && matchingParties.length > 0 && (
-            <div className="absolute z-50 left-0 min-w-full w-full bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 top-full mt-[18px]">
-              <div className="p-1.5 max-h-60 overflow-y-auto no-scrollbar space-y-1 pb-2">
-                {matchingParties.map((pName) => {
-                  const isSelected = partyFilter.toLowerCase().trim() === pName.toLowerCase().trim();
-                  return (
-                    <button
-                      key={pName}
-                      type="button"
-                      onClick={() => {
-                        setPartyFilter(pName);
-                        setSearchQuery(pName);
-                        setIsPartySearchOpen(false);
-                      }}
-                      className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
-                        isSelected
-                          ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
-                          : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Building2 className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-blue-600" : "text-slate-400"}`} />
-                        <span className="truncate font-bold">{pName}</span>
-                        {partyTypeMap[pName] && (
-                          <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${
-                            partyTypeMap[pName] === "Customer / Client"
-                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                              : partyTypeMap[pName] === "Trading Partner"
-                              ? "bg-amber-50 text-amber-800 border-amber-200"
-                              : partyTypeMap[pName] === "Internal Firm"
-                              ? "bg-purple-50 text-purple-800 border-purple-200"
-                              : partyTypeMap[pName] === "Job Work"
-                              ? "bg-indigo-50 text-indigo-800 border-indigo-200"
-                              : "bg-blue-50 text-blue-800 border-blue-200"
-                          }`}>
-                            {partyTypeMap[pName]}
-                          </span>
-                        )}
-                      </div>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
-                    </button>
-                  );
-                })}
+        {selectedPartyStats ? (
+          <>
+            {/* CARD 1: OPENING BALANCE */}
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+              <div className="overflow-hidden">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                  OPENING BALANCE (B/F)
+                </p>
+                <p className="text-xl font-black text-slate-900 mt-0.5 font-mono">
+                  ₹{selectedPartyStats.op.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+                <Clock className="w-4 h-4 stroke-[2.5]" />
               </div>
             </div>
-          )}
-        </div>
 
-        {/* RIGHT CONTROLS: TRANSACTION TYPE + DATE RANGE + EXCEL + PRINT */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
-
-          {/* 2. TRANSACTION TYPE DROPDOWN (REPLACES PILLS - SAME CARD DESIGN) */}
-          <TxnTypeSelectDropdown
-            value={txnTypeFilter}
-            onChange={(val) => setTxnTypeFilter(val)}
-            count={rawLedgerEntries.length}
-            isGujarati={isGujarati}
-          />
-
-          {/* 3. DATE RANGE DROPDOWN (OPTION 1) */}
-          <DateRangeSelectDropdown
-            value={dateFilter}
-            onChange={(val) => setDateFilter(val)}
-            isGujarati={isGujarati}
-          />
-
-          {/* 4. DOWNLOAD EXCEL / CSV BUTTON */}
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="h-9 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
-            title={isGujarati ? "Excel / CSV માં ડાઉનલોડ કરો" : "Download Excel / CSV"}
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>{isGujarati ? "Excel" : "Excel"}</span>
-          </button>
-
-          {/* 5. PRINT / PDF STATEMENT BUTTON (OPTION 1) */}
-          <button
-            type="button"
-            onClick={() => setIsPrintModalOpen(true)}
-            className="h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
-            title={isGujarati ? "ઓફિશિયલ સ્ટેટમેન્ટ પ્રિન્ટ / PDF ડાઉનલોડ" : "Print / PDF Statement"}
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>{isGujarati ? "PDF પ્રિન્ટ" : "Print PDF"}</span>
-          </button>
-
-          {/* 6. WHATSAPP STATEMENT BUTTON */}
-          <button
-            type="button"
-            onClick={handleSharePartyStatementWhatsApp}
-            className="h-9 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
-            title={isGujarati ? "પાર્ટીને WhatsApp પર આખું સ્ટેટમેન્ટ મોકલો" : "Send Party Statement on WhatsApp"}
-          >
-            <MessageCircle className="w-3.5 h-3.5" />
-            <span>{isGujarati ? "WhatsApp હિસાબ" : "WhatsApp"}</span>
-          </button>
-
-        </div>
-      </div>
-
-      {/* CUSTOM DATE RANGE PICKER (IF CUSTOM IS SELECTED) */}
-      {dateFilter === "CUSTOM" && (
-        <div className="bg-white p-2.5 px-4 rounded-xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in duration-100">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="font-bold text-slate-700 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-blue-600" />
-              {isGujarati ? "કસ્ટમ તારીખ ગાળો:" : "Select Date Range:"}
-            </span>
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={customFromDate}
-                onChange={(e) => setCustomFromDate(e.target.value)}
-                className="h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs"
-              />
-              <span className="text-slate-400 font-bold">{isGujarati ? "થી" : "to"}</span>
-              <input
-                type="date"
-                value={customToDate}
-                onChange={(e) => setCustomToDate(e.target.value)}
-                className="h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs"
-              />
+            {/* CARD 2: TOTAL BILLED / PURCHASES */}
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+              <div className="overflow-hidden">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                  {selectedPartyStats.isCust ? "TOTAL BILLED (+)" : "TOTAL PURCHASES (+)"}
+                </p>
+                <p className="text-xl font-black text-slate-900 mt-0.5 font-mono">
+                  ₹{selectedPartyStats.billedOrPurchases.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+                <FileSpreadsheet className="w-4 h-4" />
+              </div>
             </div>
-          </div>
-          {(customFromDate || customToDate) && (
-            <button
-              type="button"
-              onClick={() => {
-                setCustomFromDate("");
-                setCustomToDate("");
-              }}
-              className="text-xs text-rose-600 hover:text-rose-700 font-bold cursor-pointer"
-            >
-              {isGujarati ? "રીસેટ તારીખ" : "Reset Dates"}
-            </button>
-          )}
-        </div>
-      )}
 
-      {/* ------------------------------------------------------------- */}
-      {/* PARTY LIVE SUMMARY & OPENING BALANCE EDITABLE BAR             */}
-      {/* ------------------------------------------------------------- */}
-      {partyFilter !== "All" && (
-        <div className="bg-white p-3 px-4 rounded-2xl border border-blue-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-150">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-              <Building2 className="w-4 h-4 stroke-[2.2]" />
+            {/* CARD 3: TOTAL PAID / RECEIVED */}
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+              <div className="overflow-hidden">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                  {selectedPartyStats.isCust ? "TOTAL RECEIVED (-)" : "TOTAL PAID (-)"}
+                </p>
+                <p className="text-xl font-black text-slate-900 mt-0.5 font-mono">
+                  ₹{selectedPartyStats.paidOrReceived.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                <Receipt className="w-4 h-4" />
+              </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-black text-slate-900">{partyFilter}</span>
-                <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase border ${
-                  currentPartyAccountType === "Customer / Client"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : currentPartyAccountType === "Trading Partner"
-                    ? "bg-amber-50 text-amber-700 border-amber-200"
-                    : currentPartyAccountType === "Internal Firm"
-                    ? "bg-purple-50 text-purple-700 border-purple-200"
-                    : currentPartyAccountType === "Job Work"
-                    ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                    : "bg-blue-50 text-blue-700 border-blue-200"
+
+            {/* CARD 4: NET CLOSING DUE */}
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+              <div className="overflow-hidden">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                    NET CLOSING BALANCE
+                  </p>
+                  <span className={`text-[10px] font-extrabold uppercase px-1.5 py-0.2 rounded ${
+                    selectedPartyStats.net === 0
+                      ? "bg-slate-100 text-slate-600"
+                      : selectedPartyStats.isCust
+                      ? (selectedPartyStats.net > 0 ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700")
+                      : (selectedPartyStats.net > 0 ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700")
+                  }`}>
+                    {selectedPartyStats.statusText}
+                  </span>
+                </div>
+                <p className={`text-xl font-black mt-0.5 font-mono ${
+                  selectedPartyStats.net === 0
+                    ? "text-slate-900"
+                    : selectedPartyStats.isCust
+                    ? (selectedPartyStats.net > 0 ? "text-blue-600" : "text-emerald-600")
+                    : (selectedPartyStats.net > 0 ? "text-rose-600" : "text-emerald-600")
                 }`}>
-                  {currentPartyAccountType || (isGujarati ? "પાર્ટી ખાતાવહી" : "Party Ledger")}
-                </span>
+                  ₹{Math.abs(selectedPartyStats.net).toLocaleString("en-IN")}
+                </p>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                {isGujarati ? "રનિંગ લેજર હિસાબ (Live Statement)" : "Real-time running statement & reconciliation"}
-              </p>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                selectedPartyStats.net === 0
+                  ? "bg-slate-100 text-slate-600"
+                  : selectedPartyStats.isCust
+                  ? (selectedPartyStats.net > 0 ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600")
+                  : (selectedPartyStats.net > 0 ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600")
+              }`}>
+                {selectedPartyStats.net > 0 ? (
+                  selectedPartyStats.isCust ? (
+                    <ArrowDownLeft className="w-4 h-4 stroke-[2.5]" />
+                  ) : (
+                    <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+                  )
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+                )}
+              </div>
             </div>
-          </div>
+          </>
+        ) : (
+          <>
+            {/* CARD 1: TOTAL RECEIVABLE */}
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+              <div className="overflow-hidden">
+                <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider truncate">
+                  TOTAL RECEIVABLE
+                </p>
+                <p className="text-xl font-black text-slate-900 mt-0.5">
+                  ₹{stats.totalReceivable.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                <ArrowDownLeft className="w-4 h-4 stroke-[2.5]" />
+              </div>
+            </div>
 
-          {/* OPENING BALANCE EDITABLE FIELD */}
-          <div className="flex items-center gap-2.5 bg-slate-50 hover:bg-slate-100/70 p-1.5 px-3 rounded-xl border border-slate-200 transition-all">
-            <span className="text-xs font-bold text-slate-600">
-              {isGujarati ? "શરૂઆતની બાકી (Opening Bal):" : "Opening Balance:"}
-            </span>
-            {isEditingOpeningBal ? (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-slate-400">₹</span>
-                <input
-                  type="number"
-                  value={tempOpeningBal}
-                  onChange={(e) => setTempOpeningBal(e.target.value)}
-                  className="w-28 h-7 px-2 bg-white border border-blue-500 rounded-lg text-xs font-mono font-bold focus:outline-none shadow-2xs"
-                  autoFocus
-                  placeholder="0"
-                />
+            {/* CARD 2: TOTAL PAYABLE */}
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+              <div className="overflow-hidden">
+                <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider truncate">
+                  TOTAL PAYABLE
+                </p>
+                <p className="text-xl font-black text-rose-600 mt-0.5">
+                  ₹{stats.totalPayable.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+                <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+              </div>
+            </div>
+
+            {/* CARD 3: TOTAL BILLED (SALES) */}
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+              <div className="overflow-hidden">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                  TOTAL BILLED (SALES)
+                </p>
+                <p className="text-xl font-black text-slate-900 mt-0.5">
+                  ₹{stats.totalSales.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+                <FileSpreadsheet className="w-4 h-4" />
+              </div>
+            </div>
+
+            {/* CARD 4: TOTAL PURCHASES */}
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+              <div className="overflow-hidden">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                  TOTAL PURCHASES
+                </p>
+                <p className="text-xl font-black text-slate-900 mt-0.5">
+                  ₹{stats.totalPurchases.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                <Receipt className="w-4 h-4" />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 2. VIEW A: PARTY DIRECTORY (WHEN NO PARTY IS SELECTED)        */}
+      {/* ------------------------------------------------------------- */}
+      {partyFilter === "All" && (
+        <div className="space-y-4">
+          {/* ACTION & FILTER BAR FOR DIRECTORY */}
+          <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+            {/* Search Input on the left */}
+            <div className="relative flex-1 max-w-md w-full">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search party, mill, bill no, voucher..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-9 pl-9 pr-8 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+              />
+              {searchQuery && (
                 <button
                   type="button"
-                  onClick={() => {
-                    handleSaveOpeningBalance(partyFilter, Number(tempOpeningBal) || 0);
-                  }}
-                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-2xs"
-                >
-                  {isGujarati ? "સાચવો" : "Save"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsEditingOpeningBal(false)}
-                  className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-black text-slate-900 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-2xs">
-                  ₹{selectedPartyOpeningBal.toLocaleString("en-IN")}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTempOpeningBal(String(selectedPartyOpeningBal || ""));
-                    setIsEditingOpeningBal(true);
-                  }}
-                  className="px-2 py-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg border border-blue-200 transition cursor-pointer flex items-center gap-1"
-                  title={isGujarati ? "શરૂઆતની બાકી બદલો" : "Edit Opening Balance"}
+              )}
+            </div>
+
+            {/* Dropdown & Actions on the right */}
+            <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-end">
+              {/* Category Dropdown */}
+              <div className="relative w-40 sm:w-44">
+                <select
+                  value={partyCategoryFilter}
+                  onChange={(e) => setPartyCategoryFilter(e.target.value as any)}
+                  className="w-full h-9 pl-3 pr-8 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:border-slate-300 focus:outline-none appearance-none shadow-2xs cursor-pointer"
                 >
-                  <span>{isGujarati ? "બાકી બદલો" : "Edit"}</span>
-                </button>
+                  <option value="ALL">All Parties ({partySummaries.length})</option>
+                  <option value="CUSTOMERS">Customers ({partySummaries.filter(p => p.category === "Customer").length})</option>
+                  <option value="SUPPLIERS">Suppliers ({partySummaries.filter(p => p.category === "Supplier").length})</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
-            )}
+
+              {/* Excel (Emerald Green) */}
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Excel</span>
+              </button>
+
+              {/* Print PDF (Blue) */}
+              <button
+                type="button"
+                onClick={() => setIsPrintModalOpen(true)}
+                className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print PDF</span>
+              </button>
+
+              {/* WhatsApp (Deep Green) */}
+              <button
+                type="button"
+                onClick={handleSharePartyStatementWhatsApp}
+                style={{ backgroundColor: "#0e7a53" }}
+                className="h-9 px-3.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+              >
+                <MessageCircle className="w-3.5 h-3.5 text-white" />
+                <span>WhatsApp</span>
+              </button>
+            </div>
+          </div>
+
+          {/* QUICK DUE STATUS PILL BUTTONS */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setDueFilter("ALL")}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                dueFilter === "ALL"
+                  ? "bg-blue-600 text-white shadow-2xs"
+                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              બધા ખાતા ({partySummaries.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setDueFilter("DUE_ONLY")}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
+                dueFilter === "DUE_ONLY"
+                  ? "bg-amber-600 text-white shadow-2xs"
+                  : "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>ઉઘરાણી / બાકી ({partySummaries.filter((p) => p.status === "Due").length})</span>
+              <span className="font-mono font-extrabold ml-1">₹{totalMarketDue.toLocaleString("en-IN")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDueFilter("SETTLED_ONLY")}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
+                dueFilter === "SETTLED_ONLY"
+                  ? "bg-emerald-600 text-white shadow-2xs"
+                  : "bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100"
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>ચુકતે / ક્લીયર ({partySummaries.filter((p) => p.status === "Settled").length})</span>
+            </button>
+          </div>
+
+          {/* PARTY ACCOUNTS DIRECTORY TABLE (DIRECT START - NO BANNER) */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-100/80 text-slate-600 font-extrabold border-b border-slate-200 uppercase text-[10px] tracking-wider whitespace-nowrap">
+                  <tr>
+                    <th className="py-2.5 px-3 border-r border-slate-200/80 text-center w-12">#</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200/80">
+                      {getFieldLabel(companySettings, "party_name", "Party / Account Name")}
+                    </th>
+                    <th className="py-2.5 px-3 border-r border-slate-200/80">Account Type</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">Opening Bal (₹)</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">Debit (Dr)</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">Credit (Cr)</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">Net Balance</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200/80 text-center">Status</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200/80 text-center">Last Transaction</th>
+                    <th className="py-2.5 px-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-800 bg-white">
+                  {filteredPartySummaries.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="py-10 text-center text-slate-400 font-medium">
+                        No party accounts found matching &quot;{searchQuery}&quot;.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPartySummaries.map((p, idx) => (
+                      <tr
+                        key={p.partyName}
+                        onClick={() => {
+                          setPartyFilter(p.partyName);
+                          setSearchQuery("");
+                        }}
+                        className="hover:bg-blue-50/50 cursor-pointer transition-colors group"
+                      >
+                        <td className="py-2.5 px-3 text-center font-mono text-slate-400 border-r border-slate-200/70 align-middle">
+                          {idx + 1}
+                        </td>
+                        <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-slate-200/70 align-middle whitespace-nowrap group-hover:text-blue-600 transition-colors">
+                          {p.partyName}
+                        </td>
+                        {/* Account Type without box, simple clean text like purchase page */}
+                        <td className="py-2.5 px-3 border-r border-slate-200/70 align-middle whitespace-nowrap text-slate-600 font-medium">
+                          {p.accountType}
+                        </td>
+                        {/* OPENING BAL */}
+                        <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800 border-r border-slate-200/70 align-middle whitespace-nowrap">
+                          ₹{p.openingBalance.toLocaleString("en-IN")}
+                        </td>
+                        {/* DEBIT (DR) (Clean neutral style like purchase page) */}
+                        <td className="py-2.5 px-3 text-right font-mono align-middle border-r border-slate-200/70 whitespace-nowrap">
+                          {p.totalDebit > 0 ? (
+                            <span className="font-bold text-slate-900">₹{p.totalDebit.toLocaleString("en-IN")}</span>
+                          ) : (
+                            <span className="text-slate-400 font-normal">—</span>
+                          )}
+                        </td>
+                        {/* CREDIT (CR) (Clean neutral style like purchase page) */}
+                        <td className="py-2.5 px-3 text-right font-mono align-middle border-r border-slate-200/70 whitespace-nowrap">
+                          {p.totalCredit > 0 ? (
+                            <span className="font-bold text-slate-900">₹{p.totalCredit.toLocaleString("en-IN")}</span>
+                          ) : (
+                            <span className="text-slate-400 font-normal">—</span>
+                          )}
+                        </td>
+                        {/* NET BALANCE (Clean neutral style like purchase page) */}
+                        <td className="py-2.5 px-3 text-right font-mono align-middle border-r border-slate-200/70 whitespace-nowrap">
+                          {p.closingBalance === 0 ? (
+                            <span className="font-bold text-slate-500">₹0</span>
+                          ) : (
+                            <div className="flex items-center justify-end gap-1">
+                              <span className="font-bold text-slate-900">
+                                ₹{p.closingBalance.toLocaleString("en-IN")}
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-500">
+                                {p.balanceType.toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        {/* STATUS (Clean subtle badge like purchase page) */}
+                        <td className="py-2.5 px-3 text-center align-middle border-r border-slate-200/70 whitespace-nowrap">
+                          {p.status === "Settled" ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                              Settled
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md">
+                              Due
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono align-middle text-slate-600 border-r border-slate-200/70 whitespace-nowrap">
+                          {p.lastDate ? (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <span className="font-semibold text-slate-800">{p.lastDate}</span>
+                              <span className="text-[10px] text-slate-400 font-sans">({p.transactionCount} txns)</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 font-normal">—</span>
+                          )}
+                        </td>
+                        {/* ACTION (WHATSAPP REMINDER) */}
+                        <td className="py-2.5 px-3 text-center align-middle whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={(e) => handleSendDueReminderWhatsApp(e, p)}
+                            className="h-7 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-200 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer mx-auto shadow-2xs"
+                            title={isGujarati ? "WhatsApp પર પેમેન્ટ રિમાઇન્ડર મોકલો" : "Send WhatsApp Reminder"}
+                          >
+                            <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Reminder</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* 4. CLEAN UNIFIED LEDGER TABLE & MOBILE CARD VIEW               */}
+      {/* 3. VIEW B: SELECTED PARTY DETAILED LEDGER (IMAGE 2 BLUEPRINT)  */}
       {/* ------------------------------------------------------------- */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-
-        {/* MOBILE CARD VIEW (< md) - Clean Text Without Boxes */}
-        <div className="block md:hidden p-3 space-y-3 bg-slate-50/50">
-          {filteredEntries.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 font-medium text-xs">
-              {isGujarati ? "કોઈ વ્યવહાર મળેલ નથી" : "No ledger records found matching your filters."}
+      {partyFilter !== "All" && (
+        <div className="space-y-4">
+          {/* EXACT SEARCH & ACTION BAR (REPLICATED FROM 2ND IMAGE) */}
+          <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+            {/* Search Input on the Left */}
+            <div className="relative flex-1 max-w-md w-full">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search party, mill, bill no, voucher..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-9 pl-9 pr-8 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+              />
+              {(searchQuery || partyFilter !== "All") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setPartyFilter("All");
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="Clear / All Parties"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
-          ) : (
-            filteredEntries.map((e) => {
-              const isBill = e.type === "BILL";
-              return (
-                <div key={e.id} className="bg-white rounded-xl border border-slate-200/90 p-3.5 space-y-2 shadow-2xs">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-mono font-medium text-slate-500">{e.date}</span>
-                    <span className="font-mono text-xs font-semibold text-slate-600">
-                      {isGujarati ? "શરૂઆત:" : "Op:"} ₹{(e.openingBalance || 0).toLocaleString("en-IN")}
-                    </span>
-                  </div>
 
-                  <div className="flex items-start justify-between gap-2 pt-1 border-t border-slate-100">
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-sm">{e.partyName}</h4>
-                      <p className="text-[11px] text-slate-600 font-medium mt-0.5">{e.description}</p>
-                      {(e.payerPerson || e.designNo || Boolean(e.kasarAmount && e.kasarAmount > 0)) && (
-                        <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 flex-wrap">
-                          {e.payerPerson && <span className="text-blue-700">{isGujarati ? "આપનાર:" : "Payer:"} <b>{e.payerPerson}</b></span>}
-                          {e.designNo && <span className="font-mono text-indigo-700">DN: {e.designNo}</span>}
-                          {Boolean(e.kasarAmount && e.kasarAmount > 0) && (
-                            <span className="text-amber-700 font-semibold">({isGujarati ? "કસર:" : "Kasar:"} ₹{e.kasarAmount})</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className={`font-mono font-bold text-sm ${isBill ? "text-rose-700" : "text-emerald-700"}`}>
-                        {isBill ? "+" : "-"}₹{(isBill ? e.debit : e.credit).toLocaleString("en-IN")}
-                      </div>
-                      {e.runningBalance !== undefined && (
-                        <span className="text-[10px] font-mono font-semibold text-slate-500 block mt-0.5">
-                          {isGujarati ? "બાકી:" : "Bal:"} ₹{Math.abs(e.runningBalance).toLocaleString("en-IN")} {e.runningBalance > 0 ? "Dr" : "Cr"}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+            {/* Dropdowns & Action Buttons on the Right */}
+            <div className="flex items-center gap-2 flex-wrap justify-end w-full md:w-auto">
+              {/* All Transactions Dropdown */}
+              <TxnTypeSelectDropdown
+                value={txnTypeFilter}
+                onChange={setTxnTypeFilter}
+                count={filteredEntries.length}
+                isGujarati={isGujarati}
+              />
 
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${isBill ? "bg-blue-600" : "bg-emerald-600"}`}></span>
-                      <span className="font-mono text-xs font-bold text-slate-800">
-                        {formatShortRefNo(e.refNo)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleShareWhatsApp(e)}
-                        className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
-                        title="Share on WhatsApp"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPreviewEntry(e)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
-                        title="View Slip"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </div>
+              {/* Date Range Dropdown (📅 All Time) */}
+              <DateRangeSelectDropdown
+                value={dateFilter}
+                onChange={(val) => setDateFilter(val)}
+                isGujarati={isGujarati}
+              />
+
+              {/* Excel Button (Emerald Green) */}
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Excel</span>
+              </button>
+
+              {/* Print PDF Button (Blue) */}
+              <button
+                type="button"
+                onClick={() => setIsPrintModalOpen(true)}
+                className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print PDF</span>
+              </button>
+
+              {/* WhatsApp Button (Deep Green - Guaranteed Color) */}
+              <button
+                type="button"
+                onClick={handleSharePartyStatementWhatsApp}
+                style={{ backgroundColor: "#0e7a53" }}
+                className="h-9 px-3.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
+              >
+                <MessageCircle className="w-3.5 h-3.5 text-white" />
+                <span>WhatsApp</span>
+              </button>
+            </div>
+          </div>
+
+            {/* CUSTOM DATE RANGE PICKER (IF CUSTOM IS SELECTED) */}
+            {dateFilter === "CUSTOM" && (
+              <div className="bg-slate-50 p-2.5 px-4 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in duration-100">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                    Select Date Range:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={customFromDate}
+                      onChange={(e) => setCustomFromDate(e.target.value)}
+                      className="h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs"
+                    />
+                    <span className="text-slate-400 font-bold">to</span>
+                    <input
+                      type="date"
+                      value={customToDate}
+                      onChange={(e) => setCustomToDate(e.target.value)}
+                      className="h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs"
+                    />
                   </div>
                 </div>
-              );
-            })
-          )}
-        </div>
+                {(customFromDate || customToDate) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomFromDate("");
+                      setCustomToDate("");
+                    }}
+                    className="text-xs text-rose-600 hover:text-rose-700 font-bold cursor-pointer"
+                  >
+                    Reset Dates
+                  </button>
+                )}
+              </div>
+            )}
 
-        {/* DESKTOP TABLE VIEW (>= md) - CLEAN PLAIN TEXT, EXCEL-STYLE BOX GRID */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
-              <tr>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">{isGujarati ? "તારીખ" : "DATE"}</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">{isGujarati ? "બિલ / વાઉચર નં" : "REF / NO"}</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">{isGujarati ? "સપ્લાયર / પાર્ટી" : "PARTY / MILL"}</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">{isGujarati ? "વિગત / મટિરિયલ" : "PARTICULARS"}</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">{isGujarati ? "મુદત / મોડ" : "TERMS / MODE"}</th>
-                <th className="py-2.5 px-4 text-right text-slate-600 font-bold border-r border-slate-200/80">{isGujarati ? "શરૂઆતની બાકી (₹)" : "OPENING BAL (₹)"}</th>
-                <th className="py-2.5 px-4 text-right text-rose-700 border-r border-slate-200/80">{isGujarati ? "ઉધાર (DR)" : "DEBIT (DR)"}</th>
-                <th className="py-2.5 px-4 text-right text-emerald-700 border-r border-slate-200/80">{isGujarati ? "જમા (CR)" : "CREDIT (CR)"}</th>
-                <th className="py-2.5 px-4 text-right font-black text-slate-900 border-r border-slate-200/80">{isGujarati ? "આખર બાકી (₹)" : "NET BALANCE"}</th>
-                <th className="py-2.5 px-4 text-center w-20">{isGujarati ? "એક્શન" : "ACTION"}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
-              {partyFilter !== "All" && (
-                <tr className="bg-slate-50/60 font-medium">
-                  <td className="py-3 px-4 font-mono font-medium text-slate-400 text-xs border-r border-slate-200/70">—</td>
-                  <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
-                    <span className="font-mono text-xs font-bold text-slate-700">
-                      OP-BAL
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 whitespace-nowrap font-bold text-slate-900 text-xs border-r border-slate-200/70">
-                    {partyFilter}
-                  </td>
-                  <td className="py-3 px-4 text-xs font-bold text-slate-700 border-r border-slate-200/70">
-                    {isGujarati ? "શરૂઆતની બાકી (Opening Balance B/F)" : "Opening Balance Brought Forward"}
-                  </td>
-                  <td className="py-3 px-4 font-mono text-xs text-slate-400 whitespace-nowrap border-r border-slate-200/70">—</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-slate-700 text-xs whitespace-nowrap border-r border-slate-200/70">
-                    ₹{selectedPartyOpeningBal.toLocaleString("en-IN")}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono text-slate-400 whitespace-nowrap border-r border-slate-200/70">—</td>
-                  <td className="py-3 px-4 text-right font-mono text-slate-400 whitespace-nowrap border-r border-slate-200/70">—</td>
-                  <td className="py-3 px-4 text-right font-mono font-black text-slate-900 text-xs whitespace-nowrap border-r border-slate-200/70">
-                    ₹{selectedPartyOpeningBal.toLocaleString("en-IN")}
-                  </td>
-                  <td className="py-3 px-4 text-center text-slate-400">—</td>
-                </tr>
-              )}
-
-              {filteredEntries.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="py-12 text-center text-slate-400 font-medium">
-                    {isGujarati ? "કોઈ વ્યવહાર મળેલ નથી. ફિલ્ટર અથવા સર્ચ બદલો." : "No ledger records found matching your filters."}
-                  </td>
-                </tr>
-              ) : (
-                filteredEntries.map((e) => {
-                  const isBill = e.type === "BILL";
-                  return (
-                    <tr key={e.id} className="hover:bg-blue-50/40 transition-colors">
-                      {/* 1. Date */}
-                      <td className="py-3 px-4 font-mono font-medium text-slate-600 whitespace-nowrap align-middle border-r border-slate-200/70">
-                        {e.date}
+          {/* DETAILED TEXTILE LEDGER TABLE (USER REQUESTED COLUMN LAYOUT) */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-100/80 text-slate-600 font-extrabold border-b border-slate-200 uppercase text-[10px] tracking-wider whitespace-nowrap">
+                    <tr>
+                      <th className="py-2.5 px-3 border-r border-slate-200/80">Date</th>
+                      <th className="py-2.5 px-3 border-r border-slate-200/80">
+                        {getFieldLabel(companySettings, "bill_no", "Bill No")}
+                      </th>
+                      <th className="py-2.5 px-3 border-r border-slate-200/80">
+                        {getFieldLabel(companySettings, "party_name", "Party Name")}
+                      </th>
+                      <th className="py-2.5 px-3 border-r border-slate-200/80 text-center">
+                        {getFieldLabel(companySettings, "quantity", "Qty")}
+                      </th>
+                      <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">
+                        {getFieldLabel(companySettings, "rate", "Rate (₹)")}
+                      </th>
+                      <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">
+                        {getFieldLabel(companySettings, "total_amount", "Total Capital (₹)")}
+                      </th>
+                      <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">Opening Bal (₹)</th>
+                      <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">Debit (Dr)</th>
+                      <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">Credit (Cr)</th>
+                      <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">Net Balance (₹)</th>
+                      <th className="py-2.5 px-2 text-center w-16">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-800 bg-white">
+                    {/* ROW 1: OPENING BALANCE BROUGHT FORWARD */}
+                    <tr className="bg-slate-50/80 font-semibold border-b border-slate-200">
+                      <td className="py-2.5 px-3 font-mono text-slate-500 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                        01-04-2026
                       </td>
-
-                      {/* 2. Ref / Bill No (Clean Plain Text With Dot - NO BOX) */}
-                      <td className="py-3 px-4 whitespace-nowrap align-middle border-r border-slate-200/70">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isBill ? "bg-blue-600" : "bg-emerald-600"}`}></span>
-                          <span className="font-mono text-xs font-bold text-slate-800">
-                            {formatShortRefNo(e.refNo)}
-                          </span>
-                        </div>
+                      <td className="py-2.5 px-3 font-mono font-bold text-slate-800 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                        OP-BAL
                       </td>
-
-                      {/* 3. Party / Mill Name */}
-                      <td className="py-3 px-4 whitespace-nowrap align-middle border-r border-slate-200/70">
-                        <button
-                          type="button"
-                          onClick={() => setPartyFilter(e.partyName)}
-                          className="font-bold text-slate-900 text-xs hover:text-blue-600 hover:underline transition-colors cursor-pointer text-left"
-                          title={isGujarati ? "આ પાર્ટીના તમામ વ્યવહારો ફિલ્ટર કરો" : "Filter by this party"}
-                        >
-                          {e.partyName}
-                        </button>
+                      <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                        {partyFilter}
                       </td>
-
-                      {/* 4. Particulars With Clean Subtitles (Payer, Design No, Kasar) */}
-                      <td className="py-3 px-4 align-middle border-r border-slate-200/70">
-                        <div className="text-xs font-bold text-slate-900 leading-snug">
-                          {e.description}
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-[11px] flex-wrap">
-                          {e.payerPerson && (
-                            <span className="text-blue-700 font-medium">
-                              {isGujarati ? "આપનાર:" : "Payer:"} <strong>{e.payerPerson}</strong>
-                            </span>
-                          )}
-                          {e.designNo && (
-                            <span className="font-mono text-indigo-700 font-medium">
-                              DN: {e.designNo}
-                            </span>
-                          )}
-                          {Boolean(e.kasarAmount && e.kasarAmount > 0) && (
-                            <span className="text-amber-700 font-semibold">
-                              ({isGujarati ? "પેમેન્ટ:" : "Payment:"} ₹{(e.paidAmount || 0).toLocaleString("en-IN")} + {isGujarati ? "કસર:" : "Kasar:"} ₹{e.kasarAmount?.toLocaleString("en-IN")})
-                            </span>
-                          )}
-                        </div>
+                      <td className="py-2.5 px-3 text-center font-mono text-slate-400 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                        —
                       </td>
-
-                      {/* 5. Terms / Mode (Clean Plain Text - NO BOX) */}
-                      <td className="py-3 px-4 whitespace-nowrap align-middle border-r border-slate-200/70">
-                        {isBill ? (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-slate-800 font-semibold text-xs">{e.modeOrTerms || (isGujarati ? "શાખ" : "Credit")}</span>
-                            {e.dueDate && (
-                              <div className="flex items-center gap-1 text-[11px] text-slate-400">
-                                <Calendar className="w-3 h-3 text-blue-500" />
-                                <span>{e.dueDate}</span>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs font-semibold text-slate-700">
-                            {e.modeOrTerms || "Bank"}
-                          </span>
-                        )}
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-400 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                        —
                       </td>
-
-                      {/* 6. Opening Balance for this transaction */}
-                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-medium text-slate-700 text-xs border-r border-slate-200/70">
-                        ₹{(e.openingBalance || 0).toLocaleString("en-IN")}
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                        ₹{selectedPartyOpeningBal.toLocaleString("en-IN")}
                       </td>
-
-                      {/* 7. Debit (Dr) */}
-                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-bold text-rose-700 text-xs border-r border-slate-200/70">
-                        {e.debit > 0 ? `₹${e.debit.toLocaleString("en-IN")}` : "—"}
+                      <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                        ₹{selectedPartyOpeningBal.toLocaleString("en-IN")}
                       </td>
-
-                      {/* 8. Credit (Cr) */}
-                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap font-mono font-bold text-emerald-700 text-xs border-r border-slate-200/70">
-                        {e.credit > 0 ? `₹${e.credit.toLocaleString("en-IN")}` : "—"}
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-400 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                        —
                       </td>
-
-                      {/* 9. Running Balance (Clean Text With Dr/Cr - NO BOX) */}
-                      <td className="py-3 px-4 text-right align-middle whitespace-nowrap border-r border-slate-200/70">
-                        {e.runningBalance !== undefined ? (
-                          <span className={`font-mono text-xs font-bold ${
-                            e.runningBalance > 0
-                              ? "text-rose-700"
-                              : e.runningBalance < 0
-                              ? "text-blue-700"
-                              : "text-emerald-700"
-                          }`}>
-                            ₹{Math.abs(e.runningBalance).toLocaleString("en-IN")}{" "}
-                            <span className="text-[10px] font-bold uppercase">{e.runningBalance > 0 ? "Dr" : (e.runningBalance < 0 ? "Cr" : "")}</span>
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-400 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                        —
                       </td>
-
-                      {/* 10. Action */}
-                      <td className="py-3 px-4 text-center align-middle whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleShareWhatsApp(e)}
-                            className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
-                            title="Share on WhatsApp"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPreviewEntry(e)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
-                            title="View Slip"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                      <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                        ₹{selectedPartyOpeningBal.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-2.5 px-2 text-center whitespace-nowrap align-middle">
+                        <span className="text-slate-400 font-normal">—</span>
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
 
-        {/* TABLE FOOTER */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-600 font-medium gap-2">
-          <div>
-            {isGujarati ? "કુલ વ્યવહારો:" : "Total Records:"} <b className="text-slate-900 font-bold">{filteredEntries.length}</b>
-            {partyFilter !== "All" && (
-              <span className="ml-2 font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                {isGujarati ? "પાર્ટી:" : "Party:"} {partyFilter}
-              </span>
-            )}
-          </div>
-          <div>
-            {isGujarati ? "નેટ બાકી શાખ:" : "Net Balance:"}{" "}
-            <b className={stats.netOutstanding > 0 ? "text-rose-600 font-black font-mono text-sm" : "text-emerald-600 font-black font-mono text-sm"}>
-              ₹{stats.netOutstanding.toLocaleString("en-IN")}
-            </b>
+                  {filteredEntries.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="py-10 text-center text-slate-400 font-medium">
+                        No transactions recorded for this period.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredEntries.map((e) => {
+                      return (
+                        <tr key={e.id} className="hover:bg-blue-50/50 transition-colors">
+                          {/* 1. DATE */}
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-700 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                            {e.date}
+                          </td>
+
+                          {/* 2. BILL NO */}
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                            {formatShortRefNo(e.refNo)}
+                          </td>
+
+                          {/* 3. PARTY NAME */}
+                          <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                            {e.partyName}
+                          </td>
+
+                          {/* 4. QTY */}
+                          <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-800 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                            {e.quantity && e.quantity !== "—" ? (
+                              e.quantity
+                            ) : (
+                              <span className="text-slate-400 font-normal">—</span>
+                            )}
+                          </td>
+
+                          {/* 5. RATE (₹) */}
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                            {e.rate && e.rate !== "—" ? (
+                              `₹${e.rate}`
+                            ) : (
+                              <span className="text-slate-400 font-normal">—</span>
+                            )}
+                          </td>
+
+                          {/* 6. TOTAL CAPITAL (₹) */}
+                          <td className="py-2.5 px-3 text-right font-mono font-extrabold text-slate-900 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                            {(e.totalCp && e.totalCp > 0) || e.debit > 0 || e.credit > 0 ? (
+                              <span>₹{(e.totalCp || (e.isCustomer ? (e.debit || e.credit) : (e.credit || e.debit))).toLocaleString("en-IN")}</span>
+                            ) : (
+                              <span className="text-slate-400 font-normal">—</span>
+                            )}
+                          </td>
+
+                          {/* 7. OPENING BAL (₹) */}
+                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-700 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                            ₹{(e.openingBalance ?? 0).toLocaleString("en-IN")}
+                          </td>
+
+                          {/* 8. DEBIT (DR) */}
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                            {e.debit > 0 ? (
+                              `₹${e.debit.toLocaleString("en-IN")}`
+                            ) : (
+                              <span className="text-slate-400 font-normal">—</span>
+                            )}
+                          </td>
+
+                          {/* 9. CREDIT (CR) */}
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                            {e.credit > 0 ? (
+                              `₹${e.credit.toLocaleString("en-IN")}`
+                            ) : (
+                              <span className="text-slate-400 font-normal">—</span>
+                            )}
+                          </td>
+
+                          {/* 10. NET BALANCE (₹) */}
+                          <td className="py-2.5 px-3 text-right font-mono font-extrabold text-slate-900 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                            {e.runningBalance !== undefined ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <span>₹{Math.abs(e.runningBalance).toLocaleString("en-IN")}</span>
+                                <span className="text-[10px] text-slate-500 font-semibold">{e.balanceType || ""}</span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 font-normal">—</span>
+                            )}
+                          </td>
+
+                          {/* 11. ACTION */}
+                          <td className="py-2.5 px-2 text-center whitespace-nowrap align-middle">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleShareWhatsApp(e)}
+                                className="p-1 text-slate-400 hover:text-emerald-600 transition cursor-pointer"
+                                title="Share WhatsApp"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPreviewEntry(e)}
+                                className="p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                                title="View Slip"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+                {/* TABLE SUMMARY TOTALS ROW */}
+                <tfoot className="bg-slate-100/80 font-bold text-slate-900 border-t-2 border-slate-200 text-xs">
+                  <tr>
+                    <td colSpan={5} className="py-2.5 px-3 uppercase text-slate-600 text-[11px] font-extrabold border-r border-slate-200/80">
+                      Total Statement Summary
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono border-r border-slate-200/80">
+                      ₹{filteredEntries.reduce((s, e) => s + ((e.totalCp && e.totalCp > 0) ? e.totalCp : (e.type !== "PAYMENT" ? (e.isCustomer ? e.debit : e.credit) : 0)), 0).toLocaleString("en-IN")}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-400 border-r border-slate-200/80">—</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-900 border-r border-slate-200/80">
+                      ₹{filteredEntries.reduce((s, e) => s + (e.debit || 0), 0).toLocaleString("en-IN")}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-900 border-r border-slate-200/80">
+                      ₹{filteredEntries.reduce((s, e) => s + (e.credit || 0), 0).toLocaleString("en-IN")}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900 border-r border-slate-200/80">
+                      Net: ₹{(() => {
+                        const isCust = currentPartyAccountType === "Customer / Client" || rawLedgerEntries.find(e => e.partyName.toLowerCase() === partyFilter.toLowerCase())?.isCustomer;
+                        const partyDr = filteredEntries.reduce((s, e) => s + (e.debit || 0), 0);
+                        const partyCr = filteredEntries.reduce((s, e) => s + (e.credit || 0), 0);
+                        const op = selectedPartyOpeningBal || 0;
+                        const net = isCust ? (op + partyDr - partyCr) : (op + partyCr - partyDr);
+                        return Math.abs(net).toLocaleString("en-IN");
+                      })()}
+                    </td>
+                    <td className="py-2.5 px-2 text-center text-slate-400">—</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
         </div>
+      )}
 
-      </div>
+
 
       {/* ------------------------------------------------------------- */}
       {/* 5. SLIP PREVIEW MODAL                                         */}
@@ -1552,7 +2073,7 @@ export default function LedgerPage() {
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* 6. OFFICIAL PRINT / PDF STATEMENT MODAL (OPTION 1)           */}
+      {/* 6. OFFICIAL PRINT / PDF STATEMENT MODAL                        */}
       {/* ------------------------------------------------------------- */}
       {isPrintModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
@@ -1566,10 +2087,10 @@ export default function LedgerPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900">
-                    {isGujarati ? "ઓફિશિયલ ખાતાવહી પ્રિન્ટ પ્રિવ્યૂ" : "Official Statement Print Preview"}
+                    Official Statement Print Preview
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    {isGujarati ? "A4 સાઇઝમાં પ્રિન્ટ અથવા PDF સેવ કરો" : "Print on A4 or save as PDF"}
+                    Print on A4 or save as PDF
                   </p>
                 </div>
               </div>
@@ -1581,7 +2102,7 @@ export default function LedgerPage() {
                   className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>{isGujarati ? "પ્રિન્ટ કરો (Print)" : "Print Now"}</span>
+                  <span>Print Now</span>
                 </button>
                 <button
                   type="button"
@@ -1599,10 +2120,18 @@ export default function LedgerPage() {
               {/* BRAND HEADER */}
               <div className="flex items-start justify-between border-b-2 border-slate-900 pb-4">
                 <div>
-                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">OM SAI TEXTILES</h1>
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mt-0.5">Wholesale Fabric Manufacturers & Traders</p>
-                  <p className="text-xs text-slate-600 font-medium mt-1">Plot No. 104-106, Surat Textile Market, Ring Road, Surat - 395002</p>
-                  <p className="text-xs text-slate-600 font-medium">GSTIN: <b className="text-slate-900">24AAAFO1234F1Z8</b> | Phone: +91 98251 00000</p>
+                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                    {companySettings.brand_name || companySettings.company_name}
+                  </h1>
+                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mt-0.5">
+                    {companySettings.tagline || "Wholesale Fabric Manufacturers & Embroidery Job Work"}
+                  </p>
+                  <p className="text-xs text-slate-600 font-medium mt-1">
+                    {companySettings.address}, {companySettings.city_state} - {companySettings.pincode}
+                  </p>
+                  <p className="text-xs text-slate-600 font-medium">
+                    GSTIN: <b className="text-slate-900">{companySettings.gstin || "—"}</b> | Phone: +91 {companySettings.phone}
+                  </p>
                 </div>
                 <div className="text-right">
                   <span className="inline-block px-3 py-1 bg-slate-900 text-white text-xs font-black uppercase rounded-lg tracking-wider">
@@ -1620,17 +2149,31 @@ export default function LedgerPage() {
               {/* PARTY & PERIOD DETAILS */}
               <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
                 <div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">{isGujarati ? "Statement For (પાર્ટી હિસાબ)" : "Statement For Party"}</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">Statement For Party</span>
                   <h4 className="text-sm font-extrabold text-slate-900 mt-0.5">
                     {partyFilter === "All" ? "All Parties / Combined Statement" : partyFilter}
                   </h4>
                   <p className="text-slate-500 mt-0.5">Surat, Gujarat, India</p>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">{isGujarati ? "Net Closing Balance (આખર બાકી)" : "Net Closing Balance"}</span>
-                  <div className="text-base font-black font-mono text-rose-600 mt-0.5">
-                    ₹{stats.netOutstanding.toLocaleString("en-IN")} {stats.netOutstanding > 0 ? (isGujarati ? "Dr (બાકી)" : "Dr (Payable)") : "Cr"}
-                  </div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">Net Closing Balance</span>
+                  {(() => {
+                    const stmtDr = filteredEntries.reduce((s, e) => s + (e.debit || 0), 0);
+                    const stmtCr = filteredEntries.reduce((s, e) => s + (e.credit || 0), 0);
+                    const isCust = currentPartyAccountType === "Customer / Client";
+                    const net = (partyFilter !== "All" ? selectedPartyOpeningBal : 0) + (isCust ? (stmtDr - stmtCr) : (stmtCr - stmtDr));
+                    const badgeText = net === 0
+                      ? "Settled (Nil)"
+                      : isCust
+                      ? (net > 0 ? "To Receive (Dr)" : "Advance Recd (Cr)")
+                      : (net > 0 ? "To Pay (Cr)" : "Advance Paid (Dr)");
+                    return (
+                      <div className="text-base font-black font-mono text-slate-900 mt-0.5">
+                        ₹{Math.abs(net).toLocaleString("en-IN")}{" "}
+                        <span className="text-xs font-bold text-blue-700">({badgeText})</span>
+                      </div>
+                    );
+                  })()}
                   <span className="text-[11px] text-slate-500 font-bold">Total Transactions: {filteredEntries.length}</span>
                 </div>
               </div>
@@ -1643,8 +2186,8 @@ export default function LedgerPage() {
                       <th className="py-2.5 px-3">Date</th>
                       <th className="py-2.5 px-3">Ref / No</th>
                       <th className="py-2.5 px-3">Particulars</th>
-                      <th className="py-2.5 px-3 text-right">Debit Dr (₹)</th>
-                      <th className="py-2.5 px-3 text-right">Credit Cr (₹)</th>
+                      <th className="py-2.5 px-3 text-right">Debit Dr (+) (₹)</th>
+                      <th className="py-2.5 px-3 text-right">Credit Cr (-) (₹)</th>
                       <th className="py-2.5 px-3 text-right">Balance (₹)</th>
                     </tr>
                   </thead>
@@ -1667,26 +2210,34 @@ export default function LedgerPage() {
                         <td className="py-2 px-3 font-mono">{e.date}</td>
                         <td className="py-2 px-3 font-mono font-bold text-slate-800">{formatShortRefNo(e.refNo)}</td>
                         <td className="py-2 px-3">{e.description}</td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-rose-700">
-                          {e.debit > 0 ? `₹${e.debit.toLocaleString("en-IN")}` : "—"}
+                        <td className="py-2 px-3 text-right font-mono font-bold text-blue-700">
+                          {e.debit > 0 ? `+₹${e.debit.toLocaleString("en-IN")}` : "—"}
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-emerald-700">
-                          {e.credit > 0 ? `₹${e.credit.toLocaleString("en-IN")}` : "—"}
+                          {e.credit > 0 ? `-₹${e.credit.toLocaleString("en-IN")}` : "—"}
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-black text-slate-900">
-                          ₹{(e.runningBalance ?? 0).toLocaleString("en-IN")}
+                          ₹{(e.runningBalance ?? 0).toLocaleString("en-IN")} {e.balanceType || ""}
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-300">
-                    <tr>
-                      <td colSpan={3} className="py-2.5 px-3 uppercase">Total / Net Balance</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-rose-700">₹{stats.totalBills.toLocaleString("en-IN")}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-emerald-700">₹{stats.totalPaid.toLocaleString("en-IN")}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900">₹{stats.netOutstanding.toLocaleString("en-IN")}</td>
-                    </tr>
-                  </tfoot>
+                  {(() => {
+                    const stmtDr = filteredEntries.reduce((s, e) => s + (e.debit || 0), 0);
+                    const stmtCr = filteredEntries.reduce((s, e) => s + (e.credit || 0), 0);
+                    return (
+                      <tfoot className="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-300">
+                        <tr>
+                          <td colSpan={3} className="py-2.5 px-3 uppercase">Total Statement Amounts</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-blue-700">₹{stmtDr.toLocaleString("en-IN")}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-emerald-700">₹{stmtCr.toLocaleString("en-IN")}</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900">
+                            Dr ₹{stmtDr.toLocaleString("en-IN")} / Cr ₹{stmtCr.toLocaleString("en-IN")}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    );
+                  })()}
                 </table>
               </div>
 
@@ -1694,13 +2245,16 @@ export default function LedgerPage() {
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 text-xs">
                 <div>
                   <span className="font-extrabold text-slate-800 block mb-1">Bank Payment Details:</span>
-                  <p className="text-slate-600">Bank: <b className="text-slate-900">ICICI Bank, Ring Road Branch, Surat</b></p>
-                  <p className="text-slate-600">Account: <b className="text-slate-900 font-mono">Om Sai Textiles (002405001234)</b></p>
-                  <p className="text-slate-600">IFSC Code: <b className="text-slate-900 font-mono">ICIC0000024</b></p>
+                  <p className="text-slate-600">Bank: <b className="text-slate-900">{companySettings.bank_name || "State Bank of India"}</b></p>
+                  <p className="text-slate-600">Account: <b className="text-slate-900 font-mono">{companySettings.account_holder || companySettings.company_name} ({companySettings.account_no || "—"})</b></p>
+                  <p className="text-slate-600">IFSC Code: <b className="text-slate-900 font-mono">{companySettings.ifsc || "—"}</b></p>
+                  {companySettings.branch_name && (
+                    <p className="text-slate-600">Branch: <b className="text-slate-900">{companySettings.branch_name}</b></p>
+                  )}
                 </div>
                 <div className="flex flex-col items-end justify-end">
-                  <div className="w-48 border-t border-dashed border-slate-400 pt-1 text-center">
-                    <p className="font-bold text-slate-800">For, Om Sai Textiles</p>
+                  <div className="w-56 border-t border-dashed border-slate-400 pt-1 text-center">
+                    <p className="font-bold text-slate-800">{companySettings.signatory_label || `For, ${companySettings.company_name}`}</p>
                     <p className="text-[10px] text-slate-400 mt-3">Authorized Signatory</p>
                   </div>
                 </div>

@@ -6,8 +6,9 @@ from app.api.v1.employees import router as employees_router
 from app.api.v1.expenses import router as expenses_router
 from app.api.v1.purchases import router as purchases_router
 from app.api.v1.payments import router as payments_router
+from app.api.v1.sales_challans import router as sales_challans_router
+from app.api.v1.sales_invoices import router as sales_invoices_router
 from app.api.v1.categories import router as categories_router
-from app.api.v1.designs import router as designs_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.system import router as system_router
@@ -22,10 +23,13 @@ api_router.include_router(workers_router)
 api_router.include_router(employees_router)
 api_router.include_router(expenses_router)
 api_router.include_router(purchases_router)
+api_router.include_router(sales_challans_router)
+api_router.include_router(sales_invoices_router)
 api_router.include_router(payments_router)
 api_router.include_router(categories_router)
-api_router.include_router(designs_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(auth_router)
 api_router.include_router(system_router)
 api_router.include_router(recycle_bin_router)
+
+

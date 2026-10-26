@@ -6,6 +6,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
+import { ExcelImportModal } from "@/components/common/ExcelImportModal";
 import {
   Building2,
   Plus,
@@ -321,6 +322,7 @@ export default function VendorsPage() {
   const [sortBy, setSortBy] = useState<"name" | "created" | "modified">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -2336,31 +2338,12 @@ export default function VendorsPage() {
                         type="button"
                         onClick={() => {
                           setIsActionMenuOpen(false);
-                          openNewVendorForm();
+                          setIsImportModalOpen(true);
                         }}
-                        className="w-full text-left px-3.5 py-2.5 bg-blue-50 text-blue-950 font-bold rounded-2xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs transition-all cursor-pointer"
+                        className="w-full text-left px-3.5 py-2.5 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer flex items-center justify-between"
                       >
-                        <span>Import CSV File</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsActionMenuOpen(false);
-                          openNewVendorForm();
-                        }}
-                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
-                      >
-                        <span>Import Excel Sheet</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsActionMenuOpen(false);
-                          alert("Sample CSV Template downloaded");
-                        }}
-                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
-                      >
-                        <span>Sample Template</span>
+                        <span>Import Excel / CSV</span>
+                        <Upload className="w-3.5 h-3.5 text-emerald-700" />
                       </button>
                     </>
                   )}
@@ -2465,7 +2448,7 @@ export default function VendorsPage() {
                     onMouseEnter={() => setActiveHoverMenu("import")}
                     onClick={() => {
                       setIsActionMenuOpen(false);
-                      openNewVendorForm();
+                      setIsImportModalOpen(true);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
                       activeHoverMenu === "import"
@@ -2719,22 +2702,29 @@ export default function VendorsPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Link
+                          href={`/ledger?party=${encodeURIComponent(v.display_name || v.company_name)}`}
+                          className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                          title="ખાતાવહી / Ledger જુઓ"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                        </Link>
                         <button
                           type="button"
                           onClick={() => openEditVendorForm(v)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                           title="Edit Details"
                         >
-                          <Edit3 className="w-4 h-4" />
+                          <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteVendor(v.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                           title="Delete Record"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -2991,6 +2981,13 @@ export default function VendorsPage() {
 
             {/* Footer */}
             <div className="px-4 sm:px-6 py-3 sm:py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
+              <Link
+                href={`/ledger?party=${encodeURIComponent(previewVendor.display_name || previewVendor.company_name)}`}
+                className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>ખાતાવહી જુઓ (View Ledger)</span>
+              </Link>
               <button
                 type="button"
                 onClick={() => setIsPreviewOpen(false)}
@@ -3002,6 +2999,14 @@ export default function VendorsPage() {
           </div>
         </div>
       )}
+
+      {/* Excel Import Modal for Parties */}
+      <ExcelImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        entityType="parties"
+        onSuccess={() => loadVendorsFromApi()}
+      />
     </div>
   );
 }

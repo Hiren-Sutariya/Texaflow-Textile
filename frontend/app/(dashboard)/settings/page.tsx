@@ -8,6 +8,7 @@ import {
   KeyRound,
   Check,
   ChevronDown,
+  ChevronRight,
   Eye,
   EyeOff,
   AlertCircle,
@@ -22,11 +23,30 @@ import {
   AlertTriangle,
   ShieldAlert,
   FileSpreadsheet,
-  Download
+  Download,
+  Save,
+  Keyboard,
+  Truck,
+  FileCheck,
+  ShoppingCart,
+  CreditCard,
+  BookOpen,
+  Laptop,
+  RotateCcw,
+  Edit3
 } from "lucide-react";
 import { API_BASE_URL, fetchApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import {
+  ShortcutBinding,
+  isMacUser,
+  getSavedShortcuts,
+  saveShortcuts,
+  resetShortcuts,
+  formatShortcutDisplay
+} from "@/lib/shortcutsStorage";
 import { getStoredCompanyId, getStoredUserName } from "@/lib/tenantStorage";
+import { CompanySettings, CustomFieldLabels } from "@/lib/companySettings";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
 
 const PAYMENT_TERMS_OPTIONS = [
@@ -37,10 +57,10 @@ const PAYMENT_TERMS_OPTIONS = [
 ];
 
 const GST_RATES = [
+  "0% (Exempted)",
   "5% (Textile Embroidery Jobwork)",
   "12% (Apparel & Made-ups)",
-  "18% (Standard Services)",
-  "0% (Exempted)"
+  "18% (Standard Services)"
 ];
 
 const ACCOUNT_TYPES = [
@@ -50,7 +70,31 @@ const ACCOUNT_TYPES = [
   "Savings Account"
 ];
 
-function getDefaultSettings(cid: string, firmName?: string) {
+const BILL_FORMAT_OPTIONS = [
+  {
+    id: "standard",
+    label: "Standard Textile GST Format (A4)",
+    tag: "Active Default",
+    desc: "Complete GST jobwork bill with HSN, Tax breakdown, and Bank UPI QR",
+    badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200"
+  },
+  {
+    id: "modern",
+    label: "Modern Minimalist GST Format (A4)",
+    tag: "Coming Soon",
+    desc: "Compact modern layout with stylish headers and summary card",
+    badgeColor: "bg-blue-50 text-blue-700 border-blue-200"
+  },
+  {
+    id: "compact",
+    label: "Compact Dispatch Slip / Challan (A5)",
+    tag: "Coming Soon",
+    desc: "Half-page compact layout for quick delivery challans",
+    badgeColor: "bg-purple-50 text-purple-700 border-purple-200"
+  }
+];
+
+function getDefaultSettings(cid: string, firmName?: string): CompanySettings {
   if (cid === "comp-001") {
     const fName = firmName || "Shiv Creation";
     return {
@@ -75,20 +119,51 @@ function getDefaultSettings(cid: string, firmName?: string) {
       branch_name: "Ring Road Branch, Surat",
       upi_id: "shivcreation@sbi",
       qr_code_image: "",
+      bill_format: "Standard Textile GST Format (A4)",
+      sales_invoice_title: "TAX INVOICE / JOBWORK BILL",
       invoice_title: "TAX INVOICE / JOBWORK BILL",
       challan_title: "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
-      invoice_prefix: "SC/26-27/",
+      sales_invoice_prefix: "SC/26/",
+      next_sales_invoice_no: "101",
+      invoice_prefix: "INV/26-27/",
       next_invoice_no: "101",
       challan_prefix: "DC/26-27/",
       next_challan_no: "101",
       hsn_sac_code: "998822 (Textile Jobwork)",
-      gst_rate: "5% (Textile Embroidery Jobwork)",
+      gst_rate: "0% (Exempted)",
       payment_terms: "Due on Receipt",
       signatory_label: `For ${fName} (Authorized Signatory)`,
       eway_threshold: "50000",
       print_qr: true,
       terms_conditions:
-        "1. Goods once delivered will not be taken back without inspection.\n2. Payment strictly due as per credit terms.\n3. Subject to Surat Jurisdiction only."
+        "1. Goods once delivered will not be taken back without inspection.\n2. Payment strictly due as per credit terms.\n3. Subject to Surat Jurisdiction only.",
+      custom_labels: {
+        party_name: "Party Name",
+        supplier_name: "Supplier / Mill",
+        item_name: "Particulars",
+        item_unit: "Item",
+        quantity: "Qty",
+        weight: "Weight",
+        cartoon: "Cartoon",
+        rate: "Rate (₹)",
+        total_amount: "Amount (₹)",
+        challan_no: "Challan No",
+        bill_no: "Bill / Invoice No",
+        hsn_code: "HSN Code",
+        design_no: "Particulars",
+        sales_party: "Party Name",
+        purchase_supplier: "Supplier / Mill",
+        sales_item: "Particulars",
+        purchase_item: "Particulars",
+        sales_qty: "Qty",
+        purchase_qty: "Qty",
+        sales_rate: "Rate (₹)",
+        purchase_rate: "Rate (₹)",
+        sales_total: "Amount (₹)",
+        purchase_total: "Amount (₹)",
+        sales_bill_no: "Bill / Invoice No",
+        purchase_bill_no: "Challan No"
+      }
     };
   }
 
@@ -117,20 +192,51 @@ function getDefaultSettings(cid: string, firmName?: string) {
       branch_name: "Ring Road Branch, Surat",
       upi_id: "omsai@sbi",
       qr_code_image: "",
+      bill_format: "Standard Textile GST Format (A4)",
+      sales_invoice_title: "TAX INVOICE / JOBWORK BILL",
       invoice_title: "TAX INVOICE / JOBWORK BILL",
       challan_title: "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
-      invoice_prefix: "OS/26-27/",
+      sales_invoice_prefix: "OS/26-27/",
+      next_sales_invoice_no: "101",
+      invoice_prefix: "INV/26-27/",
       next_invoice_no: "101",
       challan_prefix: "DC/26-27/",
       next_challan_no: "101",
       hsn_sac_code: "998822 (Textile Jobwork)",
-      gst_rate: "5% (Textile Embroidery Jobwork)",
+      gst_rate: "0% (Exempted)",
       payment_terms: "Due on Receipt",
       signatory_label: `For ${fName} (Authorized Signatory)`,
       eway_threshold: "50000",
       print_qr: true,
       terms_conditions:
-        "1. Goods once delivered will not be taken back without inspection.\n2. Payment strictly due as per credit terms.\n3. Subject to Surat Jurisdiction only."
+        "1. Goods once delivered will not be taken back without inspection.\n2. Payment strictly due as per credit terms.\n3. Subject to Surat Jurisdiction only.",
+      custom_labels: {
+        party_name: "Party Name",
+        supplier_name: "Supplier / Mill",
+        item_name: "Particulars",
+        item_unit: "Item",
+        quantity: "Qty",
+        weight: "Weight",
+        cartoon: "Cartoon",
+        rate: "Rate (₹)",
+        total_amount: "Amount (₹)",
+        challan_no: "Challan No",
+        bill_no: "Bill / Invoice No",
+        hsn_code: "HSN Code",
+        design_no: "Particulars",
+        sales_party: "Party Name",
+        purchase_supplier: "Supplier / Mill",
+        sales_item: "Particulars",
+        purchase_item: "Particulars",
+        sales_qty: "Qty",
+        purchase_qty: "Qty",
+        sales_rate: "Rate (₹)",
+        purchase_rate: "Rate (₹)",
+        sales_total: "Amount (₹)",
+        purchase_total: "Amount (₹)",
+        sales_bill_no: "Bill / Invoice No",
+        purchase_bill_no: "Challan No"
+      }
     };
   }
 
@@ -159,20 +265,51 @@ function getDefaultSettings(cid: string, firmName?: string) {
     branch_name: "",
     upi_id: "",
     qr_code_image: "",
+    bill_format: "Standard Textile GST Format (A4)",
+    sales_invoice_title: "TAX INVOICE / JOBWORK BILL",
     invoice_title: "TAX INVOICE / JOBWORK BILL",
     challan_title: "DELIVERY CHALLAN / TAKKA DISPATCH SLIP",
-    invoice_prefix: `${prefix}/26-27/`,
+    sales_invoice_prefix: `${prefix}/26-27/`,
+    next_sales_invoice_no: "101",
+    invoice_prefix: "INV/26-27/",
     next_invoice_no: "101",
     challan_prefix: "DC/26-27/",
     next_challan_no: "101",
     hsn_sac_code: "998822 (Textile Jobwork)",
-    gst_rate: "5% (Textile Embroidery Jobwork)",
+    gst_rate: "0% (Exempted)",
     payment_terms: "Due on Receipt",
     signatory_label: `For ${fName} (Authorized Signatory)`,
     eway_threshold: "50000",
     print_qr: true,
     terms_conditions:
-      "1. Goods once delivered will not be taken back without inspection.\n2. Payment strictly due as per credit terms.\n3. Subject to Surat Jurisdiction only."
+      "1. Goods once delivered will not be taken back without inspection.\n2. Payment strictly due as per credit terms.\n3. Subject to Surat Jurisdiction only.",
+    custom_labels: {
+      party_name: "Party Name",
+      supplier_name: "Supplier / Mill",
+      item_name: "Particulars",
+      item_unit: "Item",
+      quantity: "Qty",
+      weight: "Weight",
+      cartoon: "Cartoon",
+      rate: "Rate (₹)",
+      total_amount: "Amount (₹)",
+      challan_no: "Challan No",
+      bill_no: "Bill / Invoice No",
+      hsn_code: "HSN Code",
+      design_no: "Particulars",
+      sales_party: "Party Name",
+      purchase_supplier: "Supplier / Mill",
+      sales_item: "Particulars",
+      purchase_item: "Particulars",
+      sales_qty: "Qty",
+      purchase_qty: "Qty",
+      sales_rate: "Rate (₹)",
+      purchase_rate: "Rate (₹)",
+      sales_total: "Amount (₹)",
+      purchase_total: "Amount (₹)",
+      sales_bill_no: "Bill / Invoice No",
+      purchase_bill_no: "Challan No"
+    }
   };
 }
 
@@ -190,10 +327,16 @@ export default function SettingsPage() {
   const { user, updateUserSession } = useAuth();
   const [hasMounted, setHasMounted] = useState(false);
 
-  // Active Subtab (Merged Company & Address with Bank & GST into single "Company" tab)
+  // Active Subtab (Company, Invoice, Bill Fields, Shortcuts, Security, Data & Storage)
   const [activeTab, setActiveTab] = useState<
-    "Company" | "Invoice & Bill" | "Login & Password" | "Data & Storage"
+    "Company" | "Invoice & Bill" | "Custom Fields" | "Shortcuts" | "Login & Password" | "Data & Storage"
   >("Company");
+
+  // Keyboard Shortcuts states
+  const [shortcutsList, setShortcutsList] = useState<ShortcutBinding[]>([]);
+  const [isMacDevice, setIsMacDevice] = useState(false);
+  const [recordingShortcutId, setRecordingShortcutId] = useState<string | null>(null);
+  const [shortcutFeedbackMsg, setShortcutFeedbackMsg] = useState<string | null>(null);
 
   // Save states
   const [isSaving, setIsSaving] = useState(false);
@@ -208,14 +351,17 @@ export default function SettingsPage() {
   const [isErasing, setIsErasing] = useState(false);
   const [eraseStatusText, setEraseStatusText] = useState("");
   const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [isExportingJson, setIsExportingJson] = useState(false);
 
   // Custom Dropdowns
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isGstOpen, setIsGstOpen] = useState(false);
   const [isAccTypeOpen, setIsAccTypeOpen] = useState(false);
+  const [isFormatOpen, setIsFormatOpen] = useState(false);
   const termsRef = useRef<HTMLDivElement>(null);
   const gstRef = useRef<HTMLDivElement>(null);
   const accTypeRef = useRef<HTMLDivElement>(null);
+  const formatRef = useRef<HTMLDivElement>(null);
 
   // Form State: Company, Bank & Invoice Details (Initialized per-tenant with zero millisecond leakage!)
   const [formData, setFormData] = useState<SettingsFormData>(() => {
@@ -227,7 +373,20 @@ export default function SettingsPage() {
           const parsed = JSON.parse(savedTenant);
           const isPoisoned = (cid === "comp-001" && parsed?.company_name?.toLowerCase().includes("om sai")) ||
                              (cid === "comp-002" && parsed?.company_name?.toLowerCase().includes("shiv"));
-          if (!isPoisoned) return parsed;
+          if (!isPoisoned) {
+            const defs = getDefaultSettings(cid);
+            return {
+              ...defs,
+              ...parsed,
+              custom_labels: {
+                ...(defs.custom_labels || {}),
+                ...(parsed.custom_labels || {})
+              },
+              sales_invoice_prefix: parsed.sales_invoice_prefix !== undefined ? parsed.sales_invoice_prefix : (parsed.invoice_prefix || defs.sales_invoice_prefix),
+              next_sales_invoice_no: parsed.next_sales_invoice_no !== undefined ? parsed.next_sales_invoice_no : (parsed.next_invoice_no || defs.next_sales_invoice_no),
+              sales_invoice_title: parsed.sales_invoice_title || parsed.invoice_title || defs.sales_invoice_title
+            };
+          }
         }
       } catch {}
       return getDefaultSettings(cid);
@@ -288,10 +447,76 @@ export default function SettingsPage() {
       if (accTypeRef.current && !accTypeRef.current.contains(event.target as Node)) {
         setIsAccTypeOpen(false);
       }
+      if (formatRef.current && !formatRef.current.contains(event.target as Node)) {
+        setIsFormatOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Load shortcuts on mount & listen for storage updates
+  useEffect(() => {
+    setIsMacDevice(isMacUser());
+    setShortcutsList(getSavedShortcuts());
+
+    const handleShortcutsUpdate = () => {
+      setShortcutsList(getSavedShortcuts());
+    };
+
+    window.addEventListener("om_sai_shortcuts_updated", handleShortcutsUpdate);
+    return () => {
+      window.removeEventListener("om_sai_shortcuts_updated", handleShortcutsUpdate);
+    };
+  }, []);
+
+  // Listen for key press when user is recording/customizing a shortcut
+  useEffect(() => {
+    if (!recordingShortcutId) return;
+
+    const handleRecordKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (e.key === "Escape") {
+        setRecordingShortcutId(null);
+        return;
+      }
+
+      if (["Alt", "Control", "Meta", "Shift"].includes(e.key)) {
+        return;
+      }
+
+      const cleanKey = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      const cleanCode = e.code;
+
+      const updated = shortcutsList.map((sc) => {
+        if (sc.id === recordingShortcutId) {
+          return {
+            ...sc,
+            altKey: e.altKey,
+            ctrlKey: e.ctrlKey,
+            metaKey: e.metaKey,
+            shiftKey: e.shiftKey,
+            key: cleanKey,
+            code: cleanCode
+          };
+        }
+        return sc;
+      });
+
+      setShortcutsList(updated);
+      saveShortcuts(updated);
+      setRecordingShortcutId(null);
+      setShortcutFeedbackMsg("Shortcut key updated successfully!");
+      setTimeout(() => setShortcutFeedbackMsg(null), 2500);
+    };
+
+    window.addEventListener("keydown", handleRecordKey, true);
+    return () => {
+      window.removeEventListener("keydown", handleRecordKey, true);
+    };
+  }, [recordingShortcutId, shortcutsList]);
 
   // Load saved settings & credentials on mount strictly isolated per tenant
   useEffect(() => {
@@ -311,7 +536,16 @@ export default function SettingsPage() {
         const isPoisoned = (cid === "comp-001" && parsed?.company_name?.toLowerCase().includes("om sai")) ||
                            (cid === "comp-002" && parsed?.company_name?.toLowerCase().includes("shiv"));
         if (!isPoisoned) {
-          setFormData((prev) => ({ ...prev, ...parsed }));
+          const defs = getDefaultSettings(cid, user?.firmName);
+          setFormData((prev) => ({
+            ...prev,
+            ...parsed,
+            custom_labels: {
+              ...(defs.custom_labels || {}),
+              ...(prev.custom_labels || {}),
+              ...(parsed.custom_labels || {})
+            }
+          }));
         } else {
           setFormData(getDefaultSettings(cid, user?.firmName));
         }
@@ -328,6 +562,11 @@ export default function SettingsPage() {
           const data = await res.json();
           if (data.company_name) {
             setFormData((prev) => {
+              const serverCustomLabels = data.custom_labels || (data.settings_json && data.settings_json.custom_labels);
+              const custom_labels = {
+                ...(prev.custom_labels || {}),
+                ...(serverCustomLabels || {})
+              };
               const updated = {
                 ...prev,
                 company_name: data.company_name || prev.company_name,
@@ -368,6 +607,7 @@ export default function SettingsPage() {
                 eway_threshold: data.eway_threshold !== undefined && data.eway_threshold !== "" ? data.eway_threshold : prev.eway_threshold,
                 print_qr: data.print_qr !== undefined ? data.print_qr : prev.print_qr,
                 terms_conditions: data.terms_conditions !== undefined && data.terms_conditions !== "" ? data.terms_conditions : prev.terms_conditions,
+                custom_labels
               };
               try {
                 localStorage.setItem(`app_settings_${cid}`, JSON.stringify(updated));
@@ -467,12 +707,13 @@ export default function SettingsPage() {
 
   // Auto-generate QR code from UPI ID
   const handleAutoGenerateQr = () => {
-    if (!formData.upi_id.trim()) {
+    const upi = (formData.upi_id || "").trim();
+    if (!upi) {
       alert("Please enter a valid UPI ID first to generate QR code.");
       return;
     }
-    const upiPayload = `upi://pay?pa=${encodeURIComponent(formData.upi_id.trim())}&pn=${encodeURIComponent(
-      formData.company_name.trim()
+    const upiPayload = `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(
+      (formData.company_name || "").trim()
     )}&cu=INR`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiPayload)}`;
     setFormData((prev) => ({ ...prev, qr_code_image: qrUrl }));
@@ -791,77 +1032,80 @@ export default function SettingsPage() {
         XLSX.utils.book_append_sheet(wb, wsVen, "Vendors & Suppliers");
       }
 
-      // 3. JOB ORDERS (Active Module: /orders & /job-works)
-      const ordersData = getArray("app_job_orders");
-      if (ordersData.length > 0) {
-        const formattedOrders = ordersData.map((o, idx) => ({
+      // 3. PURCHASES & RAW MATERIAL (Active Module: /purchases)
+      let purchasesData: any[] = [];
+      try {
+        const live = await fetchApi<any[]>("/purchases");
+        if (Array.isArray(live) && live.length > 0) purchasesData = live;
+      } catch {}
+
+      if (purchasesData.length > 0) {
+        const formattedPurchases = purchasesData.map((p, idx) => ({
           "No.": idx + 1,
-          "Job Order #": o.order_no || o.id || `ORD-${idx + 1}`,
-          "Order Date": o.date || o.order_date || o.created_at || "N/A",
-          "Party / Client Name": o.party_name || o.vendor || "N/A",
-          "Main Merchant": o.main_merchant || "N/A",
-          "Design Description": o.design_name || "N/A",
-          "Design Code": o.design_code || o.design_no || "N/A",
-          "Fabric Quality": o.fabric_quality || "N/A",
-          "Stitches": o.stitches || o.total_stitches || 0,
-          "Order Qty (Pcs)": o.total_quantity || o.quantity || 0,
-          "Rate (₹)": o.rate || o.rate_per_1k || 0,
-          "Assigned Machine": o.assigned_machine || "N/A",
-          "Target Date": o.target_date || "N/A",
-          "Status": o.status || "Pending",
-          "Special Notes": o.notes || ""
+          "Purchase Bill #": p.purchase_no || p.id || `PB-${idx + 1}`,
+          "Bill Date": p.date || "N/A",
+          "Supplier / Vendor": p.vendor_name || "N/A",
+          "Item / Category": p.category || p.items_description || "Material",
+          "Tax Mode": p.tax_mode || "EXEMPT",
+          "GST Rate (%)": p.tax_rate ?? 0,
+          "Total Amount (₹)": p.amount || 0,
+          "Payment Status": p.payment_status || "Pending",
+          "Payment Terms": p.payment_terms || "N/A",
+          "Due Date": p.due_date || "N/A",
+          "Notes": p.notes || ""
         }));
-        const wsOrders = createAutoWidthSheet(formattedOrders);
-        XLSX.utils.book_append_sheet(wb, wsOrders, "Job Orders");
+        const wsPur = createAutoWidthSheet(formattedPurchases);
+        XLSX.utils.book_append_sheet(wb, wsPur, "Purchases & Inward");
       }
 
-      // 4. DESIGN LIBRARY (Active Module: /designs)
-      let designsData: any[] = [];
+      // 4. SALES CHALLANS (Active Module: /sales)
+      let challansData: any[] = [];
       try {
-        const live = await fetchApi<any[]>("/designs");
-        if (Array.isArray(live) && live.length > 0) designsData = live;
+        const live = await fetchApi<any[]>("/sales-challans");
+        if (Array.isArray(live) && live.length > 0) challansData = live;
       } catch {}
-      if (designsData.length === 0) designsData = getArray("app_design_folders");
 
-      if (designsData.length > 0) {
-        const formattedDesigns = designsData.map((d, idx) => ({
+      if (challansData.length > 0) {
+        const formattedChallans = challansData.map((c, idx) => ({
           "No.": idx + 1,
-          "Design # / ID": d.id || d.design_no || `DES-${idx + 1}`,
-          "Design Title": d.name || d.design_name || "N/A",
-          "Category": d.category || "Embroidery",
-          "Total Stitches": d.stitches || d.total_stitches || 0,
-          "Standard Rate (₹)": d.rate || d.average_rate || 0,
-          "Fabric Type": d.fabric || d.fabric_type || "N/A",
-          "Needles / Colors": d.needles || d.colors || "N/A",
-          "Machine Type": d.machine_type || "Multi-Head",
-          "Created Date": d.created_at || d.date || "N/A"
+          "Challan #": c.challan_no || c.id || `CH-${idx + 1}`,
+          "Challan Date": c.date || "N/A",
+          "Party / Customer": c.party_name || "N/A",
+          "Total Quantity": c.total_quantity || 0,
+          "Total Amount (₹)": c.total_amount || 0,
+          "Delivery Status": c.status || "Dispatched",
+          "Billed in Invoice": c.is_billed ? `Yes (${c.invoice_no || "Billed"})` : "No (Unbilled)",
+          "Transport / Delivery By": c.transport || "Self Delivery",
+          "Remarks": c.notes || ""
         }));
-        const wsDesigns = createAutoWidthSheet(formattedDesigns);
-        XLSX.utils.book_append_sheet(wb, wsDesigns, "Design Library");
+        const wsChallans = createAutoWidthSheet(formattedChallans);
+        XLSX.utils.book_append_sheet(wb, wsChallans, "Sales Challans");
       }
 
-      // 5. FACTORY EXPENSES (Active Module: /expenses)
-      let expensesData: any[] = [];
+      // 5. SALES INVOICES (Active Module: /sales-invoices)
+      let invoicesData: any[] = [];
       try {
-        const live = await fetchApi<any[]>("/expenses");
-        if (Array.isArray(live) && live.length > 0) expensesData = live;
+        const live = await fetchApi<any[]>("/sales-invoices");
+        if (Array.isArray(live) && live.length > 0) invoicesData = live;
       } catch {}
-      if (expensesData.length === 0) expensesData = getArray("app_expenses");
 
-      if (expensesData.length > 0) {
-        const formattedExpenses = expensesData.map((x, idx) => ({
+      if (invoicesData.length > 0) {
+        const formattedInvoices = invoicesData.map((inv, idx) => ({
           "No.": idx + 1,
-          "Expense #": x.id || `EXP-${idx + 1}`,
-          "Expense Date": x.date || x.expense_date || "N/A",
-          "Category": x.category || "Factory Expense",
-          "Amount (₹)": x.amount || 0,
-          "Payment Mode": x.payment_mode || "Cash",
-          "Paid To": x.paid_to || "N/A",
-          "Bill / Ref #": x.bill_no || x.invoice_no || "N/A",
-          "Remarks": x.notes || x.description || ""
+          "Invoice #": inv.invoice_no || inv.id || `INV-${idx + 1}`,
+          "Invoice Date": inv.date || "N/A",
+          "Customer Name": inv.customer_name || "N/A",
+          "Linked Challans": Array.isArray(inv.linked_challan_nos) ? inv.linked_challan_nos.join(", ") : "Direct Invoice",
+          "Subtotal (₹)": inv.subtotal_amount || inv.total_amount || 0,
+          "GST Rate (%)": inv.tax_rate ?? 5,
+          "GST Amount (₹)": inv.tax_amount || 0,
+          "Grand Total (₹)": inv.total_amount || 0,
+          "Payment Status": inv.payment_status || "Pending",
+          "Credit Days": inv.credit_days || 30,
+          "Due Date": inv.due_date || "N/A"
         }));
-        const wsExpenses = createAutoWidthSheet(formattedExpenses);
-        XLSX.utils.book_append_sheet(wb, wsExpenses, "Expenses");
+        const wsInvoices = createAutoWidthSheet(formattedInvoices);
+        XLSX.utils.book_append_sheet(wb, wsInvoices, "Sales Tax Invoices");
       }
 
       // 6. PAYMENTS & VOUCHERS (Active Module: /payments)
@@ -870,61 +1114,64 @@ export default function SettingsPage() {
         const live = await fetchApi<any[]>("/payments");
         if (Array.isArray(live) && live.length > 0) paymentsData = live;
       } catch {}
-      if (paymentsData.length === 0) paymentsData = getArray("app_payments").concat(getArray("om_sai_vouchers"));
 
       if (paymentsData.length > 0) {
         const formattedPayments = paymentsData.map((p, idx) => ({
           "No.": idx + 1,
           "Voucher #": p.voucher_no || p.id || `VCH-${idx + 1}`,
-          "Voucher Date": p.date || p.payment_date || "N/A",
-          "Paid To / Received From": p.party_name || p.paid_to || "N/A",
-          "Transaction Type": p.payment_type || p.type || "Payment",
+          "Voucher Date": p.date || "N/A",
+          "Party Name": p.party_name || "N/A",
+          "Type": p.type || "Payment Out",
+          "Linked Source": p.linked_source || "ON-ACCOUNT",
           "Amount (₹)": p.amount || 0,
-          "Payment Mode": p.payment_mode || "Bank Transfer",
-          "Bank / Transaction Ref": p.ref_no || p.cheque_no || "N/A",
-          "Narration / Notes": p.notes || p.narration || ""
+          "Discount / Kasar (₹)": p.kasar_amount || 0,
+          "Payment Mode": p.mode || "Bank Transfer",
+          "Ref / UTR #": p.ref_no || "N/A",
+          "Notes": p.notes || ""
         }));
         const wsPayments = createAutoWidthSheet(formattedPayments);
         XLSX.utils.book_append_sheet(wb, wsPayments, "Payment Vouchers");
       }
 
-      // 7. PRODUCTION MACHINES (Active Module: /production)
-      const machinesData = getArray("app_machines")
-        .concat(getArray("app_machines_unit_1"))
-        .concat(getArray("app_machines_unit_2"));
+      // 7. FACTORY EXPENSES (Active Module: /expenses)
+      let expensesData: any[] = [];
+      try {
+        const live = await fetchApi<any[]>("/expenses");
+        if (Array.isArray(live) && live.length > 0) expensesData = live;
+      } catch {}
 
-      if (machinesData.length > 0) {
-        const formattedMachines = machinesData.map((m, idx) => ({
+      if (expensesData.length > 0) {
+        const formattedExpenses = expensesData.map((x, idx) => ({
           "No.": idx + 1,
-          "Machine #": m.id || m.machine_id || `M-${idx + 1}`,
-          "Machine Name": m.name || m.machine_name || `Embroidery Machine ${idx + 1}`,
-          "Factory Unit": m.unit || "Unit 1",
-          "Heads Count": m.heads || m.total_heads || 12,
-          "Operating Status": m.status || "Idle",
-          "Current Job": m.current_job || m.job_order || "N/A",
-          "Running RPM": m.rpm || m.speed || 850,
-          "Shift Operator": m.operator || m.operator_name || "N/A"
+          "Expense #": x.id || `EXP-${idx + 1}`,
+          "Expense Date": x.date || "N/A",
+          "Category": x.category || "Factory Expense",
+          "Amount (₹)": x.amount || 0,
+          "Payment Mode": x.payment_mode || "Cash",
+          "Paid To / Beneficiary": x.paid_to || "N/A",
+          "Bill / Ref #": x.bill_no || "N/A",
+          "Remarks": x.notes || ""
         }));
-        const wsMachines = createAutoWidthSheet(formattedMachines);
-        XLSX.utils.book_append_sheet(wb, wsMachines, "Production Machines");
+        const wsExpenses = createAutoWidthSheet(formattedExpenses);
+        XLSX.utils.book_append_sheet(wb, wsExpenses, "Expenses");
       }
 
-      // 8. DELIVERY CHALLANS & DISPATCHES (Active Module: /dispatches)
-      const dispatchesData = getArray("app_finished_designs").concat(getArray("app_dispatches"));
-      if (dispatchesData.length > 0) {
-        const formattedDispatches = dispatchesData.map((d, idx) => ({
+      // 8. MASTER CATEGORIES (Active Module: /categories)
+      let categoriesData: any[] = [];
+      try {
+        const live = await fetchApi<any[]>("/categories");
+        if (Array.isArray(live) && live.length > 0) categoriesData = live;
+      } catch {}
+
+      if (categoriesData.length > 0) {
+        const formattedCategories = categoriesData.map((cat, idx) => ({
           "No.": idx + 1,
-          "Challan / Dispatch #": d.challan_no || d.id || `DC-${idx + 1}`,
-          "Dispatch Date": d.date || d.dispatch_date || "N/A",
-          "Party Name": d.party_name || d.party || "N/A",
-          "Design Description": d.design_name || d.design_code || "N/A",
-          "Dispatched Qty (Pcs)": d.quantity || d.pcs || 0,
-          "Takka / Roll Count": d.takka || d.rolls || 1,
-          "Transport / Vehicle": d.transport || d.vehicle_no || "Local Delivery",
-          "Status": d.status || "Delivered"
+          "Category Name": cat.name || "N/A",
+          "Module": cat.module === "material" ? "Material & Purchase" : "Expenses",
+          "Status": "Active"
         }));
-        const wsDispatches = createAutoWidthSheet(formattedDispatches);
-        XLSX.utils.book_append_sheet(wb, wsDispatches, "Delivery Challans");
+        const wsCategories = createAutoWidthSheet(formattedCategories);
+        XLSX.utils.book_append_sheet(wb, wsCategories, "Categories Master");
       }
 
       // 9. COMPANY PROFILE & SETTINGS (Clean 2-Column Vertical Table - Easily Readable in Excel!)
@@ -973,6 +1220,71 @@ export default function SettingsPage() {
       alert("Failed to export Excel backup file.");
     } finally {
       setIsExportingExcel(false);
+    }
+  };
+
+  // Export Complete Backup to Structured JSON Database File (.json)
+  const handleExportJsonBackup = async () => {
+    setIsExportingJson(true);
+    try {
+      const [
+        liveVendors,
+        livePurchases,
+        liveChallans,
+        liveInvoices,
+        livePayments,
+        liveExpenses,
+        liveWorkers,
+        liveCategories
+      ] = await Promise.all([
+        fetchApi<any[]>("/vendors").catch(() => []),
+        fetchApi<any[]>("/purchases").catch(() => []),
+        fetchApi<any[]>("/sales-challans").catch(() => []),
+        fetchApi<any[]>("/sales-invoices").catch(() => []),
+        fetchApi<any[]>("/payments").catch(() => []),
+        fetchApi<any[]>("/expenses").catch(() => []),
+        fetchApi<any[]>("/employees").catch(() => []),
+        fetchApi<any[]>("/categories").catch(() => []),
+      ]);
+
+      const backupBundle = {
+        metadata: {
+          software: "Om Sai ERP - Textile Manufacturing & Billing",
+          export_timestamp: new Date().toISOString(),
+          company_id: getStoredCompanyId() || "comp-001",
+          company_name: formData.company_name || "Shiv Creation",
+          total_modules: 8
+        },
+        company_profile: formData,
+        parties_and_customers: liveVendors,
+        purchases_and_materials: livePurchases,
+        sales_delivery_challans: liveChallans,
+        sales_tax_invoices: liveInvoices,
+        payments_and_vouchers: livePayments,
+        factory_expenses: liveExpenses,
+        workers_and_karigars: liveWorkers,
+        categories_master: liveCategories
+      };
+
+      const jsonStr = JSON.stringify(backupBundle, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `Om_Sai_ERP_Full_Backup_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setSaveSuccessMsg("Full JSON database backup downloaded successfully!");
+      setTimeout(() => setSaveSuccessMsg(""), 3500);
+    } catch (err) {
+      console.error("JSON backup error:", err);
+      alert("Failed to export JSON backup file.");
+    } finally {
+      setIsExportingJson(false);
     }
   };
 
@@ -1146,6 +1458,7 @@ export default function SettingsPage() {
             eway_threshold: formData.eway_threshold?.trim(),
             print_qr: formData.print_qr,
             terms_conditions: formData.terms_conditions?.trim(),
+            custom_labels: settingsToSave.custom_labels,
             settings_json: settingsToSave
           })
         });
@@ -1209,7 +1522,7 @@ export default function SettingsPage() {
   if (!hasMounted) return null;
 
   return (
-    <div className="w-full max-w-4xl font-sans text-slate-800 pb-[72px] sm:pb-[60px] space-y-4 px-1 sm:px-0">
+    <div className="w-full font-sans text-slate-800 pb-[84px] space-y-4 px-1 sm:px-0">
       {/* Toast Notification Banner */}
       {saveSuccessMsg && (
         <div className="fixed top-16 right-5 z-50 inline-flex items-center gap-1.5 bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/20 animate-in fade-in slide-in-from-top duration-200">
@@ -1218,77 +1531,171 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Main Settings Card: Seamless Tab Header */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
-        {/* Seamless Navigation Tab Header (Horizontally scrollable on mobile) */}
-        <div className="flex items-center gap-1 sm:gap-2 px-3 sm:px-5 pt-3.5 border-b border-slate-200 bg-slate-50/60 overflow-x-auto no-scrollbar scroll-smooth whitespace-nowrap">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab("Company");
-              setAuthErrorMsg("");
-            }}
-            className={`pb-3 px-3 sm:px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
-              activeTab === "Company"
-                ? "border-blue-600 text-blue-600 font-extrabold"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5 shrink-0" />
-            <span>Company</span>
-          </button>
+      {/* Main Settings Card: Professional Vertical Sidebar + Content Layout */}
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden flex flex-col md:flex-row min-h-[640px]">
+        {/* Left Sidebar Navigation */}
+        <aside className="w-full md:w-64 lg:w-72 bg-slate-50/70 border-b md:border-b-0 md:border-r border-slate-200 p-3 sm:p-4 shrink-0 flex flex-col justify-between">
+          <div className="space-y-4">
+            {/* Mobile Horizontal / Responsive View */}
+            <div className="md:hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+              {[
+                { id: "Company", label: "Company", icon: Building2 },
+                { id: "Invoice & Bill", label: "Invoice & Bill", icon: Receipt },
+                { id: "Custom Fields", label: "Bill Fields", icon: Sparkles },
+                { id: "Shortcuts", label: "Shortcuts", icon: Keyboard },
+                { id: "Login & Password", label: "Security", icon: KeyRound },
+                { id: "Data & Storage", label: "Data", icon: Database },
+              ].map((item) => {
+                const Icon = item.icon;
+                const isSelected = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(item.id as any);
+                      setAuthErrorMsg("");
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                      isSelected
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5 shrink-0" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab("Invoice & Bill");
-              setAuthErrorMsg("");
-            }}
-            className={`pb-3 px-3 sm:px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
-              activeTab === "Invoice & Bill"
-                ? "border-blue-600 text-blue-600 font-extrabold"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <Receipt className="w-3.5 h-3.5 shrink-0" />
-            <span>Invoice & Bill</span>
-          </button>
+            {/* Desktop Clean Sidebar */}
+            <div className="hidden md:block space-y-1">
+              {/* Company */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("Company");
+                  setAuthErrorMsg("");
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "Company"
+                    ? "bg-blue-600 text-white shadow-xs font-black"
+                    : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Building2 className="w-4 h-4 shrink-0" />
+                  <span>Company Profile</span>
+                </div>
+                {activeTab === "Company" && <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-80" />}
+              </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab("Login & Password");
-              setAuthErrorMsg("");
-            }}
-            className={`pb-3 px-3 sm:px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
-              activeTab === "Login & Password"
-                ? "border-blue-600 text-blue-600 font-extrabold"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <KeyRound className="w-3.5 h-3.5 shrink-0" />
-            <span>Login & Password</span>
-          </button>
+              {/* Invoice & Bill */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("Invoice & Bill");
+                  setAuthErrorMsg("");
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "Invoice & Bill"
+                    ? "bg-blue-600 text-white shadow-xs font-black"
+                    : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Receipt className="w-4 h-4 shrink-0" />
+                  <span>Invoice & Bill</span>
+                </div>
+                {activeTab === "Invoice & Bill" && <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-80" />}
+              </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab("Data & Storage");
-              setAuthErrorMsg("");
-            }}
-            className={`pb-3 px-3 sm:px-3.5 border-b-2 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 ${
-              activeTab === "Data & Storage"
-                ? "border-blue-600 text-blue-600 font-extrabold"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <Database className="w-3.5 h-3.5 shrink-0" />
-            <span>Data & Storage</span>
-          </button>
-        </div>
+              {/* Bill Fields */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("Custom Fields");
+                  setAuthErrorMsg("");
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "Custom Fields"
+                    ? "bg-blue-600 text-white shadow-xs font-black"
+                    : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Sparkles className="w-4 h-4 shrink-0" />
+                  <span>Bill Fields</span>
+                </div>
+                {activeTab === "Custom Fields" && <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-80" />}
+              </button>
 
-        {/* Content Body */}
-        <div className="p-5 sm:p-6 space-y-4" onKeyDown={handleFormKeyDown}>
+              {/* Shortcuts */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("Shortcuts");
+                  setAuthErrorMsg("");
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "Shortcuts"
+                    ? "bg-blue-600 text-white shadow-xs font-black"
+                    : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Keyboard className="w-4 h-4 shrink-0" />
+                  <span>Shortcuts</span>
+                </div>
+                {activeTab === "Shortcuts" && <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-80" />}
+              </button>
+
+              {/* Login & Password */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("Login & Password");
+                  setAuthErrorMsg("");
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "Login & Password"
+                    ? "bg-blue-600 text-white shadow-xs font-black"
+                    : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <KeyRound className="w-4 h-4 shrink-0" />
+                  <span>Login & Password</span>
+                </div>
+                {activeTab === "Login & Password" && <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-80" />}
+              </button>
+
+              {/* Data & Storage */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("Data & Storage");
+                  setAuthErrorMsg("");
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "Data & Storage"
+                    ? "bg-blue-600 text-white shadow-xs font-black"
+                    : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Database className="w-4 h-4 shrink-0" />
+                  <span>Data & Storage</span>
+                </div>
+                {activeTab === "Data & Storage" && <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-80" />}
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Main Content Body */}
+        <div className="flex-1 p-5 sm:p-7 space-y-4 overflow-y-auto" onKeyDown={handleFormKeyDown}>
           {/* Feedback Error (for Auth Tab) */}
           {authErrorMsg && (
             <div className="flex items-center gap-2 p-2.5 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-bold animate-in fade-in">
@@ -1298,389 +1705,353 @@ export default function SettingsPage() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 1: COMPANY (REDESIGNED 2-SECTION MODERN GRID) */}
+          {/* TAB 1: COMPANY (SINGLE COLUMN MODERN LAYOUT)                             */}
           {/* ========================================================================= */}
           {activeTab === "Company" && (
-            <div className="space-y-6 animate-in fade-in duration-100">
-              {/* SECTION A: COMPANY PROFILE & ADDRESS */}
-              <div className="space-y-3.5">
-                {/* Company Legal Name */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Company Legal Name *</label>
-                  <div className="max-w-md w-full">
-                    <input
-                      type="text"
-                      value={formData.company_name}
-                      onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                      placeholder="e.g. Registered Company Name"
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Brand Name / Short Code */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Brand / Short Name</label>
-                  <div className="max-w-md w-full">
-                    <input
-                      type="text"
-                      value={formData.brand_name}
-                      onChange={(e) => setFormData({ ...formData, brand_name: e.target.value.toUpperCase() })}
-                      placeholder="e.g. BRAND NAME"
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                    />
-                  </div>
-                </div>
-
-                {/* Tagline / Subtitle */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Tagline / Subtitle</label>
-                  <div className="max-w-md w-full">
-                    <input
-                      type="text"
-                      value={formData.tagline}
-                      onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
-                      placeholder="e.g. High Precision Multi-Head Embroidery Job Work"
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Phone / Mobile */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Primary Mobile *</label>
-                  <div className="max-w-md w-full">
-                    <input
-                      type="text"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="9978987181"
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Email Address */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Billing / Office Email</label>
-                  <div className="max-w-md w-full">
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="owner@shivcreation.com"
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Factory Address */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Factory Address *</label>
-                  <div className="max-w-md w-full">
-                    <input
-                      type="text"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Plot No. 104-106, GIDC Khatodara / Kadodara"
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* City & State / PIN */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">City, State & PIN</label>
-                  <div className="max-w-md w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                    <input
-                      type="text"
-                      value={formData.city_state}
-                      onChange={(e) => setFormData({ ...formData, city_state: e.target.value })}
-                      placeholder="Surat, Gujarat"
-                      className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    />
-                    <input
-                      type="text"
-                      value={formData.pincode}
-                      onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-                      placeholder="PIN Code"
-                      className="w-full sm:w-28 h-9 px-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* MSME Udyam Registration */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">MSME Udyam Reg. No.</label>
-                  <div className="max-w-md w-full">
-                    <input
-                      type="text"
-                      value={formData.msme_no}
-                      onChange={(e) => setFormData({ ...formData, msme_no: e.target.value.toUpperCase() })}
-                      placeholder="UDYAM-GJ-24-0091823"
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                    />
-                  </div>
+            <div className="max-w-3xl space-y-3.5 animate-in fade-in duration-100">
+              {/* Company Legal Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Company Legal Name *</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.company_name}
+                    onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                    placeholder="e.g. Registered Company Name"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    required
+                  />
                 </div>
               </div>
 
-              {/* SECTION B: BANK & STATUTORY (GST) DETAILS */}
-              <div className="pt-4 border-t border-slate-200">
-                <div className="flex items-center gap-2 pb-3">
-                  <span className="text-xs font-black text-slate-800 tracking-wide uppercase flex items-center gap-1.5">
-                    <Landmark className="w-3.5 h-3.5 text-blue-600" />
-                    Bank & Statutory (GST) Details
-                  </span>
+              {/* GSTIN Number */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">GST Number (GSTIN)</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    maxLength={15}
+                    value={formData.gstin}
+                    onChange={(e) => setFormData({ ...formData, gstin: e.target.value.toUpperCase() })}
+                    placeholder="24AAAFA1234A1Z5"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
+                  />
                 </div>
+              </div>
 
-                <div className="space-y-3.5">
-                  {/* GSTIN */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">GSTIN Number (15 Digits)</label>
-                    <div className="max-w-md w-full">
-                      <input
-                        type="text"
-                        maxLength={15}
-                        value={formData.gstin}
-                        onChange={(e) => setFormData({ ...formData, gstin: e.target.value.toUpperCase() })}
-                        placeholder="24AAAFA1234A1Z5"
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                      />
+              {/* PAN Number */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">PAN Number</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    maxLength={10}
+                    value={formData.pan}
+                    onChange={(e) => setFormData({ ...formData, pan: e.target.value.toUpperCase() })}
+                    placeholder="AAAFA1234A"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
+                  />
+                </div>
+              </div>
+
+              {/* Phone / Mobile */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Primary Mobile *</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="9978987181"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Email Address */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Billing / Office Email</label>
+                <div className="w-full">
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="owner@shivcreation.com"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Factory Address */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Factory Address *</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Plot No. 104-106, GIDC Khatodara / Kadodara"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* City & State / PIN */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">City, State & PIN</label>
+                <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <input
+                    type="text"
+                    value={formData.city_state}
+                    onChange={(e) => setFormData({ ...formData, city_state: e.target.value })}
+                    placeholder="Surat, Gujarat"
+                    className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                  <input
+                    type="text"
+                    value={formData.pincode}
+                    onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                    placeholder="PIN Code"
+                    className="w-full sm:w-28 h-9 px-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* MSME Udyam Registration */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">MSME Udyam Reg.</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.msme_no}
+                    onChange={(e) => setFormData({ ...formData, msme_no: e.target.value.toUpperCase() })}
+                    placeholder="UDYAM-GJ-24-0091823"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
+                  />
+                </div>
+              </div>
+
+              {/* Bank Details Section Divider */}
+              <div className="pt-3 pb-1 border-t border-slate-200">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                  Bank Details
+                </h4>
+              </div>
+
+              {/* Bank Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Primary Bank Name</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.bank_name}
+                    onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                    placeholder="HDFC Bank Ltd"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Account Holder Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Account Holder Name</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.account_holder}
+                    onChange={(e) => setFormData({ ...formData, account_holder: e.target.value })}
+                    placeholder="e.g. Account Holder / Legal Firm Name"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Account Number */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Account Number</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.account_no}
+                    onChange={(e) => setFormData({ ...formData, account_no: e.target.value })}
+                    placeholder="50200012345678"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Account Type */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Account Type</label>
+                <div className="w-full relative" ref={accTypeRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsAccTypeOpen(!isAccTypeOpen)}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                  >
+                    <span className="truncate">{formData.account_type}</span>
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${
+                        isAccTypeOpen ? "rotate-180 text-blue-600" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {isAccTypeOpen && (
+                    <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                      {ACCOUNT_TYPES.map((type) => {
+                        const isSelected = formData.account_type === type;
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => {
+                              setFormData({ ...formData, account_type: type });
+                              setIsAccTypeOpen(false);
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                              isSelected
+                                ? "bg-blue-50 text-blue-700 font-bold"
+                                : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                            }`}
+                          >
+                            <span>{type}</span>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
+                          </button>
+                        );
+                      })}
                     </div>
-                  </div>
+                  )}
+                </div>
+              </div>
 
-                  {/* PAN */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">PAN Number</label>
-                    <div className="max-w-md w-full">
-                      <input
-                        type="text"
-                        maxLength={10}
-                        value={formData.pan}
-                        onChange={(e) => setFormData({ ...formData, pan: e.target.value.toUpperCase() })}
-                        placeholder="AAAFA1234A"
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                      />
-                    </div>
-                  </div>
+              {/* IFSC Code & Branch */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">IFSC & Branch</label>
+                <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <input
+                    type="text"
+                    value={formData.ifsc}
+                    onChange={(e) => setFormData({ ...formData, ifsc: e.target.value.toUpperCase() })}
+                    placeholder="HDFC0000123"
+                    className="w-full sm:w-36 h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
+                  />
+                  <input
+                    type="text"
+                    value={formData.branch_name}
+                    onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })}
+                    placeholder="Ring Road Branch, Surat"
+                    className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
 
-                  {/* Bank Name */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">Primary Bank Name</label>
-                    <div className="max-w-md w-full">
-                      <input
-                        type="text"
-                        value={formData.bank_name}
-                        onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                        placeholder="HDFC Bank Ltd"
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      />
-                    </div>
-                  </div>
+              {/* UPI ID */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">UPI ID (VPA)</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.upi_id}
+                    onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
+                    placeholder="omsaienterprise@hdfcbank"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
 
-                  {/* Account Holder Name */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">Account Holder Name</label>
-                    <div className="max-w-md w-full">
-                      <input
-                        type="text"
-                        value={formData.account_holder}
-                        onChange={(e) => setFormData({ ...formData, account_holder: e.target.value })}
-                        placeholder="e.g. Account Holder / Legal Firm Name"
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Account Number */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">Current Account Number</label>
-                    <div className="max-w-md w-full">
-                      <input
-                        type="text"
-                        value={formData.account_no}
-                        onChange={(e) => setFormData({ ...formData, account_no: e.target.value })}
-                        placeholder="50200012345678"
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Account Type */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">Account Type</label>
-                    <div className="max-w-md w-full relative" ref={accTypeRef}>
-                      <button
-                        type="button"
-                        onClick={() => setIsAccTypeOpen(!isAccTypeOpen)}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-                      >
-                        <span className="truncate">{formData.account_type}</span>
-                        <ChevronDown
-                          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${
-                            isAccTypeOpen ? "rotate-180 text-blue-600" : ""
-                          }`}
+              {/* QR Code Option for Bank Payments */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start text-xs pt-1">
+                <div className="pt-1">
+                  <label className="font-bold text-slate-600 block">UPI Payment QR</label>
+                  <span className="text-[10px] text-slate-400">Printed on invoices</span>
+                </div>
+                <div className="w-full space-y-3">
+                  {formData.qr_code_image ? (
+                    <div className="flex flex-col sm:flex-row items-center gap-4 p-3 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                      <div className="w-20 h-20 bg-white p-1 rounded-lg border border-slate-200 shrink-0 shadow-2xs flex items-center justify-center">
+                        <img
+                          src={formData.qr_code_image}
+                          alt="Bank UPI QR Code"
+                          className="w-full h-full object-contain"
                         />
-                      </button>
-
-                      {isAccTypeOpen && (
-                        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
-                          {ACCOUNT_TYPES.map((type) => {
-                            const isSelected = formData.account_type === type;
-                            return (
-                              <button
-                                key={type}
-                                type="button"
-                                onClick={() => {
-                                  setFormData({ ...formData, account_type: type });
-                                  setIsAccTypeOpen(false);
-                                }}
-                                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                                  isSelected
-                                    ? "bg-blue-50 text-blue-700 font-bold"
-                                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-                                }`}
-                              >
-                                <span>{type}</span>
-                                {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
-                              </button>
-                            );
-                          })}
+                      </div>
+                      <div className="space-y-1.5 text-center sm:text-left flex-1">
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span>Active on Invoices</span>
                         </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* IFSC Code & Branch */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">IFSC & Branch Name</label>
-                    <div className="max-w-md w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      <input
-                        type="text"
-                        value={formData.ifsc}
-                        onChange={(e) => setFormData({ ...formData, ifsc: e.target.value.toUpperCase() })}
-                        placeholder="HDFC0000123"
-                        className="w-full sm:w-36 h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs uppercase"
-                      />
-                      <input
-                        type="text"
-                        value={formData.branch_name}
-                        onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })}
-                        placeholder="Ring Road Branch, Surat"
-                        className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  {/* UPI ID */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                    <label className="font-bold text-slate-600">UPI ID (VPA)</label>
-                    <div className="max-w-md w-full">
-                      <input
-                        type="text"
-                        value={formData.upi_id}
-                        onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
-                        placeholder="omsaienterprise@hdfcbank"
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  {/* QR Code Option for Bank Payments */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start text-xs pt-2 border-t border-slate-100">
-                    <div className="pt-1">
-                      <label className="font-bold text-slate-700 block">Bank Payment QR Code</label>
-                      <span className="text-[10px] text-slate-400">Prints on bill bottom</span>
-                    </div>
-                    <div className="max-w-md w-full space-y-3">
-                      {formData.qr_code_image ? (
-                        <div className="flex flex-col sm:flex-row items-center gap-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                          <div className="w-24 h-24 bg-white p-1.5 rounded-lg border border-slate-200 shrink-0 shadow-2xs flex items-center justify-center">
-                            <img
-                              src={formData.qr_code_image}
-                              alt="Bank UPI QR Code"
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                          <div className="space-y-1.5 text-center sm:text-left">
-                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
-                              <Check className="w-3 h-3 text-emerald-600" />
-                              <span>Active on Invoices</span>
-                            </div>
-                            <p className="text-[11px] text-slate-600">
-                              Customers can scan this QR code on physical bill to pay directly.
-                            </p>
-                            <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
-                              <label
-                                htmlFor="qr-file-upload"
-                                className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-[10px] font-bold text-slate-700 cursor-pointer transition-colors shadow-2xs"
-                              >
-                                Replace QR
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => setFormData({ ...formData, qr_code_image: "" })}
-                                className="px-2.5 py-1 bg-white border border-red-200 hover:bg-red-50 text-red-600 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                          {/* Upload QR File */}
+                        <p className="text-[11px] text-slate-600">
+                          Customers can scan this QR code to make immediate UPI payments.
+                        </p>
+                        <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
                           <label
                             htmlFor="qr-file-upload"
-                            className="flex-1 border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-3 flex items-center gap-3 bg-slate-50/50 hover:bg-blue-50/20 cursor-pointer transition-colors group"
+                            className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-[10px] font-bold text-slate-700 cursor-pointer transition-colors shadow-2xs"
                           >
-                            <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 group-hover:text-blue-600 shadow-2xs shrink-0">
-                              <Upload className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <p className="text-xs font-bold text-slate-800">Upload QR Image</p>
-                              <p className="text-[10px] text-slate-400">PNG, JPG or scanner screenshot</p>
-                            </div>
+                            Replace QR
                           </label>
-
-                          {/* Auto-generate from UPI */}
                           <button
                             type="button"
-                            onClick={handleAutoGenerateQr}
-                            className="h-14 px-3 border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-colors shrink-0"
+                            onClick={() => setFormData({ ...formData, qr_code_image: "" })}
+                            className="px-2.5 py-1 bg-white border border-red-200 hover:bg-red-50 text-red-600 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
                           >
-                            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                            <span>Auto-Generate QR</span>
+                            Remove
                           </button>
                         </div>
-                      )}
-
-                      <input
-                        type="file"
-                        id="qr-file-upload"
-                        accept="image/*"
-                        onChange={handleQrUpload}
-                        className="hidden"
-                      />
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      {/* Upload QR File */}
+                      <label
+                        htmlFor="qr-file-upload"
+                        className="flex-1 border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-3 flex items-center gap-3 bg-white hover:bg-blue-50/20 cursor-pointer transition-colors group"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 group-hover:text-blue-600 shadow-2xs shrink-0">
+                          <Upload className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">Upload QR Image</p>
+                          <p className="text-[10px] text-slate-400">PNG, JPG or QR screenshot</p>
+                        </div>
+                      </label>
+
+                      {/* Auto-generate from UPI */}
+                      <button
+                        type="button"
+                        onClick={handleAutoGenerateQr}
+                        className="h-14 px-3 border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-colors shrink-0 shadow-2xs"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Auto QR</span>
+                      </button>
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    id="qr-file-upload"
+                    accept="image/*"
+                    onChange={handleQrUpload}
+                    className="hidden"
+                  />
                 </div>
               </div>
             </div>
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 2: INVOICE & BILL */}
+          {/* TAB 2: INVOICE & BILL (SINGLE COLUMN MODERN LAYOUT)                       */}
           {/* ========================================================================= */}
           {activeTab === "Invoice & Bill" && (
-            <div className="space-y-3.5 animate-in fade-in duration-100">
-              {/* Invoice Title */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+            <div className="max-w-3xl space-y-3.5 animate-in fade-in duration-100">
+              {/* Tax Invoice Title */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Tax Invoice Title</label>
-                <div className="max-w-md w-full">
+                <div className="w-full">
                   <input
                     type="text"
                     value={formData.invoice_title}
@@ -1691,9 +2062,9 @@ export default function SettingsPage() {
               </div>
 
               {/* Delivery Challan Title */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Delivery Challan Title</label>
-                <div className="max-w-md w-full">
+                <div className="w-full">
                   <input
                     type="text"
                     value={formData.challan_title}
@@ -1703,15 +2074,36 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Numbering Prefix Series */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+              {/* Sales Invoice Series & No. */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Sales Invoice Series & No.</label>
+                <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <input
+                    type="text"
+                    value={formData.sales_invoice_prefix}
+                    onChange={(e) => setFormData({ ...formData, sales_invoice_prefix: e.target.value })}
+                    placeholder="SC/26/"
+                    className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                  <input
+                    type="number"
+                    value={formData.next_sales_invoice_no}
+                    onChange={(e) => setFormData({ ...formData, next_sales_invoice_no: e.target.value })}
+                    placeholder="Next: 101"
+                    className="w-full sm:w-28 h-9 px-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Invoice Series & No. */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Invoice Series & No.</label>
-                <div className="max-w-md w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <input
                     type="text"
                     value={formData.invoice_prefix}
                     onChange={(e) => setFormData({ ...formData, invoice_prefix: e.target.value })}
-                    placeholder="OMS/26-27/"
+                    placeholder="INV/26-27/"
                     className="flex-1 h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                   />
                   <input
@@ -1724,10 +2116,10 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Challan Prefix Series */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+              {/* Challan Series & No. */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Challan Series & No.</label>
-                <div className="max-w-md w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <input
                     type="text"
                     value={formData.challan_prefix}
@@ -1746,9 +2138,9 @@ export default function SettingsPage() {
               </div>
 
               {/* HSN / SAC Code */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">HSN / SAC Code</label>
-                <div className="max-w-md w-full">
+                <div className="w-full">
                   <input
                     type="text"
                     value={formData.hsn_sac_code}
@@ -1759,10 +2151,10 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* GST Tax Rate */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+              {/* Default GST Rate */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Default GST Rate (%)</label>
-                <div className="max-w-md w-full relative" ref={gstRef}>
+                <div className="w-full relative" ref={gstRef}>
                   <button
                     type="button"
                     onClick={() => setIsGstOpen(!isGstOpen)}
@@ -1804,10 +2196,10 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Payment Terms */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+              {/* Default Payment Terms */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Default Payment Terms</label>
-                <div className="max-w-md w-full relative" ref={termsRef}>
+                <div className="w-full relative" ref={termsRef}>
                   <button
                     type="button"
                     onClick={() => setIsTermsOpen(!isTermsOpen)}
@@ -1849,10 +2241,10 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Authorized Signatory Label */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+              {/* Authorized Signatory */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Authorized Signatory</label>
-                <div className="max-w-md w-full">
+                <div className="w-full">
                   <input
                     type="text"
                     value={formData.signatory_label}
@@ -1862,10 +2254,10 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Print QR Code Checkbox */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                <label className="font-bold text-slate-600">QR Code on Invoices</label>
-                <div className="max-w-md w-full flex items-center gap-2">
+              {/* QR Code on Bills */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">QR Code on Bills</label>
+                <div className="w-full flex items-center gap-2">
                   <input
                     type="checkbox"
                     id="print_qr_toggle"
@@ -1874,15 +2266,15 @@ export default function SettingsPage() {
                     className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer shrink-0"
                   />
                   <label htmlFor="print_qr_toggle" className="text-xs font-medium text-slate-800 cursor-pointer select-none">
-                    Print Bank UPI QR Code automatically on bottom of invoices
+                    Automatically print Bank UPI QR code on invoices
                   </label>
                 </div>
               </div>
 
-              {/* Terms and Conditions Textarea */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start text-xs pt-1">
+              {/* Terms & Conditions */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start text-xs pt-1">
                 <label className="font-bold text-slate-600 pt-1.5">Terms & Conditions</label>
-                <div className="max-w-md w-full">
+                <div className="w-full">
                   <textarea
                     rows={3}
                     value={formData.terms_conditions}
@@ -1891,18 +2283,498 @@ export default function SettingsPage() {
                   />
                 </div>
               </div>
+
+
             </div>
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 3: LOGIN & PASSWORD (Direct clean inputs without top banner) */}
+          {/* TAB 3: BILL & CHALLAN FIELDS (UNIFIED SINGLE COLUMN MODERN LAYOUT)        */}
+          {/* ========================================================================= */}
+          {activeTab === "Custom Fields" && (
+            <div className="max-w-3xl space-y-3.5 animate-in fade-in duration-100">
+              {/* Header Bar & Reset Button */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                    <Receipt className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                      Bill & Challan Field Names
+                    </h4>
+                    <p className="text-[11px] text-slate-400 font-medium">
+                      Changes automatically apply across all pages (Sales, Purchases, Invoices, Challans & Ledger)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    isUserEditingRef.current = true;
+                    setFormData((prev: any) => ({
+                      ...prev,
+                      custom_labels: {
+                        ...(prev.custom_labels || {}),
+                        party_name: "Party Name",
+                        supplier_name: "Supplier / Mill",
+                        item_name: "Particulars",
+                        item_unit: "Item",
+                        quantity: "Qty",
+                        weight: "Weight",
+                        cartoon: "Cartoon",
+                        rate: "Rate (₹)",
+                        total_amount: "Amount (₹)",
+                        challan_no: "Challan No",
+                        bill_no: "Bill / Invoice No",
+                        hsn_code: "HSN Code",
+                        design_no: "Particulars",
+                        sales_party: "Party Name",
+                        purchase_supplier: "Supplier / Mill",
+                        sales_item: "Particulars",
+                        purchase_item: "Particulars",
+                        sales_qty: "Qty",
+                        purchase_qty: "Qty",
+                        sales_rate: "Rate (₹)",
+                        purchase_rate: "Rate (₹)",
+                        sales_total: "Amount (₹)",
+                        purchase_total: "Amount (₹)",
+                        sales_bill_no: "Bill / Invoice No",
+                        purchase_bill_no: "Challan No"
+                      }
+                    }));
+                  }}
+                  className="px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-2xs shrink-0"
+                >
+                  <RefreshCw className="w-3 h-3 text-slate-500" />
+                  <span>Reset Defaults</span>
+                </button>
+              </div>
+
+              {/* 1. Customer / Party */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Customer / Party</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.custom_labels?.party_name ?? formData.custom_labels?.sales_party ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        custom_labels: { ...(prev.custom_labels || {}), party_name: v, sales_party: v }
+                      }));
+                    }}
+                    placeholder="e.g. Party Name"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 2. Supplier / Mill */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Supplier / Mill</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.custom_labels?.supplier_name ?? formData.custom_labels?.purchase_supplier ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        custom_labels: { ...(prev.custom_labels || {}), supplier_name: v, purchase_supplier: v }
+                      }));
+                    }}
+                    placeholder="e.g. Supplier / Mill"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 3. Item / Particulars */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Item / Particulars</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.custom_labels?.item_name ?? formData.custom_labels?.design_no ?? formData.custom_labels?.sales_item ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        custom_labels: {
+                          ...(prev.custom_labels || {}),
+                          item_name: v,
+                          design_no: v,
+                          sales_item: v,
+                          purchase_item: v
+                        }
+                      }));
+                    }}
+                    placeholder="e.g. Particulars / Design No"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 4. Item / Takka */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Item / Takka</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.custom_labels?.item_unit ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        custom_labels: { ...(prev.custom_labels || {}), item_unit: v }
+                      }));
+                    }}
+                    placeholder="e.g. Item / Takka"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 5. Quantity */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Quantity</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.custom_labels?.quantity ?? formData.custom_labels?.sales_qty ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        custom_labels: {
+                          ...(prev.custom_labels || {}),
+                          quantity: v,
+                          sales_qty: v,
+                          purchase_qty: v
+                        }
+                      }));
+                    }}
+                    placeholder="e.g. Qty / Meters"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 6. Weight */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Weight</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.custom_labels?.weight ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        custom_labels: { ...(prev.custom_labels || {}), weight: v }
+                      }));
+                    }}
+                    placeholder="e.g. Weight"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 7. Cartoon */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Cartoon</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.custom_labels?.cartoon ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        custom_labels: { ...(prev.custom_labels || {}), cartoon: v }
+                      }));
+                    }}
+                    placeholder="e.g. Cartoon / Box / Roll"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 8. Rate */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Rate</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.custom_labels?.rate ?? formData.custom_labels?.sales_rate ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        custom_labels: {
+                          ...(prev.custom_labels || {}),
+                          rate: v,
+                          sales_rate: v,
+                          purchase_rate: v
+                        }
+                      }));
+                    }}
+                    placeholder="e.g. Rate (₹)"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 9. Amount */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Amount</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.custom_labels?.total_amount ?? formData.custom_labels?.sales_total ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        custom_labels: {
+                          ...(prev.custom_labels || {}),
+                          total_amount: v,
+                          sales_total: v,
+                          purchase_total: v
+                        }
+                      }));
+                    }}
+                    placeholder="e.g. Amount (₹)"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 10. Challan No */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Challan No</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.custom_labels?.challan_no ?? formData.custom_labels?.purchase_bill_no ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        custom_labels: {
+                          ...(prev.custom_labels || {}),
+                          challan_no: v,
+                          purchase_bill_no: v
+                        }
+                      }));
+                    }}
+                    placeholder="e.g. Challan No"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 11. Bill / Invoice No */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Bill / Invoice No</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.custom_labels?.bill_no ?? formData.custom_labels?.sales_bill_no ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        custom_labels: {
+                          ...(prev.custom_labels || {}),
+                          bill_no: v,
+                          sales_bill_no: v
+                        }
+                      }));
+                    }}
+                    placeholder="e.g. Bill / Invoice No"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 12. HSN / SAC Code */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">HSN / SAC Code</label>
+                <div className="w-full">
+                  <input
+                    type="text"
+                    value={formData.custom_labels?.hsn_code ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        custom_labels: { ...(prev.custom_labels || {}), hsn_code: v }
+                      }));
+                    }}
+                    placeholder="e.g. HSN / SAC Code"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB 4: KEYBOARD SHORTCUTS & MAC/WIN HOTKEYS (CLEAN MODERN LAYOUT)        */}
+          {/* ========================================================================= */}
+          {activeTab === "Shortcuts" && (
+            <div className="max-w-3xl space-y-3.5 animate-in fade-in duration-100">
+              {/* Header Bar */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                    Keyboard Shortcuts
+                  </span>
+                  {isMacDevice ? (
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-600 border border-slate-200">
+                      Mac (Option ⌥ / ⌘)
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded bg-blue-50 text-[10px] font-bold text-blue-700 border border-blue-200">
+                      Windows (Alt / Ctrl)
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const defs = resetShortcuts();
+                    setShortcutsList(defs);
+                    setRecordingShortcutId(null);
+                    setShortcutFeedbackMsg("All shortcuts reset to defaults successfully!");
+                    setTimeout(() => setShortcutFeedbackMsg(null), 2500);
+                  }}
+                  className="px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                >
+                  <RotateCcw className="w-3 h-3 text-slate-500" />
+                  <span>Reset Defaults</span>
+                </button>
+              </div>
+
+              {/* Feedback Success Notification */}
+              {shortcutFeedbackMsg && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800 text-xs font-bold animate-in fade-in">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{shortcutFeedbackMsg}</span>
+                </div>
+              )}
+
+              {/* Shortcuts Items */}
+              {shortcutsList.map((s) => {
+                const isRecording = recordingShortcutId === s.id;
+                const keyBadges = formatShortcutDisplay(s, isMacDevice);
+
+                return (
+                  <div
+                    key={s.id}
+                    className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-1.5 sm:gap-3 items-center text-xs"
+                  >
+                    <label className="font-bold text-slate-600">{s.labelEn}</label>
+                    <div className="flex items-center gap-2">
+                      {isRecording ? (
+                        <div className="flex items-center gap-1.5 animate-pulse bg-amber-100 text-amber-900 px-3 py-1.5 rounded-xl border border-amber-300 font-bold text-xs">
+                          <span>Press any key...</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRecordingShortcutId(null);
+                            }}
+                            className="text-amber-700 hover:text-amber-950 ml-1 font-bold cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-1">
+                            {keyBadges.map((k, kIdx) => (
+                              <kbd
+                                key={kIdx}
+                                className="min-w-[28px] h-8 px-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-800 flex items-center justify-center shadow-2xs"
+                              >
+                                {k}
+                              </kbd>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setRecordingShortcutId(s.id)}
+                            className="h-8 px-3 bg-white hover:bg-slate-50 text-blue-600 border border-slate-300 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>Set Key</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Global Commands Section Divider */}
+              <div className="pt-3 pb-1 border-t border-slate-200">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                  Global Commands
+                </h4>
+              </div>
+
+              {/* Quick Action Search Menu */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-1.5 sm:gap-3 items-center text-xs">
+                <label className="font-bold text-slate-600">Quick Action Search</label>
+                <div className="flex items-center gap-1">
+                  <kbd className="min-w-[28px] h-8 px-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-800 flex items-center justify-center shadow-2xs">
+                    {isMacDevice ? "⌘ Cmd" : "Ctrl"}
+                  </kbd>
+                  <kbd className="min-w-[28px] h-8 px-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-800 flex items-center justify-center shadow-2xs">
+                    K
+                  </kbd>
+                </div>
+              </div>
+
+              {/* Shortcut Guide Popup */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-1.5 sm:gap-3 items-center text-xs">
+                <label className="font-bold text-slate-600">Shortcut Guide Popup</label>
+                <div className="flex items-center gap-1">
+                  <kbd className="min-w-[28px] h-8 px-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-800 flex items-center justify-center shadow-2xs">
+                    ?
+                  </kbd>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* ========================================================================= */}
+          {/* TAB: LOGIN & PASSWORD (Clean Single Column Layout) */}
           {/* ========================================================================= */}
           {activeTab === "Login & Password" && (
-            <div className="space-y-4 animate-in fade-in duration-100">
+            <div className="max-w-3xl space-y-3.5 animate-in fade-in duration-100">
               {/* User ID */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                <label className="font-bold text-slate-600">Login User ID / Username *</label>
-                <div className="max-w-md w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Username / ID *</label>
+                <div className="w-full">
                   <input
                     type="text"
                     value={authData.username}
@@ -1910,7 +2782,7 @@ export default function SettingsPage() {
                       isUserEditingRef.current = true;
                       setAuthData({ ...authData, username: e.target.value });
                     }}
-                    placeholder="e.g. shivcreation or owner@shivcreation.com"
+                    placeholder="e.g. shivcreation or admin"
                     className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                     required
                   />
@@ -1918,9 +2790,9 @@ export default function SettingsPage() {
               </div>
 
               {/* Display Name */}
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
                 <label className="font-bold text-slate-600">Display Name</label>
-                <div className="max-w-md w-full">
+                <div className="w-full">
                   <input
                     type="text"
                     value={authData.name}
@@ -1929,165 +2801,160 @@ export default function SettingsPage() {
                       setAuthData({ ...authData, name: e.target.value });
                     }}
                     placeholder="Hiren Sutariya"
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
                   />
                 </div>
               </div>
 
-              {/* Optional Password Change Section */}
-              <div className="pt-3 border-t border-slate-100 space-y-3">
-                <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80">
-                  <p className="text-[11px] font-bold text-slate-500">
-                    🔑 Password Change (Optional) — Leave password fields blank if you only want to update User ID or Name.
-                  </p>
-                </div>
+              {/* Password Section Divider */}
+              <div className="pt-3 pb-1 border-t border-slate-200">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                  Change Password
+                </h4>
+              </div>
 
-                {/* Current Password */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Current Password</label>
-                  <div className="max-w-md w-full relative">
-                    <input
-                      type={showCurrentPassword ? "text" : "password"}
-                      value={authData.currentPassword}
-                      onChange={(e) => setAuthData({ ...authData, currentPassword: e.target.value })}
-                      placeholder="Only needed if setting new password"
-                      className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                    >
-                      {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
+              {/* Current Password */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Current Password</label>
+                <div className="w-full relative">
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={authData.currentPassword}
+                    onChange={(e) => setAuthData({ ...authData, currentPassword: e.target.value })}
+                    placeholder="Current password (leave blank to keep current)"
+                    className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  >
+                    {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
+              </div>
 
-                {/* New Password */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">New Password</label>
-                  <div className="max-w-md w-full relative">
-                    <input
-                      type={showNewPassword ? "text" : "password"}
-                      value={authData.newPassword}
-                      onChange={(e) => setAuthData({ ...authData, newPassword: e.target.value })}
-                      placeholder="Leave blank to keep existing password"
-                      className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                    >
-                      {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
+              {/* New Password */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">New Password</label>
+                <div className="w-full relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={authData.newPassword}
+                    onChange={(e) => setAuthData({ ...authData, newPassword: e.target.value })}
+                    placeholder="New password"
+                    className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  >
+                    {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
+              </div>
 
-                {/* Confirm New Password */}
-                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-2.5 items-start sm:items-center text-xs">
-                  <label className="font-bold text-slate-600">Confirm Password</label>
-                  <div className="max-w-md w-full relative">
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={authData.confirmPassword}
-                      onChange={(e) => setAuthData({ ...authData, confirmPassword: e.target.value })}
-                      placeholder="Re-enter new password if changing"
-                      className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
+              {/* Confirm New Password */}
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1.5 sm:gap-3 items-start sm:items-center text-xs">
+                <label className="font-bold text-slate-600">Confirm Password</label>
+                <div className="w-full relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={authData.confirmPassword}
+                    onChange={(e) => setAuthData({ ...authData, confirmPassword: e.target.value })}
+                    placeholder="Confirm new password"
+                    className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
               </div>
             </div>
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 5: DATA & STORAGE MAINTENANCE (Simple & Clean) */}
+          {/* ========================================================================= */}
+          {/* TAB 5: DATA & STORAGE MAINTENANCE (Clean Single Column Layout) */}
           {/* ========================================================================= */}
           {activeTab === "Data & Storage" && (
-            <div className="space-y-4 animate-in fade-in duration-100">
-              {/* 1. Excel Backup Card */}
-              <div className="border border-slate-200 rounded-2xl p-5 bg-white shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
-                    <FileSpreadsheet className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-black text-slate-900">Export All Data to Excel (.xlsx)</h4>
-                    <p className="text-xs text-slate-500 mt-0.5 max-w-xl">
-                      Download a full backup of all factory records (Workers, Job Orders, Vendors, Expenses, and Payments) in an Excel spreadsheet.
-                    </p>
-                  </div>
+            <div className="max-w-3xl space-y-3.5 animate-in fade-in duration-100">
+              {/* 1. Excel Backup */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-1.5 sm:gap-3 items-center text-xs">
+                <label className="font-bold text-slate-600">Excel Data Backup</label>
+                <div>
+                  <button
+                    type="button"
+                    disabled={isExportingExcel}
+                    onClick={handleExportExcelBackup}
+                    className="h-9 px-3.5 bg-white hover:bg-slate-50 text-emerald-700 border border-slate-300 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
+                  >
+                    <Download className={`w-3.5 h-3.5 ${isExportingExcel ? "animate-bounce" : ""}`} />
+                    <span>{isExportingExcel ? "Exporting Excel..." : "Download Excel Backup (.xlsx)"}</span>
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  disabled={isExportingExcel}
-                  onClick={handleExportExcelBackup}
-                  className="w-full sm:w-auto justify-center shrink-0 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-xs active:scale-95 disabled:opacity-60"
-                >
-                  <Download className={`w-3.5 h-3.5 ${isExportingExcel ? "animate-bounce" : ""}`} />
-                  <span>{isExportingExcel ? "Exporting Excel..." : "Download Excel Backup"}</span>
-                </button>
               </div>
 
-              {/* 2. Clear Temporary Cache Card */}
-              <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 bg-white shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
-                    <RefreshCw className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-black text-slate-900">Clear Temporary Cache</h4>
-                    <p className="text-xs text-slate-500 mt-0.5 max-w-xl">
-                      Clear temporary browser cache and session memory to optimize system performance. Your business data will not be deleted.
-                    </p>
-                  </div>
+              {/* 2. Full Cloud Database Backup */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-1.5 sm:gap-3 items-center text-xs">
+                <label className="font-bold text-slate-600">Cloud Database</label>
+                <div>
+                  <button
+                    type="button"
+                    disabled={isExportingJson}
+                    onClick={handleExportJsonBackup}
+                    className="h-9 px-3.5 bg-white hover:bg-slate-50 text-blue-700 border border-slate-300 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
+                  >
+                    <Download className={`w-3.5 h-3.5 ${isExportingJson ? "animate-bounce" : ""}`} />
+                    <span>{isExportingJson ? "Exporting JSON..." : "Download JSON Backup"}</span>
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  disabled={isClearingCache}
-                  onClick={handleClearCache}
-                  className="w-full sm:w-auto justify-center shrink-0 px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isClearingCache ? "animate-spin" : ""}`} />
-                  <span>{isClearingCache ? "Cleaning..." : "Clear Cache Now"}</span>
-                </button>
               </div>
 
-              {/* 3. Erase All Data (Factory Reset) Card */}
-              <div className="border border-red-200 bg-red-50/20 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100">
-                    <AlertTriangle className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-black text-red-700">Factory Reset / Erase All Data</h4>
-                    <p className="text-xs text-red-600/80 mt-0.5 max-w-xl">
-                      Permanently delete all records from this software (Orders, Karigars, Expenses, Payments, and Settings).
-                    </p>
-                  </div>
+              {/* 3. Clear Temporary Cache */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-1.5 sm:gap-3 items-center text-xs">
+                <label className="font-bold text-slate-600">System Cache</label>
+                <div>
+                  <button
+                    type="button"
+                    disabled={isClearingCache}
+                    onClick={handleClearCache}
+                    className="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isClearingCache ? "animate-spin" : ""}`} />
+                    <span>{isClearingCache ? "Cleaning..." : "Clear Cache Now"}</span>
+                  </button>
                 </div>
+              </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEraseConfirmInput("");
-                    setIsEraseModalOpen(true);
-                  }}
-                  className="w-full sm:w-auto justify-center shrink-0 px-4 py-2.5 bg-red-600 text-white hover:bg-red-700 font-extrabold text-xs rounded-xl transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Erase All Data</span>
-                </button>
+              {/* Danger Zone Divider */}
+              <div className="pt-3 pb-1 border-t border-slate-200">
+                <h4 className="text-xs font-bold text-red-600 uppercase tracking-wide">
+                  Danger Zone
+                </h4>
+              </div>
+
+              {/* 4. Factory Reset / Erase All Data */}
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-1.5 sm:gap-3 items-center text-xs">
+                <label className="font-bold text-slate-600">Factory Reset</label>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEraseConfirmInput("");
+                      setIsEraseModalOpen(true);
+                    }}
+                    className="h-9 px-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Erase All Data</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -2175,7 +3042,22 @@ export default function SettingsPage() {
       <BottomActionBar
         showSynced={true}
         rightContent={
-          activeTab === "Data & Storage" ? (
+          activeTab === "Shortcuts" ? (
+            <button
+              type="button"
+              onClick={() => {
+                const defs = resetShortcuts();
+                setShortcutsList(defs);
+                setRecordingShortcutId(null);
+                setShortcutFeedbackMsg("All shortcuts reset to defaults successfully!");
+                setTimeout(() => setShortcutFeedbackMsg(null), 2500);
+              }}
+              className="px-4 py-2 font-extrabold rounded-xl text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-2 cursor-pointer transition-all shadow-xs border border-slate-300"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+              <span>Reset Defaults</span>
+            </button>
+          ) : activeTab === "Data & Storage" ? (
             <button
               type="button"
               disabled={isExportingExcel}
