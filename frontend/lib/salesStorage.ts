@@ -96,105 +96,10 @@ export function getStoredSalesChallans(): SalesChallan[] {
   if (typeof window === "undefined") return [];
   const cid = getStoredCompanyId() || "comp-001";
   const stored = getTenantItem<SalesChallan[]>(STORAGE_KEY);
-  if (stored && Array.isArray(stored) && stored.length > 0) {
+  if (stored && Array.isArray(stored)) {
     return stored.filter((c) => !c.company_id || c.company_id === cid);
   }
-
-  // Initial seed data if completely empty
-  const defaultSeeds: SalesChallan[] = [
-    {
-      id: "sc-101",
-      company_id: cid,
-      challan_no: "101",
-      date: "20-10-2026",
-      party_name: "Shree Ganesh Textiles",
-      transport: "Surat City Goods",
-      vehicle_no: "GJ-05-BX-4120",
-      credit_days: 30,
-      due_date: "19-11-2026",
-      items: [
-        {
-          id: "item-1",
-          category: "Embroidery Saree",
-          design_no: "D.No. 405",
-          description: "Heavy Embroidery Saree Fabric",
-          hsn_code: "5407",
-          item: 4,
-          quantity: 420.5,
-          takka: 4,
-          meters: 420.5,
-          weight: 48.2,
-          cartoon: 2,
-          rate: 185,
-          amount: 77792.5
-        },
-        {
-          id: "item-2",
-          category: "Zari Work",
-          design_no: "D.No. 412",
-          description: "Zari Butti Border Work",
-          hsn_code: "5805",
-          item: 2,
-          quantity: 215.0,
-          takka: 2,
-          meters: 215.0,
-          weight: 24.5,
-          cartoon: 1,
-          rate: 210,
-          amount: 45150.0
-        }
-      ],
-      total_item: 6,
-      total_quantity: 635.5,
-      total_takka: 6,
-      total_meters: 635.5,
-      total_weight: 72.7,
-      total_cartoon: 3,
-      total_amount: 122942.5,
-      billing_status: "Unbilled",
-      notes: "Dispatch on 30 days credit terms. Delivery at Ring Road shop."
-    },
-    {
-      id: "sc-102",
-      company_id: cid,
-      challan_no: "102",
-      date: "22-10-2026",
-      party_name: "Radhe Krishna Fashion",
-      transport: "Jay Khodiyar Transport",
-      vehicle_no: "GJ-05-ZZ-9912",
-      credit_days: 30,
-      due_date: "21-11-2026",
-      items: [
-        {
-          id: "item-3",
-          category: "Sequence Embroidery",
-          design_no: "D.No. 550",
-          description: "Multi-Head Sequence Embroidery",
-          hsn_code: "5810",
-          item: 3,
-          quantity: 310.0,
-          takka: 3,
-          meters: 310.0,
-          weight: 35.0,
-          cartoon: 1,
-          rate: 160,
-          amount: 49600.0
-        }
-      ],
-      total_item: 3,
-      total_quantity: 310.0,
-      total_takka: 3,
-      total_meters: 310.0,
-      total_weight: 35.0,
-      total_cartoon: 1,
-      total_amount: 49600.0,
-      billing_status: "Unbilled",
-      notes: "Goods checked and approved by quality master."
-    }
-  ];
-
-  setTenantItem(STORAGE_KEY, defaultSeeds);
-  return defaultSeeds;
+  return [];
 }
 
 export async function fetchLiveSalesChallans(): Promise<SalesChallan[]> {
@@ -463,41 +368,10 @@ export function getStoredSalesInvoices(): SalesInvoice[] {
   if (typeof window === "undefined") return [];
   const cid = getStoredCompanyId() || "comp-001";
   const stored = getTenantItem<SalesInvoice[]>(INVOICE_STORAGE_KEY);
-  if (stored && Array.isArray(stored) && stored.length > 0) {
+  if (stored && Array.isArray(stored)) {
     return stored.filter((inv) => !inv.company_id || inv.company_id === cid);
   }
-
-  // Initial default seed sales invoice for demonstration
-  const defaultSeeds: SalesInvoice[] = [
-    {
-      id: "inv-0001",
-      company_id: cid,
-      invoice_no: "INV-0001",
-      date: "22-10-2026",
-      customer_name: "Shree Ganesh Textiles",
-      customer_gstin: "24AAACS1234F1Z5",
-      customer_address: "Shop No. 12, Ring Road Textile Market, Surat, Gujarat",
-      category: "Embroidery Saree",
-      items_description: "D.No. 405 (Heavy Embroidery Fabric), D.No. 412 (Zari Work)",
-      linked_challan_nos: ["101"],
-      linked_challan_ids: ["sc-101"],
-      subtotal: 122942.5,
-      taxable_amount: 122942.5,
-      gst_rate: 5,
-      cgst_amount: 3073.56,
-      sgst_amount: 3073.56,
-      igst_amount: 0,
-      total_amount: 129089.62,
-      payment_terms: "30 Days Credit",
-      credit_days: 30,
-      due_date: "21-11-2026",
-      payment_status: "Pending",
-      notes: "Monthly sales invoice against Delivery Challan #101"
-    }
-  ];
-
-  setTenantItem(INVOICE_STORAGE_KEY, defaultSeeds);
-  return defaultSeeds;
+  return [];
 }
 
 export async function fetchLiveSalesInvoices(): Promise<SalesInvoice[]> {

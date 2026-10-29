@@ -56,7 +56,7 @@ export default function TextileCreditWidget() {
     async function loadData() {
       try {
         const live = await fetchApi<PurchaseItem[]>("/purchases");
-        if (isMounted && Array.isArray(live) && live.length > 0) {
+        if (isMounted && Array.isArray(live)) {
           setPurchases(live);
         }
       } catch (err) {

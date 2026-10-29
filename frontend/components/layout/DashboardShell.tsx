@@ -97,6 +97,30 @@ export function DashboardShell({
         window.dispatchEvent(new Event("app_data_update"));
       }
 
+      if (!localStorage.getItem("texaflow_db_sync_clean_v10")) {
+        const toDelete: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (
+            key &&
+            !key.includes("auth_token") &&
+            !key.includes("auth_session") &&
+            (key.startsWith("api_cache_") ||
+             key.startsWith("texaflow_purchases") ||
+             key.startsWith("om_sai_purchases") ||
+             key.startsWith("texaflow_vouchers") ||
+             key.startsWith("om_sai_vouchers") ||
+             key.startsWith("texaflow_sales") ||
+             key.startsWith("texaflow_invoices"))
+          ) {
+            toDelete.push(key);
+          }
+        }
+        toDelete.forEach((k) => localStorage.removeItem(k));
+        localStorage.setItem("texaflow_db_sync_clean_v10", "true");
+        window.dispatchEvent(new Event("app_data_update"));
+      }
+
 
       const dummyPartyNames = ["abc tex fabrics", "royal fashion house", "shree ram textiles"];
       const dummyPartyIds = ["p-101", "p-102", "p-103"];

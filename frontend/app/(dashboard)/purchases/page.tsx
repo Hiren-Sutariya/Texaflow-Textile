@@ -822,17 +822,7 @@ export default function PurchasesPage() {
             payment_status: sanitizePaymentStatus(localStatusMap.get(p.purchase_no || p.id) || p.payment_status, p.amount)
           }));
 
-          // Preserve any newly created local bill that might not yet be in the backend response
-          const backendIds = new Set(merged.map((p) => p.id));
-          const backendNos = new Set(merged.map((p) => p.purchase_no).filter(Boolean));
-          const localOnly = currentLocal
-            .filter((p) => !backendIds.has(p.id) && (!p.purchase_no || !backendNos.has(p.purchase_no)))
-            .map((p) => ({
-              ...p,
-              notes: sanitizeChallanNotes(p.notes),
-              payment_status: sanitizePaymentStatus(p.payment_status, p.amount)
-            }));
-          const finalPurchases = [...localOnly, ...merged];
+          const finalPurchases = merged;
 
           setPurchases(finalPurchases);
           try {

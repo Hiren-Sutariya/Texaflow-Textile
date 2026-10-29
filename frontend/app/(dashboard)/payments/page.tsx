@@ -94,29 +94,13 @@ export default function PaymentsAndVouchersPage() {
     if (typeof window !== "undefined") {
       try {
         const currentCid = getStoredCompanyId() || "comp-001";
-        const seedForTenant = SEED_VOUCHERS.map((s) => ({ ...s, company_id: currentCid }));
         const apiCached = getCachedApi<PaymentVoucherItem[]>("/payments");
-        if (Array.isArray(apiCached) && apiCached.length > 0) {
-          const scoped = apiCached.filter((p: any) => (p.company_id || currentCid) === currentCid);
-          const hasDummy = scoped.some((p: any) => p.voucher_no === "REC-2026-084" || p.voucher_no === "REC-084");
-          if (!hasDummy) {
-            return [...seedForTenant, ...scoped];
-          }
-          if (scoped.length > 0) return scoped;
+        if (Array.isArray(apiCached)) {
+          return apiCached.filter((p: any) => (p.company_id || currentCid) === currentCid);
         }
-        const saved = getTenantItem<PaymentVoucherItem[]>("texaflow_vouchers", "om_sai_vouchers");
-        if (Array.isArray(saved) && saved.length > 0) {
-          const scoped = saved.filter((p: any) => (p.company_id || currentCid) === currentCid);
-          const hasDummy = scoped.some((p: any) => p.voucher_no === "REC-2026-084" || p.voucher_no === "REC-084");
-          if (!hasDummy && seedForTenant.length > 0) {
-            const merged = [...seedForTenant, ...saved];
-            setTenantItem("texaflow_vouchers", merged, "om_sai_vouchers");
-            return [...seedForTenant, ...scoped];
-          }
-          if (scoped.length > 0) return scoped;
-        } else if (seedForTenant.length > 0) {
-          setTenantItem("texaflow_vouchers", seedForTenant, "om_sai_vouchers");
-          return seedForTenant;
+        const saved = getTenantItem<PaymentVoucherItem[]>("texaflow_vouchers");
+        if (Array.isArray(saved)) {
+          return saved.filter((p: any) => (p.company_id || currentCid) === currentCid);
         }
       } catch {}
     }

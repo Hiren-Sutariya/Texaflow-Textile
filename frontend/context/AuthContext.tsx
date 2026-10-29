@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { API_BASE_URL, invalidateApiCache } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { setTenantCookie, clearTenantCookie } from "@/lib/cookieStorage";
+import { clearTenantData } from "@/lib/tenantStorage";
 
 export interface UserSession {
   id: string;
@@ -393,6 +394,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.removeItem("texaflow_active_company_id");
       localStorage.removeItem("texaflow_active_company_id");
       clearTenantCookie();
+      clearTenantData();
       invalidateApiCache();
     } catch (e) {
       console.error(e);

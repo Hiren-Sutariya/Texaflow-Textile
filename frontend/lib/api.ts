@@ -25,7 +25,7 @@ export function getCachedApi<T>(endpoint: string): T | null {
 
   // 1. In-memory check (0 ms) — only if not expired
   const inMem = memoryCache.get(cacheKey);
-  if (inMem && Array.isArray(inMem.data) && inMem.data.length > 0 && (now - inMem.time) < CACHE_TTL_MS) {
+  if (inMem && inMem.data !== undefined && inMem.data !== null && (now - inMem.time) < CACHE_TTL_MS) {
     return inMem.data as T;
   }
 
@@ -37,7 +37,7 @@ export function getCachedApi<T>(endpoint: string): T | null {
       const savedTime = parseInt(tsRaw, 10);
       if ((now - savedTime) < CACHE_TTL_MS) {
         const parsed = JSON.parse(raw);
-        if (parsed) {
+        if (parsed !== undefined && parsed !== null) {
           memoryCache.set(cacheKey, { data: parsed, time: savedTime });
           return parsed as T;
         }
@@ -70,6 +70,16 @@ export function invalidateApiCache(endpointPrefix?: string): void {
   const tenantCompanyId = getStoredCompanyId() || "comp-001";
   if (!endpointPrefix) {
     memoryCache.clear();
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("api_cache_")) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch {}
     return;
   }
   const prefix = `api_cache_${tenantCompanyId}_${endpointPrefix}`;
@@ -79,12 +89,14 @@ export function invalidateApiCache(endpointPrefix?: string): void {
     }
   }
   try {
+    const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (k && (k.startsWith(prefix) || k.includes(endpointPrefix))) {
-        localStorage.removeItem(k);
+        keysToRemove.push(k);
       }
     }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
   } catch {}
 }
 

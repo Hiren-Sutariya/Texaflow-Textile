@@ -492,13 +492,13 @@ export default function LedgerPage() {
           fetchApi<VendorMaster[]>("/vendors")
         ]);
 
-        if (livePur.status === "fulfilled" && Array.isArray(livePur.value) && livePur.value.length > 0) {
+        if (livePur.status === "fulfilled" && Array.isArray(livePur.value)) {
           setPurchases(livePur.value);
         }
-        if (liveVou.status === "fulfilled" && Array.isArray(liveVou.value) && liveVou.value.length > 0) {
+        if (liveVou.status === "fulfilled" && Array.isArray(liveVou.value)) {
           setVouchers(liveVou.value);
         }
-        if (liveVen.status === "fulfilled" && Array.isArray(liveVen.value) && liveVen.value.length > 0) {
+        if (liveVen.status === "fulfilled" && Array.isArray(liveVen.value)) {
           setVendors(liveVen.value);
         }
       } catch (e) {
