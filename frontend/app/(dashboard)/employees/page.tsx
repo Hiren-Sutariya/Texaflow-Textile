@@ -145,6 +145,7 @@ export interface DocumentItem {
 
 export interface Employee {
   id: string;
+  srNo: number;
   code: string;
   name: string;
   role: string;
@@ -167,6 +168,7 @@ export interface Employee {
   };
   portal_credentials?: PortalCredential[];
   documents?: DocumentItem[];
+  created_at?: string;
 }
 
 export interface AttendanceRecord {
@@ -198,15 +200,20 @@ export default function EmployeesPage() {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
             if (parsed.length === 0) return [];
-            return parsed.map((emp: any) => ({
-              ...emp,
-              photoUrl:
-                emp.photoUrl &&
-                emp.photoUrl.includes("photo-1507003211169-0a1dd7228f2d") &&
-                emp.name !== "Ramesh Bhai Patel"
-                  ? undefined
-                  : (emp.photoUrl && emp.photoUrl.trim() ? emp.photoUrl : undefined)
-            }));
+            return parsed.map((emp: any, idx: number) => {
+              const codeMatch = (emp.code || "").match(/\d+/);
+              const fallbackSr = codeMatch ? parseInt(codeMatch[0], 10) : (idx + 1);
+              return {
+                ...emp,
+                srNo: Number(emp.srNo || emp.sr_no) || fallbackSr,
+                photoUrl:
+                  emp.photoUrl &&
+                  emp.photoUrl.includes("photo-1507003211169-0a1dd7228f2d") &&
+                  emp.name !== "Ramesh Bhai Patel"
+                    ? undefined
+                    : (emp.photoUrl && emp.photoUrl.trim() ? emp.photoUrl : undefined)
+              };
+            });
           }
         }
       } catch {}
@@ -267,8 +274,13 @@ export default function EmployeesPage() {
             return url;
           };
 
+          const codeMatch = (e.code || "").match(/\d+/);
+          const fallbackSr = codeMatch ? parseInt(codeMatch[0], 10) : (idx + 1);
+          const resolvedSrNo = Number(e.sr_no || e.srNo) || fallbackSr;
+
           return {
             id: e.id || `emp-${idx + 1}`,
+            srNo: resolvedSrNo,
             code: e.code || (isKarigar ? `KAR-00${idx + 1}` : `STF-00${idx + 1}`),
             name: e.name,
             role: e.role || (isKarigar ? "Karigar" : "Staff"),
@@ -284,7 +296,8 @@ export default function EmployeesPage() {
             helpers: Array.isArray(parsedHelpers) ? parsedHelpers : [],
             bank_details: parsedBank,
             portal_credentials: Array.isArray(parsedPortal) ? parsedPortal : [],
-            documents: Array.isArray(parsedDocs) ? parsedDocs : []
+            documents: Array.isArray(parsedDocs) ? parsedDocs : [],
+            created_at: e.created_at
           };
         });
         setEmployees(mapped);
@@ -306,15 +319,20 @@ export default function EmployeesPage() {
             setIsLoading(false);
             return;
           }
-          const cleaned = parsed.map((emp: any) => ({
-            ...emp,
-            photoUrl:
-              emp.photoUrl &&
-              emp.photoUrl.includes("photo-1507003211169-0a1dd7228f2d") &&
-              emp.name !== "Ramesh Bhai Patel"
-                ? undefined
-                : (emp.photoUrl && emp.photoUrl.trim() ? emp.photoUrl : undefined)
-          }));
+          const cleaned = parsed.map((emp: any, idx: number) => {
+            const codeMatch = (emp.code || "").match(/\d+/);
+            const fallbackSr = codeMatch ? parseInt(codeMatch[0], 10) : (idx + 1);
+            return {
+              ...emp,
+              srNo: Number(emp.srNo || emp.sr_no) || fallbackSr,
+              photoUrl:
+                emp.photoUrl &&
+                emp.photoUrl.includes("photo-1507003211169-0a1dd7228f2d") &&
+                emp.name !== "Ramesh Bhai Patel"
+                  ? undefined
+                  : (emp.photoUrl && emp.photoUrl.trim() ? emp.photoUrl : undefined)
+            };
+          });
           setEmployees(cleaned);
           localStorage.setItem("app_employees_data", JSON.stringify(cleaned));
           setIsLoading(false);
@@ -464,7 +482,7 @@ export default function EmployeesPage() {
   // Action Menu State (Three Dots Filter & Options matching screenshots)
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [activeHoverMenu, setActiveHoverMenu] = useState<"sort" | "refresh" | null>("sort");
-  const [sortBy, setSortBy] = useState<"name" | "created" | "modified">("name");
+  const [sortBy, setSortBy] = useState<"name" | "created" | "modified">("created");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const actionMenuRef = useRef<HTMLDivElement>(null);
@@ -693,8 +711,11 @@ export default function EmployeesPage() {
       }
 
 
+      const nextSrNo = employees.length > 0 ? Math.max(...employees.map((e) => e.srNo || 0)) + 1 : 1;
+
       const newEmp: Employee = {
         id: assignedId,
+        srNo: nextSrNo,
         code: khata,
         name: formName.trim(),
         role: isKarigar ? "Karigar" : "Staff",
@@ -710,11 +731,12 @@ export default function EmployeesPage() {
         helpers: helpersList,
         bank_details: compiledBank,
         portal_credentials: portalCredentials,
-        documents: documentsList
+        documents: documentsList,
+        created_at: new Date().toISOString()
       };
 
       setEmployees((prev) => {
-        const next = [newEmp, ...prev];
+        const next = [...prev, newEmp];
         try { localStorage.setItem("app_employees_data", JSON.stringify(next)); } catch {}
         return next;
       });
@@ -747,8 +769,13 @@ export default function EmployeesPage() {
         valA = a.name.toLowerCase();
         valB = b.name.toLowerCase();
       } else if (sortBy === "created") {
-        valA = a.id;
-        valB = b.id;
+        const numA = Number(a.srNo) || 0;
+        const numB = Number(b.srNo) || 0;
+        if (numA !== numB) {
+          return sortOrder === "asc" ? numA - numB : numB - numA;
+        }
+        valA = a.created_at || a.id;
+        valB = b.created_at || b.id;
       } else {
         valA = a.code.toLowerCase();
         valB = b.code.toLowerCase();
@@ -2074,7 +2101,7 @@ export default function EmployeesPage() {
                       {emp.name}
                     </h3>
                     <span className="text-[10px] font-bold text-slate-400">
-                      #{index + 1} • {emp.role || "Karigar"}
+                      #{emp.srNo} • {emp.role || "Karigar"}
                     </span>
                   </div>
                 </div>
@@ -2188,8 +2215,8 @@ export default function EmployeesPage() {
                   className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
                 >
                   {/* SR NO */}
-                  <td className="px-4 py-3 text-center font-bold text-slate-400 font-mono text-xs border-r border-slate-200/70">
-                    {index + 1}
+                  <td className="px-4 py-3 text-center font-bold text-slate-500 font-mono text-xs border-r border-slate-200/70">
+                    {emp.srNo}
                   </td>
 
                   {/* PHOTO */}

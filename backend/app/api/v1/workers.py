@@ -24,7 +24,7 @@ def get_workers(
         query = query.filter(Worker.role == role)
     if status and status != "All":
         query = query.filter(Worker.status == status)
-    return query.order_by(Worker.id.asc()).all()
+    return query.order_by(Worker.created_at.asc(), Worker.id.asc()).all()
 
 @router.post("", response_model=WorkerResponse, status_code=status.HTTP_201_CREATED)
 def create_worker(
