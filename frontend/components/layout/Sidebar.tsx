@@ -24,7 +24,9 @@ import {
   Tags,
   Trash2,
   Truck,
-  FileCheck
+  FileCheck,
+  Clock,
+  UserCog
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -52,6 +54,14 @@ const menuGroups: MenuGroup[] = [
     ]
   },
   {
+    groupTitle: "HRMS & Payroll",
+    items: [
+      { name: "Attendance (Clock In/Out)", href: "/hrms/attendance", icon: Clock },
+      { name: "Worker Payout & Slips", href: "/worker-payout", icon: Wallet },
+      { name: "Worker Portal", href: "/worker-portal", icon: UserCog },
+    ]
+  },
+  {
     groupTitle: "Finance",
     items: [
       { name: "Expenses", href: "/expenses", icon: Receipt },
@@ -75,7 +85,6 @@ const menuGroups: MenuGroup[] = [
     groupTitle: "Upcoming Features",
     items: [
       { name: "Karigar Issue", href: "/job-works", icon: FileText, isUpcoming: true },
-      { name: "Worker Payout", href: "/worker-payout", icon: Wallet, isUpcoming: true },
       { name: "OMS Performance", href: "/oms-performance", icon: TrendingUp, isUpcoming: true },
       { name: "Reports", href: "/reports", icon: BarChart3, isUpcoming: true },
     ]
@@ -115,6 +124,7 @@ export function Sidebar({
   const [showQuickModal, setShowQuickModal] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Masters: true,
+    "HRMS & Payroll": true,
     Finance: true,
     Settings: true,
     "Upcoming Features": false,
