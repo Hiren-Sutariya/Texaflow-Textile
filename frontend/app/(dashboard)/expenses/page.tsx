@@ -103,7 +103,7 @@ const initialExpenses: ExpenseItem[] = [];
 
 
 const formatDateDDMMYYYY = (dateStr: string) => {
-  if (!dateStr) return "";
+  if (!dateStr || typeof dateStr !== "string") return "";
   const parts = dateStr.trim().split("-");
   if (parts.length === 3) {
     if (parts[0].length === 4) {
@@ -115,7 +115,7 @@ const formatDateDDMMYYYY = (dateStr: string) => {
 };
 
 const parseDate = (dateStr: string): Date => {
-  if (!dateStr) return new Date();
+  if (!dateStr || typeof dateStr !== "string") return new Date(0);
   const parts = dateStr.trim().split("-");
   if (parts.length === 3) {
     if (parts[0].length === 4) {
@@ -371,13 +371,17 @@ export default function ExpensesPage() {
   // Filter Expenses List
   const filteredExpenses = expenses
     .filter((item) => {
-      const q = search.toLowerCase();
+      if (!item) return false;
+      const q = (search || "").trim().toLowerCase();
       const matchesSearch =
-        item.expense_no.toLowerCase().includes(q) ||
-        item.vendor_name.toLowerCase().includes(q) ||
-        item.category.toLowerCase().includes(q) ||
-        (item.notes && item.notes.toLowerCase().includes(q)) ||
-        (item.paid_via && item.paid_via.toLowerCase().includes(q));
+        !q ||
+        Boolean(item.expense_no && String(item.expense_no).toLowerCase().includes(q)) ||
+        Boolean(item.vendor_name && String(item.vendor_name).toLowerCase().includes(q)) ||
+        Boolean(item.category && String(item.category).toLowerCase().includes(q)) ||
+        Boolean(item.notes && String(item.notes).toLowerCase().includes(q)) ||
+        Boolean(item.paid_via && String(item.paid_via).toLowerCase().includes(q)) ||
+        Boolean(item.amount !== undefined && item.amount !== null && String(item.amount).includes(q)) ||
+        Boolean(item.date && String(item.date).toLowerCase().includes(q));
 
       const matchesStatus =
         statusFilter === "All"
@@ -402,16 +406,18 @@ export default function ExpensesPage() {
 
   // Analytics Calculations based on Period
   const periodExpenses = expenses.filter((e) => matchesPeriod(e.date));
-  const totalExpenseAmount = periodExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const totalPaidAmount = periodExpenses.filter((e) => e.payment_status === "Paid").reduce((sum, e) => sum + e.amount, 0);
+  const totalExpenseAmount = periodExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  const totalPaidAmount = periodExpenses.filter((e) => e.payment_status === "Paid").reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   const unpaidExpensesAmount = periodExpenses
     .filter((e) => e.payment_status === "Pending" || e.payment_status === "Unpaid")
-    .reduce((sum, e) => sum + e.amount, 0);
+    .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
   // Compute Top Category
   const categoryTotals: Record<string, number> = {};
   periodExpenses.forEach((e) => {
-    categoryTotals[e.category] = (categoryTotals[e.category] || 0) + e.amount;
+    if (e.category) {
+      categoryTotals[e.category] = (categoryTotals[e.category] || 0) + (Number(e.amount) || 0);
+    }
   });
 
   let topCategory = "N/A";
@@ -654,8 +660,17 @@ export default function ExpensesPage() {
             placeholder={t("Search by party, category, invoice #, remarks...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 font-medium"
+            className="w-full pl-8 pr-8 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 font-medium"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {/* Action Controls: Status Pill, Categories, Period, Export Excel, Add Expense */}
@@ -937,7 +952,7 @@ export default function ExpensesPage() {
                   </div>
                   <div className="text-right shrink-0">
                     <div className="font-mono font-black text-slate-900 text-base">
-                      ₹{item.amount.toLocaleString("en-IN")}
+                      ₹{(Number(item.amount) || 0).toLocaleString("en-IN")}
                     </div>
                   </div>
                 </div>
@@ -1063,7 +1078,7 @@ export default function ExpensesPage() {
 
                     {/* 8. AMOUNT (₹) */}
                     <td className="py-3 px-4 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap border-r border-slate-200/70">
-                      ₹{item.amount.toLocaleString("en-IN")}
+                      ₹{(Number(item.amount) || 0).toLocaleString("en-IN")}
                     </td>
 
                     {/* 9. ACTION */}

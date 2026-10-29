@@ -752,11 +752,14 @@ export default function EmployeesPage() {
 
 
   const filteredEmployees = useMemo(() => {
+    const q = search.trim().toLowerCase();
     const result = employees.filter((emp) => {
       const matchesSearch =
-        emp.name.toLowerCase().includes(search.toLowerCase()) ||
-        emp.code.toLowerCase().includes(search.toLowerCase()) ||
-        emp.assigned_machine.toLowerCase().includes(search.toLowerCase());
+        !q ||
+        (emp.name && emp.name.toLowerCase().includes(q)) ||
+        (emp.code && emp.code.toLowerCase().includes(q)) ||
+        (emp.assigned_machine && emp.assigned_machine.toLowerCase().includes(q)) ||
+        (emp.mobile && emp.mobile.toLowerCase().includes(q));
       const matchesType = typeFilter === "All" || emp.employee_type === typeFilter;
       const matchesStatus = statusFilter === "All" || emp.status === statusFilter;
       return matchesSearch && matchesType && matchesStatus;
@@ -766,8 +769,8 @@ export default function EmployeesPage() {
       let valA = "";
       let valB = "";
       if (sortBy === "name") {
-        valA = a.name.toLowerCase();
-        valB = b.name.toLowerCase();
+        valA = (a.name || "").toLowerCase();
+        valB = (b.name || "").toLowerCase();
       } else if (sortBy === "created") {
         const numA = Number(a.srNo) || 0;
         const numB = Number(b.srNo) || 0;
@@ -777,8 +780,8 @@ export default function EmployeesPage() {
         valA = a.created_at || a.id;
         valB = b.created_at || b.id;
       } else {
-        valA = a.code.toLowerCase();
-        valB = b.code.toLowerCase();
+        valA = (a.code || "").toLowerCase();
+        valB = (b.code || "").toLowerCase();
       }
       if (valA < valB) return sortOrder === "asc" ? -1 : 1;
       if (valA > valB) return sortOrder === "asc" ? 1 : -1;
