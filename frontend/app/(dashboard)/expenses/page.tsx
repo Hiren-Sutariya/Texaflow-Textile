@@ -300,32 +300,53 @@ export default function ExpensesPage() {
 
     loadLiveExpenses();
 
-    // Load custom categories
-    try {
-      const savedCats = getTenantItem<string[]>("texaflow_custom_expense_categories");
-      if (savedCats && Array.isArray(savedCats) && savedCats.length > 0) {
-        setFormCategories((prev) => {
-          const combined = [...prev];
-          savedCats.forEach((c: string) => {
-            if (!combined.includes(c)) combined.push(c);
-          });
-          return combined;
-        });
+    // Load custom categories from storage and API
+    const loadCategoriesList = () => {
+      try {
+        const order = getTenantItem<string[]>("texaflow_expense_categories_order") || [];
+        const custom = getTenantItem<string[]>("texaflow_custom_expense_categories") || [];
+        const unified = getTenantItem<any[]>("texaflow_all_categories_unified") || [];
+        const unifiedExp = unified
+          .filter((c) => c && (c.module === "expense" || c.module === "expenses"))
+          .map((c) => c.name);
+
+        const allCandidates = [...categoryOptions, ...order, ...custom, ...unifiedExp];
+        const unique = Array.from(new Set(allCandidates.map((c) => (typeof c === "string" ? c.trim() : "")).filter(Boolean)));
+        if (unique.length > 0) {
+          setFormCategories(unique);
+        }
+      } catch (err) {
+        console.error(err);
       }
-    } catch (err) {
-      console.error(err);
-    }
+    };
+
+    loadCategoriesList();
+
+    fetchApi<any[]>("/categories").then((live) => {
+      if (isMounted && Array.isArray(live)) {
+        const expCats = live
+          .filter((c) => (c.module || "expense") === "expense")
+          .map((c) => c.name?.trim())
+          .filter(Boolean);
+        if (expCats.length > 0) {
+          setFormCategories((prev) => Array.from(new Set([...prev, ...expCats])));
+        }
+      }
+    }).catch(() => {});
 
     const handleDataRefresh = () => {
       loadLiveExpenses();
+      loadCategoriesList();
     };
     window.addEventListener("app_data_update", handleDataRefresh);
     window.addEventListener("app_refresh_content", handleDataRefresh);
+    window.addEventListener("texaflow_expense_categories_changed", handleDataRefresh);
 
     return () => {
       isMounted = false;
       window.removeEventListener("app_data_update", handleDataRefresh);
       window.removeEventListener("app_refresh_content", handleDataRefresh);
+      window.removeEventListener("texaflow_expense_categories_changed", handleDataRefresh);
     };
   }, []);
 

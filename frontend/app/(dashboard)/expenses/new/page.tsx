@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getCachedApi, setCachedApi } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import { VoiceTextarea } from "@/components/ui/VoiceTextarea";
@@ -63,7 +63,16 @@ const defaultCategories: CategoryCardItem[] = [
 ];
 
 const getCategoryIcon = (name: string): LucideIcon => {
-  const found = defaultCategories.find((c) => c.name.trim().toLowerCase() === name.trim().toLowerCase());
+  const n = (name || "").trim().toLowerCase();
+  if (n.includes("tea") || n.includes("snack") || n.includes("refreshment") || n.includes("food") || n.includes("canteen") || n.includes("chai")) return Coffee;
+  if (n.includes("salary") || n.includes("karigar") || n.includes("worker") || n.includes("employee")) return Users;
+  if (n.includes("power") || n.includes("electric")) return Zap;
+  if (n.includes("repair") || n.includes("maintenance")) return Wrench;
+  if (n.includes("pack") || n.includes("box")) return Package;
+  if (n.includes("dhaga") || n.includes("yarn") || n.includes("consumable")) return Layers;
+  if (n.includes("truck") || n.includes("logistic") || n.includes("courier") || n.includes("freight") || n.includes("transport")) return Truck;
+  if (n.includes("rent") || n.includes("office") || n.includes("factory") || n.includes("building")) return Building2;
+  const found = defaultCategories.find((c) => c.name.trim().toLowerCase() === n);
   return found ? found.icon : Tag;
 };
 
@@ -132,29 +141,71 @@ function NewExpenseVoucherForm() {
   const [defaultSavedToast, setDefaultSavedToast] = useState(false);
 
   const refreshFormState = useCallback(() => {
-    let loadedCats: string[] = [];
-    try {
-      const savedCats = getTenantItem<string[]>("texaflow_custom_expense_categories");
-      if (Array.isArray(savedCats) && savedCats.length > 0) {
-        loadedCats = savedCats;
-      }
-    } catch {}
-
     const defaultNames = defaultCategories.map((c) => c.name.trim());
     const defaultNamesLower = new Set(defaultNames.map((n) => n.toLowerCase()));
 
-    // Custom categories must only be unique names not in defaultCategories
-    const cleanCustom = Array.from(
-      new Set(
-        loadedCats
-          .map((c) => (typeof c === "string" ? c.trim() : ""))
-          .filter((c) => c && !defaultNamesLower.has(c.toLowerCase()))
-      )
-    );
+    const candidateNames: string[] = [];
+
+    // 1. Check custom expense categories
+    try {
+      const savedCats = getTenantItem<string[]>("texaflow_custom_expense_categories");
+      if (Array.isArray(savedCats)) {
+        savedCats.forEach((c) => {
+          if (typeof c === "string" && c.trim()) candidateNames.push(c.trim());
+        });
+      }
+    } catch {}
+
+    // 2. Check unified master categories table (added from /categories)
+    try {
+      const unified = getTenantItem<any[]>("texaflow_all_categories_unified");
+      if (Array.isArray(unified)) {
+        unified.forEach((c) => {
+          if (c && (c.module === "expense" || c.module === "expenses") && typeof c.name === "string" && c.name.trim()) {
+            candidateNames.push(c.name.trim());
+          }
+        });
+      }
+    } catch {}
+
+    // 3. Check cached API /categories
+    try {
+      const liveCached = getCachedApi<any[]>("/categories");
+      if (Array.isArray(liveCached)) {
+        liveCached.forEach((c) => {
+          if (c && (c.module === "expense" || c.module === "expenses") && typeof c.name === "string" && c.name.trim()) {
+            candidateNames.push(c.name.trim());
+          }
+        });
+      }
+    } catch {}
+
+    // 4. Check category order storage
+    try {
+      const savedOrder = getTenantItem<string[]>("texaflow_expense_categories_order");
+      if (Array.isArray(savedOrder)) {
+        savedOrder.forEach((c) => {
+          if (typeof c === "string" && c.trim()) candidateNames.push(c.trim());
+        });
+      }
+    } catch {}
+
+    // Extract clean unique custom categories (not in defaultCategories)
+    const seenCustomLower = new Set<string>();
+    const cleanCustom: string[] = [];
+    for (const name of candidateNames) {
+      const lower = name.toLowerCase();
+      if (!defaultNamesLower.has(lower) && !seenCustomLower.has(lower)) {
+        seenCustomLower.add(lower);
+        cleanCustom.push(name);
+      }
+    }
     setCustomCategories(cleanCustom);
 
     // 100% unique list of available categories
     const allAvailable = Array.from(new Set([...defaultNames, ...cleanCustom]));
+    const allAvailableMap = new Map<string, string>();
+    allAvailable.forEach((name) => allAvailableMap.set(name.toLowerCase(), name));
 
     let finalOrder = [...allAvailable];
     try {
@@ -163,15 +214,16 @@ function NewExpenseVoucherForm() {
         const seen = new Set<string>();
         const valid: string[] = [];
         for (const rawName of savedOrder) {
-          const name = typeof rawName === "string" ? rawName.trim() : "";
-          if (name && allAvailable.includes(name) && !seen.has(name.toLowerCase())) {
-            seen.add(name.toLowerCase());
-            valid.push(name);
+          const lower = (typeof rawName === "string" ? rawName.trim() : "").toLowerCase();
+          if (lower && allAvailableMap.has(lower) && !seen.has(lower)) {
+            seen.add(lower);
+            valid.push(allAvailableMap.get(lower)!);
           }
         }
         for (const name of allAvailable) {
-          if (!seen.has(name.toLowerCase())) {
-            seen.add(name.toLowerCase());
+          const lower = name.toLowerCase();
+          if (!seen.has(lower)) {
+            seen.add(lower);
             valid.push(name);
           }
         }
@@ -194,8 +246,8 @@ function NewExpenseVoucherForm() {
     let initialDefault = finalOrder[0] || defaultCategories[0]?.name || "Karigar Salary";
     try {
       const savedDefault = getTenantItem<string>("texaflow_default_expense_category");
-      if (savedDefault && typeof savedDefault === "string" && allAvailable.includes(savedDefault)) {
-        initialDefault = savedDefault;
+      if (savedDefault && typeof savedDefault === "string" && allAvailableMap.has(savedDefault.toLowerCase())) {
+        initialDefault = allAvailableMap.get(savedDefault.toLowerCase())!;
       }
     } catch {}
 
@@ -226,11 +278,32 @@ function NewExpenseVoucherForm() {
   }, [refreshFormState]);
 
   useEffect(() => {
+    let isMounted = true;
+    async function loadLiveExpenseCategories() {
+      try {
+        const live = await fetchApi<Array<{ id: string; name: string; module: string }>>("/categories").catch(() => null);
+        if (isMounted && Array.isArray(live) && live.length > 0) {
+          setCachedApi("/categories", live);
+          refreshFormState();
+        }
+      } catch (err) {
+        console.warn("Could not fetch live categories:", err);
+      }
+    }
+    loadLiveExpenseCategories();
+
     const handleDataUpdate = () => {
       refreshFormState();
     };
     window.addEventListener("app_data_update", handleDataUpdate);
-    return () => window.removeEventListener("app_data_update", handleDataUpdate);
+    window.addEventListener("texaflow_expense_categories_changed", handleDataUpdate);
+    window.addEventListener("storage", handleDataUpdate);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("app_data_update", handleDataUpdate);
+      window.removeEventListener("texaflow_expense_categories_changed", handleDataUpdate);
+      window.removeEventListener("storage", handleDataUpdate);
+    };
   }, [refreshFormState]);
 
   // Reorder modal state
@@ -553,6 +626,27 @@ function NewExpenseVoucherForm() {
     setCategoryOrder(updatedOrder);
     try {
       setTenantItem("texaflow_expense_categories_order", updatedOrder);
+      const unified = getTenantItem<any[]>("texaflow_all_categories_unified") || [];
+      if (!unified.some((u) => u.name.toLowerCase() === trimmed.toLowerCase() && u.module === "expense")) {
+        const nextSr = unified.filter((u) => u.module === "expense").length + 1;
+        setTenantItem("texaflow_all_categories_unified", [
+          ...unified,
+          {
+            id: `cat-exp-${Date.now()}`,
+            name: trimmed,
+            module: "expense",
+            moduleLabel: "Expenses",
+            status: "Active",
+            srNo: nextSr
+          }
+        ]);
+      }
+      fetchApi("/categories", {
+        method: "POST",
+        body: JSON.stringify({ name: trimmed, module: "expense" })
+      }).catch(() => {});
+      window.dispatchEvent(new CustomEvent("texaflow_expense_categories_changed"));
+      window.dispatchEvent(new CustomEvent("app_data_update"));
     } catch {}
 
     setCategory(trimmed);
@@ -585,6 +679,14 @@ function NewExpenseVoucherForm() {
     setCategoryOrder(updatedOrder);
     try {
       setTenantItem("texaflow_expense_categories_order", updatedOrder);
+      const unified = getTenantItem<any[]>("texaflow_all_categories_unified") || [];
+      const updatedUnified = unified.filter(
+        (u) => !(u.name.toLowerCase() === nameToRemove.toLowerCase() && u.module === "expense")
+      );
+      setTenantItem("texaflow_all_categories_unified", updatedUnified);
+      fetchApi(`/categories/${encodeURIComponent(nameToRemove)}`, { method: "DELETE" }).catch(() => {});
+      window.dispatchEvent(new CustomEvent("texaflow_expense_categories_changed"));
+      window.dispatchEvent(new CustomEvent("app_data_update"));
     } catch {}
     setTempOrder((prev) => prev.filter((c) => c !== nameToRemove));
 

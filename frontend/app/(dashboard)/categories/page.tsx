@@ -142,11 +142,16 @@ export default function CategoriesPage() {
       "texaflow_material_categories",
       items.filter((c) => c.module === "material").map((c) => c.name)
     );
-    setTenantItem(
-      "texaflow_expense_categories_order",
-      items.filter((c) => c.module === "expense").map((c) => c.name)
+    const expenseCats = items.filter((c) => c.module === "expense").map((c) => c.name);
+    setTenantItem("texaflow_expense_categories_order", expenseCats);
+    const customExpenses = expenseCats.filter(
+      (name) => !DEFAULT_EXPENSE_CATEGORIES.some((d) => d.toLowerCase() === name.toLowerCase())
     );
+    setTenantItem("texaflow_custom_expense_categories", customExpenses);
+
     window.dispatchEvent(new CustomEvent("texaflow_material_categories_changed"));
+    window.dispatchEvent(new CustomEvent("texaflow_expense_categories_changed"));
+    window.dispatchEvent(new CustomEvent("app_data_update"));
   };
 
   // Synchronously load initial cached categories for 0ms transition
