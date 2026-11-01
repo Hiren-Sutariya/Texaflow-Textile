@@ -7,62 +7,63 @@ import {
   CheckCircle2, 
   Wallet, 
   Receipt, 
-  Home, 
-  Zap, 
   Printer, 
   FileText, 
-  ArrowRight,
-  ShieldCheck,
-  UserCheck,
-  ChevronDown
+  AlertCircle,
+  User,
+  ExternalLink
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { fetchApi } from "@/lib/api";
 import { getStoredCompanyId, getStoredFirmName, getTenantItem } from "@/lib/tenantStorage";
 import { 
-  calculateAttendanceStatus, 
   getStoredAttendance, 
   saveAttendancePunch, 
   getStoredPayouts, 
-  getWorkerMonthlyUpad 
+  getWorkerMonthlyUpad,
+  getStoredWorkers,
+  refreshWorkersFromApi,
+  WorkerItem
 } from "@/lib/hrmsStorage";
 import { AttendancePunch, SalaryPayoutRecord, SalaryDeductionItem } from "@/types/hrms";
 
-interface WorkerItem {
-  id: string;
-  name: string;
-  code?: string;
-  role?: string;
-  shift?: "Day Shift" | "Night Shift";
-  assigned_machine?: string;
-  monthly_salary?: number;
-}
-
-const getTodayStr = () => new Date().toISOString().split("T")[0];
+const getTodayStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 export default function WorkerPortalPage() {
   const { t } = useLanguage();
   const [hasMounted, setHasMounted] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
+  const [nowTick, setNowTick] = useState(Date.now());
   const [firmName, setFirmName] = useState("Om Sai Enterprise");
 
-  const [workers, setWorkers] = useState<WorkerItem[]>([]);
-  const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
-  const [selectedMonth, setSelectedMonth] = useState("2026-10");
+  // Instant 0ms synchronous initialization
+  const [workers, setWorkers] = useState<WorkerItem[]>(getStoredWorkers);
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string>(() => {
+    const list = getStoredWorkers();
+    return list[0]?.id || "";
+  });
+  const [selectedMonth, setSelectedMonth] = useState(() => getTodayStr().slice(0, 7));
 
-  const [attendanceLogs, setAttendanceLogs] = useState<AttendancePunch[]>([]);
-  const [payoutRecords, setPayoutRecords] = useState<SalaryPayoutRecord[]>([]);
+  const [attendanceLogs, setAttendanceLogs] = useState<AttendancePunch[]>(getStoredAttendance);
+  const [payoutRecords, setPayoutRecords] = useState<SalaryPayoutRecord[]>(getStoredPayouts);
 
   // Slip modal
   const [selectedSlip, setSelectedSlip] = useState<SalaryPayoutRecord | null>(null);
 
-  // Live clock
+  // Live clock & live ticker
   useEffect(() => {
     setHasMounted(true);
     setFirmName(getStoredFirmName() || "Om Sai Enterprise");
 
     const updateTime = () => {
       const now = new Date();
+      setNowTick(now.getTime());
       setCurrentTime(now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }));
     };
     updateTime();
@@ -70,36 +71,24 @@ export default function WorkerPortalPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Load workers
+  // Sync workers & data with instant cache and background API refresh
   useEffect(() => {
-    const currentCid = getStoredCompanyId() || "comp-001";
-    async function loadData() {
-      try {
-        const live = await fetchApi<any[]>("/workers");
-        if (Array.isArray(live) && live.length > 0) {
-          const scoped = live.filter((w) => (w.company_id || currentCid) === currentCid && w.status !== "Inactive");
-          setWorkers(scoped);
-          if (scoped[0]) setSelectedWorkerId(scoped[0].id);
-          return;
-        }
-      } catch {}
-
-      const localWorkers = getTenantItem<any[]>("texaflow_workers") || getTenantItem<any[]>("texaflow_employees") || [];
-      if (Array.isArray(localWorkers) && localWorkers.length > 0) {
-        setWorkers(localWorkers);
-        if (localWorkers[0]) setSelectedWorkerId(localWorkers[0].id);
-      } else {
-        const defaults = [
-          { id: "wrk-001", name: "Pradeep Upad", code: "KAR-001", role: "Karigar", shift: "Day Shift" as const, monthly_salary: 33000, assigned_machine: "Machine 1" },
-          { id: "wrk-002", name: "Rajkumar", code: "KAR-002", role: "Karigar", shift: "Day Shift" as const, monthly_salary: 28000, assigned_machine: "Machine 2" },
-          { id: "wrk-003", name: "Mama Upad", code: "KAR-003", role: "Karigar", shift: "Night Shift" as const, monthly_salary: 35000, assigned_machine: "Machine 3" },
-        ];
-        setWorkers(defaults);
-        setSelectedWorkerId(defaults[0].id);
-      }
+    // 1. Immediately reload latest workers
+    const latest = getStoredWorkers();
+    setWorkers(latest);
+    if (!selectedWorkerId && latest[0]) {
+      setSelectedWorkerId(latest[0].id);
     }
 
-    loadData();
+    // 2. Non-blocking background API refresh
+    refreshWorkersFromApi((live) => {
+      if (live.length > 0) {
+        setWorkers(live);
+        if (!selectedWorkerId && live[0]) {
+          setSelectedWorkerId(live[0].id);
+        }
+      }
+    });
 
     const refreshData = () => {
       setAttendanceLogs(getStoredAttendance());
@@ -107,50 +96,83 @@ export default function WorkerPortalPage() {
     };
     refreshData();
 
+    const handleWorkerUpdate = () => {
+      const refreshed = getStoredWorkers();
+      setWorkers(refreshed);
+      if (!selectedWorkerId && refreshed[0]) {
+        setSelectedWorkerId(refreshed[0].id);
+      }
+    };
+
     window.addEventListener("hrms_attendance_updated", refreshData);
     window.addEventListener("hrms_payout_updated", refreshData);
+    window.addEventListener("app_employees_updated", handleWorkerUpdate);
     window.addEventListener("app_data_update", refreshData);
+    window.addEventListener("app_data_update", handleWorkerUpdate);
     return () => {
       window.removeEventListener("hrms_attendance_updated", refreshData);
       window.removeEventListener("hrms_payout_updated", refreshData);
+      window.removeEventListener("app_employees_updated", handleWorkerUpdate);
       window.removeEventListener("app_data_update", refreshData);
+      window.removeEventListener("app_data_update", handleWorkerUpdate);
     };
   }, []);
 
   const activeWorker = useMemo(() => {
-    return workers.find((w) => w.id === selectedWorkerId) || workers[0];
+    return workers.find((w) => w.id === selectedWorkerId) || workers[0] || null;
   }, [workers, selectedWorkerId]);
 
-  // Today's punch for this worker
+  const todayStr = getTodayStr();
   const todayPunch = useMemo(() => {
     if (!activeWorker) return null;
-    const today = getTodayStr();
-    return attendanceLogs.find((p) => p.worker_id === activeWorker.id && p.date === today) || null;
-  }, [attendanceLogs, activeWorker]);
+    return attendanceLogs.find((p) => p.worker_id === activeWorker.id && p.date === todayStr) || null;
+  }, [attendanceLogs, activeWorker, todayStr]);
 
-  const isClockedIn = Boolean(todayPunch && todayPunch.clock_in && !todayPunch.clock_out);
-  const isCompletedToday = Boolean(todayPunch && todayPunch.clock_in && todayPunch.clock_out);
+  const isAbsentToday = Boolean(todayPunch && todayPunch.status === "Absent");
+  const isClockedIn = Boolean(todayPunch && !isAbsentToday && todayPunch.clock_in && !todayPunch.clock_out);
+  const isCompletedToday = Boolean(todayPunch && !isAbsentToday && todayPunch.clock_in && todayPunch.clock_out);
+
+  const liveElapsedStr = useMemo(() => {
+    if (!isClockedIn || !todayPunch) return "0 hrs";
+    let startMs = nowTick;
+    if (todayPunch.created_at) {
+      const p = new Date(todayPunch.created_at).getTime();
+      if (!isNaN(p)) startMs = p;
+    } else if (todayPunch.clock_in) {
+      const parts = todayPunch.clock_in.split(":").map(Number);
+      const d = new Date();
+      d.setHours(parts[0] || 0, parts[1] || 0, parts[2] || 0, 0);
+      startMs = d.getTime();
+    }
+    const diffSec = Math.max(0, Math.floor((nowTick - startMs) / 1000));
+    const h = Math.floor(diffSec / 3600);
+    const m = Math.floor((diffSec % 3600) / 60);
+    const s = diffSec % 60;
+    return `${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+  }, [isClockedIn, todayPunch, nowTick]);
 
   // Clock In Action
   const handleClockIn = () => {
     if (!activeWorker) return;
     const now = new Date();
-    const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
+    const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    const existing = todayPunch;
 
     const punch: AttendancePunch = {
-      id: todayPunch?.id || `att-${Date.now()}-${activeWorker.id}`,
+      id: existing?.id || `att-${Date.now()}-${activeWorker.id}`,
       company_id: getStoredCompanyId() || "comp-001",
       worker_id: activeWorker.id,
       worker_name: activeWorker.name,
       worker_code: activeWorker.code,
-      date: getTodayStr(),
-      clock_in: todayPunch?.clock_in || timeStr,
+      date: todayStr,
+      shift: activeWorker.shift || "Day Shift",
+      clock_in: timeStr,
       clock_out: null,
       total_hours: 0,
-      status: "Present",
       overtime_hours: 0,
-      shift: activeWorker.shift || "Day Shift",
-      created_at: new Date().toISOString()
+      status: "Present",
+      notes: "Punched via Worker Portal",
+      created_at: now.toISOString()
     };
 
     saveAttendancePunch(punch);
@@ -161,27 +183,31 @@ export default function WorkerPortalPage() {
   const handleClockOut = () => {
     if (!activeWorker || !todayPunch || !todayPunch.clock_in) return;
     const now = new Date();
-    const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
+    const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 
-    let hours = 0;
-    try {
-      const [inH, inM] = todayPunch.clock_in.split(":").map(Number);
-      const [outH, outM] = timeStr.split(":").map(Number);
-      let diffMinutes = (outH * 60 + outM) - (inH * 60 + inM);
-      if (diffMinutes < 0) diffMinutes += 24 * 60;
-      hours = Math.round((diffMinutes / 60) * 10) / 10;
-    } catch {
-      hours = 8;
+    let startMs = now.getTime();
+    if (todayPunch.created_at) {
+      const p = new Date(todayPunch.created_at).getTime();
+      if (!isNaN(p)) startMs = p;
+    } else {
+      const parts = todayPunch.clock_in.split(":").map(Number);
+      const d = new Date();
+      d.setHours(parts[0] || 0, parts[1] || 0, parts[2] || 0, 0);
+      startMs = d.getTime();
     }
+    const diffSeconds = Math.max(0, Math.floor((now.getTime() - startMs) / 1000));
+    let hours = Math.round((diffSeconds / 3600) * 100) / 100;
 
-    const { status, overtime_hours } = calculateAttendanceStatus(hours);
+    const isFullDay = hours >= 7;
+    const isHalfDay = hours >= 3.5 && hours < 7;
+    const status = isFullDay ? "Full Day" : isHalfDay ? "Half Day" : hours > 0.05 ? "Half Day" : "Present";
 
     const punch: AttendancePunch = {
       ...todayPunch,
       clock_out: timeStr,
       total_hours: hours,
-      status,
-      overtime_hours,
+      status: status as any,
+      notes: "Clocked out via Worker Portal",
       updated_at: new Date().toISOString()
     };
 
@@ -220,221 +246,257 @@ export default function WorkerPortalPage() {
     return payoutRecords.find((p) => p.worker_id === activeWorker.id && p.month === selectedMonth) || null;
   }, [payoutRecords, activeWorker, selectedMonth]);
 
+  // Net payable calculation
+  const calculatedDays = monthAttendance.fullDays + (monthAttendance.halfDays * 0.5) || 26;
+  const estimatedGross = Math.round(((activeWorker?.monthly_salary || 0) / 30) * calculatedDays);
+  const estimatedNet = Math.max(0, estimatedGross - upadInfo.total);
+
   if (!hasMounted) return null;
 
   return (
-    <div className="space-y-4 font-sans text-xs pb-16 max-w-4xl mx-auto">
-      {/* 1. TOP HEADER & WORKER SELECTOR */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-md shrink-0">
-            {activeWorker ? activeWorker.name.charAt(0).toUpperCase() : "W"}
+    <div className="space-y-4 font-sans text-xs pb-16">
+      {/* 1. TOP 4 STATS OVERVIEW CARDS (MATCHING EXPENSES / WORKER STYLE) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* Monthly Base Salary */}
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">BASE SALARY</p>
+            <p className="text-xl font-black text-slate-900 mt-0.5">₹{(activeWorker?.monthly_salary || 0).toLocaleString("en-IN")}</p>
           </div>
-          <div>
-            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">WORKER SELF-SERVICE PORTAL</span>
-            <div className="relative inline-block mt-0.5">
-              <select
-                value={selectedWorkerId}
-                onChange={(e) => setSelectedWorkerId(e.target.value)}
-                className="font-black text-slate-900 text-lg bg-transparent border-b-2 border-blue-500 pb-0.5 pr-6 focus:outline-none cursor-pointer"
-              >
-                {workers.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name} ({w.code || "KAR"})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <p className="text-xs text-slate-500 font-medium mt-1">
-              {firmName} • {activeWorker?.role || "Karigar"} • Machine: {activeWorker?.assigned_machine || "Main Floor"}
-            </p>
+          <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+            <Wallet className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-slate-900 text-white px-4 py-2 rounded-2xl text-right shrink-0 shadow-sm">
-          <span className="font-mono font-black text-base tracking-wider text-emerald-400 block">{currentTime}</span>
-          <span className="text-[10px] text-slate-400 block font-medium">Live Digital Time</span>
+        {/* Paid Days */}
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider truncate">DAYS WORKED</p>
+            <p className="text-xl font-black text-emerald-700 mt-0.5">
+              {monthAttendance.fullDays + (monthAttendance.halfDays * 0.5) || 26} <span className="text-xs font-bold text-slate-400">Days</span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
+          </div>
+        </div>
+
+        {/* Upad Taken */}
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate">UPAD ADVANCE</p>
+            <p className="text-xl font-black text-amber-700 mt-0.5">-₹{upadInfo.total.toLocaleString("en-IN")}</p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+            <Receipt className="w-4 h-4" />
+          </div>
+        </div>
+
+        {/* Net Salary Payable */}
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider truncate">
+              {workerPayout?.payment_status === "Paid" ? "NET SALARY PAID" : "ESTIMATED NET"}
+            </p>
+            <p className="text-xl font-black text-blue-700 mt-0.5">
+              ₹{(workerPayout ? workerPayout.net_payable : estimatedNet).toLocaleString("en-IN")}
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+            <FileText className="w-4 h-4" />
+          </div>
         </div>
       </div>
 
-      {/* 2. TODAY'S PUNCH INTERACTIVE CARD */}
-      <div className="bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 text-white rounded-3xl p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
-          <div>
-            <span className="text-xs text-blue-300 font-bold uppercase tracking-wider block">TODAY'S SHIFT PUNCH (આજની હાજરી)</span>
-            <h2 className="text-xl font-black mt-0.5">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</h2>
+      {/* 2. COMPACT CONTROLS TOOLBAR (WORKER SELECTOR + MONTH PICKER + DIGITAL TIME) */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
+        {/* Worker Selector */}
+        <div className="flex items-center gap-2.5 w-full md:w-auto">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 flex items-center justify-center font-extrabold text-xs shrink-0">
+            {activeWorker ? activeWorker.name.charAt(0).toUpperCase() : "W"}
           </div>
+          <div className="w-full sm:w-72">
+            <select
+              value={selectedWorkerId}
+              onChange={(e) => setSelectedWorkerId(e.target.value)}
+              className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 text-xs focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+            >
+              {workers.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name} ({w.code || "KAR"}) - {w.assigned_machine || w.role || "Worker"}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Month Selector & Live Time */}
+        <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-start md:justify-end">
+          <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-xl px-2.5 h-9 shadow-2xs cursor-pointer">
+            <Calendar className="w-3.5 h-3.5 text-blue-600" />
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-transparent text-xs font-mono font-bold text-slate-800 focus:outline-none cursor-pointer"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 px-3 h-9 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-mono font-bold text-xs">
+            <Clock className="w-3.5 h-3.5 text-blue-600" />
+            <span>{currentTime}</span>
+          </div>
+
+          {workerPayout && (
+            <button
+              type="button"
+              onClick={() => setSelectedSlip(workerPayout)}
+              className="h-9 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Salary Slip</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 3. TODAY'S SHIFT PUNCH CARD (CLEAN WHITE CARD MATCHING SOFTWARE STYLE) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 sm:p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
           <div>
-            {isClockedIn ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-500 text-slate-950 shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-slate-950 animate-ping"></span>
-                ACTIVE ON SHIFT
+            <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block">TODAY'S SHIFT PUNCH (આજની હાજરી)</span>
+            <h2 className="text-sm font-extrabold text-slate-900 mt-0.5">
+              {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}
+            </h2>
+          </div>
+
+          <div>
+            {isAbsentToday ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+                ABSENT (ગેરહાજર)
+              </span>
+            ) : isClockedIn ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                Active on Shift
               </span>
             ) : isCompletedToday ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-blue-400/20 text-blue-200 border border-blue-400/30">
-                ✓ SHIFT COMPLETED
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                ✓ Shift Completed
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-slate-300">
-                NOT CLOCKED IN
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500">
+                Not Clocked In
               </span>
             )}
           </div>
         </div>
 
-        {/* Big Action Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          {!isClockedIn && !isCompletedToday ? (
+        {/* Timestamps Row */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 text-center">
+            <span className="text-[10px] text-slate-500 block font-bold uppercase">CLOCK IN</span>
+            <span className="font-mono font-black text-base text-slate-900 mt-0.5 block">
+              {todayPunch?.clock_in || "--:--"}
+            </span>
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 text-center">
+            <span className="text-[10px] text-slate-500 block font-bold uppercase">CLOCK OUT</span>
+            <span className="font-mono font-black text-base text-slate-900 mt-0.5 block">
+              {todayPunch?.clock_out || "--:--"}
+            </span>
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 text-center">
+            <span className="text-[10px] text-slate-500 block font-bold uppercase">
+              {isClockedIn ? "LIVE WORKING TIME" : "HOURS WORKED"}
+            </span>
+            <span className={`font-mono font-black text-base mt-0.5 block ${isClockedIn ? "text-emerald-700" : "text-blue-600"}`}>
+              {isAbsentToday
+                ? "0 hrs"
+                : isClockedIn
+                ? liveElapsedStr
+                : todayPunch?.total_hours
+                ? `${todayPunch.total_hours} hrs`
+                : "0 hrs"}
+            </span>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div>
+          {isAbsentToday ? (
+            <div className="py-2.5 px-4 text-center bg-rose-50 text-rose-800 border border-rose-200 rounded-xl font-bold text-xs">
+              આજની તારીખમાં તમે ગેરહાજર (ABSENT) નોંધાયેલા છો.
+            </div>
+          ) : !isClockedIn && !isCompletedToday ? (
             <button
               type="button"
               onClick={handleClockIn}
-              className="col-span-full h-14 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-base rounded-2xl shadow-lg transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-2xs transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <CheckCircle2 className="w-6 h-6" />
-              <span>CLOCK IN - હું કામ પર આવ્યો</span>
+              <CheckCircle2 className="w-4 h-4" />
+              <span>CLOCK IN (કામ શરૂ - હાજરી નોંધો)</span>
             </button>
           ) : isClockedIn ? (
             <button
               type="button"
               onClick={handleClockOut}
-              className="col-span-full h-14 bg-rose-500 hover:bg-rose-400 text-white font-black text-base rounded-2xl shadow-lg transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full h-11 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-2xs transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Clock className="w-6 h-6" />
-              <span>CLOCK OUT - કામ પૂરું થયું / રજા</span>
+              <Clock className="w-4 h-4" />
+              <span>CLOCK OUT (કામ પૂરું - રજા નોંધો)</span>
             </button>
           ) : (
-            <div className="col-span-full py-3 text-center bg-white/10 rounded-2xl font-bold text-sm text-emerald-300">
+            <div className="py-2.5 px-4 text-center bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl font-bold text-xs">
               ✓ આજની શિફ્ટ સફળતાપૂર્વક નોંધાઈ ગઈ છે! (Today's Punch Complete)
             </div>
           )}
         </div>
-
-        {/* Timestamps */}
-        <div className="grid grid-cols-3 gap-2 bg-white/10 p-3 rounded-2xl text-center text-xs">
-          <div>
-            <span className="text-[10px] text-blue-200 block font-bold">CLOCK IN</span>
-            <span className="font-mono font-black text-base mt-0.5 block">{todayPunch?.clock_in || "--:--"}</span>
-          </div>
-          <div className="border-x border-white/10">
-            <span className="text-[10px] text-blue-200 block font-bold">CLOCK OUT</span>
-            <span className="font-mono font-black text-base mt-0.5 block">{todayPunch?.clock_out || "--:--"}</span>
-          </div>
-          <div>
-            <span className="text-[10px] text-blue-200 block font-bold">TODAY'S HOURS</span>
-            <span className="font-mono font-black text-base text-emerald-400 mt-0.5 block">
-              {todayPunch?.total_hours ? `${todayPunch.total_hours} hrs` : "0 hrs"}
-            </span>
-          </div>
-        </div>
       </div>
 
-      {/* 3. MY MONTHLY SUMMARY CARDS */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs p-5 space-y-4">
-        <div className="flex items-center justify-between">
+      {/* 4. UPAD DETAILS & RECENT VOUCHERS CARD */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 sm:p-5 space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
           <div>
-            <h3 className="font-extrabold text-slate-900 text-sm">My Monthly Summary (મારો માસિક હિસાબ)</h3>
-            <p className="text-xs text-slate-500 font-medium">Attendance, Upad and Payout for October 2026</p>
+            <h3 className="font-extrabold text-slate-900 text-xs">Upad Advance Vouchers (તમે લીધેલો ઉપાડ)</h3>
+            <p className="text-[11px] text-slate-500">Expenses voucher record for {selectedMonth}</p>
           </div>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-mono font-bold text-slate-800"
-          />
+          <span className="text-xs font-mono font-black text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+            Total: ₹{upadInfo.total.toLocaleString("en-IN")}
+          </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">MONTHLY SALARY RATE</span>
-            <span className="text-base font-black text-slate-900 font-mono mt-0.5 block">
-              ₹{(activeWorker?.monthly_salary || 0).toLocaleString("en-IN")}
-            </span>
-            <span className="text-[10px] text-slate-500">₹{Math.round((activeWorker?.monthly_salary || 0) / 30)}/day</span>
-          </div>
-
-          <div className="bg-emerald-50/70 p-3 rounded-2xl border border-emerald-200">
-            <span className="text-[10px] font-bold text-emerald-700 block uppercase">PAID DAYS WORKED</span>
-            <span className="text-base font-black text-emerald-900 font-mono mt-0.5 block">
-              {monthAttendance.fullDays + (monthAttendance.halfDays * 0.5) || 26} Days
-            </span>
-            <span className="text-[10px] text-emerald-700 font-medium">
-              {monthAttendance.fullDays || 24} Full | {monthAttendance.halfDays || 4} Half
-            </span>
-          </div>
-
-          <div className="bg-amber-50/70 p-3 rounded-2xl border border-amber-200">
-            <span className="text-[10px] font-bold text-amber-700 block uppercase">CASH UPAD TAKEN</span>
-            <span className="text-base font-black text-amber-900 font-mono mt-0.5 block">
-              ₹{upadInfo.total.toLocaleString("en-IN")}
-            </span>
-            <span className="text-[10px] text-amber-700 font-medium">{upadInfo.items.length} advance vouchers</span>
-          </div>
-
-          <div className="bg-blue-50/70 p-3 rounded-2xl border border-blue-200">
-            <span className="text-[10px] font-bold text-blue-700 block uppercase">ESTIMATED NET SALARY</span>
-            <span className="text-base font-black text-blue-900 font-mono mt-0.5 block">
-              {workerPayout
-                ? `₹${workerPayout.net_payable.toLocaleString("en-IN")}`
-                : `₹${Math.max(0, Math.round(((activeWorker?.monthly_salary || 0) / 30) * 26) - upadInfo.total).toLocaleString("en-IN")}`}
-            </span>
-            <span className="text-[10px] text-blue-700 font-medium">
-              {workerPayout?.payment_status === "Paid" ? "✓ Paid / Done" : "Pending Disbursal"}
-            </span>
-          </div>
-        </div>
-
-        {/* Upad Breakdown Date-wise (Zero dispute guarantee) */}
-        {upadInfo.items.length > 0 && (
-          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
-            <span className="font-extrabold text-xs text-slate-800 block">Upad Vouchers Taken (તમે લીધેલો ઉપાડ):</span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {upadInfo.items.map((item, i) => (
-                <div key={i} className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200">
-                  <div>
-                    <span className="font-mono font-bold text-slate-800">{item.expense_no}</span>
-                    <span className="text-slate-500 font-medium ml-2">({item.date})</span>
-                  </div>
-                  <span className="font-mono font-black text-amber-700">₹{item.amount.toLocaleString("en-IN")}</span>
+        {upadInfo.items.length === 0 ? (
+          <p className="py-4 text-center text-slate-400 font-medium">આ મહિનામાં કોઈ ઉપાડ લીધેલ નથી (No upad advances taken this month).</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+            {upadInfo.items.map((item, i) => (
+              <div key={i} className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                <div>
+                  <span className="font-mono font-bold text-slate-900">{item.expense_no}</span>
+                  <span className="text-slate-500 font-medium ml-1.5 text-[11px]">({item.date})</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Salary Slip Action if Payout Exists */}
-        {workerPayout && (
-          <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-black text-emerald-800 block">
-                ✓ SALARY SLIP AVAILABLE FOR {workerPayout.month_label}
-              </span>
-              <p className="text-xs text-emerald-700 font-medium mt-0.5">
-                Paid Amount: ₹{workerPayout.paid_amount.toLocaleString("en-IN")} via {workerPayout.payment_mode}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedSlip(workerPayout)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs shadow-sm flex items-center gap-1.5 cursor-pointer"
-            >
-              <FileText className="w-4 h-4" />
-              <span>View Salary Slip</span>
-            </button>
+                <span className="font-mono font-black text-amber-700">₹{item.amount.toLocaleString("en-IN")}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* 4. SALARY SLIP MODAL */}
+      {/* 5. OFFICIAL SALARY SLIP MODAL */}
       {selectedSlip && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4 animate-in zoom-in-95 duration-100">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4 animate-in zoom-in-95 duration-100">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <span className="font-bold text-xs text-slate-500 uppercase">OFFICIAL SALARY SLIP</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1"
+                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1 cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Print</span>
@@ -442,14 +504,14 @@ export default function WorkerPortalPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedSlip(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
             </div>
 
-            <div className="border border-slate-200 rounded-2xl p-4 space-y-3 bg-slate-50/50">
+            <div className="border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50/50">
               <div className="text-center border-b border-slate-200 pb-2">
                 <h2 className="text-base font-black text-slate-900 uppercase">{firmName}</h2>
                 <p className="text-[10px] text-slate-500">PAYROLL SLIP - {selectedSlip.month_label}</p>
@@ -492,7 +554,7 @@ export default function WorkerPortalPage() {
               <button
                 type="button"
                 onClick={() => setSelectedSlip(null)}
-                className="px-4 py-1.5 bg-slate-900 text-white font-bold rounded-xl text-xs"
+                className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer"
               >
                 Close
               </button>

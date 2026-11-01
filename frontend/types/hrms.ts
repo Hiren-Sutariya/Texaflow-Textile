@@ -57,3 +57,4 @@ export interface SalaryPayoutRecord {
   remarks?: string;
   created_at: string;
 }
+

@@ -50,14 +50,14 @@ const menuGroups: MenuGroup[] = [
     groupTitle: "Masters",
     items: [
       { name: "Parties", href: "/vendors", icon: Users },
-      { name: "Workers", href: "/employees", icon: UserCheck },
     ]
   },
   {
     groupTitle: "HRMS & Payroll",
     items: [
-      { name: "Attendance (Clock In/Out)", href: "/hrms/attendance", icon: Clock },
-      { name: "Worker Payout & Slips", href: "/worker-payout", icon: Wallet },
+      { name: "Workers", href: "/employees", icon: UserCheck },
+      { name: "Attendance", href: "/hrms/attendance", icon: Clock },
+      { name: "Worker Payout", href: "/worker-payout", icon: Wallet },
       { name: "Worker Portal", href: "/worker-portal", icon: UserCog },
     ]
   },

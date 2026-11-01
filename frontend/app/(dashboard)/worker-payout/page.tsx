@@ -39,20 +39,19 @@ import {
   getStoredPayouts, 
   saveSalaryPayout, 
   getStoredAttendance, 
-  getWorkerMonthlyUpad 
+  getWorkerMonthlyUpad,
+  getStoredWorkers,
+  refreshWorkersFromApi,
+  WorkerItem
 } from "@/lib/hrmsStorage";
 
-interface WorkerItem {
-  id: string;
-  name: string;
-  code?: string;
-  role?: string;
-  monthly_salary?: number;
-  assigned_machine?: string;
-  status?: string;
-}
-
-const getTodayStr = () => new Date().toISOString().split("T")[0];
+const getTodayStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -65,13 +64,14 @@ export default function WorkerPayoutPage() {
   const [firmName, setFirmName] = useState("Om Sai Enterprise");
 
   // Selected Month (YYYY-MM)
-  const [selectedMonth, setSelectedMonth] = useState("2026-10");
+  const [selectedMonth, setSelectedMonth] = useState(() => getTodayStr().slice(0, 7));
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Paid" | "Pending">("All");
 
-  const [workers, setWorkers] = useState<WorkerItem[]>([]);
-  const [attendanceLogs, setAttendanceLogs] = useState<AttendancePunch[]>([]);
-  const [payoutRecords, setPayoutRecords] = useState<SalaryPayoutRecord[]>([]);
+  // Instant 0ms synchronous initialization
+  const [workers, setWorkers] = useState<WorkerItem[]>(getStoredWorkers);
+  const [attendanceLogs, setAttendanceLogs] = useState<AttendancePunch[]>(getStoredAttendance);
+  const [payoutRecords, setPayoutRecords] = useState<SalaryPayoutRecord[]>(getStoredPayouts);
 
   // Settlement & Payout Modal State
   const [activeWorkerForPayout, setActiveWorkerForPayout] = useState<WorkerItem | null>(null);
@@ -96,48 +96,39 @@ export default function WorkerPayoutPage() {
   useEffect(() => {
     setHasMounted(true);
     setFirmName(getStoredFirmName() || "Om Sai Enterprise");
-    const currentCid = getStoredCompanyId() || "comp-001";
 
-    // Load workers
-    async function loadData() {
-      try {
-        const live = await fetchApi<any[]>("/workers");
-        if (Array.isArray(live) && live.length > 0) {
-          const scoped = live.filter((w) => (w.company_id || currentCid) === currentCid && w.status !== "Inactive");
-          setWorkers(scoped);
-          return;
-        }
-      } catch {}
+    // 1. Immediately reload latest workers from local cache
+    setWorkers(getStoredWorkers());
 
-      const localWorkers = getTenantItem<any[]>("texaflow_workers") || getTenantItem<any[]>("texaflow_employees") || [];
-      if (Array.isArray(localWorkers) && localWorkers.length > 0) {
-        setWorkers(localWorkers.filter((w) => w.status !== "Inactive"));
-      } else {
-        setWorkers([
-          { id: "wrk-001", name: "Pradeep Upad", code: "KAR-001", role: "Karigar", monthly_salary: 33000, assigned_machine: "Machine 1" },
-          { id: "wrk-002", name: "Rajkumar", code: "KAR-002", role: "Karigar", monthly_salary: 28000, assigned_machine: "Machine 2" },
-          { id: "wrk-003", name: "Mama Upad", code: "KAR-003", role: "Karigar", monthly_salary: 35000, assigned_machine: "Machine 3" },
-          { id: "wrk-004", name: "Shiva Bhai", code: "KAR-004", role: "Dhaga Cutting", monthly_salary: 22000, assigned_machine: "Floor" },
-          { id: "wrk-005", name: "Ambika Ben", code: "KAR-005", role: "Checking", monthly_salary: 19000, assigned_machine: "QC Desk" },
-        ]);
+    // 2. Non-blocking background API refresh (using correct /employees endpoint)
+    refreshWorkersFromApi((live) => {
+      if (live.length > 0) {
+        setWorkers(live);
       }
-    }
+    });
 
-    loadData();
-
+    // 3. Sync attendance logs and payout records
     const refreshData = () => {
       setAttendanceLogs(getStoredAttendance());
       setPayoutRecords(getStoredPayouts());
     };
     refreshData();
 
+    const handleWorkerUpdate = () => {
+      setWorkers(getStoredWorkers());
+    };
+
     window.addEventListener("hrms_attendance_updated", refreshData);
     window.addEventListener("hrms_payout_updated", refreshData);
+    window.addEventListener("app_employees_updated", handleWorkerUpdate);
     window.addEventListener("app_data_update", refreshData);
+    window.addEventListener("app_data_update", handleWorkerUpdate);
     return () => {
       window.removeEventListener("hrms_attendance_updated", refreshData);
       window.removeEventListener("hrms_payout_updated", refreshData);
+      window.removeEventListener("app_employees_updated", handleWorkerUpdate);
       window.removeEventListener("app_data_update", refreshData);
+      window.removeEventListener("app_data_update", handleWorkerUpdate);
     };
   }, []);
 
@@ -386,38 +377,12 @@ export default function WorkerPayoutPage() {
 
   return (
     <div className="space-y-4 font-sans text-xs pb-16">
-      {/* 1. TOP TITLE HEADER */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">HRMS & PAYROLL SETTLEMENT</span>
-          </div>
-          <h1 className="text-xl font-black text-slate-900 mt-0.5">Worker Monthly Salary & Upad Payout</h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Auto-calculates days worked, deducts cash advances (Upad), room rent, light bill & closes month.
-          </p>
-        </div>
-
-        {/* Month Selector Picker */}
-        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1.5 h-10 shadow-2xs">
-          <Calendar className="w-4 h-4 text-blue-600 ml-1 shrink-0" />
-          <span className="font-extrabold text-xs text-slate-700 hidden sm:inline">Payroll Period:</span>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono font-black text-slate-900 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
-          />
-        </div>
-      </div>
-
-      {/* 2. STATS OVERVIEW CARDS */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      {/* 1. TOP STATS OVERVIEW CARDS (MATCHING EXPENSES / WORKER STYLE) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* GROSS WAGES */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-bold text-slate-500 uppercase">GROSS WAGES</p>
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">GROSS WAGES</p>
             <p className="text-xl font-black text-slate-900 mt-0.5">₹{monthStats.totalGross.toLocaleString("en-IN")}</p>
           </div>
           <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
@@ -426,9 +391,9 @@ export default function WorkerPayoutPage() {
         </div>
 
         {/* CASH UPAD DEDUCTION */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-bold text-amber-600 uppercase">UPAD DEDUCTED</p>
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate">ADVANCE DEDUCTED</p>
             <p className="text-xl font-black text-amber-700 mt-0.5">-₹{monthStats.totalUpad.toLocaleString("en-IN")}</p>
           </div>
           <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
@@ -436,61 +401,53 @@ export default function WorkerPayoutPage() {
           </div>
         </div>
 
-        {/* OTHER DEDUCTIONS */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-bold text-purple-600 uppercase">ROOM & BILL DED.</p>
-            <p className="text-xl font-black text-purple-700 mt-0.5">-₹{monthStats.totalOtherDed.toLocaleString("en-IN")}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-            <Home className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* NET SALARY PAID */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-bold text-emerald-600 uppercase">NET PAID DISBURSED</p>
-            <p className="text-xl font-black text-emerald-700 mt-0.5">₹{monthStats.totalPaid.toLocaleString("en-IN")}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-            <CheckCircle2 className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* BALANCE DUE */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs flex items-center justify-between col-span-2 sm:col-span-1">
-          <div>
-            <p className="text-[11px] font-bold text-rose-600 uppercase">REMAINING DUE</p>
+        {/* REMAINING DUE */}
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider truncate">PENDING / DUE</p>
             <p className="text-xl font-black text-rose-700 mt-0.5">₹{monthStats.totalDue.toLocaleString("en-IN")}</p>
           </div>
           <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
             <AlertCircle className="w-4 h-4" />
           </div>
         </div>
+
+        {/* NET SALARY PAID */}
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider truncate">NET PAID</p>
+            <p className="text-xl font-black text-emerald-700 mt-0.5">₹{monthStats.totalPaid.toLocaleString("en-IN")}</p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
+          </div>
+        </div>
       </div>
 
-      {/* 3. CONTROLS: SEARCH & STATUS FILTER */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="relative w-full md:max-w-xs">
+      {/* 2. COMPACT CONTROLS TOOLBAR */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-3 font-sans">
+        {/* Search */}
+        <div className="relative w-full lg:max-w-xs">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search worker name, code..."
+            placeholder="Search worker by name, code..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-8 pr-3 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-blue-500 font-medium"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto justify-start md:justify-end">
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200 text-xs">
+        {/* Controls: Month Selector, Status Pill, Attendance Link */}
+        <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-start sm:justify-end text-xs">
+          {/* Status Toggle */}
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/90 text-xs shrink-0 w-full sm:w-auto justify-center">
             {(["All", "Paid", "Pending"] as const).map((st) => (
               <button
                 key={st}
                 type="button"
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex-1 sm:flex-none text-center ${
                   statusFilter === st ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
                 }`}
               >
@@ -499,27 +456,38 @@ export default function WorkerPayoutPage() {
             ))}
           </div>
 
+          {/* Month Picker */}
+          <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-xl px-2.5 h-9 shadow-2xs cursor-pointer">
+            <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-transparent text-xs font-mono font-bold text-slate-800 focus:outline-none cursor-pointer"
+            />
+          </div>
+
           <Link
             href="/hrms/attendance"
-            className="h-9 px-3.5 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold rounded-xl border border-blue-200 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            className="h-9 px-3.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer flex-1 sm:flex-none"
           >
             <Clock className="w-4 h-4 text-blue-600" />
-            <span>Attendance Punch</span>
+            <span>Attendance</span>
           </Link>
         </div>
       </div>
 
-      {/* 4. WORKER PAYROLL REGISTER TABLE */}
+      {/* 3. WORKER PAYROLL REGISTER TABLE */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs min-w-[950px]">
             <thead>
               <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
-                <th className="py-2.5 px-4 border-r border-slate-200/80">WORKER / KARIGAR</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">WORKER NAME</th>
                 <th className="py-2.5 px-4 border-r border-slate-200/80">FIXED SALARY</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">HAJRI / DAYS WORKED</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">DAYS WORKED</th>
                 <th className="py-2.5 px-4 text-right border-r border-slate-200/80">GROSS EARNED</th>
-                <th className="py-2.5 px-4 text-right border-r border-slate-200/80">UPAD DEDUCTED</th>
+                <th className="py-2.5 px-4 text-right border-r border-slate-200/80">ADVANCE DEDUCTED</th>
                 <th className="py-2.5 px-4 text-right border-r border-slate-200/80">OTHER DED.</th>
                 <th className="py-2.5 px-4 text-right border-r border-slate-200/80">NET PAYABLE</th>
                 <th className="py-2.5 px-4 text-center border-r border-slate-200/80">STATUS</th>
@@ -554,16 +522,9 @@ export default function WorkerPayoutPage() {
 
                   return (
                     <tr key={worker.id} className="hover:bg-blue-50/30 transition-colors">
-                      {/* 1. Worker Name & Code */}
+                      {/* 1. Worker Name Only */}
                       <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <div>
-                            <span className="font-extrabold text-slate-900 block text-xs">{worker.name}</span>
-                            <span className="text-[10px] text-slate-500 font-medium">
-                              {worker.code || "KAR"} • {worker.role || "Karigar"}
-                            </span>
-                          </div>
-                        </div>
+                        <span className="font-extrabold text-slate-900 block text-xs">{worker.name}</span>
                       </td>
 
                       {/* 2. Fixed Salary */}
@@ -571,20 +532,11 @@ export default function WorkerPayoutPage() {
                         ₹{baseSalary.toLocaleString("en-IN")}
                       </td>
 
-                      {/* 3. Hajri / Days Worked */}
+                      {/* 3. Days Worked (Clean Total Number Only, No 'Days' suffix) */}
                       <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5 font-mono text-[11px]">
-                          <span className="bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.5 rounded border border-emerald-200" title="Full Days">
-                            {fDays}F
-                          </span>
-                          <span className="bg-amber-50 text-amber-700 font-bold px-1.5 py-0.5 rounded border border-amber-200" title="Half Days (0.5)">
-                            {hDays}HD
-                          </span>
-                          <span className="text-slate-400">=</span>
-                          <span className="font-black text-slate-900 font-mono">
-                            {paidDays} Days
-                          </span>
-                        </div>
+                        <span className="font-mono font-black text-sm text-slate-900">
+                          {paidDays}
+                        </span>
                       </td>
 
                       {/* 4. Gross Earned */}
@@ -694,7 +646,7 @@ export default function WorkerPayoutPage() {
                 </div>
                 <div className="bg-white p-2 rounded-xl border border-slate-200">
                   <span className="text-[10px] text-slate-400 block font-bold">DAYS WORKED</span>
-                  <span className="font-mono font-bold text-emerald-700">{modalCalculations.paidDays} Days</span>
+                  <span className="font-mono font-bold text-emerald-700">{modalCalculations.paidDays}</span>
                 </div>
                 <div className="bg-white p-2 rounded-xl border border-slate-200">
                   <span className="text-[10px] text-slate-400 block font-bold">PER DAY (30 D)</span>
@@ -713,10 +665,10 @@ export default function WorkerPayoutPage() {
               </div>
             </div>
 
-            {/* Step 2: Cash Upad Auto-Deductions */}
+            {/* Step 2: Cash Advance Auto-Deductions */}
             <div className="bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-extrabold text-xs text-amber-900 uppercase">2. Cash Upad / Advance (રોકડ ઉપાડ કપાત)</span>
+                <span className="font-extrabold text-xs text-amber-900 uppercase">2. Cash Advance Deduction</span>
                 <span className="font-mono font-black text-amber-800 text-sm">-₹{modalCalculations.totalUpad.toLocaleString("en-IN")}</span>
               </div>
 
@@ -915,7 +867,7 @@ export default function WorkerPayoutPage() {
               {/* Worker & Voucher Info */}
               <div className="grid grid-cols-2 gap-2 text-xs bg-white p-3 rounded-xl border border-slate-200/80">
                 <div>
-                  <span className="text-[10px] text-slate-400 font-bold block">KARIGAR NAME:</span>
+                  <span className="text-[10px] text-slate-400 font-bold block">WORKER NAME:</span>
                   <span className="font-extrabold text-slate-900 text-sm">{viewingSlipRecord.worker_name}</span>
                   <span className="text-[11px] text-slate-500 block">ID: {viewingSlipRecord.worker_code || "KAR"}</span>
                 </div>
@@ -931,7 +883,7 @@ export default function WorkerPayoutPage() {
                 {/* Earnings Column */}
                 <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
                   <div className="font-extrabold text-[11px] text-emerald-800 uppercase border-b border-slate-100 pb-1">
-                    EARNINGS (કમાણી)
+                    EARNINGS
                   </div>
                   <div className="flex justify-between text-slate-600">
                     <span>Base Salary (Rate):</span>
@@ -960,10 +912,10 @@ export default function WorkerPayoutPage() {
                 {/* Deductions Column */}
                 <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
                   <div className="font-extrabold text-[11px] text-rose-800 uppercase border-b border-slate-100 pb-1">
-                    DEDUCTIONS (કપાત)
+                    DEDUCTIONS
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>Cash Upad:</span>
+                    <span>Cash Advance:</span>
                     <span className="font-mono font-bold text-amber-700">-₹{viewingSlipRecord.total_upad_deduction.toLocaleString("en-IN")}</span>
                   </div>
                   {viewingSlipRecord.deductions.filter((d) => d.type !== "upad").map((ded, i) => (

@@ -287,7 +287,7 @@ export default function EmployeesPage() {
             employee_type: (e.employee_type || (isKarigar ? "Karigar" : "Salaried Staff")) as any,
             mobile: e.mobile || e.phone || "-",
             email: e.email || "",
-            assigned_machine: e.assigned_machine || "Machine 1",
+            assigned_machine: e.assigned_machine || (isKarigar ? "Machine 1" : ""),
             shift: (e.shift || "Day Shift") as any,
             monthly_salary: Number(e.monthly_salary) || 0,
             advance_balance: Number(e.advance_balance || e.current_advance) || 0,
@@ -576,6 +576,8 @@ export default function EmployeesPage() {
       setEmployees(updated);
       try {
         localStorage.setItem("app_employees_data", JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent("app_employees_updated"));
+        window.dispatchEvent(new CustomEvent("app_data_update"));
       } catch (e) {
         console.error(e);
       }
@@ -586,7 +588,11 @@ export default function EmployeesPage() {
     const nextStatus: "Active" | "Inactive" = emp.status === "Active" ? "Inactive" : "Active";
     setEmployees((prev) => {
       const next = prev.map((x) => (x.id === emp.id ? { ...x, status: nextStatus } : x));
-      try { localStorage.setItem("app_employees_data", JSON.stringify(next)); } catch {}
+      try { 
+        localStorage.setItem("app_employees_data", JSON.stringify(next)); 
+        window.dispatchEvent(new CustomEvent("app_employees_updated"));
+        window.dispatchEvent(new CustomEvent("app_data_update"));
+      } catch {}
       return next;
     });
 
@@ -627,6 +633,8 @@ export default function EmployeesPage() {
 
     const cleanFormPhoto = formPhotoUrl && formPhotoUrl.trim() ? formPhotoUrl.trim() : "";
 
+    const finalMachine = isKarigar ? (formMachineNo.trim() || "Machine 1") : "";
+
     if (editingWorkerId) {
       try {
         await fetchApi(`/employees/${editingWorkerId}`, {
@@ -638,7 +646,7 @@ export default function EmployeesPage() {
             employee_type: formCategory,
             mobile: formMobile.trim() || "-",
             email: formEmail.trim(),
-            assigned_machine: formMachineNo.trim() || "Machine 1",
+            assigned_machine: finalMachine,
             shift: formShift,
             monthly_salary: Number(formSalary) || 0,
             advance_balance: Number(formAdvance) || 0,
@@ -661,7 +669,7 @@ export default function EmployeesPage() {
                 ...emp,
                 name: formName.trim(),
                 code: khata,
-                assigned_machine: formMachineNo.trim() || "Machine 1",
+                assigned_machine: finalMachine,
                 mobile: formMobile.trim() || "-",
                 email: formEmail.trim(),
                 employee_type: formCategory,
@@ -676,7 +684,11 @@ export default function EmployeesPage() {
               }
             : emp
         );
-        try { localStorage.setItem("app_employees_data", JSON.stringify(next)); } catch {}
+        try { 
+          localStorage.setItem("app_employees_data", JSON.stringify(next)); 
+          window.dispatchEvent(new CustomEvent("app_employees_updated"));
+          window.dispatchEvent(new CustomEvent("app_data_update"));
+        } catch {}
         return next;
       });
     } else {
@@ -691,7 +703,7 @@ export default function EmployeesPage() {
             employee_type: formCategory,
             mobile: formMobile.trim() || "-",
             email: formEmail.trim(),
-            assigned_machine: formMachineNo.trim() || "Machine 1",
+            assigned_machine: finalMachine,
             shift: formShift,
             monthly_salary: Number(formSalary) || 0,
             advance_balance: Number(formAdvance) || 0,
@@ -722,7 +734,7 @@ export default function EmployeesPage() {
         employee_type: formCategory,
         mobile: formMobile.trim() || "-",
         email: formEmail.trim(),
-        assigned_machine: formMachineNo.trim() || "Machine 1",
+        assigned_machine: finalMachine,
         shift: formShift,
         monthly_salary: Number(formSalary) || 0,
         advance_balance: Number(formAdvance) || 0,
@@ -737,7 +749,11 @@ export default function EmployeesPage() {
 
       setEmployees((prev) => {
         const next = [...prev, newEmp];
-        try { localStorage.setItem("app_employees_data", JSON.stringify(next)); } catch {}
+        try { 
+          localStorage.setItem("app_employees_data", JSON.stringify(next)); 
+          window.dispatchEvent(new CustomEvent("app_employees_updated"));
+          window.dispatchEvent(new CustomEvent("app_data_update"));
+        } catch {}
         return next;
       });
     }
