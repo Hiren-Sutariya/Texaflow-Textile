@@ -1,17 +1,17 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { 
-  Clock, 
-  Calendar, 
+import {
+  Clock,
+  Calendar,
   CalendarDays,
-  Users, 
-  CheckCircle2, 
-  AlertCircle, 
-  Search, 
-  Plus, 
-  Edit3, 
-  ChevronLeft, 
+  Users,
+  CheckCircle2,
+  AlertCircle,
+  Search,
+  Plus,
+  Edit3,
+  ChevronLeft,
   ChevronRight,
   TrendingUp,
   ShieldCheck,
@@ -35,15 +35,16 @@ import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import { useLanguage } from "@/context/LanguageContext";
 import { fetchApi } from "@/lib/api";
 import { getStoredCompanyId, getTenantItem } from "@/lib/tenantStorage";
-import { 
-  calculateAttendanceStatus, 
-  getStoredAttendance, 
+import {
+  calculateAttendanceStatus,
+  getStoredAttendance,
   saveAttendancePunch,
   deleteAttendancePunch,
   CompanyHolidayRules,
   CompanyCustomEvent,
   getCompanyHolidayRules,
-  saveCompanyHolidayRules
+  saveCompanyHolidayRules,
+  purgeTestingData
 } from "@/lib/hrmsStorage";
 import { AttendancePunch } from "@/types/hrms";
 
@@ -166,7 +167,7 @@ interface CalendarCell {
 // ONLY the selected month dates (1 to last day) are included!
 // Extra leading & trailing slots are strictly blank/empty boxes - NO other month dates or events!
 const buildMonthlyCalendarGrid = (
-  yearMonth: string, 
+  yearMonth: string,
   todayStr: string,
   holidayRules: CompanyHolidayRules,
   targetType: "all" | "staff" | "karigar"
@@ -325,9 +326,8 @@ function CustomSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-2.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${
-          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
-        }`}
+        className={`w-full h-9 px-2.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
+          }`}
       >
         <div className="flex items-center gap-1.5 truncate pr-1">
           {selectedOption?.value === "events" || selectedOption?.value === "all" ? (
@@ -340,9 +340,8 @@ function CustomSelect({
           </span>
         </div>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${
-            isOpen ? "rotate-180 text-blue-600" : ""
-          }`}
+          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${isOpen ? "rotate-180 text-blue-600" : ""
+            }`}
         />
       </button>
 
@@ -358,11 +357,10 @@ function CustomSelect({
                   onChange(opt.value);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
-                  isSelected
+                className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${isSelected
                     ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
                     : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2 truncate">
                   {opt.value === "events" || opt.value === "all" ? (
@@ -388,6 +386,7 @@ export default function AttendancePage() {
   const [currentTime, setCurrentTime] = useState("");
   const [selectedDate, setSelectedDate] = useState(() => getTodayStr());
   const [selectedMonth, setSelectedMonth] = useState(() => getTodayStr().slice(0, 7));
+  const isPastDate = selectedDate < getTodayStr();
   const [selectedShift, setSelectedShift] = useState<"All" | "Day Shift" | "Night Shift">("All");
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"daily" | "monthly">("daily");
@@ -574,6 +573,7 @@ export default function AttendancePage() {
   // Load workers and attendance records
   useEffect(() => {
     const currentCid = getStoredCompanyId() || "comp-001";
+    purgeTestingData();
 
     // 1. Load workers
     async function loadWorkers() {
@@ -584,7 +584,7 @@ export default function AttendancePage() {
           setWorkers(scoped);
           return;
         }
-      } catch {}
+      } catch { }
 
       // Fallback from localStorage
       const localWorkers = getTenantItem<any[]>("texaflow_workers") || getTenantItem<any[]>("texaflow_employees") || [];
@@ -593,11 +593,11 @@ export default function AttendancePage() {
       } else {
         // Seed default karigars if empty
         setWorkers([
-          { id: "wrk-001", name: "Rakesh Bid", code: "KAR-001", role: "Karigar", shift: "Day Shift", assigned_machine: "Machine 1", monthly_salary: 33000 },
+          { id: "wrk-001", name: "Rakesh Bind", code: "KAR-001", role: "Karigar", shift: "Day Shift", assigned_machine: "Machine 1", monthly_salary: 33000 },
           { id: "wrk-002", name: "Gaurav", code: "KAR-002", role: "Karigar", shift: "Day Shift", assigned_machine: "Machine 3", monthly_salary: 33000 },
-          { id: "wrk-003", name: "RajKumar", code: "STF-005", role: "Staff", shift: "Day Shift", assigned_machine: "Machine 1", monthly_salary: 10000 },
-          { id: "wrk-004", name: "Tanuja", code: "STF-006", role: "Staff", shift: "Day Shift", assigned_machine: "Machine 1", monthly_salary: 10000 },
-          { id: "wrk-005", name: "Kailash", code: "STF-007", role: "Staff", shift: "Day Shift", assigned_machine: "Machine 1", monthly_salary: 9500 },
+          { id: "wrk-005", name: "RajKumar", code: "STF-005", role: "Staff", shift: "Day Shift", monthly_salary: 10000 },
+          { id: "wrk-006", name: "Tanuja", code: "STF-006", role: "Staff", shift: "Day Shift", monthly_salary: 10000 },
+          { id: "wrk-007", name: "Kailash", code: "STF-007", role: "Staff", shift: "Day Shift", monthly_salary: 9500 },
         ]);
       }
     }
@@ -811,6 +811,122 @@ export default function AttendancePage() {
     setAttendanceList(getStoredAttendance());
   };
 
+  // Action: Mark Full Day (Standard Shift Completed for past or current date)
+  const handleMarkFullDay = (worker: WorkerItem) => {
+    const isNight = worker.shift === "Night Shift";
+    const inTime = isNight ? (holidayRules.night_shift_start || "20:00") : (holidayRules.day_shift_start || "08:00");
+    const outTime = isNight ? (holidayRules.night_shift_end || "08:00") : (holidayRules.day_shift_end || "20:00");
+    const shiftHours = holidayRules.min_hours_for_ot || 12;
+    const existing = todayPunchMap.get(worker.id);
+
+    const punch: AttendancePunch = {
+      id: existing?.id || `att-${Date.now()}-${worker.id}`,
+      company_id: getStoredCompanyId() || "comp-001",
+      worker_id: worker.id,
+      worker_name: worker.name,
+      worker_code: worker.code,
+      date: selectedDate,
+      clock_in: inTime,
+      clock_out: outTime,
+      total_hours: shiftHours,
+      status: "Present",
+      overtime_hours: existing?.overtime_hours || 0,
+      shift: worker.shift || "Day Shift",
+      notes: existing?.notes && existing.notes !== "Marked Absent" ? existing.notes : "Full Day Present",
+      created_at: existing?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    saveAttendancePunch(punch);
+    setAttendanceList(getStoredAttendance());
+  };
+
+  // Action: Mark Half Day (6 Hours Standard Completed)
+  const handleMarkHalfDay = (worker: WorkerItem) => {
+    const isNight = worker.shift === "Night Shift";
+    const inTime = isNight ? (holidayRules.night_shift_start || "20:00") : (holidayRules.day_shift_start || "08:00");
+    const outTime = isNight ? "02:00" : "14:00";
+    const existing = todayPunchMap.get(worker.id);
+
+    const punch: AttendancePunch = {
+      id: existing?.id || `att-${Date.now()}-${worker.id}`,
+      company_id: getStoredCompanyId() || "comp-001",
+      worker_id: worker.id,
+      worker_name: worker.name,
+      worker_code: worker.code,
+      date: selectedDate,
+      clock_in: inTime,
+      clock_out: outTime,
+      total_hours: 6,
+      status: "Half Day",
+      overtime_hours: 0,
+      shift: worker.shift || "Day Shift",
+      notes: existing?.notes && existing.notes !== "Marked Absent" ? existing.notes : "Half Day Present",
+      created_at: existing?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    saveAttendancePunch(punch);
+    setAttendanceList(getStoredAttendance());
+  };
+
+  // Bulk: Mark All Filtered Workers as Full Day for selectedDate
+  const handleMarkAllFullDay = () => {
+    filteredWorkers.forEach((w) => {
+      const isNight = w.shift === "Night Shift";
+      const inTime = isNight ? (holidayRules.night_shift_start || "20:00") : (holidayRules.day_shift_start || "08:00");
+      const outTime = isNight ? (holidayRules.night_shift_end || "08:00") : (holidayRules.day_shift_end || "20:00");
+      const shiftHours = holidayRules.min_hours_for_ot || 12;
+      const existing = todayPunchMap.get(w.id);
+
+      const punch: AttendancePunch = {
+        id: existing?.id || `att-${Date.now()}-${w.id}`,
+        company_id: getStoredCompanyId() || "comp-001",
+        worker_id: w.id,
+        worker_name: w.name,
+        worker_code: w.code,
+        date: selectedDate,
+        clock_in: inTime,
+        clock_out: outTime,
+        total_hours: shiftHours,
+        status: "Present",
+        overtime_hours: existing?.overtime_hours || 0,
+        shift: w.shift || "Day Shift",
+        notes: existing?.notes && existing.notes !== "Marked Absent" ? existing.notes : "Full Day Present",
+        created_at: existing?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      saveAttendancePunch(punch);
+    });
+    setAttendanceList(getStoredAttendance());
+  };
+
+  // Bulk: Mark All Filtered Workers as Absent for selectedDate
+  const handleMarkAllAbsent = () => {
+    filteredWorkers.forEach((w) => {
+      const existing = todayPunchMap.get(w.id);
+      const punch: AttendancePunch = {
+        id: existing?.id || `att-${Date.now()}-${w.id}`,
+        company_id: getStoredCompanyId() || "comp-001",
+        worker_id: w.id,
+        worker_name: w.name,
+        worker_code: w.code,
+        date: selectedDate,
+        clock_in: null,
+        clock_out: null,
+        total_hours: 0,
+        status: "Absent",
+        overtime_hours: 0,
+        shift: w.shift || "Day Shift",
+        notes: "Marked Absent",
+        created_at: existing?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      saveAttendancePunch(punch);
+    });
+    setAttendanceList(getStoredAttendance());
+  };
+
   // Manual Punch Save
   const handleSaveManualPunch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -927,46 +1043,43 @@ export default function AttendancePage() {
                   <div className="flex items-center gap-1.5 max-w-sm w-full">
                     <button
                       type="button"
-                      onClick={() => handleSaveHolidayRules({ 
-                        ...holidayRules, 
-                        karigar_sunday_policy: "off", 
-                        karigar_sunday_off: true 
+                      onClick={() => handleSaveHolidayRules({
+                        ...holidayRules,
+                        karigar_sunday_policy: "off",
+                        karigar_sunday_off: true
                       })}
-                      className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                        (holidayRules.karigar_sunday_policy || (holidayRules.karigar_sunday_off ? "off" : "working")) === "off"
+                      className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${(holidayRules.karigar_sunday_policy || (holidayRules.karigar_sunday_off ? "off" : "working")) === "off"
                           ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
                           : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       ✓ Sunday Off
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleSaveHolidayRules({ 
-                        ...holidayRules, 
-                        karigar_sunday_policy: "half_day", 
-                        karigar_sunday_off: false 
+                      onClick={() => handleSaveHolidayRules({
+                        ...holidayRules,
+                        karigar_sunday_policy: "half_day",
+                        karigar_sunday_off: false
                       })}
-                      className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                        holidayRules.karigar_sunday_policy === "half_day"
+                      className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${holidayRules.karigar_sunday_policy === "half_day"
                           ? "bg-amber-50 border-amber-600 text-amber-700 shadow-2xs font-extrabold"
                           : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       ½ Half Day
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleSaveHolidayRules({ 
-                        ...holidayRules, 
-                        karigar_sunday_policy: "working", 
-                        karigar_sunday_off: false 
+                      onClick={() => handleSaveHolidayRules({
+                        ...holidayRules,
+                        karigar_sunday_policy: "working",
+                        karigar_sunday_off: false
                       })}
-                      className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                        (holidayRules.karigar_sunday_policy || (holidayRules.karigar_sunday_off ? "off" : "working")) === "working"
+                      className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${(holidayRules.karigar_sunday_policy || (holidayRules.karigar_sunday_off ? "off" : "working")) === "working"
                           ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
                           : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       Working
                     </button>
@@ -979,46 +1092,43 @@ export default function AttendancePage() {
                   <div className="flex items-center gap-1.5 max-w-sm w-full">
                     <button
                       type="button"
-                      onClick={() => handleSaveHolidayRules({ 
-                        ...holidayRules, 
-                        staff_sunday_policy: "off", 
-                        staff_sunday_off: true 
+                      onClick={() => handleSaveHolidayRules({
+                        ...holidayRules,
+                        staff_sunday_policy: "off",
+                        staff_sunday_off: true
                       })}
-                      className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                        (holidayRules.staff_sunday_policy || (holidayRules.staff_sunday_off ? "off" : "working")) === "off"
+                      className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${(holidayRules.staff_sunday_policy || (holidayRules.staff_sunday_off ? "off" : "working")) === "off"
                           ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
                           : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       ✓ Sunday Off
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleSaveHolidayRules({ 
-                        ...holidayRules, 
-                        staff_sunday_policy: "half_day", 
-                        staff_sunday_off: false 
+                      onClick={() => handleSaveHolidayRules({
+                        ...holidayRules,
+                        staff_sunday_policy: "half_day",
+                        staff_sunday_off: false
                       })}
-                      className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                        holidayRules.staff_sunday_policy === "half_day"
+                      className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${holidayRules.staff_sunday_policy === "half_day"
                           ? "bg-amber-50 border-amber-600 text-amber-700 shadow-2xs font-extrabold"
                           : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       ½ Half Day
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleSaveHolidayRules({ 
-                        ...holidayRules, 
-                        staff_sunday_policy: "working", 
-                        staff_sunday_off: false 
+                      onClick={() => handleSaveHolidayRules({
+                        ...holidayRules,
+                        staff_sunday_policy: "working",
+                        staff_sunday_off: false
                       })}
-                      className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                        (holidayRules.staff_sunday_policy || (holidayRules.staff_sunday_off ? "off" : "working")) === "working"
+                      className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${(holidayRules.staff_sunday_policy || (holidayRules.staff_sunday_off ? "off" : "working")) === "working"
                           ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
                           : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       Working
                     </button>
@@ -1081,11 +1191,10 @@ export default function AttendancePage() {
                         key={mins}
                         type="button"
                         onClick={() => handleSaveHolidayRules({ ...holidayRules, grace_period_mins: mins })}
-                        className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                          (holidayRules.grace_period_mins || 15) === mins
+                        className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${(holidayRules.grace_period_mins || 15) === mins
                             ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
                             : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                        }`}
+                          }`}
                       >
                         {mins} Min
                       </button>
@@ -1179,11 +1288,10 @@ export default function AttendancePage() {
                   <button
                     type="button"
                     onClick={() => setNewEventIsMultiDay(false)}
-                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                      !newEventIsMultiDay
+                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${!newEventIsMultiDay
                         ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
                         : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     Single Day
                   </button>
@@ -1195,11 +1303,10 @@ export default function AttendancePage() {
                         setNewEventEndDate(newEventDate);
                       }
                     }}
-                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                      newEventIsMultiDay
+                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${newEventIsMultiDay
                         ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
                         : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     Date Range / Vacation
                   </button>
@@ -1268,22 +1375,20 @@ export default function AttendancePage() {
                   <button
                     type="button"
                     onClick={() => setNewEventPayType("paid")}
-                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                      newEventPayType === "paid"
+                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${newEventPayType === "paid"
                         ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
                         : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     Paid Holiday
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewEventPayType("unpaid")}
-                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                      newEventPayType === "unpaid"
+                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${newEventPayType === "unpaid"
                         ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
                         : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     Unpaid Off
                   </button>
@@ -1297,33 +1402,30 @@ export default function AttendancePage() {
                   <button
                     type="button"
                     onClick={() => setNewEventTarget("all")}
-                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                      newEventTarget === "all"
+                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${newEventTarget === "all"
                         ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
                         : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     All
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewEventTarget("staff")}
-                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                      newEventTarget === "staff"
+                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${newEventTarget === "staff"
                         ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
                         : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     Staff
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewEventTarget("karigar")}
-                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${
-                      newEventTarget === "karigar"
+                    className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${newEventTarget === "karigar"
                         ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
                         : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     Karigar
                   </button>
@@ -1398,22 +1500,20 @@ export default function AttendancePage() {
                         </td>
                         <td className="py-2.5 px-4 font-extrabold text-slate-900">{evt.name}</td>
                         <td className="py-2.5 px-4 whitespace-nowrap">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                            evt.pay_type === "unpaid"
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${evt.pay_type === "unpaid"
                               ? "bg-slate-100 text-slate-700 border-slate-300"
                               : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          }`}>
+                            }`}>
                             {evt.pay_type === "unpaid" ? "⛔ Unpaid Off" : "💰 Paid Holiday"}
                           </span>
                         </td>
                         <td className="py-2.5 px-4 whitespace-nowrap">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                            evt.target === "staff"
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${evt.target === "staff"
                               ? "bg-purple-50 text-purple-700 border-purple-200"
                               : evt.target === "karigar"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-blue-50 text-blue-700 border-blue-200"
-                          }`}>
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-blue-50 text-blue-700 border-blue-200"
+                            }`}>
                             {evt.target === "staff" ? "👔 Staff Only" : evt.target === "karigar" ? "🧵 Karigar Only" : "👥 All"}
                           </span>
                         </td>
@@ -1516,9 +1616,8 @@ export default function AttendancePage() {
             <button
               type="button"
               onClick={() => setViewMode("daily")}
-              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
-                viewMode === "daily" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
-              }`}
+              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 ${viewMode === "daily" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                }`}
             >
               <Clock className="w-3.5 h-3.5 text-blue-600" />
               <span>Daily Register</span>
@@ -1526,9 +1625,8 @@ export default function AttendancePage() {
             <button
               type="button"
               onClick={() => setViewMode("monthly")}
-              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
-                viewMode === "monthly" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
-              }`}
+              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 ${viewMode === "monthly" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                }`}
             >
               <CalendarDays className="w-3.5 h-3.5 text-blue-600" />
               <span>Monthly Calendar</span>
@@ -1626,15 +1724,14 @@ export default function AttendancePage() {
                               setSelectedDate(cell.dateStr);
                               setIsDatePickerOpen(false);
                             }}
-                            className={`h-8 rounded-xl text-xs font-bold flex items-center justify-center transition-all cursor-pointer relative ${
-                              isSelected
+                            className={`h-8 rounded-xl text-xs font-bold flex items-center justify-center transition-all cursor-pointer relative ${isSelected
                                 ? "bg-blue-600 text-white shadow-xs scale-105"
                                 : !cell.isCurrent
-                                ? "text-slate-300 hover:text-slate-500 hover:bg-slate-50"
-                                : cell.isSunday
-                                ? "text-rose-600 hover:bg-rose-50"
-                                : "text-slate-800 hover:bg-blue-50 hover:text-blue-600"
-                            }`}
+                                  ? "text-slate-300 hover:text-slate-500 hover:bg-slate-50"
+                                  : cell.isSunday
+                                    ? "text-rose-600 hover:bg-rose-50"
+                                    : "text-slate-800 hover:bg-blue-50 hover:text-blue-600"
+                              }`}
                           >
                             <span>{cell.dayNum}</span>
                             {isToday && !isSelected && (
@@ -1675,9 +1772,8 @@ export default function AttendancePage() {
                     key={sh}
                     type="button"
                     onClick={() => setSelectedShift(sh)}
-                    className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                      selectedShift === sh ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
-                    }`}
+                    className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${selectedShift === sh ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                      }`}
                   >
                     {sh}
                   </button>
@@ -1747,6 +1843,39 @@ export default function AttendancePage() {
         </div>
       </div>
 
+      {/* Past Date Banner with Instant Bulk Actions */}
+      {viewMode === "daily" && isPastDate && (
+        <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-3 flex flex-col sm:flex-row items-center justify-between gap-2.5 shadow-2xs">
+          <div className="flex items-center gap-2 text-xs text-amber-900">
+            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+            <span>
+              Past Date Mode: <strong className="font-bold text-amber-950 font-mono">{selectedDate}</strong> (પાછલી તારીખનું હાજરી રજીસ્ટર)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={handleMarkAllFullDay}
+              className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              title="Mark all workers as Full Day (Present) for this date"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Mark All Full Day</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleMarkAllAbsent}
+              className="h-8 px-3 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              title="Mark all workers as Absent for this date"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              <span>Mark All Absent</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 3A. DAILY ATTENDANCE REGISTER TABLE (STANDARDIZED ACTION COLUMN) */}
       {viewMode === "daily" && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
@@ -1758,11 +1887,15 @@ export default function AttendancePage() {
                   <th className="py-2.5 px-4 text-center border-r border-slate-200/80">SHIFT</th>
                   <th className="py-2.5 px-4 text-center border-r border-slate-200/80">CLOCK IN</th>
                   <th className="py-2.5 px-4 text-center border-r border-slate-200/80">CLOCK OUT</th>
-                  <th className="py-2.5 px-4 text-center border-r border-slate-200/80">LIVE WORKING TIME</th>
+                  <th className="py-2.5 px-4 text-center border-r border-slate-200/80">
+                    {isPastDate ? "TOTAL TIME" : "LIVE WORKING TIME"}
+                  </th>
                   <th className="py-2.5 px-4 text-center border-r border-slate-200/80">OVERTIME (OT)</th>
                   <th className="py-2.5 px-4 border-r border-slate-200/80">REMARKS / NOTES</th>
                   <th className="py-2.5 px-4 text-center border-r border-slate-200/80">STATUS</th>
-                  <th className="py-2.5 px-4 text-center w-[230px]">ACTION</th>
+                  <th className={`py-2.5 px-4 text-center ${isPastDate ? "w-[260px]" : "w-[230px]"}`}>
+                    {isPastDate ? "MARK ATTENDANCE" : "ACTION"}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
@@ -1823,11 +1956,25 @@ export default function AttendancePage() {
                           )}
                         </td>
 
-                        {/* 6. Live Working Time (Live counting second-by-second) */}
+                        {/* 6. Live Working Time (or Past Total Hours) */}
                         <td className="py-3 px-4 text-center border-r border-slate-200/70 whitespace-nowrap">
                           {(() => {
                             if (isAbsent) {
                               return <span className="text-slate-400 font-mono text-xs font-bold">-</span>;
+                            }
+                            if (isPastDate) {
+                              if (punch && !isAbsent && (punch.total_hours || punch.status === "Present" || punch.status === "Half Day" || punch.status === "Overtime")) {
+                                const totH = punch.total_hours || (punch.status === "Half Day" ? 6 : 12);
+                                const h = Math.floor(totH);
+                                const m = Math.round((totH - h) * 60);
+                                return (
+                                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 border border-slate-200 font-mono font-bold text-xs text-slate-800">
+                                    <Clock className="w-3 h-3 text-slate-400" />
+                                    <span>{h}h {String(m).padStart(2, "0")}m ({totH} hrs)</span>
+                                  </div>
+                                );
+                              }
+                              return <span className="text-slate-300 font-mono text-xs">-</span>;
                             }
                             if (isClockedIn) {
                               let startMs = nowTick;
@@ -1916,7 +2063,7 @@ export default function AttendancePage() {
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
                               OVERTIME (+{punch.overtime_hours}h)
                             </span>
-                          ) : isCompleted ? (
+                          ) : (isCompleted || (punch && (punch.status === "Present" || punch.status === "Full Day"))) ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                               FULL DAY (1.0)
                             </span>
@@ -1927,98 +2074,172 @@ export default function AttendancePage() {
                           )}
                         </td>
 
-                        {/* 10. STANDARDIZED UNIFORM ACTION COLUMN (IDENTICAL WIDTH & HEIGHT IN EVERY ROW) */}
-                        <td className="py-3 px-4 text-center whitespace-nowrap w-[230px]">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {/* Primary Action Button (Fixed w-28, h-8 across all rows) */}
-                            {isAbsent ? (
+                        {/* 10. ACTION COLUMN */}
+                        <td className={`py-3 px-4 text-center whitespace-nowrap ${isPastDate ? "w-[260px]" : "w-[230px]"}`}>
+                          {isPastDate ? (
+                            <div className="flex items-center justify-center gap-1.5">
+                              {/* 1. Full Day Button */}
                               <button
                                 type="button"
-                                onClick={() => handleClockIn(worker)}
-                                className="w-28 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
-                                title="Mark Present / Clock In"
+                                onClick={() => handleMarkFullDay(worker)}
+                                className={`h-8 px-2.5 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95 ${punch && !isAbsent && (punch.status === "Present" || punch.status === "Full Day" || punch.status === "Overtime")
+                                    ? "bg-emerald-600 text-white font-black shadow-xs ring-2 ring-emerald-500/30"
+                                    : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                  }`}
+                                title="Mark Full Day (Present)"
                               >
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Present</span>
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Full Day</span>
                               </button>
-                            ) : isClockedIn ? (
-                              <button
-                                type="button"
-                                onClick={() => handleClockOut(worker)}
-                                className="w-28 h-8 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1"
-                                title="Record Shift Out Time"
-                              >
-                                <Clock className="w-3.5 h-3.5" />
-                                <span>Clock Out</span>
-                              </button>
-                            ) : isCompleted ? (
-                              <div className="w-28 h-8 bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1">
-                                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Completed</span>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleClockIn(worker)}
-                                className="w-28 h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1"
-                                title="Clock In for Shift"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>Clock In</span>
-                              </button>
-                            )}
 
-                            {/* Secondary Quick Action Button (Fixed w-8, h-8) */}
-                            {!isClockedIn && !isCompleted && !isAbsent ? (
+                              {/* 2. Half Day Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleMarkHalfDay(worker)}
+                                className={`h-8 px-2 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95 ${punch?.status === "Half Day"
+                                    ? "bg-amber-500 text-white font-black shadow-xs ring-2 ring-amber-400/30"
+                                    : "bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200"
+                                  }`}
+                                title="Mark Half Day (0.5)"
+                              >
+                                <span>½ Half</span>
+                              </button>
+
+                              {/* 3. Absent Button */}
                               <button
                                 type="button"
                                 onClick={() => handleMarkAbsent(worker)}
-                                className="w-8 h-8 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl flex items-center justify-center transition-colors cursor-pointer"
-                                title="Mark Absent for today"
+                                className={`h-8 px-2 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95 ${isAbsent
+                                    ? "bg-rose-600 text-white font-black shadow-xs ring-2 ring-rose-500/30"
+                                    : "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
+                                  }`}
+                                title="Mark Absent"
                               >
-                                <XCircle className="w-4 h-4 text-rose-600" />
+                                <X className="w-3.5 h-3.5" />
+                                <span>Absent</span>
                               </button>
-                            ) : (
+
+                              {/* 4. Edit Modal */}
                               <button
                                 type="button"
-                                onClick={() => handleResetPunch(worker)}
-                                className="w-8 h-8 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-700 border border-slate-200 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
-                                title="Reset Today's Punch"
+                                onClick={() => setEditPunchModal({
+                                  worker,
+                                  punch,
+                                  clockIn: punch?.clock_in || (worker.shift === "Night Shift" ? (holidayRules.night_shift_start || "20:00") : (holidayRules.day_shift_start || "08:00")),
+                                  clockOut: punch?.clock_out || (worker.shift === "Night Shift" ? (holidayRules.night_shift_end || "08:00") : (holidayRules.day_shift_end || "20:00")),
+                                  manualStatus: isAbsent ? "Absent" : punch?.status === "Half Day" ? "Half Day" : "Full Day",
+                                  notes: punch?.notes || ""
+                                })}
+                                className="w-8 h-8 bg-slate-50 hover:bg-blue-50 text-slate-500 hover:text-blue-600 border border-slate-200 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                                title="Adjust Time / Overtime"
                               >
-                                <RotateCcw className="w-3.5 h-3.5" />
+                                <Edit3 className="w-3.5 h-3.5" />
                               </button>
-                            )}
 
-                            {/* Calendar View Button - Direct Switch to Monthly View (No Pop-up) */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCalendarWorkerFilter(worker.id);
-                                setViewMode("monthly");
-                              }}
-                              className="w-8 h-8 bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-600 border border-slate-200 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
-                              title="View Monthly Attendance Calendar"
-                            >
-                              <CalendarDays className="w-3.5 h-3.5" />
-                            </button>
+                              {/* 5. Clear / Reset Record */}
+                              {punch ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleResetPunch(worker)}
+                                  className="w-8 h-8 bg-slate-50 hover:bg-slate-200 text-slate-400 hover:text-slate-700 border border-slate-200 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                                  title="Clear / Reset Record"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center gap-1.5">
+                              {/* Primary Action Button (Fixed w-28, h-8 across all rows) */}
+                              {isAbsent ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleClockIn(worker)}
+                                  className="w-28 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                                  title="Mark Present / Clock In"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Present</span>
+                                </button>
+                              ) : isClockedIn ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleClockOut(worker)}
+                                  className="w-28 h-8 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+                                  title="Record Shift Out Time"
+                                >
+                                  <Clock className="w-3.5 h-3.5" />
+                                  <span>Clock Out</span>
+                                </button>
+                              ) : isCompleted ? (
+                                <div className="w-28 h-8 bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1">
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Completed</span>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleClockIn(worker)}
+                                  className="w-28 h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+                                  title="Clock In for Shift"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Clock In</span>
+                                </button>
+                              )}
 
-                            {/* Manual Edit Modal Button (Fixed w-8, h-8) */}
-                            <button
-                              type="button"
-                              onClick={() => setEditPunchModal({
-                                worker,
-                                punch,
-                                clockIn: punch?.clock_in || "08:30",
-                                clockOut: punch?.clock_out || "20:30",
-                                manualStatus: isAbsent ? "Absent" : punch?.status === "Present" ? "Full Day" : (punch?.status || "Auto"),
-                                notes: punch?.notes || ""
-                              })}
-                              className="w-8 h-8 bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-600 border border-slate-200 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
-                              title="Adjust Time / Status"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                              {/* Secondary Quick Action Button (Fixed w-8, h-8) */}
+                              {!isClockedIn && !isCompleted && !isAbsent ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkAbsent(worker)}
+                                  className="w-8 h-8 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                                  title="Mark Absent for today"
+                                >
+                                  <XCircle className="w-4 h-4 text-rose-600" />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleResetPunch(worker)}
+                                  className="w-8 h-8 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-700 border border-slate-200 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                                  title="Reset Today's Punch"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* Calendar View Button - Direct Switch to Monthly View (No Pop-up) */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCalendarWorkerFilter(worker.id);
+                                  setViewMode("monthly");
+                                }}
+                                className="w-8 h-8 bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-600 border border-slate-200 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                                title="View Monthly Attendance Calendar"
+                              >
+                                <CalendarDays className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Manual Edit Modal Button (Fixed w-8, h-8) */}
+                              <button
+                                type="button"
+                                onClick={() => setEditPunchModal({
+                                  worker,
+                                  punch,
+                                  clockIn: punch?.clock_in || "08:30",
+                                  clockOut: punch?.clock_out || "20:30",
+                                  manualStatus: isAbsent ? "Absent" : punch?.status === "Present" ? "Full Day" : (punch?.status || "Auto"),
+                                  notes: punch?.notes || ""
+                                })}
+                                className="w-8 h-8 bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-600 border border-slate-200 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                                title="Adjust Time / Status"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -2046,9 +2267,8 @@ export default function AttendancePage() {
                 ) : (
                   <>
                     <span>{workers.find((w) => w.id === calendarWorkerFilter)?.name}</span>
-                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border uppercase ${
-                      currentRoleTarget === "staff" ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-blue-50 text-blue-700 border-blue-200"
-                    }`}>
+                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border uppercase ${currentRoleTarget === "staff" ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-blue-50 text-blue-700 border-blue-200"
+                      }`}>
                       {currentRoleTarget === "staff" ? "Staff" : "Karigar"}
                     </span>
                   </>
@@ -2123,10 +2343,10 @@ export default function AttendancePage() {
                 }
 
                 const isEventsMode = calendarWorkerFilter === "events" || calendarWorkerFilter === "all";
-                const singleWorkerPunch = !isEventsMode 
+                const singleWorkerPunch = !isEventsMode
                   ? attendanceList.find((p) => p.date === cell.dateStr && p.worker_id === calendarWorkerFilter)
                   : null;
-                const isHoliday = Boolean(cell.holidayName);
+                const isHoliday = isEventsMode && Boolean(cell.holidayName);
                 const isPresent = !isEventsMode && Boolean(
                   singleWorkerPunch && (singleWorkerPunch.status === "Full Day" || singleWorkerPunch.status === "Present" || singleWorkerPunch.status === "Overtime")
                 );
@@ -2136,19 +2356,18 @@ export default function AttendancePage() {
                 return (
                   <div
                     key={idx}
-                    className={`min-h-[85px] sm:min-h-[105px] p-1.5 sm:p-2 flex flex-col justify-between transition-colors select-none ${
-                      isHoliday
+                    className={`min-h-[85px] sm:min-h-[105px] p-1.5 sm:p-2 flex flex-col justify-between transition-colors select-none ${isHoliday
                         ? "bg-sky-100 hover:bg-sky-200/80 text-sky-950"
                         : isPresent
-                        ? "bg-emerald-100/70 hover:bg-emerald-100/90 text-emerald-950"
-                        : isHalfDay
-                        ? "bg-amber-100/70 hover:bg-amber-100/90 text-amber-950"
-                        : isAbsent
-                        ? "bg-rose-100/70 hover:bg-rose-100/90 text-rose-950"
-                        : cell.isSunday && cell.isSundayOff
-                        ? "bg-slate-50/60 text-slate-800"
-                        : "bg-white text-slate-800"
-                    }`}
+                          ? "bg-emerald-100/70 hover:bg-emerald-100/90 text-emerald-950"
+                          : isHalfDay
+                            ? "bg-amber-100/70 hover:bg-amber-100/90 text-amber-950"
+                            : isAbsent
+                              ? "bg-rose-100/70 hover:bg-rose-100/90 text-rose-950"
+                              : cell.isSunday && cell.isSundayOff
+                                ? "bg-slate-50/60 text-slate-800"
+                                : "bg-white text-slate-800"
+                      }`}
                   >
                     {/* Top Bar: Date number + Small Corner Attendance Tag (when viewing worker) */}
                     <div className="flex items-start justify-between gap-1">
@@ -2158,19 +2377,18 @@ export default function AttendancePage() {
                         </span>
                       ) : (
                         <span
-                          className={`font-mono font-bold text-[11px] sm:text-xs ${
-                            isHoliday
+                          className={`font-mono font-bold text-[11px] sm:text-xs ${isHoliday
                               ? "text-sky-950 font-black"
                               : isPresent
-                              ? "text-emerald-950 font-black"
-                              : isHalfDay
-                              ? "text-amber-950 font-black"
-                              : isAbsent
-                              ? "text-rose-950 font-black"
-                              : cell.isSunday && cell.isSundayOff
-                              ? "text-rose-500 font-extrabold"
-                              : "text-slate-700"
-                          }`}
+                                ? "text-emerald-950 font-black"
+                                : isHalfDay
+                                  ? "text-amber-950 font-black"
+                                  : isAbsent
+                                    ? "text-rose-950 font-black"
+                                    : cell.isSunday && cell.isSundayOff
+                                      ? "text-rose-500 font-extrabold"
+                                      : "text-slate-700"
+                            }`}
                         >
                           {cell.dayNumber}
                         </span>
@@ -2234,22 +2452,8 @@ export default function AttendancePage() {
                           </span>
                         ) : null
                       ) : (
-                        /* INDIVIDUAL WORKER VIEW: Clean view (Attendance indicator is in the corner) */
-                        cell.holidayName ? (
-                          <div className="text-center px-1.5 space-y-0.5">
-                            <span
-                              className="text-[10px] sm:text-[11px] font-black text-sky-950 block leading-tight line-clamp-2"
-                              title={cell.holidayName}
-                            >
-                              {cell.holidayName}
-                            </span>
-                            {cell.holidayTarget && cell.holidayTarget !== "all" && (
-                              <span className="inline-block px-1.5 py-0.2 rounded text-[8px] font-extrabold uppercase bg-sky-200/90 text-sky-900 border border-sky-300">
-                                {cell.holidayTarget === "staff" ? "Staff Holiday" : "Karigar Holiday"}
-                              </span>
-                            )}
-                          </div>
-                        ) : !singleWorkerPunch && cell.isSunday ? (
+                        /* INDIVIDUAL WORKER VIEW: Strictly NO events/holidays - ONLY Attendance or Sunday Off */
+                        !singleWorkerPunch && cell.isSunday ? (
                           cell.isSundayHalfDay ? (
                             <span className="text-[9px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded block text-center mx-auto w-fit">
                               ½ Half Day
@@ -2259,6 +2463,24 @@ export default function AttendancePage() {
                               Sunday Off
                             </span>
                           ) : null
+                        ) : isPresent ? (
+                          <div className="text-center py-0.5">
+                            <span className="text-[11px] font-extrabold text-emerald-800 block">
+                              Present
+                            </span>
+                          </div>
+                        ) : isHalfDay ? (
+                          <div className="text-center py-0.5">
+                            <span className="text-[11px] font-extrabold text-amber-800 block">
+                              Half Day
+                            </span>
+                          </div>
+                        ) : isAbsent ? (
+                          <div className="text-center py-0.5">
+                            <span className="text-[11px] font-extrabold text-rose-800 block">
+                              Absent
+                            </span>
+                          </div>
                         ) : null
                       )}
                     </div>
@@ -2332,9 +2554,8 @@ export default function AttendancePage() {
                           });
                         }
                       }}
-                      className={`py-1.5 text-center text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                        editPunchModal.manualStatus === st ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
-                      }`}
+                      className={`py-1.5 text-center text-xs font-bold rounded-lg transition-all cursor-pointer ${editPunchModal.manualStatus === st ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                        }`}
                     >
                       {st}
                     </button>

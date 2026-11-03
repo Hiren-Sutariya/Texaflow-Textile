@@ -247,8 +247,8 @@ export default function WorkerPortalPage() {
   }, [payoutRecords, activeWorker, selectedMonth]);
 
   // Net payable calculation
-  const calculatedDays = monthAttendance.fullDays + (monthAttendance.halfDays * 0.5) || 26;
-  const estimatedGross = Math.round(((activeWorker?.monthly_salary || 0) / 30) * calculatedDays);
+  const calculatedDays = monthAttendance.fullDays + (monthAttendance.halfDays * 0.5);
+  const estimatedGross = calculatedDays > 0 ? Math.round(((activeWorker?.monthly_salary || 0) / 30) * calculatedDays) : 0;
   const estimatedNet = Math.max(0, estimatedGross - upadInfo.total);
 
   if (!hasMounted) return null;
@@ -273,7 +273,7 @@ export default function WorkerPortalPage() {
           <div className="overflow-hidden">
             <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider truncate">DAYS WORKED</p>
             <p className="text-xl font-black text-emerald-700 mt-0.5">
-              {monthAttendance.fullDays + (monthAttendance.halfDays * 0.5) || 26} <span className="text-xs font-bold text-slate-400">Days</span>
+              {calculatedDays} <span className="text-xs font-bold text-slate-400">Days</span>
             </p>
           </div>
           <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">

@@ -42,6 +42,7 @@ export interface SalaryPayoutRecord {
   paid_days: number; // full_days + half_days * 0.5
   earned_gross_salary: number;
   overtime_amount: number;
+  bonus_amount?: number;
   total_earnings: number;
   deductions: SalaryDeductionItem[];
   total_upad_deduction: number;

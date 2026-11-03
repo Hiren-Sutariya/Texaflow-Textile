@@ -278,16 +278,27 @@ export default function EmployeesPage() {
           const fallbackSr = codeMatch ? parseInt(codeMatch[0], 10) : (idx + 1);
           const resolvedSrNo = Number(e.sr_no || e.srNo) || fallbackSr;
 
+          const isStaff = !isKarigar;
+          const resolvedRole = isStaff
+            ? (e.role && e.role !== "Karigar" && e.role !== "Staff"
+                ? e.role
+                : (e.name === "RajKumar"
+                    ? "Supervisor"
+                    : (e.name === "Tanuja" || e.name === "Kailash"
+                        ? "Dhaga Cutting"
+                        : (e.role || "Office Staff"))))
+            : "Karigar";
+
           return {
             id: e.id || `emp-${idx + 1}`,
             srNo: resolvedSrNo,
             code: e.code || (isKarigar ? `KAR-00${idx + 1}` : `STF-00${idx + 1}`),
             name: e.name,
-            role: e.role || (isKarigar ? "Karigar" : "Staff"),
+            role: resolvedRole,
             employee_type: (e.employee_type || (isKarigar ? "Karigar" : "Salaried Staff")) as any,
             mobile: e.mobile || e.phone || "-",
             email: e.email || "",
-            assigned_machine: e.assigned_machine || (isKarigar ? "Machine 1" : ""),
+            assigned_machine: isKarigar ? (e.assigned_machine || "Machine 1") : "",
             shift: (e.shift || "Day Shift") as any,
             monthly_salary: Number(e.monthly_salary) || 0,
             advance_balance: Number(e.advance_balance || e.current_advance) || 0,
@@ -322,8 +333,20 @@ export default function EmployeesPage() {
           const cleaned = parsed.map((emp: any, idx: number) => {
             const codeMatch = (emp.code || "").match(/\d+/);
             const fallbackSr = codeMatch ? parseInt(codeMatch[0], 10) : (idx + 1);
+            const isStaff = emp.employee_type === "Salaried Staff" || (String(emp.code || "").toUpperCase().startsWith("STF"));
+            const resolvedRole = isStaff
+              ? (emp.role && emp.role !== "Karigar" && emp.role !== "Staff"
+                  ? emp.role
+                  : (emp.name === "RajKumar"
+                      ? "Supervisor"
+                      : (emp.name === "Tanuja" || emp.name === "Kailash"
+                          ? "Dhaga Cutting"
+                          : (emp.role || "Office Staff"))))
+              : (emp.role || "Karigar");
             return {
               ...emp,
+              role: resolvedRole,
+              assigned_machine: isStaff ? "" : (emp.assigned_machine || "Machine 1"),
               srNo: Number(emp.srNo || emp.sr_no) || fallbackSr,
               photoUrl:
                 emp.photoUrl &&
@@ -389,6 +412,37 @@ export default function EmployeesPage() {
   const [autoRangeEnd, setAutoRangeEnd] = useState("50");
   const [autoRangePrefix, setAutoRangePrefix] = useState("Machine ");
   const [machineSuccessMsg, setMachineSuccessMsg] = useState<string | null>(null);
+
+  // Staff Roles / Designation Management States
+  const DEFAULT_DESIGNATIONS = [
+    "Office Staff",
+    "Accountant",
+    "Supervisor",
+    "Dhaga Cutting",
+    "Master / Designer",
+    "Peon / Helper",
+    "Checker / Folding",
+    "Manager",
+    "Driver / Delivery"
+  ];
+  const [configuredDesignations, setConfiguredDesignations] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("texaflow_configured_designations");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return DEFAULT_DESIGNATIONS;
+  });
+  const [formDesignation, setFormDesignation] = useState<string>("Office Staff");
+  const [isDesignationDropdownOpen, setIsDesignationDropdownOpen] = useState(false);
+  const [isManageDesignationsModalOpen, setIsManageDesignationsModalOpen] = useState(false);
+  const [manageDesignationInput, setManageDesignationInput] = useState("");
+  const [designationSuccessMsg, setDesignationSuccessMsg] = useState<string | null>(null);
+  const designationDropdownRef = useRef<HTMLDivElement>(null);
 
   // Helpers List
   const [helpersList, setHelpersList] = useState<HelperWorker[]>([]);
@@ -500,6 +554,9 @@ export default function EmployeesPage() {
       if (machineDropdownRef.current && !machineDropdownRef.current.contains(event.target as Node)) {
         setIsMachineDropdownOpen(false);
       }
+      if (designationDropdownRef.current && !designationDropdownRef.current.contains(event.target as Node)) {
+        setIsDesignationDropdownOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -517,8 +574,10 @@ export default function EmployeesPage() {
     setEditingWorkerId(null);
     setFormName("");
     setFormKhataNo("");
-    setFormMachineNo("");
+    setFormMachineNo("Machine 1");
+    setFormDesignation("Office Staff");
     setIsMachineDropdownOpen(false);
+    setIsDesignationDropdownOpen(false);
     setFormMobile("");
     setFormEmail("");
     setFormCategory("Karigar");
@@ -543,11 +602,14 @@ export default function EmployeesPage() {
     setEditingWorkerId(emp.id);
     setFormName(emp.name);
     setFormKhataNo(emp.code);
-    setFormMachineNo(emp.assigned_machine);
+    const isStaff = emp.employee_type === "Salaried Staff" || (emp.role && emp.role !== "Karigar");
+    setFormCategory(isStaff ? "Salaried Staff" : "Karigar");
+    setFormMachineNo(isStaff ? "" : (emp.assigned_machine || "Machine 1"));
+    setFormDesignation(isStaff ? (emp.role && emp.role !== "Staff" ? emp.role : "Office Staff") : "Office Staff");
     setIsMachineDropdownOpen(false);
+    setIsDesignationDropdownOpen(false);
     setFormMobile(emp.mobile === "-" ? "" : emp.mobile);
     setFormEmail(emp.email || "");
-    setFormCategory(emp.employee_type);
     setFormShift(emp.shift);
     setFormSalary(emp.monthly_salary ? String(emp.monthly_salary) : "");
     setFormAdvance(emp.advance_balance ? String(emp.advance_balance) : "");
@@ -634,6 +696,7 @@ export default function EmployeesPage() {
     const cleanFormPhoto = formPhotoUrl && formPhotoUrl.trim() ? formPhotoUrl.trim() : "";
 
     const finalMachine = isKarigar ? (formMachineNo.trim() || "Machine 1") : "";
+    const finalRole = isKarigar ? "Karigar" : (formDesignation.trim() || "Staff");
 
     if (editingWorkerId) {
       try {
@@ -642,7 +705,7 @@ export default function EmployeesPage() {
           body: JSON.stringify({
             code: khata,
             name: formName.trim(),
-            role: isKarigar ? "Karigar" : "Staff",
+            role: finalRole,
             employee_type: formCategory,
             mobile: formMobile.trim() || "-",
             email: formEmail.trim(),
@@ -669,6 +732,7 @@ export default function EmployeesPage() {
                 ...emp,
                 name: formName.trim(),
                 code: khata,
+                role: finalRole,
                 assigned_machine: finalMachine,
                 mobile: formMobile.trim() || "-",
                 email: formEmail.trim(),
@@ -699,7 +763,7 @@ export default function EmployeesPage() {
           body: JSON.stringify({
             code: khata,
             name: formName.trim(),
-            role: isKarigar ? "Karigar" : "Staff",
+            role: finalRole,
             employee_type: formCategory,
             mobile: formMobile.trim() || "-",
             email: formEmail.trim(),
@@ -730,7 +794,7 @@ export default function EmployeesPage() {
         srNo: nextSrNo,
         code: khata,
         name: formName.trim(),
-        role: isKarigar ? "Karigar" : "Staff",
+        role: finalRole,
         employee_type: formCategory,
         mobile: formMobile.trim() || "-",
         email: formEmail.trim(),
@@ -775,6 +839,7 @@ export default function EmployeesPage() {
         (emp.name && emp.name.toLowerCase().includes(q)) ||
         (emp.code && emp.code.toLowerCase().includes(q)) ||
         (emp.assigned_machine && emp.assigned_machine.toLowerCase().includes(q)) ||
+        (emp.role && emp.role.toLowerCase().includes(q)) ||
         (emp.mobile && emp.mobile.toLowerCase().includes(q));
       const matchesType = typeFilter === "All" || emp.employee_type === typeFilter;
       const matchesStatus = statusFilter === "All" || emp.status === statusFilter;
@@ -1051,104 +1116,207 @@ export default function EmployeesPage() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Machine Number</label>
-                    <div className="flex items-center gap-1.5 relative">
-                      <div ref={machineDropdownRef} className="relative flex-1">
-                        <input
-                          type="text"
-                          placeholder="MACHINE 1"
-                          value={formMachineNo}
-                          onChange={(e) => {
-                            setFormMachineNo(e.target.value);
-                            setIsMachineDropdownOpen(true);
-                          }}
-                          onFocus={() => setIsMachineDropdownOpen(true)}
-                          onKeyDown={handleInputKeyDown}
-                          className="w-full h-9 pl-3 pr-14 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 uppercase cursor-pointer"
-                        />
-                        <div className="absolute right-2.5 top-2 flex items-center gap-1">
-                          {formMachineNo && (
+                  {formCategory === "Karigar" ? (
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Machine Number</label>
+                      <div className="flex items-center gap-1.5 relative">
+                        <div ref={machineDropdownRef} className="relative flex-1">
+                          <input
+                            type="text"
+                            placeholder="MACHINE 1"
+                            value={formMachineNo}
+                            onChange={(e) => {
+                              setFormMachineNo(e.target.value);
+                              setIsMachineDropdownOpen(true);
+                            }}
+                            onFocus={() => setIsMachineDropdownOpen(true)}
+                            onKeyDown={handleInputKeyDown}
+                            className="w-full h-9 pl-3 pr-14 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 uppercase cursor-pointer"
+                          />
+                          <div className="absolute right-2.5 top-2 flex items-center gap-1">
+                            {formMachineNo && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFormMachineNo("");
+                                }}
+                                className="text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
+                                title="Clear Machine Number"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setFormMachineNo("");
+                                setIsMachineDropdownOpen((prev) => !prev);
                               }}
-                              className="text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
-                              title="Clear Machine Number"
+                              className="text-slate-400 hover:text-slate-700 cursor-pointer p-0.5"
+                              title="Toggle machine dropdown"
                             >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setIsMachineDropdownOpen((prev) => !prev);
-                            }}
-                            className="text-slate-400 hover:text-slate-700 cursor-pointer p-0.5"
-                            title="Toggle machine dropdown"
-                          >
-                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isMachineDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
-                          </button>
-                        </div>
-
-                        {/* DROPDOWN MENU MATCHING SCREENSHOT 2 */}
-                        {isMachineDropdownOpen && (
-                          <div className="absolute left-0 right-0 top-11 z-50 bg-white border-2 border-blue-500 rounded-2xl shadow-xl p-2 space-y-2 animate-in fade-in duration-100">
-                            <div className="max-h-48 overflow-y-auto space-y-1 no-scrollbar">
-                              {configuredMachines.length === 0 ? (
-                                <div className="p-3 text-center text-slate-400 text-xs font-medium">
-                                  No machines configured yet
-                                </div>
-                              ) : (
-                                configuredMachines.map((m) => (
-                                  <button
-                                    key={m}
-                                    type="button"
-                                    onClick={() => {
-                                      setFormMachineNo(m);
-                                      setIsMachineDropdownOpen(false);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-colors cursor-pointer ${
-                                      formMachineNo === m
-                                        ? "bg-blue-600 text-white font-extrabold"
-                                        : "hover:bg-slate-100 text-slate-800"
-                                    }`}
-                                  >
-                                    <span>{m}</span>
-                                    {formMachineNo === m && <Check className="w-4 h-4" />}
-                                  </button>
-                                ))
-                              )}
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsMachineDropdownOpen(false);
-                                setIsManageMachinesModalOpen(true);
-                              }}
-                              className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-200 cursor-pointer transition-colors"
-                            >
-                              <Settings className="w-3.5 h-3.5 text-slate-500" />
-                              <span>Manage</span>
+                              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isMachineDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
                             </button>
                           </div>
-                        )}
-                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setIsManageMachinesModalOpen(true)}
-                        className="p-2 border border-slate-300 rounded-xl hover:bg-slate-50 cursor-pointer text-slate-600 shrink-0"
-                        title="Manage Factory Machines"
-                      >
-                        <Settings className="w-4 h-4 text-slate-600" />
-                      </button>
+                          {/* DROPDOWN MENU MATCHING SCREENSHOT 2 */}
+                          {isMachineDropdownOpen && (
+                            <div className="absolute left-0 right-0 top-11 z-50 bg-white border-2 border-blue-500 rounded-2xl shadow-xl p-2 space-y-2 animate-in fade-in duration-100">
+                              <div className="max-h-48 overflow-y-auto space-y-1 no-scrollbar">
+                                {configuredMachines.length === 0 ? (
+                                  <div className="p-3 text-center text-slate-400 text-xs font-medium">
+                                    No machines configured yet
+                                  </div>
+                                ) : (
+                                  configuredMachines.map((m) => (
+                                    <button
+                                      key={m}
+                                      type="button"
+                                      onClick={() => {
+                                        setFormMachineNo(m);
+                                        setIsMachineDropdownOpen(false);
+                                      }}
+                                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-colors cursor-pointer ${
+                                        formMachineNo === m
+                                          ? "bg-blue-600 text-white font-extrabold"
+                                          : "hover:bg-slate-100 text-slate-800"
+                                      }`}
+                                    >
+                                      <span>{m}</span>
+                                      {formMachineNo === m && <Check className="w-4 h-4" />}
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsMachineDropdownOpen(false);
+                                  setIsManageMachinesModalOpen(true);
+                                }}
+                                className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-200 cursor-pointer transition-colors"
+                              >
+                                <Settings className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Manage</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsManageMachinesModalOpen(true)}
+                          className="p-2 border border-slate-300 rounded-xl hover:bg-slate-50 cursor-pointer text-slate-600 shrink-0"
+                          title="Manage Factory Machines"
+                        >
+                          <Settings className="w-4 h-4 text-slate-600" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Staff Role / Designation
+                      </label>
+                      <div className="flex items-center gap-1.5 relative">
+                        <div ref={designationDropdownRef} className="relative flex-1">
+                          <input
+                            type="text"
+                            placeholder="e.g. Office Staff, Accountant"
+                            value={formDesignation}
+                            onChange={(e) => {
+                              setFormDesignation(e.target.value);
+                              setIsDesignationDropdownOpen(true);
+                            }}
+                            onFocus={() => setIsDesignationDropdownOpen(true)}
+                            onKeyDown={handleInputKeyDown}
+                            className="w-full h-9 pl-3 pr-14 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 cursor-pointer"
+                          />
+                          <div className="absolute right-2.5 top-2 flex items-center gap-1">
+                            {formDesignation && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFormDesignation("");
+                                }}
+                                className="text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
+                                title="Clear Role"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsDesignationDropdownOpen((prev) => !prev);
+                              }}
+                              className="text-slate-400 hover:text-slate-700 cursor-pointer p-0.5"
+                              title="Toggle role dropdown"
+                            >
+                              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isDesignationDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
+                            </button>
+                          </div>
+
+                          {/* DESIGNATION DROPDOWN */}
+                          {isDesignationDropdownOpen && (
+                            <div className="absolute left-0 right-0 top-11 z-50 bg-white border-2 border-blue-500 rounded-2xl shadow-xl p-2 space-y-2 animate-in fade-in duration-100">
+                              <div className="max-h-48 overflow-y-auto space-y-1 no-scrollbar">
+                                {configuredDesignations.length === 0 ? (
+                                  <div className="p-3 text-center text-slate-400 text-xs font-medium">
+                                    No roles configured yet
+                                  </div>
+                                ) : (
+                                  configuredDesignations.map((d) => (
+                                    <button
+                                      key={d}
+                                      type="button"
+                                      onClick={() => {
+                                        setFormDesignation(d);
+                                        setIsDesignationDropdownOpen(false);
+                                      }}
+                                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-colors cursor-pointer ${
+                                        formDesignation === d
+                                          ? "bg-blue-600 text-white font-extrabold"
+                                          : "hover:bg-slate-100 text-slate-800"
+                                      }`}
+                                    >
+                                      <span>{d}</span>
+                                      {formDesignation === d && <Check className="w-4 h-4" />}
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsDesignationDropdownOpen(false);
+                                  setIsManageDesignationsModalOpen(true);
+                                }}
+                                className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-200 cursor-pointer transition-colors"
+                              >
+                                <Settings className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Manage Staff Roles</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsManageDesignationsModalOpen(true)}
+                          className="p-2 border border-slate-300 rounded-xl hover:bg-slate-50 cursor-pointer text-slate-600 shrink-0"
+                          title="Manage Staff Roles & Designations"
+                        >
+                          <Settings className="w-4 h-4 text-slate-600" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">Mobile Number</label>
@@ -1179,7 +1347,10 @@ export default function EmployeesPage() {
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
-                        onClick={() => setFormCategory("Karigar")}
+                        onClick={() => {
+                          setFormCategory("Karigar");
+                          if (!formMachineNo) setFormMachineNo("Machine 1");
+                        }}
                         className={`h-9 rounded-xl font-bold text-xs flex items-center justify-center border transition-all cursor-pointer ${
                           formCategory === "Karigar"
                             ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
@@ -1190,7 +1361,10 @@ export default function EmployeesPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setFormCategory("Salaried Staff")}
+                        onClick={() => {
+                          setFormCategory("Salaried Staff");
+                          setFormMachineNo("");
+                        }}
                         className={`h-9 rounded-xl font-bold text-xs flex items-center justify-center border transition-all cursor-pointer ${
                           formCategory === "Salaried Staff"
                             ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
@@ -1802,6 +1976,132 @@ export default function EmployeesPage() {
             </div>
           </div>
         )}
+
+        {/* MANAGE STAFF ROLES / DESIGNATIONS MODAL */}
+        {isManageDesignationsModalOpen && (
+          <div className="fixed inset-0 z-60 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                    <Settings className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-sm">Manage Staff Roles / Designations</h3>
+                    <p className="text-[11px] text-slate-400 font-medium">Add, remove or update designations for salaried staff</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsManageDesignationsModalOpen(false)}
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {designationSuccessMsg && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold animate-in fade-in">
+                  {designationSuccessMsg}
+                </div>
+              )}
+
+              {/* Add New Designation */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-700">Add New Role / Designation</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. Master, Quality Inspector, Accountant"
+                    value={manageDesignationInput}
+                    onChange={(e) => setManageDesignationInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (manageDesignationInput.trim()) {
+                          const val = manageDesignationInput.trim();
+                          if (!configuredDesignations.includes(val)) {
+                            const updated = [...configuredDesignations, val];
+                            setConfiguredDesignations(updated);
+                            try { localStorage.setItem("texaflow_configured_designations", JSON.stringify(updated)); } catch {}
+                            setFormDesignation(val);
+                            setDesignationSuccessMsg(`✓ Added "${val}" successfully!`);
+                            setTimeout(() => setDesignationSuccessMsg(null), 3000);
+                          }
+                          setManageDesignationInput("");
+                        }
+                      }
+                    }}
+                    className="flex-1 h-10 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 text-xs focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (manageDesignationInput.trim()) {
+                        const val = manageDesignationInput.trim();
+                        if (!configuredDesignations.includes(val)) {
+                          const updated = [...configuredDesignations, val];
+                          setConfiguredDesignations(updated);
+                          try { localStorage.setItem("texaflow_configured_designations", JSON.stringify(updated)); } catch {}
+                          setFormDesignation(val);
+                          setDesignationSuccessMsg(`✓ Added "${val}" successfully!`);
+                          setTimeout(() => setDesignationSuccessMsg(null), 3000);
+                        }
+                        setManageDesignationInput("");
+                      }
+                    }}
+                    className="px-4 h-10 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition-colors cursor-pointer shrink-0"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                {/* Designation List */}
+                <div className="space-y-2 pt-2">
+                  <span className="font-extrabold text-slate-800 text-xs uppercase tracking-wide">
+                    Configured Roles ({configuredDesignations.length})
+                  </span>
+
+                  <div className="max-h-56 overflow-y-auto space-y-2 p-1 border border-slate-100 rounded-2xl">
+                    {configuredDesignations.length === 0 ? (
+                      <div className="p-8 border-2 border-dashed border-slate-200 rounded-2xl text-center text-slate-400 font-medium text-xs">
+                        No staff roles configured yet
+                      </div>
+                    ) : (
+                      configuredDesignations.map((d) => (
+                        <div key={d} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                          <span className="font-bold text-slate-800">{d}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = configuredDesignations.filter((x) => x !== d);
+                              setConfiguredDesignations(updated);
+                              try { localStorage.setItem("texaflow_configured_designations", JSON.stringify(updated)); } catch {}
+                            }}
+                            className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer transition-colors"
+                            title="Remove role"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsManageDesignationsModalOpen(false)}
+                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1818,7 +2118,7 @@ export default function EmployeesPage() {
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
           <input
             type="text"
-            placeholder="Search Karigar Name, Code..."
+            placeholder="Search Worker Name, Code, Machine, Role..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full h-9 pl-8 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-medium shadow-2xs hover:border-blue-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-colors"
@@ -2151,9 +2451,13 @@ export default function EmployeesPage() {
                   </span>
                 </div>
                 <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Machine</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">
+                    {emp.employee_type === "Salaried Staff" ? "Role" : "Machine"}
+                  </span>
                   <span className="font-mono font-bold text-slate-800 text-[11px] truncate">
-                    {emp.assigned_machine || "Not Assigned"}
+                    {emp.employee_type === "Salaried Staff"
+                      ? (emp.role && emp.role !== "Staff" && emp.role !== "Karigar" ? emp.role : "Staff")
+                      : (emp.assigned_machine || "Not Assigned")}
                   </span>
                 </div>
               </div>
@@ -2210,7 +2514,7 @@ export default function EmployeesPage() {
                 <th className="px-3 py-2.5 text-center w-14 border-r border-slate-200/80">PHOTO</th>
                 <th className="px-4 py-2.5 border-r border-slate-200/80">WORKER NAME</th>
                 <th className="px-4 py-2.5 border-r border-slate-200/80">KHATA NO.</th>
-                <th className="px-4 py-2.5 border-r border-slate-200/80">MACHINE NUMBER</th>
+                <th className="px-4 py-2.5 border-r border-slate-200/80">MACHINE / ROLE</th>
                 <th className="px-4 py-2.5 border-r border-slate-200/80">MOBILE NUMBER</th>
                 <th className="px-4 py-2.5 text-center border-r border-slate-200/80">SHIFT</th>
                 <th className="px-4 py-2.5 text-right border-r border-slate-200/80">SALARY (₹)</th>
@@ -2274,11 +2578,17 @@ export default function EmployeesPage() {
                     </span>
                   </td>
 
-                  {/* MACHINE NUMBER */}
+                  {/* MACHINE / ROLE */}
                   <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200/70">
-                    <span className="font-mono text-xs font-medium text-slate-700">
-                      {emp.assigned_machine || "-"}
-                    </span>
+                    {emp.employee_type === "Salaried Staff" ? (
+                      <span className="text-xs font-semibold text-slate-800">
+                        {emp.role && emp.role !== "Karigar" ? emp.role : "Office Staff"}
+                      </span>
+                    ) : (
+                      <span className="font-mono text-xs font-medium text-slate-700">
+                        {emp.assigned_machine || "-"}
+                      </span>
+                    )}
                   </td>
 
                   {/* MOBILE NUMBER */}
@@ -2416,7 +2726,9 @@ export default function EmployeesPage() {
                         Khata: {previewWorker.code || "-"}
                       </span>
                       <span className="px-2.5 py-0.5 bg-slate-100 text-slate-800 border border-slate-200 rounded-md font-bold text-[11px]">
-                        Machine: {previewWorker.assigned_machine || "-"}
+                        {previewWorker.employee_type === "Salaried Staff"
+                          ? `Role: ${previewWorker.role || "Staff"}`
+                          : `Machine: ${previewWorker.assigned_machine || "-"}`}
                       </span>
                     </div>
                   </div>
@@ -2443,8 +2755,14 @@ export default function EmployeesPage() {
                   <div className="font-extrabold text-slate-900 mt-0.5 font-mono">{previewWorker.code || "-"}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Machine Number</div>
-                  <div className="font-extrabold text-slate-900 mt-0.5">{previewWorker.assigned_machine || "-"}</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">
+                    {previewWorker.employee_type === "Salaried Staff" ? "Staff Role" : "Machine Number"}
+                  </div>
+                  <div className="font-extrabold text-slate-900 mt-0.5">
+                    {previewWorker.employee_type === "Salaried Staff"
+                      ? (previewWorker.role || "Staff")
+                      : (previewWorker.assigned_machine || "-")}
+                  </div>
                 </div>
                 <div>
                   <div className="text-[10px] font-bold text-slate-400 uppercase">Mobile Number</div>

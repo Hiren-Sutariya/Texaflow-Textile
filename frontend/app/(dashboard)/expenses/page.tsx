@@ -138,19 +138,26 @@ const parseDate = (dateStr: string): Date => {
 export const normalizeAndRenumberExpenses = (list: ExpenseItem[]): ExpenseItem[] => {
   if (!Array.isArray(list) || list.length === 0) return list;
 
-  const needsRenumber = list.some((item) => {
+  // Purge any test records created during development/testing
+  const cleanSource = list.filter((item) => {
+    if (item.id === "exp-034" || item.expense_no === "EB-034") return false;
+    if (item.notes && String(item.notes).includes("Ref: SAL-")) return false;
+    return true;
+  });
+
+  const needsRenumber = cleanSource.some((item) => {
     if (!item.expense_no) return true;
     const match = item.expense_no.match(/^EB-(\d{3})$/);
     if (!match) return true;
     const num = parseInt(match[1], 10);
-    if (num > list.length + 10 || num > 500) return true;
+    if (num > cleanSource.length + 10 || num > 500) return true;
     if (item.vendor_name === "General Vendor") return true;
     return false;
-  });
+  }) || cleanSource.length !== list.length;
 
-  if (!needsRenumber) return list;
+  if (!needsRenumber) return cleanSource;
 
-  const sorted = [...list].sort((a, b) => {
+  const sorted = [...cleanSource].sort((a, b) => {
     const timeA = parseDate(a.date).getTime();
     const timeB = parseDate(b.date).getTime();
     if (timeA !== timeB) return timeA - timeB;
@@ -167,7 +174,7 @@ export const normalizeAndRenumberExpenses = (list: ExpenseItem[]): ExpenseItem[]
     idToNewId[item.id] = `exp-${pad}`;
   });
 
-  const updated = list.map((item) => {
+  const updated = cleanSource.map((item) => {
     const cleanVendor = item.vendor_name === "General Vendor" ? "" : item.vendor_name || "";
     return {
       ...item,

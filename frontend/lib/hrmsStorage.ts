@@ -19,10 +19,84 @@ export interface WorkerItem {
 export const DEFAULT_WORKERS: WorkerItem[] = [
   { id: "wrk-001", name: "Rakesh Bind", code: "KAR-001", role: "Karigar", shift: "Day Shift", assigned_machine: "Machine 1", monthly_salary: 33000 },
   { id: "wrk-002", name: "Gaurav", code: "KAR-002", role: "Karigar", shift: "Day Shift", assigned_machine: "Machine 3", monthly_salary: 33000 },
-  { id: "wrk-003", name: "RajKumar", code: "STF-005", role: "Staff", shift: "Day Shift", monthly_salary: 10000 },
-  { id: "wrk-004", name: "Tanuja", code: "STF-006", role: "Staff", shift: "Day Shift", monthly_salary: 10000 },
-  { id: "wrk-005", name: "Kailash", code: "STF-007", role: "Staff", shift: "Day Shift", monthly_salary: 9500 },
+  { id: "wrk-005", name: "RajKumar", code: "STF-005", role: "Staff", shift: "Day Shift", monthly_salary: 10000 },
+  { id: "wrk-006", name: "Tanuja", code: "STF-006", role: "Staff", shift: "Day Shift", monthly_salary: 10000 },
+  { id: "wrk-007", name: "Kailash", code: "STF-007", role: "Staff", shift: "Day Shift", monthly_salary: 9500 },
 ];
+
+// Clean up any test records created during development/testing
+export function purgeTestingData(): void {
+  if (typeof window === "undefined") return;
+  try {
+    // 1. Purge test salary expenses from all localStorage keys
+    const expenseKeys = [
+      "texaflow_expenses",
+      "texaflow_expenses_comp-001",
+      "texaflow_expenses_comp-002",
+      "api_cache_/expenses"
+    ];
+
+    expenseKeys.forEach((key) => {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const cleaned = parsed.filter((item: any) => {
+              if (item.id === "exp-034" || item.expense_no === "EB-034") return false;
+              if (item.notes && String(item.notes).includes("Ref: SAL-")) return false;
+              if (item.category === "Karigar Salary" && String(item.notes || "").includes("Ref: SAL-")) return false;
+              return true;
+            });
+            localStorage.setItem(key, JSON.stringify(cleaned));
+          }
+        } catch {}
+      }
+    });
+
+    // 2. Purge test payout records from all localStorage keys
+    const payoutKeys = [
+      "texaflow_hrms_payout_records",
+      "texaflow_hrms_payout_records_comp-001",
+      "texaflow_hrms_payout_records_comp-002"
+    ];
+    payoutKeys.forEach((key) => {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const cleaned = parsed.filter((p: any) => {
+              if (p.payout_no && String(p.payout_no).includes("SAL-2026-10-157")) return false;
+              if (p.id && String(p.id).includes("payout-2026-10-wrk-001")) return false;
+              return true;
+            });
+            localStorage.setItem(key, JSON.stringify(cleaned));
+          }
+        } catch {}
+      }
+    });
+
+    // 3. Purge any dummy attendance logs with test id
+    const attendanceKeys = [
+      "texaflow_hrms_attendance_logs",
+      "texaflow_hrms_attendance_logs_comp-001",
+      "texaflow_hrms_attendance_logs_comp-002"
+    ];
+    attendanceKeys.forEach((key) => {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const cleaned = parsed.filter((l: any) => !String(l.id || "").startsWith("test-"));
+            localStorage.setItem(key, JSON.stringify(cleaned));
+          }
+        } catch {}
+      }
+    });
+  } catch {}
+}
 
 export function getStoredWorkers(): WorkerItem[] {
   if (typeof window === "undefined") return DEFAULT_WORKERS;

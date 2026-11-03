@@ -25,7 +25,8 @@ import {
   FileText,
   Clock,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Pencil
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { fetchApi } from "@/lib/api";
@@ -42,6 +43,8 @@ import {
   getWorkerMonthlyUpad,
   getStoredWorkers,
   refreshWorkersFromApi,
+  getCompanyHolidayRules,
+  purgeTestingData,
   WorkerItem
 } from "@/lib/hrmsStorage";
 
@@ -79,6 +82,7 @@ export default function WorkerPayoutPage() {
 
   // Form State in Payout Modal
   const [manualOvertime, setManualOvertime] = useState<number>(0);
+  const [bonusAmount, setBonusAmount] = useState<number>(0);
   const [otherDeductions, setOtherDeductions] = useState<SalaryDeductionItem[]>([
     { id: "ded-rent", type: "room_rent", label: "Room Rent (રૂમનું ભાડું)", amount: 0 },
     { id: "ded-light", type: "electricity", label: "Light / Electricity Bill (લાઇટ બિલ)", amount: 0 },
@@ -96,6 +100,9 @@ export default function WorkerPayoutPage() {
   useEffect(() => {
     setHasMounted(true);
     setFirmName(getStoredFirmName() || "Om Sai Enterprise");
+
+    // Clear any testing remnants from local storage
+    purgeTestingData();
 
     // 1. Immediately reload latest workers from local cache
     setWorkers(getStoredWorkers());
@@ -149,24 +156,48 @@ export default function WorkerPayoutPage() {
 
   // Aggregate attendance for each worker in selectedMonth
   const workerAttendanceSummary = useMemo(() => {
-    const summaryMap = new Map<string, { fullDays: number; halfDays: number; absentDays: number; totalHours: number }>();
+    const rules = getCompanyHolidayRules();
+    const minOtShiftHours = rules.min_hours_for_ot || 12;
+    const otRate = rules.ot_hourly_rate || 50;
+
+    const summaryMap = new Map<string, { 
+      fullDays: number; 
+      halfDays: number; 
+      absentDays: number; 
+      totalHours: number;
+      overtimeHours: number;
+      estimatedOtAmount: number;
+    }>();
     
     workers.forEach((w) => {
-      summaryMap.set(w.id, { fullDays: 0, halfDays: 0, absentDays: 0, totalHours: 0 });
+      summaryMap.set(w.id, { fullDays: 0, halfDays: 0, absentDays: 0, totalHours: 0, overtimeHours: 0, estimatedOtAmount: 0 });
     });
 
     attendanceLogs
       .filter((log) => log.date.startsWith(selectedMonth))
       .forEach((log) => {
-        const current = summaryMap.get(log.worker_id) || { fullDays: 0, halfDays: 0, absentDays: 0, totalHours: 0 };
-        if (log.status === "Full Day" || log.status === "Overtime" || log.status === "Present") {
+        const current = summaryMap.get(log.worker_id) || { fullDays: 0, halfDays: 0, absentDays: 0, totalHours: 0, overtimeHours: 0, estimatedOtAmount: 0 };
+        const punchHours = log.total_hours || 0;
+        
+        if (log.status === "Full Day" || log.status === "Present") {
           current.fullDays += 1;
+        } else if (log.status === "Overtime") {
+          current.fullDays += 1;
+          const ot = Math.max(0, punchHours - minOtShiftHours);
+          current.overtimeHours += (ot > 0 ? ot : 2); // default 2 hrs if logged as Overtime without excess hours
         } else if (log.status === "Half Day") {
           current.halfDays += 1;
         } else if (log.status === "Absent") {
           current.absentDays += 1;
         }
-        current.totalHours += log.total_hours || 0;
+
+        // Additional hours beyond minOtShiftHours on regular full day
+        if (log.status !== "Overtime" && punchHours > minOtShiftHours) {
+          current.overtimeHours += (punchHours - minOtShiftHours);
+        }
+
+        current.totalHours += punchHours;
+        current.estimatedOtAmount = Math.round(current.overtimeHours * otRate);
         summaryMap.set(log.worker_id, current);
       });
 
@@ -204,9 +235,9 @@ export default function WorkerPayoutPage() {
       } else {
         // Estimated unfinalized
         const base = Number(w.monthly_salary) || 0;
-        const att = workerAttendanceSummary.get(w.id) || { fullDays: 24, halfDays: 4, absentDays: 2, totalHours: 0 };
-        const paidDays = att.fullDays + (att.halfDays * 0.5) || 26;
-        const earned = Math.round((base / 30) * paidDays);
+        const att = workerAttendanceSummary.get(w.id) || { fullDays: 0, halfDays: 0, absentDays: 0, totalHours: 0, overtimeHours: 0, estimatedOtAmount: 0 };
+        const paidDays = att.fullDays + (att.halfDays * 0.5);
+        const earned = paidDays > 0 ? Math.round((base / 30) * paidDays) + att.estimatedOtAmount : 0;
         const upad = getWorkerMonthlyUpad(w.name, selectedMonth).total;
         totalGross += earned;
         totalUpad += upad;
@@ -225,13 +256,16 @@ export default function WorkerPayoutPage() {
 
     if (existing) {
       setManualOvertime(existing.overtime_amount || 0);
+      setBonusAmount(existing.bonus_amount || 0);
       setOtherDeductions(existing.deductions.filter((d) => d.type !== "upad"));
       setPaymentMode(existing.payment_mode || "Cash");
       setPaymentDate(existing.payment_date || getTodayStr());
       setAmountPaying(existing.paid_amount || existing.net_payable);
       setPayoutNotes(existing.remarks || "");
     } else {
-      setManualOvertime(0);
+      const att = workerAttendanceSummary.get(worker.id);
+      setManualOvertime(att?.estimatedOtAmount || 0);
+      setBonusAmount(0);
       setOtherDeductions([
         { id: `ded-${Date.now()}-rent`, type: "room_rent", label: "Room Rent (રૂમનું ભાડું)", amount: 0 },
         { id: `ded-${Date.now()}-light`, type: "electricity", label: "Light / Electricity Bill (લાઇટ બિલ)", amount: 0 }
@@ -245,20 +279,22 @@ export default function WorkerPayoutPage() {
   // Calculations inside modal
   const modalCalculations = useMemo(() => {
     if (!activeWorkerForPayout) {
-      return { baseSalary: 0, fullDays: 0, halfDays: 0, absentDays: 0, paidDays: 0, grossEarned: 0, totalUpad: 0, upadItems: [], otherDedTotal: 0, totalDed: 0, netPayable: 0 };
+      return { baseSalary: 0, fullDays: 0, halfDays: 0, absentDays: 0, paidDays: 0, earnedWages: 0, ot: 0, bonus: 0, grossEarned: 0, totalUpad: 0, upadItems: [], otherDedTotal: 0, totalDed: 0, netPayable: 0 };
     }
 
     const baseSalary = Number(activeWorkerForPayout.monthly_salary) || 0;
-    const att = workerAttendanceSummary.get(activeWorkerForPayout.id) || { fullDays: 0, halfDays: 0, absentDays: 0, totalHours: 0 };
+    const att = workerAttendanceSummary.get(activeWorkerForPayout.id) || { fullDays: 0, halfDays: 0, absentDays: 0, totalHours: 0, overtimeHours: 0, estimatedOtAmount: 0 };
     
-    // If attendance logs exist, use them; if not yet recorded, default to 30 days calculation
-    const hasLogs = (att.fullDays + att.halfDays + att.absentDays) > 0;
-    const fullDays = hasLogs ? att.fullDays : 26;
-    const halfDays = hasLogs ? att.halfDays : 2;
-    const absentDays = hasLogs ? att.absentDays : 2;
+    // Exact logged attendance only
+    const fullDays = att.fullDays;
+    const halfDays = att.halfDays;
+    const absentDays = att.absentDays;
     const paidDays = fullDays + (halfDays * 0.5);
 
-    const grossEarned = Math.round((baseSalary / 30) * paidDays) + (Number(manualOvertime) || 0);
+    const ot = Number(manualOvertime) || 0;
+    const bonus = Number(bonusAmount) || 0;
+    const earnedWages = paidDays > 0 ? Math.round((baseSalary / 30) * paidDays) : 0;
+    const grossEarned = earnedWages + ot + bonus;
 
     // Auto pull Upads
     const upadData = getWorkerMonthlyUpad(activeWorkerForPayout.name, selectedMonth);
@@ -274,6 +310,9 @@ export default function WorkerPayoutPage() {
       halfDays,
       absentDays,
       paidDays,
+      earnedWages,
+      ot,
+      bonus,
       grossEarned,
       totalUpad,
       upadItems: upadData.items,
@@ -281,7 +320,7 @@ export default function WorkerPayoutPage() {
       totalDed,
       netPayable
     };
-  }, [activeWorkerForPayout, workerAttendanceSummary, manualOvertime, otherDeductions, selectedMonth]);
+  }, [activeWorkerForPayout, workerAttendanceSummary, manualOvertime, bonusAmount, otherDeductions, selectedMonth]);
 
   // Set default amount paying when modal open or net changes
   useEffect(() => {
@@ -350,8 +389,9 @@ export default function WorkerPayoutPage() {
       half_days: calc.halfDays,
       absent_days: calc.absentDays,
       paid_days: calc.paidDays,
-      earned_gross_salary: calc.grossEarned - (Number(manualOvertime) || 0),
-      overtime_amount: Number(manualOvertime) || 0,
+      earned_gross_salary: calc.earnedWages,
+      overtime_amount: calc.ot,
+      bonus_amount: calc.bonus,
       total_earnings: calc.grossEarned,
       deductions: allDeductions,
       total_upad_deduction: calc.totalUpad,
@@ -480,12 +520,13 @@ export default function WorkerPayoutPage() {
       {/* 3. WORKER PAYROLL REGISTER TABLE */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs min-w-[950px]">
+          <table className="w-full text-left border-collapse text-xs min-w-[1020px]">
             <thead>
               <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
                 <th className="py-2.5 px-4 border-r border-slate-200/80">WORKER NAME</th>
                 <th className="py-2.5 px-4 border-r border-slate-200/80">FIXED SALARY</th>
                 <th className="py-2.5 px-4 border-r border-slate-200/80">DAYS WORKED</th>
+                <th className="py-2.5 px-4 text-right border-r border-slate-200/80">OVERTIME (OT)</th>
                 <th className="py-2.5 px-4 text-right border-r border-slate-200/80">GROSS EARNED</th>
                 <th className="py-2.5 px-4 text-right border-r border-slate-200/80">ADVANCE DEDUCTED</th>
                 <th className="py-2.5 px-4 text-right border-r border-slate-200/80">OTHER DED.</th>
@@ -497,7 +538,7 @@ export default function WorkerPayoutPage() {
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
               {displayWorkers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
+                  <td colSpan={10} className="py-8 text-center text-slate-400 font-medium">
                     No workers found for this month.
                   </td>
                 </tr>
@@ -508,21 +549,24 @@ export default function WorkerPayoutPage() {
                   const isPartial = payout?.payment_status === "Partially Paid";
 
                   // Attendance info
-                  const att = workerAttendanceSummary.get(worker.id) || { fullDays: 24, halfDays: 4, absentDays: 2, totalHours: 0 };
-                  const hasLogs = (att.fullDays + att.halfDays + att.absentDays) > 0;
-                  const fDays = hasLogs ? att.fullDays : 26;
-                  const hDays = hasLogs ? att.halfDays : 2;
+                  const att = workerAttendanceSummary.get(worker.id) || { fullDays: 0, halfDays: 0, absentDays: 0, totalHours: 0, overtimeHours: 0, estimatedOtAmount: 0 };
+                  const fDays = att.fullDays;
+                  const hDays = att.halfDays;
                   const paidDays = fDays + (hDays * 0.5);
 
                   const baseSalary = Number(worker.monthly_salary) || 0;
-                  const grossEarned = payout ? payout.total_earnings : Math.round((baseSalary / 30) * paidDays);
+                  const earnedWages = paidDays > 0 ? Math.round((baseSalary / 30) * paidDays) : 0;
+                  const otAmt = payout ? payout.overtime_amount : att.estimatedOtAmount;
+                  const otHrs = att.overtimeHours;
+                  const bonusAmt = payout?.bonus_amount || 0;
+                  const grossEarned = payout ? payout.total_earnings : (earnedWages + otAmt);
                   const upadAmt = payout ? payout.total_upad_deduction : getWorkerMonthlyUpad(worker.name, selectedMonth).total;
                   const otherAmt = payout ? payout.total_other_deductions : 0;
                   const netPay = payout ? payout.net_payable : Math.max(0, grossEarned - upadAmt - otherAmt);
 
                   return (
                     <tr key={worker.id} className="hover:bg-blue-50/30 transition-colors">
-                      {/* 1. Worker Name Only */}
+                      {/* 1. Worker Name Only (Clean - No Machine / Role) */}
                       <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
                         <span className="font-extrabold text-slate-900 block text-xs">{worker.name}</span>
                       </td>
@@ -532,44 +576,76 @@ export default function WorkerPayoutPage() {
                         ₹{baseSalary.toLocaleString("en-IN")}
                       </td>
 
-                      {/* 3. Days Worked (Clean Total Number Only, No 'Days' suffix) */}
+                      {/* 3. Days Worked with breakdown subtext */}
                       <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
-                        <span className="font-mono font-black text-sm text-slate-900">
+                        <span className={`font-mono font-black text-sm block ${paidDays > 0 ? "text-slate-900" : "text-slate-400"}`}>
                           {paidDays}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-bold tracking-tight block">
+                          {paidDays > 0 ? `${fDays} Full • ${hDays} Half` : "0 Full • 0 Half"}
                         </span>
                       </td>
 
-                      {/* 4. Gross Earned */}
+                      {/* 4. Overtime (OT) */}
+                      <td className="py-3 px-4 text-right border-r border-slate-200/70 whitespace-nowrap">
+                        {otAmt > 0 ? (
+                          <div>
+                            <span className="font-mono font-black text-xs text-blue-600 block">
+                              ₹{otAmt.toLocaleString("en-IN")}
+                            </span>
+                            {otHrs > 0 && (
+                              <span className="text-[10px] text-blue-500 font-semibold font-mono block">
+                                {otHrs}h OT
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="font-mono font-bold text-slate-400">₹0</span>
+                        )}
+                      </td>
+
+                      {/* 5. Gross Earned */}
                       <td className="py-3 px-4 text-right border-r border-slate-200/70 whitespace-nowrap font-mono font-bold text-slate-900">
                         ₹{grossEarned.toLocaleString("en-IN")}
                       </td>
 
-                      {/* 5. Upad Deducted */}
+                      {/* 6. Upad Deducted */}
                       <td className="py-3 px-4 text-right border-r border-slate-200/70 whitespace-nowrap font-mono font-bold text-amber-700">
                         {upadAmt > 0 ? `-₹${upadAmt.toLocaleString("en-IN")}` : "₹0"}
                       </td>
 
-                      {/* 6. Other Deductions */}
+                      {/* 7. Other Deductions */}
                       <td className="py-3 px-4 text-right border-r border-slate-200/70 whitespace-nowrap font-mono font-bold text-purple-700">
                         {otherAmt > 0 ? `-₹${otherAmt.toLocaleString("en-IN")}` : "₹0"}
                       </td>
 
-                      {/* 7. Net Payable */}
+                      {/* 8. Net Payable */}
                       <td className="py-3 px-4 text-right border-r border-slate-200/70 whitespace-nowrap font-mono font-black text-sm text-slate-900">
                         ₹{netPay.toLocaleString("en-IN")}
                       </td>
 
-                      {/* 8. Status */}
+                      {/* 9. Status with Payment Mode & Date */}
                       <td className="py-3 px-4 text-center border-r border-slate-200/70 whitespace-nowrap">
                         {isPaid ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            PAID / DONE
-                          </span>
+                          <div>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              PAID
+                            </span>
+                            <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                              {payout.payment_mode || "Cash"}
+                              {payout.payment_date ? ` • ${payout.payment_date.slice(5).replace("-", "/")}` : ""}
+                            </div>
+                          </div>
                         ) : isPartial ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200">
-                            PARTIAL
-                          </span>
+                          <div>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200">
+                              PARTIAL
+                            </span>
+                            <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                              {payout.payment_mode || "Cash"}
+                            </div>
+                          </div>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-50 text-amber-700 border border-amber-200">
                             PENDING
@@ -577,27 +653,80 @@ export default function WorkerPayoutPage() {
                         )}
                       </td>
 
-                      {/* 9. Action */}
+                      {/* 10. Action */}
                       <td className="py-3 px-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
                           {!isPaid ? (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenPayoutModal(worker)}
-                              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all active:scale-98 cursor-pointer flex items-center gap-1"
-                            >
-                              <Wallet className="w-3.5 h-3.5" />
-                              <span>Settle & Pay</span>
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPayoutModal(worker)}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all active:scale-98 cursor-pointer flex items-center gap-1"
+                              >
+                                <Wallet className="w-3.5 h-3.5" />
+                                <span>Settle & Pay</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const draftSlip: SalaryPayoutRecord = {
+                                    id: `draft-${worker.id}`,
+                                    payout_no: `DRAFT-${selectedMonth}`,
+                                    company_id: getStoredCompanyId() || "comp-001",
+                                    worker_id: worker.id,
+                                    worker_name: worker.name,
+                                    worker_code: worker.code,
+                                    month: selectedMonth,
+                                    month_label: monthLabel,
+                                    monthly_base_salary: baseSalary,
+                                    total_days_in_month: 30,
+                                    full_days: fDays,
+                                    half_days: hDays,
+                                    absent_days: att.absentDays,
+                                    paid_days: paidDays,
+                                    earned_gross_salary: earnedWages,
+                                    overtime_amount: otAmt,
+                                    bonus_amount: 0,
+                                    total_earnings: grossEarned,
+                                    deductions: [],
+                                    total_upad_deduction: upadAmt,
+                                    total_other_deductions: otherAmt,
+                                    total_deductions: upadAmt + otherAmt,
+                                    net_payable: netPay,
+                                    paid_amount: 0,
+                                    balance_due: netPay,
+                                    payment_status: "Pending",
+                                    payment_date: getTodayStr(),
+                                    payment_mode: "Cash",
+                                    created_at: new Date().toISOString()
+                                  };
+                                  setViewingSlipRecord(draftSlip);
+                                }}
+                                title="Preview Slip (સ્લિપ જુઓ / પ્રિન્ટ)"
+                                className="p-1.5 bg-slate-100 hover:bg-blue-50 text-slate-500 hover:text-blue-600 rounded-xl border border-slate-200 transition-colors cursor-pointer"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+                            </>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => setViewingSlipRecord(payout)}
-                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors cursor-pointer flex items-center gap-1"
-                            >
-                              <FileText className="w-3.5 h-3.5 text-blue-600" />
-                              <span>View Slip</span>
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setViewingSlipRecord(payout)}
+                                className="px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors cursor-pointer flex items-center gap-1"
+                              >
+                                <Printer className="w-3.5 h-3.5 text-blue-600" />
+                                <span>Print Slip</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPayoutModal(worker)}
+                                title="Edit Payout Settlement"
+                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl border border-slate-200 transition-colors cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -633,13 +762,13 @@ export default function WorkerPayoutPage() {
             </div>
 
             {/* Step 1: Gross Salary & Attendance Tally */}
-            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="font-extrabold text-xs text-slate-800 uppercase">1. Gross Earnings (કમાણી)</span>
+                <span className="font-extrabold text-xs text-slate-800 uppercase">1. Gross Earnings & Additions (કમાણી)</span>
                 <span className="font-mono font-black text-slate-900 text-sm">₹{modalCalculations.grossEarned.toLocaleString("en-IN")}</span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
                 <div className="bg-white p-2 rounded-xl border border-slate-200">
                   <span className="text-[10px] text-slate-400 block font-bold">MONTHLY RATE</span>
                   <span className="font-mono font-bold text-slate-800">₹{modalCalculations.baseSalary.toLocaleString("en-IN")}</span>
@@ -647,10 +776,12 @@ export default function WorkerPayoutPage() {
                 <div className="bg-white p-2 rounded-xl border border-slate-200">
                   <span className="text-[10px] text-slate-400 block font-bold">DAYS WORKED</span>
                   <span className="font-mono font-bold text-emerald-700">{modalCalculations.paidDays}</span>
+                  <span className="text-[9px] text-slate-400 block font-medium">({modalCalculations.fullDays}F + {modalCalculations.halfDays}HD)</span>
                 </div>
                 <div className="bg-white p-2 rounded-xl border border-slate-200">
-                  <span className="text-[10px] text-slate-400 block font-bold">PER DAY (30 D)</span>
-                  <span className="font-mono font-bold text-slate-800">₹{Math.round(modalCalculations.baseSalary / 30)}</span>
+                  <span className="text-[10px] text-slate-400 block font-bold">BASIC EARNED</span>
+                  <span className="font-mono font-bold text-slate-800">₹{modalCalculations.earnedWages.toLocaleString("en-IN")}</span>
+                  <span className="text-[9px] text-slate-400 block font-medium">₹{Math.round(modalCalculations.baseSalary / 30)}/day</span>
                 </div>
                 <div className="bg-white p-2 rounded-xl border border-slate-200">
                   <span className="text-[10px] text-slate-400 block font-bold">OVERTIME (OT ₹)</span>
@@ -661,6 +792,18 @@ export default function WorkerPayoutPage() {
                     onChange={(e) => setManualOvertime(Number(e.target.value) || 0)}
                     className="w-full text-center font-mono font-bold text-xs text-blue-600 focus:outline-none"
                   />
+                  <span className="text-[9px] text-blue-400 block font-medium">OT Pay</span>
+                </div>
+                <div className="bg-white p-2 rounded-xl border border-slate-200 col-span-2 sm:col-span-1">
+                  <span className="text-[10px] text-slate-400 block font-bold">BONUS / INCENTIVE (₹)</span>
+                  <input
+                    type="number"
+                    value={bonusAmount || ""}
+                    placeholder="₹0"
+                    onChange={(e) => setBonusAmount(Number(e.target.value) || 0)}
+                    className="w-full text-center font-mono font-bold text-xs text-emerald-600 focus:outline-none"
+                  />
+                  <span className="text-[9px] text-emerald-500 block font-medium">Bonus / ઇનામ</span>
                 </div>
               </div>
             </div>
@@ -901,6 +1044,12 @@ export default function WorkerPayoutPage() {
                     <div className="flex justify-between text-slate-600">
                       <span>Overtime (OT):</span>
                       <span className="font-mono font-bold text-blue-600">+₹{viewingSlipRecord.overtime_amount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  {viewingSlipRecord.bonus_amount && viewingSlipRecord.bonus_amount > 0 && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Bonus / Incentive:</span>
+                      <span className="font-mono font-bold text-emerald-600">+₹{viewingSlipRecord.bonus_amount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-black text-slate-900 border-t border-slate-100 pt-1">
