@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+import re
+import uuid
 
 from app.core.database import get_db
 from app.models.expense import Expense
@@ -12,44 +14,11 @@ from app.core.tenant import get_tenant_company_id
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
 def renumber_all_expenses(db: Session, company_id: str):
-    expenses = db.query(Expense).filter(Expense.company_id == company_id).all()
-    if not expenses:
-        return
-
-    def parse_d(d_str):
-        if not d_str:
-            return datetime(2026, 1, 1)
-        parts = d_str.strip().split("-")
-        if len(parts) == 3:
-            if len(parts[0]) == 4:
-                return datetime.strptime(d_str, "%Y-%m-%d")
-            return datetime.strptime(d_str, "%d-%m-%Y")
-        return datetime(2026, 1, 1)
-
-    sorted_exp = sorted(
-        expenses,
-        key=lambda x: (
-            parse_d(x.date),
-            int(x.id.split("-")[-1]) if x.id and x.id.split("-")[-1].isdigit() else 0
-        )
-    )
-
-    needs_renumber = False
-    for idx, exp in enumerate(sorted_exp, start=1):
-        expected_no = f"EB-{idx:03d}"
-        if exp.expense_no != expected_no:
-            needs_renumber = True
-            break
-        if exp.vendor_name in ("General Vendor", "general vendor", "General vendor"):
-            needs_renumber = True
-            break
-
-    if needs_renumber:
-        for idx, exp in enumerate(sorted_exp, start=1):
-            exp.expense_no = f"EB-{idx:03d}"
-            if exp.vendor_name in ("General Vendor", "general vendor", "General vendor"):
-                exp.vendor_name = None
-        db.commit()
+    """
+    Safe ERP helper: Existing expense numbers are permanent accounting references.
+    Never renumber or mutate existing expense_no values.
+    """
+    pass
 
 @router.get("", response_model=List[ExpenseResponse])
 def get_expenses(
@@ -90,7 +59,6 @@ def create_expense(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    renumber_all_expenses(db, company_id)
     expense_data = expense_in.model_dump()
     expense_data["company_id"] = company_id
 
@@ -100,28 +68,36 @@ def create_expense(
     if expense_data.get("due_date"):
         expense_data["due_date"] = format_to_dd_mm_yyyy(expense_data["due_date"])
 
-    # 2. Synchronized 3-digit zero-padded ID and expense_no scoped to company_id
-    existing_records = db.query(Expense.expense_no, Expense.id).filter(Expense.company_id == company_id, Expense.is_deleted == False).all()
+    # 2. Continuous sequential numbering - never renumbers existing bills
+    existing_records = db.query(Expense.expense_no, Expense.id).filter(
+        Expense.company_id == company_id, 
+        Expense.is_deleted == False
+    ).all()
+    
     max_num = 0
     for (eno, eid) in existing_records:
-        if eno and eno.startswith("EB-"):
-            m = eno.replace("EB-", "")
-            if m.isdigit():
-                max_num = max(max_num, int(m))
+        if eno:
+            nums = re.findall(r"\d+", eno)
+            if nums:
+                max_num = max(max_num, int(nums[-1]))
 
-    next_num = (max_num + 1) if max_num > 0 else (len(existing_records) + 1)
+    next_num = max_num + 1
+
+    # Keep client-provided expense_no if given and not already existing, else EB-{next_num:03d}
+    req_no = expense_data.get("expense_no")
+    if req_no and not any(eno == req_no for (eno, _) in existing_records):
+        assigned_no = req_no
+    else:
+        assigned_no = f"EB-{next_num:03d}"
 
     # Globally unique primary key id
-    if company_id == "comp-001":
-        candidate_id = f"exp-{next_num:03d}"
-        if db.query(Expense.id).filter(Expense.id == candidate_id).first():
-            total_all = db.query(Expense.id).count()
-            candidate_id = f"exp-{total_all + 1:03d}"
-    else:
-        candidate_id = f"{company_id}-exp-{next_num:03d}"
+    base_id = f"exp-{next_num:03d}" if company_id == "comp-001" else f"{company_id}-exp-{next_num:03d}"
+    candidate_id = base_id
+    if db.query(Expense.id).filter(Expense.id == candidate_id).first():
+        candidate_id = f"{base_id}-{uuid.uuid4().hex[:6]}"
 
     expense_data["id"] = candidate_id
-    expense_data["expense_no"] = f"EB-{next_num:03d}"
+    expense_data["expense_no"] = assigned_no
     expense_data["is_deleted"] = False
 
     # 3. Clean General Vendor
@@ -141,11 +117,21 @@ def get_expense(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
+    # 1. Exact match on primary key ID first (prevents key collision)
     expense = db.query(Expense).filter(
-        (Expense.id == expense_id) | (Expense.expense_no == expense_id),
+        Expense.id == expense_id,
         Expense.company_id == company_id, 
         Expense.is_deleted == False
     ).first()
+
+    # 2. Fallback to expense_no only if not found by primary key ID
+    if not expense:
+        expense = db.query(Expense).filter(
+            Expense.expense_no == expense_id,
+            Expense.company_id == company_id, 
+            Expense.is_deleted == False
+        ).first()
+
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
     return expense
@@ -157,11 +143,21 @@ def update_expense(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
+    # 1. Exact match on primary key ID first
     expense = db.query(Expense).filter(
-        (Expense.id == expense_id) | (Expense.expense_no == expense_id),
+        Expense.id == expense_id,
         Expense.company_id == company_id, 
         Expense.is_deleted == False
     ).first()
+
+    # 2. Fallback to expense_no only if not found by primary key ID
+    if not expense:
+        expense = db.query(Expense).filter(
+            Expense.expense_no == expense_id,
+            Expense.company_id == company_id, 
+            Expense.is_deleted == False
+        ).first()
+
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
@@ -186,11 +182,21 @@ def delete_expense(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
+    # 1. Exact match on primary key ID first
     expense = db.query(Expense).filter(
-        (Expense.id == expense_id) | (Expense.expense_no == expense_id),
+        Expense.id == expense_id,
         Expense.company_id == company_id, 
         Expense.is_deleted == False
     ).first()
+
+    # 2. Fallback to expense_no only if not found by primary key ID
+    if not expense:
+        expense = db.query(Expense).filter(
+            Expense.expense_no == expense_id,
+            Expense.company_id == company_id, 
+            Expense.is_deleted == False
+        ).first()
+
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 

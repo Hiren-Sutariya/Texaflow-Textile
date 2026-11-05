@@ -550,10 +550,10 @@ function NewExpenseVoucherForm() {
       const list = getTenantItem<any[]>("texaflow_expenses");
       if (list && Array.isArray(list)) {
         const scoped = list.filter((item: any) => (item.company_id || currentCid) === currentCid);
+        // Prioritize exact database id to guarantee correct record retrieval
         localFound = scoped.find((item: any) =>
-          (editNo && item.expense_no === editNo) ||
           String(item.id) === String(editId) ||
-          item.expense_no === editId
+          (editNo && item.expense_no === editNo && !editId)
         );
         if (localFound) {
           populateExpenseData(localFound);
@@ -563,32 +563,32 @@ function NewExpenseVoucherForm() {
       console.error("Local storage lookup failed:", err);
     }
 
-    // 2. Fetch from backend API
-    // Prefer editNo if present or local DB id to prevent mismatched ID collision
-    const queryKey = editNo || localFound?.id || editId;
-    setIsLoadingExpense(true);
-    fetchApi<any>(`/expenses/${queryKey}`)
-      .then((data) => {
-        if (data) {
-          // Verify that fetched record matches what was intended to be edited
-          const isConsistent =
-            (editNo && data.expense_no === editNo) ||
-            String(data.id) === String(editId) ||
-            (localFound && (data.expense_no === localFound.expense_no || String(data.id) === String(localFound.id)));
+    // 2. Fetch from backend API - ALWAYS use exact primary key editId first!
+    const queryKey = editId || localFound?.id || editNo;
+    if (queryKey) {
+      setIsLoadingExpense(true);
+      fetchApi<any>(`/expenses/${queryKey}`)
+        .then((data) => {
+          if (data) {
+            // Verify that fetched record matches the EXACT editId to prevent cross-record overwrite
+            const isConsistent = editId
+              ? String(data.id) === String(editId)
+              : (editNo && data.expense_no === editNo);
 
-          if (isConsistent) {
-            populateExpenseData(data);
-          } else {
-            console.warn("API returned mismatched expense record, ignoring overwrite:", data);
+            if (isConsistent) {
+              populateExpenseData(data);
+            } else {
+              console.warn("API returned record with mismatched ID, ignoring overwrite:", data.id, "expected:", editId);
+            }
           }
-        }
-      })
-      .catch((err) => {
-        console.warn("Backend API expense fetch error:", err);
-      })
-      .finally(() => {
-        setIsLoadingExpense(false);
-      });
+        })
+        .catch((err) => {
+          console.warn("Backend API expense fetch error:", err);
+        })
+        .finally(() => {
+          setIsLoadingExpense(false);
+        });
+    }
   }, [editId, editNo]);
 
   // Compute next sequential voucher number for new expenses
@@ -882,6 +882,7 @@ function NewExpenseVoucherForm() {
               : item
           );
           setTenantItem("texaflow_expenses", updatedList);
+          setCachedApi("/expenses", updatedList.filter((item: any) => (item.company_id || currentCid) === currentCid));
           invalidateApiCache("/expenses");
           window.dispatchEvent(new Event("app_data_update"));
           window.dispatchEvent(new Event("storage"));
@@ -906,10 +907,10 @@ function NewExpenseVoucherForm() {
       let maxSeq = 0;
       existingList.forEach((item) => {
         if (item.expense_no) {
-          const m = item.expense_no.match(/(?:EB|EXP)-(?:\d{4}-)?(\d+)/i);
+          const m = item.expense_no.match(/\d+/g);
           if (m) {
-            const num = parseInt(m[1], 10);
-            if (!isNaN(num) && num < 500 && num > maxSeq) {
+            const num = parseInt(m[m.length - 1], 10);
+            if (!isNaN(num) && num > maxSeq) {
               maxSeq = num;
             }
           }
@@ -921,13 +922,14 @@ function NewExpenseVoucherForm() {
       const nextNum = maxSeq + 1;
       const pad = String(nextNum).padStart(3, "0");
       const nextSeqNo = `EB-${pad}`;
+      const uniqueSuffix = Date.now().toString().slice(-6);
 
       const calculatedDue = paymentStatus === "Pending"
         ? (dueDate || calculateDueDate(formattedDate, creditDays))
         : formattedDate;
 
       const newExpense = {
-        id: currentCid === "comp-001" ? `exp-${pad}` : `${currentCid}-exp-${pad}`,
+        id: currentCid === "comp-001" ? `exp-${pad}-${uniqueSuffix}` : `${currentCid}-exp-${pad}-${uniqueSuffix}`,
         expense_no: nextSeqNo,
         date: formattedDate,
         category: category,
@@ -970,20 +972,23 @@ function NewExpenseVoucherForm() {
             company_id: currentCid
           })
         });
-        if (createdItem && createdItem.id) {
-          newExpense.id = createdItem.id;
+        if (createdItem) {
+          if (createdItem.id) newExpense.id = createdItem.id;
+          if (createdItem.expense_no) newExpense.expense_no = createdItem.expense_no;
         }
       } catch (apiErr) {
         console.warn("Backend API not reachable, saving to local backup:", apiErr);
       }
 
-      // 2. Keep local cache updated
+      // 2. Keep local cache updated & invalidate cached API
       try {
         const existing = getTenantItem<any[]>("texaflow_expenses") || [];
-        const scoped = existing.filter((item: any) => (item.company_id || currentCid) === currentCid);
-        const list = [...scoped];
-        list.unshift(newExpense);
-        setTenantItem("texaflow_expenses", list);
+        const otherCompanyItems = existing.filter((item: any) => item.company_id && item.company_id !== currentCid);
+        const scoped = existing.filter((item: any) => (item.company_id || currentCid) === currentCid && item.id !== newExpense.id);
+        const list = [newExpense, ...scoped];
+        setTenantItem("texaflow_expenses", [...list, ...otherCompanyItems]);
+        setCachedApi("/expenses", list);
+        invalidateApiCache("/expenses");
         window.dispatchEvent(new Event("app_data_update"));
         window.dispatchEvent(new Event("storage"));
       } catch (err) {

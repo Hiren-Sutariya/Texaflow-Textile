@@ -27,6 +27,8 @@ export const translations: Record<string, { en: string; gu: string }> = {
   "Purchase Bills": { en: "Purchase Bills", gu: "પાકા બિલ (Bills)" },
   "Payments": { en: "Payments", gu: "ચુકવણી (પેમેન્ટ્સ)" },
   "Payments & Vouchers": { en: "Payments", gu: "ચુકવણી અને વાઉચર્સ" },
+  "Day Book": { en: "Day Book", gu: "રોજમેળ (ડે બુક)" },
+  "Day Book (રોજમેળ)": { en: "Day Book", gu: "રોજમેળ (ડે બુક)" },
   "Ledger": { en: "Ledger", gu: "ખાતાવહી (લેજર)" },
   "Ledger & Accounts": { en: "Ledger", gu: "ખાતાવહી અને હિસાબ" },
   "Design Library": { en: "Design Library", gu: "ડિઝાઇન લાઇબ્રેરી" },

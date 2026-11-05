@@ -138,56 +138,19 @@ const parseDate = (dateStr: string): Date => {
 export const normalizeAndRenumberExpenses = (list: ExpenseItem[]): ExpenseItem[] => {
   if (!Array.isArray(list) || list.length === 0) return list;
 
-  // Purge any test records created during development/testing
-  const cleanSource = list.filter((item) => {
-    if (item.id === "exp-034" || item.expense_no === "EB-034") return false;
-    if (item.notes && String(item.notes).includes("Ref: SAL-")) return false;
-    return true;
-  });
+  // Professional ERP: Never purge actual records or mutate permanent expense numbers.
+  const cleanSource = list.filter((item) => Boolean(item && (item.id || item.expense_no)));
 
-  const needsRenumber = cleanSource.some((item) => {
-    if (!item.expense_no) return true;
-    const match = item.expense_no.match(/^EB-(\d{3})$/);
-    if (!match) return true;
-    const num = parseInt(match[1], 10);
-    if (num > cleanSource.length + 10 || num > 500) return true;
-    if (item.vendor_name === "General Vendor") return true;
-    return false;
-  }) || cleanSource.length !== list.length;
-
-  if (!needsRenumber) return cleanSource;
-
-  const sorted = [...cleanSource].sort((a, b) => {
-    const timeA = parseDate(a.date).getTime();
-    const timeB = parseDate(b.date).getTime();
-    if (timeA !== timeB) return timeA - timeB;
-    const numA = parseInt((a.id || "").replace(/\D/g, ""), 10) || 0;
-    const numB = parseInt((b.id || "").replace(/\D/g, ""), 10) || 0;
-    return numA - numB;
-  });
-
-  const idToNewNo: Record<string, string> = {};
-  sorted.forEach((item, idx) => {
-    const pad = String(idx + 1).padStart(3, "0");
-    idToNewNo[item.id] = `EB-${pad}`;
-  });
-
-  const updated = cleanSource.map((item) => {
+  return cleanSource.map((item, idx) => {
     const cleanVendor = item.vendor_name === "General Vendor" ? "" : item.vendor_name || "";
+    const cleanNo = item.expense_no || `EB-${String(idx + 1).padStart(3, "0")}`;
     return {
       ...item,
-      // Retain permanent database ID - never mutate item.id
-      id: item.id,
-      expense_no: idToNewNo[item.id] || item.expense_no,
+      id: item.id || `exp-${String(idx + 1).padStart(3, "0")}`,
+      expense_no: cleanNo,
       vendor_name: cleanVendor
     };
   });
-
-  try {
-    setTenantItem("texaflow_expenses", updated);
-  } catch { }
-
-  return updated;
 };
 
 const toInputDate = (dateStr: string) => {

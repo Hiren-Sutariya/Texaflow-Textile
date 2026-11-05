@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { fetchApi, getCachedApi } from "@/lib/api";
-import { getTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
+import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { useLanguage } from "@/context/LanguageContext";
 import { getDueStatus, calculateDueDate } from "@/lib/creditTerms";
 import {
@@ -32,7 +32,10 @@ import {
   Users,
   Pencil,
   ArrowDownLeft,
-  ArrowUpRight
+  ArrowUpRight,
+  CalendarDays,
+  Percent,
+  Wallet
 } from "lucide-react";
 import {
   getStoredSalesChallans,
@@ -366,6 +369,21 @@ export default function LedgerPage() {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [companySettings, setCompanySettings] = useState<CompanySettings>(() => getStoredCompanySettings());
 
+  // Bill Knockoff & Kasar Settlement States
+  const [partyStatementTab, setPartyStatementTab] = useState<"LEDGER" | "KNOCKOFF">("LEDGER");
+  const [knockoffStatusFilter, setKnockoffStatusFilter] = useState<"ALL" | "PENDING_ONLY" | "SETTLED_ONLY">("PENDING_ONLY");
+  const [settlingBill, setSettlingBill] = useState<any | null>(null);
+  const [settleAmount, setSettleAmount] = useState<string>("");
+  const [settleKasar, setSettleKasar] = useState<string>("");
+  const [settleMode, setSettleMode] = useState<string>("BANK TRANSFER (NEFT/RTGS/IMPS)");
+  const [settleDate, setSettleDate] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+  const [settleRefNo, setSettleRefNo] = useState<string>("");
+  const [settleNotes, setSettleNotes] = useState<string>("");
+  const [isSubmittingSettle, setIsSubmittingSettle] = useState<boolean>(false);
+
   useEffect(() => {
     fetchLiveCompanySettings().then((s) => {
       if (s) setCompanySettings(s);
@@ -628,7 +646,7 @@ export default function LedgerPage() {
         quantity: qty,
         rate: rate,
         totalCp: totalCp,
-        description: `${inv.category || inv.items_description || (isGujarati ? "સેલ્સ પાકું બિલ (Tax Invoice)" : "Sales Tax Invoice")}${challanInfo}`,
+        description: `${inv.category || inv.items_description || "Sales Tax Invoice"}${challanInfo}`,
         modeOrTerms: inv.payment_terms || "30d Credit",
         debit: totalCp, // Goods Sold = Debit to customer
         credit: 0,
@@ -669,8 +687,8 @@ export default function LedgerPage() {
         quantity: qty,
         rate: rate,
         totalCp: totalCp,
-        description: p.items_description || p.category || (isGujarati ? "કાપડ / મટિરિયલ ખરીદી બિલ" : "Fabric / Material Inward Bill"),
-        modeOrTerms: p.payment_terms || p.paid_via || (isGujarati ? "શાખ મુદત" : "Credit Terms"),
+        description: p.items_description || p.category || "Fabric / Material Inward Bill",
+        modeOrTerms: p.payment_terms || p.paid_via || "Credit Terms",
         debit: 0,
         credit: totalCp, // Inward Material = Credit to Supplier
         status: p.payment_status,
@@ -1017,6 +1035,291 @@ export default function LedgerPage() {
     };
   }, [partyFilter, currentPartyAccountType, rawLedgerEntries, filteredEntries, selectedPartyOpeningBal]);
 
+  // Bill Knockoff computation for the selected party
+  const partyBillKnockoffList = useMemo(() => {
+    if (!partyFilter || partyFilter === "All") return [];
+    const pNameNorm = partyFilter.toLowerCase().trim();
+    const isCust = currentPartyAccountType === "Customer / Client" || rawLedgerEntries.find(e => e.partyName.toLowerCase() === pNameNorm)?.isCustomer;
+
+    const list: Array<{
+      id: string;
+      billNo: string;
+      billType: "SALES_INVOICE" | "SALES_CHALLAN" | "PURCHASE";
+      date: string;
+      dueDate?: string;
+      ageDays: number;
+      isOverdue: boolean;
+      totalAmount: number;
+      paidAmount: number;
+      kasarAmount: number;
+      remainingBalance: number;
+      status: "Settled" | "Partially Paid" | "Unpaid";
+    }> = [];
+
+    const now = new Date().getTime();
+
+    // Find all payment vouchers for this party
+    const partyVouchers = vouchers.filter(
+      (v) => (v.party_name || "").toLowerCase().trim() === pNameNorm
+    );
+
+    if (isCust) {
+      // 1. Sales Invoices
+      salesInvoices.forEach((inv) => {
+        if ((inv.customer_name || "").toLowerCase().trim() === pNameNorm) {
+          const invNo = inv.invoice_no;
+          const matchingVouchers = partyVouchers.filter(
+            (v) => (v.linked_challan || v.designNo || "").trim() === invNo || (v.notes || "").includes(invNo)
+          );
+          const totalPaid = matchingVouchers.reduce((s, v) => s + (Number(v.amount) || 0), 0);
+          const totalKasar = matchingVouchers.reduce((s, v) => s + (Number(v.kasar_amount) || 0), 0);
+          const totalBill = Number(inv.total_amount) || 0;
+          const remaining = Math.max(0, totalBill - totalPaid - totalKasar);
+
+          const parts = (inv.date || "").split("-");
+          let billDateTs = now;
+          if (parts.length === 3) {
+            billDateTs = parts[0].length === 4
+              ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).getTime()
+              : new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0])).getTime();
+          }
+          const ageDays = Math.max(0, Math.floor((now - billDateTs) / (1000 * 60 * 60 * 24)));
+          const creditLimit = inv.credit_days || 30;
+          const isOverdue = remaining > 0 && ageDays > creditLimit;
+
+          let status: "Settled" | "Partially Paid" | "Unpaid" = "Unpaid";
+          if (remaining <= 0 || inv.payment_status === "Paid") {
+            status = "Settled";
+          } else if (totalPaid > 0 || totalKasar > 0) {
+            status = "Partially Paid";
+          }
+
+          list.push({
+            id: inv.id,
+            billNo: invNo,
+            billType: "SALES_INVOICE",
+            date: inv.date,
+            dueDate: inv.due_date,
+            ageDays,
+            isOverdue,
+            totalAmount: totalBill,
+            paidAmount: totalPaid,
+            kasarAmount: totalKasar,
+            remainingBalance: status === "Settled" ? 0 : remaining,
+            status
+          });
+        }
+      });
+
+      // 2. Unbilled Sales Challans
+      salesChallans.forEach((ch) => {
+        if ((ch.party_name || "").toLowerCase().trim() === pNameNorm && ch.billing_status !== "Billed") {
+          const chNo = ch.challan_no ? `DN-${ch.challan_no}` : ch.id;
+          const matchingVouchers = partyVouchers.filter(
+            (v) => (v.linked_challan || v.designNo || "").trim() === chNo || (v.notes || "").includes(chNo)
+          );
+          const totalPaid = matchingVouchers.reduce((s, v) => s + (Number(v.amount) || 0), 0);
+          const totalKasar = matchingVouchers.reduce((s, v) => s + (Number(v.kasar_amount) || 0), 0);
+          const totalBill = Number(ch.total_amount) || 0;
+          const remaining = Math.max(0, totalBill - totalPaid - totalKasar);
+
+          const parts = (ch.date || "").split("-");
+          let billDateTs = now;
+          if (parts.length === 3) {
+            billDateTs = parts[0].length === 4
+              ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).getTime()
+              : new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0])).getTime();
+          }
+          const ageDays = Math.max(0, Math.floor((now - billDateTs) / (1000 * 60 * 60 * 24)));
+          const creditLimit = ch.credit_days || 30;
+          const isOverdue = remaining > 0 && ageDays > creditLimit;
+
+          let status: "Settled" | "Partially Paid" | "Unpaid" = "Unpaid";
+          if (remaining <= 0) {
+            status = "Settled";
+          } else if (totalPaid > 0 || totalKasar > 0) {
+            status = "Partially Paid";
+          }
+
+          list.push({
+            id: ch.id,
+            billNo: chNo,
+            billType: "SALES_CHALLAN",
+            date: ch.date,
+            dueDate: ch.due_date,
+            ageDays,
+            isOverdue,
+            totalAmount: totalBill,
+            paidAmount: totalPaid,
+            kasarAmount: totalKasar,
+            remainingBalance: status === "Settled" ? 0 : remaining,
+            status
+          });
+        }
+      });
+    } else {
+      // 3. Purchases from Supplier
+      purchases.forEach((p) => {
+        if ((p.vendor_name || "").toLowerCase().trim() === pNameNorm) {
+          const pNo = p.purchase_no || p.id;
+          const matchingVouchers = partyVouchers.filter(
+            (v) => (v.linked_challan || v.designNo || "").trim() === pNo || (v.notes || "").includes(pNo)
+          );
+          const totalPaid = matchingVouchers.reduce((s, v) => s + (Number(v.amount) || 0), 0);
+          const totalKasar = matchingVouchers.reduce((s, v) => s + (Number(v.kasar_amount) || 0), 0);
+          const totalBill = Number(p.amount) || 0;
+          const remaining = Math.max(0, totalBill - totalPaid - totalKasar);
+
+          const parts = (p.date || "").split("-");
+          let billDateTs = now;
+          if (parts.length === 3) {
+            billDateTs = parts[0].length === 4
+              ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).getTime()
+              : new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0])).getTime();
+          }
+          const ageDays = Math.max(0, Math.floor((now - billDateTs) / (1000 * 60 * 60 * 24)));
+          const creditLimit = p.credit_days || 30;
+          const isOverdue = remaining > 0 && ageDays > creditLimit;
+
+          let status: "Settled" | "Partially Paid" | "Unpaid" = "Unpaid";
+          if (remaining <= 0 || p.payment_status === "Paid") {
+            status = "Settled";
+          } else if (totalPaid > 0 || totalKasar > 0) {
+            status = "Partially Paid";
+          }
+
+          list.push({
+            id: p.id,
+            billNo: pNo,
+            billType: "PURCHASE",
+            date: p.date,
+            dueDate: p.due_date,
+            ageDays,
+            isOverdue,
+            totalAmount: totalBill,
+            paidAmount: totalPaid,
+            kasarAmount: totalKasar,
+            remainingBalance: status === "Settled" ? 0 : remaining,
+            status
+          });
+        }
+      });
+    }
+
+    return list;
+  }, [partyFilter, currentPartyAccountType, rawLedgerEntries, vouchers, salesInvoices, salesChallans, purchases]);
+
+  const unsettledBillsCount = useMemo(() => {
+    return partyBillKnockoffList.filter((b) => b.status !== "Settled").length;
+  }, [partyBillKnockoffList]);
+
+  const filteredBillKnockoffList = useMemo(() => {
+    return partyBillKnockoffList.filter((b) => {
+      if (knockoffStatusFilter === "PENDING_ONLY" && b.status === "Settled") return false;
+      if (knockoffStatusFilter === "SETTLED_ONLY" && b.status !== "Settled") return false;
+      return true;
+    });
+  }, [partyBillKnockoffList, knockoffStatusFilter]);
+
+  const knockoffTotals = useMemo(() => {
+    let totalBilled = 0;
+    let totalPaid = 0;
+    let totalKasar = 0;
+    let totalRemaining = 0;
+    partyBillKnockoffList.forEach((b) => {
+      totalBilled += b.totalAmount;
+      totalPaid += b.paidAmount;
+      totalKasar += b.kasarAmount;
+      totalRemaining += b.remainingBalance;
+    });
+    return { totalBilled, totalPaid, totalKasar, totalRemaining };
+  }, [partyBillKnockoffList]);
+
+  const handleConfirmBillSettlement = async () => {
+    if (!settlingBill) return;
+    const numAmount = parseFloat(settleAmount) || 0;
+    const numKasar = parseFloat(settleKasar) || 0;
+    if (numAmount <= 0 && numKasar <= 0) {
+      alert("Please enter a valid amount or kasar.");
+      return;
+    }
+
+    setIsSubmittingSettle(true);
+    const currentCid = getStoredCompanyId() || "comp-001";
+    const isCust = settlingBill.billType !== "PURCHASE";
+    const newVoucher: PaymentVoucherItem = {
+      id: `pay-${Date.now()}`,
+      voucher_no: `VCH-${Date.now().toString().slice(-6)}`,
+      date: settleDate,
+      party_name: partyFilter,
+      type: isCust ? "Receipt In" : "Payment Out",
+      linked_challan: settlingBill.billNo,
+      kasar_amount: numKasar,
+      amount: numAmount,
+      mode: settleMode,
+      ref_no: settleRefNo || `SETTLE-${settlingBill.billNo}`,
+      notes: settleNotes || `Bill Knockoff settled for ${settlingBill.billNo}${numKasar > 0 ? ` (Kasar: ₹${numKasar})` : ""}`,
+      company_id: currentCid
+    };
+
+    // 1. Update Vouchers state & cache
+    const existingVouchers = getTenantItem<any[]>("texaflow_vouchers") || [];
+    const updatedVouchers = [newVoucher, ...existingVouchers];
+    setTenantItem("texaflow_vouchers", updatedVouchers);
+    setVouchers(updatedVouchers);
+
+    // 2. Check if this fully settles the bill
+    const isFull = (numAmount + numKasar) >= settlingBill.remainingBalance;
+    if (isFull) {
+      if (settlingBill.billType === "PURCHASE") {
+        const storedPurchases = getTenantItem<any[]>("texaflow_purchases") || [];
+        const updatedPurchases = storedPurchases.map((p) =>
+          (p.purchase_no === settlingBill.billNo || p.id === settlingBill.id)
+            ? { ...p, payment_status: "Paid" as const }
+            : p
+        );
+        setTenantItem("texaflow_purchases", updatedPurchases);
+        setPurchases(updatedPurchases);
+        fetchApi(`/purchases/${settlingBill.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ payment_status: "Paid" })
+        }).catch(() => {});
+      } else if (settlingBill.billType === "SALES_INVOICE") {
+        const storedInvoices = getTenantItem<any[]>("texaflow_sales_invoices") || [];
+        const updatedInvoices = storedInvoices.map((inv) =>
+          (inv.invoice_no === settlingBill.billNo || inv.id === settlingBill.id)
+            ? { ...inv, payment_status: "Paid" as const }
+            : inv
+        );
+        setTenantItem("texaflow_sales_invoices", updatedInvoices);
+        setSalesInvoices(updatedInvoices);
+      }
+    }
+
+    // 3. Save to backend API
+    try {
+      await fetchApi("/payments", {
+        method: "POST",
+        body: JSON.stringify({
+          voucher_type: isCust ? "Receipt" : "Payment",
+          date: settleDate,
+          party_name: partyFilter,
+          amount: numAmount,
+          payment_mode: settleMode,
+          reference_no: settleRefNo || `SETTLE-${settlingBill.billNo}`,
+          status: "Paid",
+          remarks: `${settlingBill.billNo} settled${numKasar > 0 ? ` with Kasar ₹${numKasar}` : ""}`
+        })
+      });
+    } catch (e) {
+      console.warn("Backend payment sync notice:", e);
+    }
+
+    window.dispatchEvent(new Event("app_data_update"));
+    setSettlingBill(null);
+    setIsSubmittingSettle(false);
+  };
+
   // Export to Excel / CSV
   const handleExportCSV = () => {
     if (partyFilter === "All") {
@@ -1159,7 +1462,7 @@ export default function LedgerPage() {
   // WhatsApp Share for full party statement
   const handleSharePartyStatementWhatsApp = () => {
     if (partyFilter === "All" && !searchQuery.trim()) {
-      alert(isGujarati ? "કૃપા કરીને પહેલા કોઈ એક પાર્ટી સિલેક્ટ કરો જેથી તેનું સ્ટેટમેન્ટ મોકલી શકાય." : "Please select a specific party first.");
+      alert("Please select a specific party first.");
       return;
     }
     const targetParty = partyFilter !== "All" ? partyFilter : searchQuery.trim();
@@ -1462,7 +1765,7 @@ export default function LedgerPage() {
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
               }`}
             >
-              બધા ખાતા ({partySummaries.length})
+              All Accounts ({partySummaries.length})
             </button>
             <button
               type="button"
@@ -1474,7 +1777,7 @@ export default function LedgerPage() {
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>ઉઘરાણી / બાકી ({partySummaries.filter((p) => p.status === "Due").length})</span>
+              <span>Pending / Due ({partySummaries.filter((p) => p.status === "Due").length})</span>
               <span className="font-mono font-extrabold ml-1">₹{totalMarketDue.toLocaleString("en-IN")}</span>
             </button>
             <button
@@ -1487,7 +1790,7 @@ export default function LedgerPage() {
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>ચુકતે / ક્લીયર ({partySummaries.filter((p) => p.status === "Settled").length})</span>
+              <span>Settled / Cleared ({partySummaries.filter((p) => p.status === "Settled").length})</span>
             </button>
           </div>
 
@@ -1601,7 +1904,7 @@ export default function LedgerPage() {
                             type="button"
                             onClick={(e) => handleSendDueReminderWhatsApp(e, p)}
                             className="h-7 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-200 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer mx-auto shadow-2xs"
-                            title={isGujarati ? "WhatsApp પર પેમેન્ટ રિમાઇન્ડર મોકલો" : "Send WhatsApp Reminder"}
+                            title="Send WhatsApp Reminder"
                           >
                             <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
                             <span>Reminder</span>
@@ -1622,6 +1925,41 @@ export default function LedgerPage() {
       {/* ------------------------------------------------------------- */}
       {partyFilter !== "All" && (
         <div className="space-y-4">
+          {/* PARTY SUB-TABS: LEDGER STATEMENT vs BILL-BY-BILL KNOCKOFF */}
+          <div className="flex items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex-wrap">
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setPartyStatementTab("LEDGER")}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                  partyStatementTab === "LEDGER"
+                    ? "bg-white text-blue-700 shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Ledger Statement</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPartyStatementTab("KNOCKOFF")}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                  partyStatementTab === "KNOCKOFF"
+                    ? "bg-white text-emerald-700 shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                <span>Bill Knock-Off & Aging</span>
+                {unsettledBillsCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+                    {unsettledBillsCount} Due
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
           {/* EXACT SEARCH & ACTION BAR (REPLICATED FROM 2ND IMAGE) */}
           <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
             {/* Search Input on the Left */}
@@ -1738,7 +2076,8 @@ export default function LedgerPage() {
               </div>
             )}
 
-          {/* DETAILED TEXTILE LEDGER TABLE (USER REQUESTED COLUMN LAYOUT) */}
+          {/* TAB 1: DETAILED TEXTILE LEDGER TABLE (WHEN LEDGER TAB SELECTED) */}
+          {partyStatementTab === "LEDGER" && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
@@ -1821,8 +2160,20 @@ export default function LedgerPage() {
                           </td>
 
                           {/* 2. BILL NO */}
-                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900 border-r border-slate-200/70 whitespace-nowrap align-middle">
-                            {formatShortRefNo(e.refNo)}
+                          <td className="py-2.5 px-3 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                            <div className="font-mono font-bold text-slate-900">
+                              {formatShortRefNo(e.refNo)}
+                            </div>
+                            {e.designNo && e.designNo !== "—" && (
+                              <div className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200 mt-0.5 inline-block">
+                                Agst: {e.designNo}
+                              </div>
+                            )}
+                            {e.kasarAmount && e.kasarAmount > 0 ? (
+                              <div className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 mt-0.5 inline-block ml-1">
+                                +₹{e.kasarAmount} Kasar
+                              </div>
+                            ) : null}
                           </td>
 
                           {/* 3. PARTY NAME */}
@@ -1950,6 +2301,376 @@ export default function LedgerPage() {
               </table>
             </div>
           </div>
+          )}
+
+          {/* TAB 2: BILL-BY-BILL KNOCKOFF VIEW (WHEN KNOCKOFF TAB SELECTED) */}
+          {partyStatementTab === "KNOCKOFF" && (
+            <div className="space-y-4">
+              {/* Top 4 Mini KPI Cards for this Party's Bills */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    TOTAL INVOICES / BILLS
+                  </span>
+                  <p className="text-xl font-black text-slate-900 mt-0.5 font-mono">
+                    ₹{knockoffTotals.totalBilled.toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {partyBillKnockoffList.length} Total Bills
+                  </p>
+                </div>
+
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    PAID / RECEIVED
+                  </span>
+                  <p className="text-xl font-black text-emerald-700 mt-0.5 font-mono">
+                    ₹{knockoffTotals.totalPaid.toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-[10px] text-emerald-600 mt-1 font-semibold">
+                    Settled against bills
+                  </p>
+                </div>
+
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    KASAR / DISCOUNT
+                  </span>
+                  <p className="text-xl font-black text-amber-700 mt-0.5 font-mono">
+                    ₹{knockoffTotals.totalKasar.toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-[10px] text-amber-600 mt-1 font-semibold">
+                    Mutual deductions
+                  </p>
+                </div>
+
+                <div className="bg-white p-3.5 rounded-2xl border border-rose-200 bg-rose-50/20 shadow-2xs">
+                  <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wider block">
+                    NET REMAINING DUE
+                  </span>
+                  <p className="text-xl font-black text-rose-600 mt-0.5 font-mono">
+                    ₹{knockoffTotals.totalRemaining.toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-[10px] text-rose-700 mt-1 font-bold">
+                    {unsettledBillsCount} Bills Unsettled
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Filter for Knockoff */}
+              <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setKnockoffStatusFilter("PENDING_ONLY")}
+                    className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                      knockoffStatusFilter === "PENDING_ONLY"
+                        ? "bg-rose-600 text-white shadow-2xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    Pending Bills Only ({unsettledBillsCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setKnockoffStatusFilter("ALL")}
+                    className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                      knockoffStatusFilter === "ALL"
+                        ? "bg-blue-600 text-white shadow-2xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    All Bills ({partyBillKnockoffList.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setKnockoffStatusFilter("SETTLED_ONLY")}
+                    className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                      knockoffStatusFilter === "SETTLED_ONLY"
+                        ? "bg-emerald-600 text-white shadow-2xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    Fully Settled ({partyBillKnockoffList.length - unsettledBillsCount})
+                  </button>
+                </div>
+                <div className="text-slate-500 font-medium text-xs">
+                  Click <span className="font-bold text-blue-700">"Settle Bill"</span> to record payment and adjust Kasar.
+                </div>
+              </div>
+
+              {/* Table of Bills */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-100/80 text-slate-600 font-extrabold border-b border-slate-200 uppercase text-[10px] tracking-wider whitespace-nowrap">
+                      <tr>
+                        <th className="py-2.5 px-3 border-r border-slate-200/80">BILL / INVOICE NO</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200/80">DATE & DUE DATE</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200/80 text-center">AGING / DUE</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">TOTAL BILL (₹)</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">PAID AMOUNT (₹)</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">KASAR (₹)</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200/80 text-right">REMAINING DUE (₹)</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200/80 text-center">STATUS</th>
+                        <th className="py-2.5 px-3 text-center">ACTION</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-800 bg-white">
+                      {filteredBillKnockoffList.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="py-10 text-center text-slate-400 font-medium">
+                            {knockoffStatusFilter === "PENDING_ONLY"
+                              ? "No pending bills! All bills are fully knocked off."
+                              : "No bills found for this party."}
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredBillKnockoffList.map((bill) => (
+                          <tr key={bill.id} className="hover:bg-slate-50/80 transition-colors">
+                            {/* Bill No */}
+                            <td className="py-2.5 px-3 font-mono font-bold text-slate-900 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                              <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                {bill.billNo}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-sans block mt-0.5">
+                                {bill.billType === "SALES_INVOICE" ? "Sales Invoice" : bill.billType === "SALES_CHALLAN" ? "Sales Challan" : "Purchase Bill"}
+                              </span>
+                            </td>
+
+                            {/* Date */}
+                            <td className="py-2.5 px-3 font-mono text-slate-700 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                              <div>{bill.date}</div>
+                              {bill.dueDate && (
+                                <div className="text-[10px] text-slate-400 mt-0.5">Due: {bill.dueDate}</div>
+                              )}
+                            </td>
+
+                            {/* Aging */}
+                            <td className="py-2.5 px-3 text-center border-r border-slate-200/70 whitespace-nowrap align-middle">
+                              {bill.status === "Settled" ? (
+                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                  Settled
+                                </span>
+                              ) : bill.isOverdue ? (
+                                <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                                  {bill.ageDays}d Overdue
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                  {bill.ageDays}d Old
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Total Bill */}
+                            <td className="py-2.5 px-3 text-right font-mono font-extrabold text-slate-900 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                              ₹{bill.totalAmount.toLocaleString("en-IN")}
+                            </td>
+
+                            {/* Paid */}
+                            <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                              {bill.paidAmount > 0 ? `₹${bill.paidAmount.toLocaleString("en-IN")}` : "—"}
+                            </td>
+
+                            {/* Kasar */}
+                            <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-700 border-r border-slate-200/70 whitespace-nowrap align-middle">
+                              {bill.kasarAmount > 0 ? `₹${bill.kasarAmount.toLocaleString("en-IN")}` : "—"}
+                            </td>
+
+                            {/* Remaining */}
+                            <td className="py-2.5 px-3 text-right font-mono font-black text-sm border-r border-slate-200/70 whitespace-nowrap align-middle">
+                              {bill.remainingBalance > 0 ? (
+                                <span className="text-rose-600">₹{bill.remainingBalance.toLocaleString("en-IN")}</span>
+                              ) : (
+                                <span className="text-emerald-600 font-bold">₹0</span>
+                              )}
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-2.5 px-3 text-center border-r border-slate-200/70 whitespace-nowrap align-middle">
+                              {bill.status === "Settled" ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                  <Check className="w-3 h-3" /> Settled
+                                </span>
+                              ) : bill.status === "Partially Paid" ? (
+                                <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                  Partial
+                                </span>
+                              ) : (
+                                <span className="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                                  Unpaid
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Action */}
+                            <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle">
+                              {bill.status === "Settled" ? (
+                                <span className="text-[11px] font-semibold text-slate-400">Done</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSettlingBill(bill);
+                                    setSettleAmount(String(bill.remainingBalance));
+                                    setSettleKasar("0");
+                                    setSettleNotes(`Payment settled for ${bill.billNo}`);
+                                  }}
+                                  className="h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer mx-auto shadow-2xs"
+                                >
+                                  <Wallet className="w-3 h-3" />
+                                  <span>Settle Bill</span>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 6. QUICK BILL SETTLEMENT & KASAR MODAL */}
+      {settlingBill && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-blue-600" />
+                <div>
+                  <h2 className="text-sm font-extrabold text-slate-900">
+                    Quick Bill Settlement & Kasar
+                  </h2>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Party: <span className="font-bold text-slate-900">{partyFilter}</span> • Bill: <span className="font-mono font-bold text-blue-700">{settlingBill.billNo}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettlingBill(null)}
+                className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Bill Summary Banner */}
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold block">TOTAL BILL AMOUNT</span>
+                <span className="font-mono font-bold text-slate-800 text-sm">₹{settlingBill.totalAmount.toLocaleString("en-IN")}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-rose-500 font-bold block">CURRENT DUE BALANCE</span>
+                <span className="font-mono font-black text-rose-600 text-base">₹{settlingBill.remainingBalance.toLocaleString("en-IN")}</span>
+              </div>
+            </div>
+
+            {/* Settlement Inputs */}
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {settlingBill.billType === "PURCHASE" ? "Paid Amount (₹)*" : "Received Amount (₹)*"}
+                  </label>
+                  <input
+                    type="number"
+                    value={settleAmount}
+                    onChange={(e) => setSettleAmount(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-black text-sm text-slate-900 focus:outline-none focus:border-blue-500"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-amber-800 block mb-1 flex items-center gap-1">
+                    <Percent className="w-3 h-3 text-amber-600" />
+                    <span>Kasar / Discount (₹)</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={settleKasar}
+                    onChange={(e) => setSettleKasar(e.target.value)}
+                    className="w-full h-9 px-3 bg-amber-50/40 border border-amber-300 rounded-xl font-mono font-bold text-sm text-amber-900 focus:outline-none focus:border-amber-500"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Payment Mode</label>
+                  <select
+                    value={settleMode}
+                    onChange={(e) => setSettleMode(e.target.value)}
+                    className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="BANK TRANSFER (NEFT/RTGS/IMPS)">Bank Transfer (RTGS/NEFT)</option>
+                    <option value="UPI (GPay / PhonePe / Paytm)">UPI (GPay / PhonePe)</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Cheque">Cheque</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Settlement Date</label>
+                  <input
+                    type="date"
+                    value={settleDate}
+                    onChange={(e) => setSettleDate(e.target.value)}
+                    className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Reference / UTR / Cheque No</label>
+                <input
+                  type="text"
+                  value={settleRefNo}
+                  onChange={(e) => setSettleRefNo(e.target.value)}
+                  placeholder="e.g. UTR-982312 or Cheque 00213"
+                  className="w-full h-8 px-3 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Remarks / Note</label>
+                <input
+                  type="text"
+                  value={settleNotes}
+                  onChange={(e) => setSettleNotes(e.target.value)}
+                  placeholder="Optional remarks..."
+                  className="w-full h-8 px-3 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSettlingBill(null)}
+                className="h-9 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingSettle}
+                onClick={handleConfirmBillSettlement}
+                className="h-9 px-5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>{isSubmittingSettle ? "Saving..." : "Confirm Settlement"}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1965,7 +2686,7 @@ export default function LedgerPage() {
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-600" />
                 <h2 className="text-sm font-extrabold text-slate-900">
-                  {previewEntry.type === "BILL" ? (isGujarati ? "ખરીદી બિલ સ્લિપ" : "Purchase Bill Slip") : (isGujarati ? "પેમેન્ટ વાઉચર સ્લિપ" : "Payment Voucher Slip")}
+                  {previewEntry.type === "BILL" ? "Purchase Bill Slip" : "Payment Voucher Slip"}
                 </h2>
               </div>
               <button
@@ -1989,60 +2710,60 @@ export default function LedgerPage() {
                 <span className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold border ${
                   previewEntry.status === "Paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
                 }`}>
-                  {previewEntry.status === "Paid" ? t("Paid") : (isGujarati ? "પેન્ડિંગ / શાખ" : "Pending / Credit")}
+                  {previewEntry.status === "Paid" ? "Paid" : "Pending / Credit"}
                 </span>
               </div>
 
               <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 text-xs shadow-2xs overflow-hidden">
                 <div className="p-3 flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">{isGujarati ? "સંદર્ભ નં" : "Ref No"}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Ref No</span>
                   <span className="font-extrabold font-mono text-slate-900">{formatShortRefNo(previewEntry.refNo)}</span>
                 </div>
                 <div className="p-3 flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">{isGujarati ? "તારીખ" : "Date"}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Date</span>
                   <span className="font-extrabold text-slate-800">{previewEntry.date}</span>
                 </div>
                 <div className="p-3 flex items-center justify-between gap-4">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{isGujarati ? "પાર્ટી / સપ્લાયર" : "Party / Mill"}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Party / Mill</span>
                   <span className="font-extrabold text-slate-900 text-right">{previewEntry.partyName}</span>
                 </div>
                 {previewEntry.payerPerson && (
                   <div className="p-3 flex items-center justify-between gap-4 bg-blue-50/40">
-                    <span className="text-[10px] font-bold text-blue-700 uppercase shrink-0">{isGujarati ? "આપનાર ભાઈ" : "Payer"}</span>
+                    <span className="text-[10px] font-bold text-blue-700 uppercase shrink-0">Payer</span>
                     <span className="font-bold text-blue-900 text-right">{previewEntry.payerPerson}</span>
                   </div>
                 )}
                 {previewEntry.designNo && (
                   <div className="p-3 flex items-center justify-between gap-4">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{isGujarati ? "ડિઝાઇન નં" : "Design No"}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Design No</span>
                     <span className="font-mono font-bold text-indigo-700 text-right">{previewEntry.designNo}</span>
                   </div>
                 )}
                 <div className="p-3 flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">{isGujarati ? "વિગત / મટિરિયલ" : "Particulars"}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Particulars</span>
                   <span className="font-medium text-slate-800">{previewEntry.description}</span>
                 </div>
                 {previewEntry.modeOrTerms && (
                   <div className="p-3 flex items-center justify-between gap-4">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{isGujarati ? "મુદત / મોડ" : "Terms / Mode"}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Terms / Mode</span>
                     <span className="font-bold text-slate-800 font-mono">{previewEntry.modeOrTerms}</span>
                   </div>
                 )}
                 {Boolean(previewEntry.kasarAmount && previewEntry.kasarAmount > 0) && (
                   <div className="p-3 flex items-center justify-between gap-4 bg-amber-50/60">
-                    <span className="text-[10px] font-bold text-amber-800 uppercase shrink-0">{isGujarati ? "કસર / વળતર" : "Kasar / Discount"}</span>
+                    <span className="text-[10px] font-bold text-amber-800 uppercase shrink-0">Kasar / Discount</span>
                     <span className="font-mono font-bold text-amber-900 text-right">₹{previewEntry.kasarAmount?.toLocaleString("en-IN")}</span>
                   </div>
                 )}
                 {previewEntry.runningBalance !== undefined && (
                   <div className="p-3 flex items-center justify-between gap-4">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{isGujarati ? "રનિંગ બેલેન્સ" : "Running Balance"}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Running Balance</span>
                     <span className="font-bold font-mono text-slate-800">₹{previewEntry.runningBalance.toLocaleString("en-IN")}</span>
                   </div>
                 )}
                 <div className="p-3.5 flex items-center justify-between bg-slate-50/50">
                   <span className="text-xs font-black text-slate-700 uppercase">
-                    {previewEntry.type === "BILL" ? (isGujarati ? "બિલ રકમ (₹)" : "Bill Amount (₹)") : (isGujarati ? "ચૂકવેલ રકમ (₹)" : "Amount Paid (₹)")}
+                    {previewEntry.type === "BILL" ? "Bill Amount (₹)" : "Amount Paid (₹)"}
                   </span>
                   <span className="text-base font-black font-mono text-slate-900">
                     ₹{(previewEntry.type === "BILL" ? previewEntry.debit : (previewEntry.paidAmount || previewEntry.credit)).toLocaleString("en-IN")}
@@ -2057,7 +2778,7 @@ export default function LedgerPage() {
                 onClick={() => setPreviewEntry(null)}
                 className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
               >
-                {isGujarati ? "બંધ કરો" : "Close"}
+                Close
               </button>
               <button
                 type="button"

@@ -26,7 +26,8 @@ import {
   Truck,
   FileCheck,
   Clock,
-  UserCog
+  UserCog,
+  CalendarDays
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -70,6 +71,7 @@ const menuGroups: MenuGroup[] = [
       { name: "Sales Invoices", href: "/sales-invoices", icon: FileCheck },
       { name: "Invoices", href: "/invoices", icon: FileText },
       { name: "Payments", href: "/payments", icon: CreditCard },
+      { name: "Day Book", href: "/daybook", icon: CalendarDays },
       { name: "Ledger", href: "/ledger", icon: BookOpen },
     ]
   },
