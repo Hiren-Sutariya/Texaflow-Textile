@@ -167,18 +167,17 @@ export const normalizeAndRenumberExpenses = (list: ExpenseItem[]): ExpenseItem[]
   });
 
   const idToNewNo: Record<string, string> = {};
-  const idToNewId: Record<string, string> = {};
   sorted.forEach((item, idx) => {
     const pad = String(idx + 1).padStart(3, "0");
     idToNewNo[item.id] = `EB-${pad}`;
-    idToNewId[item.id] = `exp-${pad}`;
   });
 
   const updated = cleanSource.map((item) => {
     const cleanVendor = item.vendor_name === "General Vendor" ? "" : item.vendor_name || "";
     return {
       ...item,
-      id: idToNewId[item.id] || item.id,
+      // Retain permanent database ID - never mutate item.id
+      id: item.id,
       expense_no: idToNewNo[item.id] || item.expense_no,
       vendor_name: cleanVendor
     };
@@ -943,7 +942,7 @@ export default function ExpensesPage() {
                     </span>
                     <div className="flex items-center gap-1">
                       <Link
-                        href={`/expenses/new?edit=${item.id}`}
+                        href={`/expenses/new?edit=${encodeURIComponent(item.id)}&no=${encodeURIComponent(item.expense_no || "")}`}
                         className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                         title="Edit Expense"
                       >
@@ -1119,7 +1118,7 @@ export default function ExpensesPage() {
                     <td className="py-3 px-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">
                         <Link
-                          href={`/expenses/new?edit=${item.id}`}
+                          href={`/expenses/new?edit=${encodeURIComponent(item.id)}&no=${encodeURIComponent(item.expense_no || "")}`}
                           className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                           title="Edit Expense"
                         >

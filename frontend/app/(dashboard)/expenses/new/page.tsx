@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { fetchApi, getCachedApi, setCachedApi } from "@/lib/api";
+import { fetchApi, getCachedApi, setCachedApi, invalidateApiCache } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import { VoiceTextarea } from "@/components/ui/VoiceTextarea";
@@ -121,11 +121,13 @@ function NewExpenseVoucherForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit") || searchParams.get("id");
+  const editNo = searchParams.get("no");
   const isEditMode = Boolean(editId);
 
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
-  const [editingExpenseNo, setEditingExpenseNo] = useState("");
+  const [editingExpenseNo, setEditingExpenseNo] = useState(editNo || "");
+  const [editingRecordId, setEditingRecordId] = useState(editId || "");
   const [nextVoucherNo, setNextVoucherNo] = useState("");
   const [isLoadingExpense, setIsLoadingExpense] = useState(false);
 
@@ -456,6 +458,9 @@ function NewExpenseVoucherForm() {
     const populateExpenseData = (exp: any) => {
       if (!exp) return;
 
+      if (exp.id) {
+        setEditingRecordId(String(exp.id));
+      }
       if (exp.expense_no) {
         setEditingExpenseNo(exp.expense_no);
       }
@@ -507,8 +512,6 @@ function NewExpenseVoucherForm() {
         setShowVendorField(true);
       }
 
-
-
       if (exp.paid_via) {
         setPaymentMode(exp.paid_via);
       }
@@ -542,13 +545,18 @@ function NewExpenseVoucherForm() {
 
     // 1. Immediate retrieval from localStorage
     const currentCid = getStoredCompanyId();
+    let localFound: any = null;
     try {
       const list = getTenantItem<any[]>("texaflow_expenses");
       if (list && Array.isArray(list)) {
         const scoped = list.filter((item: any) => (item.company_id || currentCid) === currentCid);
-        const found = scoped.find((item: any) => String(item.id) === String(editId) || item.expense_no === editId);
-        if (found) {
-          populateExpenseData(found);
+        localFound = scoped.find((item: any) =>
+          (editNo && item.expense_no === editNo) ||
+          String(item.id) === String(editId) ||
+          item.expense_no === editId
+        );
+        if (localFound) {
+          populateExpenseData(localFound);
         }
       }
     } catch (err) {
@@ -556,11 +564,23 @@ function NewExpenseVoucherForm() {
     }
 
     // 2. Fetch from backend API
+    // Prefer editNo if present or local DB id to prevent mismatched ID collision
+    const queryKey = editNo || localFound?.id || editId;
     setIsLoadingExpense(true);
-    fetchApi<any>(`/expenses/${editId}`)
+    fetchApi<any>(`/expenses/${queryKey}`)
       .then((data) => {
         if (data) {
-          populateExpenseData(data);
+          // Verify that fetched record matches what was intended to be edited
+          const isConsistent =
+            (editNo && data.expense_no === editNo) ||
+            String(data.id) === String(editId) ||
+            (localFound && (data.expense_no === localFound.expense_no || String(data.id) === String(localFound.id)));
+
+          if (isConsistent) {
+            populateExpenseData(data);
+          } else {
+            console.warn("API returned mismatched expense record, ignoring overwrite:", data);
+          }
         }
       })
       .catch((err) => {
@@ -569,7 +589,7 @@ function NewExpenseVoucherForm() {
       .finally(() => {
         setIsLoadingExpense(false);
       });
-  }, [editId]);
+  }, [editId, editNo]);
 
   // Compute next sequential voucher number for new expenses
   useEffect(() => {
@@ -804,9 +824,12 @@ function NewExpenseVoucherForm() {
           ? (dueDate || calculateDueDate(formattedDate, creditDays))
           : formattedDate;
 
+        const targetId = editingRecordId || editId;
+        const targetExpenseNo = editingExpenseNo || editNo || "EB-001";
+
         const updatedExpense = {
-          id: editId,
-          expense_no: editingExpenseNo || "EB-001",
+          id: targetId,
+          expense_no: targetExpenseNo,
           date: formattedDate,
           category: category,
           vendor_name: vendorName.trim() || "",
@@ -825,7 +848,7 @@ function NewExpenseVoucherForm() {
 
         // 1. Update Supabase via FastAPI Backend
         try {
-          await fetchApi(`/expenses/${editId}`, {
+          await fetchApi(`/expenses/${targetId}`, {
             method: "PUT",
             body: JSON.stringify({
               date: formattedDate,
@@ -852,9 +875,14 @@ function NewExpenseVoucherForm() {
         try {
           const list = getTenantItem<any[]>("texaflow_expenses") || [];
           const updatedList = list.map((item: any) =>
-            String(item.id) === String(editId) || item.expense_no === editId ? updatedExpense : item
+            String(item.id) === String(targetId) ||
+            (targetExpenseNo && item.expense_no === targetExpenseNo) ||
+            String(item.id) === String(editId)
+              ? { ...item, ...updatedExpense, id: item.id || targetId }
+              : item
           );
           setTenantItem("texaflow_expenses", updatedList);
+          invalidateApiCache("/expenses");
           window.dispatchEvent(new Event("app_data_update"));
           window.dispatchEvent(new Event("storage"));
         } catch (err) {

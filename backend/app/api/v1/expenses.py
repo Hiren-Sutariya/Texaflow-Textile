@@ -141,7 +141,11 @@ def get_expense(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    expense = db.query(Expense).filter(Expense.id == expense_id, Expense.company_id == company_id, Expense.is_deleted == False).first()
+    expense = db.query(Expense).filter(
+        (Expense.id == expense_id) | (Expense.expense_no == expense_id),
+        Expense.company_id == company_id, 
+        Expense.is_deleted == False
+    ).first()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
     return expense
@@ -153,7 +157,11 @@ def update_expense(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    expense = db.query(Expense).filter(Expense.id == expense_id, Expense.company_id == company_id, Expense.is_deleted == False).first()
+    expense = db.query(Expense).filter(
+        (Expense.id == expense_id) | (Expense.expense_no == expense_id),
+        Expense.company_id == company_id, 
+        Expense.is_deleted == False
+    ).first()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
@@ -178,7 +186,11 @@ def delete_expense(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    expense = db.query(Expense).filter(Expense.id == expense_id, Expense.company_id == company_id, Expense.is_deleted == False).first()
+    expense = db.query(Expense).filter(
+        (Expense.id == expense_id) | (Expense.expense_no == expense_id),
+        Expense.company_id == company_id, 
+        Expense.is_deleted == False
+    ).first()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
