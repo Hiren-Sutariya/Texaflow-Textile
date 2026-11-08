@@ -33,7 +33,8 @@ import {
   BookOpen,
   Laptop,
   RotateCcw,
-  Edit3
+  Edit3,
+  Printer
 } from "lucide-react";
 import { API_BASE_URL, fetchApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -48,6 +49,11 @@ import {
 import { getStoredCompanyId, getStoredUserName } from "@/lib/tenantStorage";
 import { CompanySettings, CustomFieldLabels } from "@/lib/companySettings";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
+import InvoiceTemplateRenderer, {
+  INVOICE_TEMPLATES,
+  getSampleInvoiceData
+} from "@/components/invoice/InvoiceTemplateRenderer";
+import TemplatePreviewModal from "@/components/invoice/TemplatePreviewModal";
 
 const PAYMENT_TERMS_OPTIONS = [
   "Due on Receipt",
@@ -327,10 +333,13 @@ export default function SettingsPage() {
   const { user, updateUserSession } = useAuth();
   const [hasMounted, setHasMounted] = useState(false);
 
-  // Active Subtab (Company, Invoice, Bill Fields, Shortcuts, Security, Data & Storage)
+  // Active Subtab (Company, Invoice, Bill Formats, Bill Fields, Shortcuts, Security, Data & Storage)
   const [activeTab, setActiveTab] = useState<
-    "Company" | "Invoice & Bill" | "Custom Fields" | "Shortcuts" | "Login & Password" | "Data & Storage"
+    "Company" | "Invoice & Bill" | "Bill Formats" | "Custom Fields" | "Shortcuts" | "Login & Password" | "Data & Storage"
   >("Company");
+
+  // Selected format on Bill Formats tab
+  const [selectedFormatId, setSelectedFormatId] = useState<string>("standard");
 
   // Keyboard Shortcuts states
   const [shortcutsList, setShortcutsList] = useState<ShortcutBinding[]>([]);
@@ -362,6 +371,7 @@ export default function SettingsPage() {
   const gstRef = useRef<HTMLDivElement>(null);
   const accTypeRef = useRef<HTMLDivElement>(null);
   const formatRef = useRef<HTMLDivElement>(null);
+  const [previewModalTemplateId, setPreviewModalTemplateId] = useState<string | null>(null);
 
   // Form State: Company, Bank & Invoice Details (Initialized per-tenant with zero millisecond leakage!)
   const [formData, setFormData] = useState<SettingsFormData>(() => {
@@ -1541,6 +1551,7 @@ export default function SettingsPage() {
               {[
                 { id: "Company", label: "Company", icon: Building2 },
                 { id: "Invoice & Bill", label: "Invoice & Bill", icon: Receipt },
+                { id: "Bill Formats", label: "Bill Formats", icon: Printer },
                 { id: "Custom Fields", label: "Bill Fields", icon: Sparkles },
                 { id: "Shortcuts", label: "Shortcuts", icon: Keyboard },
                 { id: "Login & Password", label: "Security", icon: KeyRound },
@@ -1609,6 +1620,33 @@ export default function SettingsPage() {
                   <span>Invoice & Bill</span>
                 </div>
                 {activeTab === "Invoice & Bill" && <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-80" />}
+              </button>
+
+              {/* Bill Formats */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("Bill Formats");
+                  setAuthErrorMsg("");
+                  if (formData.bill_format) {
+                    const bf = formData.bill_format.toLowerCase();
+                    if (bf.includes("modern")) setSelectedFormatId("modern");
+                    else if (bf.includes("compact")) setSelectedFormatId("compact");
+                    else if (bf.includes("classic")) setSelectedFormatId("classic");
+                    else setSelectedFormatId("standard");
+                  }
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "Bill Formats"
+                    ? "bg-blue-600 text-white shadow-xs font-black"
+                    : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Printer className="w-4 h-4 shrink-0" />
+                  <span>Bill Formats</span>
+                </div>
+                {activeTab === "Bill Formats" && <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-80" />}
               </button>
 
               {/* Bill Fields */}
@@ -2284,7 +2322,166 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* Link to Dedicated Bill Formats Tab */}
+              <div className="pt-4 border-t border-slate-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 border border-blue-200/90 rounded-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-xs shrink-0">
+                      <Printer className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                        Bill & Invoice Print Formats
+                      </h4>
+                      <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                        Active Format: <span className="font-black text-blue-700">{
+                          formData.bill_format?.toLowerCase().includes("modern")
+                            ? "Modern Corporate GST Format (A4)"
+                            : formData.bill_format?.toLowerCase().includes("compact")
+                            ? "Compact Takka Dispatch Slip (A5)"
+                            : formData.bill_format?.toLowerCase().includes("classic")
+                            ? "Classic Accounting Format (A4)"
+                            : "Standard Textile GST Format (Our Default)"
+                        }</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("Bill Formats");
+                      setAuthErrorMsg("");
+                      if (formData.bill_format) {
+                        const bf = formData.bill_format.toLowerCase();
+                        if (bf.includes("modern")) setSelectedFormatId("modern");
+                        else if (bf.includes("compact")) setSelectedFormatId("compact");
+                        else if (bf.includes("classic")) setSelectedFormatId("classic");
+                        else setSelectedFormatId("standard");
+                      }
+                    }}
+                    className="h-8 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer self-start sm:self-auto shrink-0"
+                  >
+                    <span>Open Bill Formats Page</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
 
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB: BILL FORMATS (DEDICATED FULL VISUAL BILL STUDIO)                    */}
+          {/* ========================================================================= */}
+          {activeTab === "Bill Formats" && (
+            <div className="w-full space-y-4 animate-in fade-in duration-150">
+              <style>{`
+                @media print {
+                  @page {
+                    size: A4 portrait;
+                    margin: 8mm;
+                  }
+                  body * {
+                    visibility: hidden !important;
+                  }
+                  #settings-printable-bill, #settings-printable-bill * {
+                    visibility: visible !important;
+                  }
+                  #settings-printable-bill {
+                    position: absolute !important;
+                    left: 0 !important;
+                    top: 0 !important;
+                    width: 100% !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    background: white !important;
+                  }
+                }
+              `}</style>
+
+              {/* Clean & Simple Header Bar */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-3 sm:p-3.5 shadow-2xs space-y-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-black text-slate-900 tracking-wide flex items-center gap-2">
+                    <Printer className="w-4 h-4 text-blue-600" />
+                    <span>બિલ પ્રિન્ટ ફોર્મેટ (Bill Print Format)</span>
+                  </h3>
+
+                  {/* Single Action: Set as Default / Default સેટ કરેલું છે */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      isUserEditingRef.current = true;
+                      setFormData((prev: any) => ({ ...prev, bill_format: selectedFormatId }));
+                    }}
+                    className={`h-8 px-3.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      ((formData.bill_format || "standard").toLowerCase().includes(selectedFormatId))
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-300 font-black cursor-default"
+                        : "bg-blue-600 hover:bg-blue-700 text-white shadow-xs active:scale-95"
+                    }`}
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>
+                      {((formData.bill_format || "standard").toLowerCase().includes(selectedFormatId))
+                        ? "Default સેટ કરેલું છે"
+                        : "Set as Default"}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Simple Horizontal Switcher */}
+                <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl overflow-x-auto no-scrollbar">
+                  {[
+                    { id: "standard", label: "⭐ Standard Textile" },
+                    { id: "format2", label: "Format 2" },
+                    { id: "format3", label: "Format 3" },
+                    { id: "format4", label: "Format 4" }
+                  ].map((fmt) => {
+                    const isSelected = selectedFormatId === fmt.id || (fmt.id === "standard" && (selectedFormatId === "standard" || !selectedFormatId));
+                    const curDefault = (formData.bill_format || "standard").toLowerCase();
+                    const isDefault = curDefault.includes(fmt.id) || (fmt.id === "standard" && (curDefault === "standard" || curDefault.includes("standard")));
+
+                    return (
+                      <button
+                        key={fmt.id}
+                        type="button"
+                        onClick={() => setSelectedFormatId(fmt.id)}
+                        className={`flex-1 min-w-[130px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                          isSelected
+                            ? "bg-white text-blue-700 shadow-xs border border-slate-200/90 font-black"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                        }`}
+                      >
+                        <span>{fmt.label}</span>
+                        {isDefault && (
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Active Default Format" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Direct Bill Preview Sheet */}
+              <div className="bg-slate-200/60 p-3 sm:p-6 rounded-2xl border border-slate-300/80 flex flex-col items-center justify-center overflow-x-auto shadow-inner">
+                <div
+                  id="settings-printable-bill"
+                  className={`bg-white shadow-xl rounded-sm text-black border border-slate-300 transition-all ${
+                    selectedFormatId === "compact"
+                      ? "w-full max-w-[620px] p-3 sm:p-6"
+                      : "w-full max-w-[820px] p-4 sm:p-8"
+                  }`}
+                >
+                  <InvoiceTemplateRenderer
+                    templateId={selectedFormatId}
+                    data={getSampleInvoiceData(formData)}
+                    settings={formData}
+                    showQr={formData.print_qr}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -3097,6 +3294,18 @@ export default function SettingsPage() {
             </button>
           )
         }
+      />
+
+      {/* Template Live Preview Modal */}
+      <TemplatePreviewModal
+        isOpen={!!previewModalTemplateId}
+        onClose={() => setPreviewModalTemplateId(null)}
+        selectedTemplateId={previewModalTemplateId || (formData.bill_format || "standard")}
+        onSelectTemplate={(templateId) => {
+          isUserEditingRef.current = true;
+          setFormData((prev: any) => ({ ...prev, bill_format: templateId }));
+        }}
+        companySettings={formData}
       />
     </div>
   );

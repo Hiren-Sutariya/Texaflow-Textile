@@ -118,6 +118,7 @@ export interface CompanySettings {
   brand_name: string;
   owner_name?: string;
   tagline?: string;
+  logo_url?: string;
   phone: string;
   alt_phone?: string;
   email?: string;

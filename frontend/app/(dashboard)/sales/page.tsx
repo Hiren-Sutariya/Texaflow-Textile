@@ -32,6 +32,10 @@ import {
   FileText,
   MessageCircle
 } from "lucide-react";
+import InvoiceTemplateRenderer, {
+  INVOICE_TEMPLATES,
+  InvoiceRenderData
+} from "@/components/invoice/InvoiceTemplateRenderer";
 
 interface CustomSelectOption {
   value: string;
@@ -206,6 +210,7 @@ export default function SalesPage() {
 
   // Print modal state
   const [previewChallan, setPreviewChallan] = useState<SalesChallan | null>(null);
+  const [printTemplateId, setPrintTemplateId] = useState<string>("");
   const [companySettings, setCompanySettings] = useState<CompanySettings>(() => getStoredCompanySettings());
 
   // Delete confirmation
@@ -848,6 +853,68 @@ export default function SalesPage() {
 
         const billTotalAmount = Number(previewChallan.total_amount || 0);
 
+        const challanRenderData: InvoiceRenderData = {
+          invoice_no: previewChallan.challan_no || "INV-001",
+          date: previewChallan.date || "",
+          invoice_type: "TAX INVOICE",
+          due_date: previewChallan.due_date || (previewChallan.credit_days ? calculateDueDate(previewChallan.date, previewChallan.credit_days) : undefined),
+          credit_days: previewChallan.credit_days,
+          challan_no: previewChallan.challan_no,
+          challan_date: previewChallan.date,
+          customer_name: previewChallan.party_name || "CASH SALE",
+          customer_address: previewChallan.notes || "",
+          customer_gstin: (() => {
+            const m = previewChallan.notes?.match(/GST[:\s]+([0-9A-Z]{15})/i);
+            return m ? m[1] : undefined;
+          })(),
+          customer_state: "Gujarat",
+          customer_state_code: "24",
+          items: validItems.length > 0 ? validItems.map((it: any, idx: number) => {
+            const amt = it.amount ? parseFloat(String(it.amount)) : 0;
+            const qty = it.quantity || it.meters || it.item || it.takka || "-";
+            let rateDisplay: string | number = "-";
+            if (it.rate) {
+              rateDisplay = parseFloat(String(it.rate)).toFixed(2);
+            } else if (amt > 0) {
+              const wNum = it.weight ? parseFloat(String(it.weight)) : 0;
+              const matchNum = String(qty || "").match(/^([\d.]+)/);
+              const qNum = matchNum ? parseFloat(matchNum[1]) : 0;
+              if (wNum > 0) rateDisplay = (amt / wNum).toFixed(2);
+              else if (qNum > 0) rateDisplay = (amt / qNum).toFixed(2);
+            }
+            return {
+              sr: idx + 1,
+              design_no: it.design_no || "-",
+              description: it.description || it.category || (it.design_no ? `Design #${it.design_no}` : "Textile Item"),
+              hsn: it.hsn_code || (companySettings.hsn_sac_code ? companySettings.hsn_sac_code.split(" ")[0] : "5402"),
+              taka: it.takka || it.item || undefined,
+              meters: it.meters || it.quantity || undefined,
+              weight: it.weight ? Number(it.weight).toFixed(2) : undefined,
+              kg: it.kg ? Number(it.kg).toFixed(2) : undefined,
+              cartoon: it.cartoon || undefined,
+              rate: rateDisplay,
+              amount: amt
+            };
+          }) : [
+            {
+              sr: 1,
+              design_no: "-",
+              description: previewChallan.notes || "Textile Dispatches",
+              hsn: companySettings.hsn_sac_code ? companySettings.hsn_sac_code.split(" ")[0] : "5402",
+              taka: previewChallan.total_quantity || previewChallan.total_meters || previewChallan.total_item || 1,
+              meters: previewChallan.total_meters || undefined,
+              weight: previewChallan.total_weight ? Number(previewChallan.total_weight).toFixed(2) : undefined,
+              kg: (previewChallan as any).total_kg ? Number((previewChallan as any).total_kg).toFixed(2) : undefined,
+              cartoon: previewChallan.total_cartoon || undefined,
+              rate: "-",
+              amount: billTotalAmount
+            }
+          ],
+          taxable_amount: billTotalAmount,
+          total_amount: billTotalAmount,
+          notes: previewChallan.notes
+        };
+
         return (
           <div
             className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
@@ -892,7 +959,23 @@ export default function SalesPage() {
             `}</style>
 
             {/* FLOATING ACTION BUTTONS */}
-            <div className="fixed top-4 right-4 flex items-center gap-2 z-50 no-print">
+            <div className="fixed top-4 right-4 flex items-center gap-2 z-50 no-print flex-wrap justify-end">
+              {/* Dynamic Format Selector Dropdown */}
+              <div className="flex items-center gap-1.5 bg-slate-900/95 text-white px-3 py-1.5 rounded-full border border-slate-700 shadow-xl text-xs font-bold">
+                <span className="text-slate-400 font-medium">Format:</span>
+                <select
+                  value={printTemplateId || companySettings.bill_format || "standard"}
+                  onChange={(e) => setPrintTemplateId(e.target.value)}
+                  className="bg-transparent text-white font-bold text-xs outline-none cursor-pointer border-none"
+                >
+                  {INVOICE_TEMPLATES.map((tmpl) => (
+                    <option key={tmpl.id} value={tmpl.id} className="text-slate-900 bg-white">
+                      {tmpl.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 type="button"
                 onClick={() => previewChallan && handleShareWhatsApp(previewChallan)}
@@ -921,304 +1004,17 @@ export default function SalesPage() {
               </button>
             </div>
 
-            <div className="flex flex-col items-center max-w-[820px] w-full my-auto space-y-3">
-              {/* THE WHITE A4 INVOICE SHEET (MATCHING EXACT BLUEPRINT) */}
+            <div className="flex flex-col items-center max-w-[840px] w-full my-auto space-y-3">
+              {/* THE WHITE INVOICE SHEET */}
               <div
                 id="printable-bill-slip"
-                className="w-full bg-white p-4 sm:p-8 rounded-sm shadow-2xl text-black font-sans select-text text-left"
+                className="w-full bg-white p-2 sm:p-6 rounded-sm shadow-2xl text-black font-sans select-text text-left"
               >
-                {/* INNER BORDERED TAX INVOICE BOX */}
-                <div className="w-full border border-black bg-white">
-                  {/* 1. TOP HEADER GREY BOX (DYNAMIC COMPANY NAME) */}
-                  <div className="bg-[#d9d9d9] border-b border-black py-2 text-center">
-                    <h1 className="font-extrabold text-xl sm:text-2xl tracking-wider text-black uppercase">
-                      {companySettings.brand_name || companySettings.company_name || "SHIV CREATION"}
-                    </h1>
-                  </div>
-
-                  {/* 2. INV NO & DATE ROW (ON BOTH CORNERS) */}
-                  <div className="px-4 py-2 border-b border-black flex justify-between items-center text-xs font-bold text-black bg-white">
-                    <div className="flex items-center gap-1.5">
-                      <span>INV NO. :</span>
-                      <span className="font-mono font-black text-sm">{previewChallan.challan_no}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span>Date :</span>
-                      <span className="font-mono font-bold text-sm">{previewChallan.date}</span>
-                    </div>
-                  </div>
-
-                  {/* 3. TAX INVOICE & CH. NO BAR */}
-                  <div className="px-4 py-1.5 border-b border-black flex justify-between items-center text-xs font-bold text-black bg-white">
-                    <div className="w-1/4"></div>
-                    <div className="text-center flex-1">
-                      <span className="font-extrabold text-sm tracking-wide uppercase">Tax Invoice</span>
-                    </div>
-                    <div className="flex items-center justify-end gap-1.5 w-auto text-right">
-                      <span>Ch. No :</span>
-                      <span className="font-mono font-semibold">
-                        {previewChallan.due_date
-                          ? `${previewChallan.due_date} (${previewChallan.credit_days || 0}d)`
-                          : (previewChallan.credit_days ? `${calculateDueDate(previewChallan.date, previewChallan.credit_days)} (${previewChallan.credit_days}d)` : "-")}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 4. TWO EQUAL BOXES (LEFT: MY COMPANY DETAILS, RIGHT: PARTY / CUSTOMER DETAILS) */}
-                  <div className="border-b border-black grid grid-cols-2 text-black">
-                    {/* Left Box: My Company Details */}
-                    <div className="p-3 border-r border-black flex flex-col justify-between min-h-[110px]">
-                      <div className="space-y-1">
-                        <div className="text-xs">
-                          <span className="font-bold">M/s. : </span>
-                          <span className="font-extrabold uppercase text-black">
-                            {companySettings.company_name || companySettings.brand_name || "SHIV CREATION"}
-                          </span>
-                        </div>
-                        <p className="text-[11px] font-medium text-neutral-800 leading-snug">
-                          {companyAddressDisplay}
-                        </p>
-                        <p className="text-[11px] font-bold text-black">
-                          Mo : {companySettings.phone || companySettings.alt_phone || "9099226483"}
-                        </p>
-                      </div>
-                      <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-dashed border-neutral-300">
-                        <span>GST No.{companySettings.gstin ? ` : ${companySettings.gstin}` : ""}</span>
-                        <span>State Code : 24</span>
-                      </div>
-                    </div>
-
-                    {/* Right Box: Client / Party Details */}
-                    <div className="p-3 flex flex-col justify-between min-h-[110px]">
-                      <div className="space-y-1">
-                        <div className="text-xs">
-                          <span className="font-bold">M/s. : </span>
-                          <span className="font-extrabold uppercase text-black">
-                            {previewChallan.party_name}
-                          </span>
-                        </div>
-                        {previewChallan.notes && (
-                          <p className="text-[11px] text-neutral-700 leading-snug italic">
-                            {previewChallan.notes}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-dashed border-neutral-300">
-                        <span>GST No.{(() => {
-                          const m = previewChallan.notes?.match(/GST[:\s]+([0-9A-Z]{15})/i);
-                          return m ? ` : ${m[1]}` : "";
-                        })()}</span>
-                        <span>State Code : 24</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 5. TABLE SECTION */}
-                  <div className="w-full">
-                    <table className="w-full text-left text-xs border-collapse text-black">
-                      <thead>
-                        <tr className="border-b border-black text-xs font-bold text-black bg-white">
-                          <th className="py-1.5 px-2 text-center w-[35px] border-r border-black">No</th>
-                          <th className="py-1.5 px-3 border-r border-black">{getFieldLabel(companySettings, "item_name", "DESCRIPTION")}</th>
-                          <th className="py-1.5 px-2 text-center w-[75px] border-r border-black">{getFieldLabel(companySettings, "hsn_code", "HSN Code")}</th>
-                          <th className="py-1.5 px-2 text-center w-[60px] border-r border-black">{getFieldLabel(companySettings, "quantity", "Qty")}</th>
-                          <th className="py-1.5 px-2 text-right w-[85px] border-r border-black">{getFieldLabel(companySettings, "weight", "Weight")}</th>
-                          <th className="py-1.5 px-2 text-right w-[75px] border-r border-black">{getFieldLabel(companySettings, "kg", "KG")}</th>
-                          {hasCartoon && (
-                            <th className="py-1.5 px-2 text-center w-[60px] border-r border-black">{getFieldLabel(companySettings, "cartoon", "Cartoon")}</th>
-                          )}
-                          <th className="py-1.5 px-2 text-right w-[75px] border-r border-black">{getFieldLabel(companySettings, "rate", "Rate")}</th>
-                          <th className="py-1.5 px-3 text-right w-[110px]">{getFieldLabel(companySettings, "total_amount", "Amount")}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-xs font-medium text-black">
-                        {validItems.length > 0 ? (
-                          validItems.map((it: any, idx: number) => {
-                            const desc = it.description || it.category || (it.design_no ? `Design #${it.design_no}` : "-");
-                            const hsn = it.hsn_code || (companySettings.hsn_sac_code ? companySettings.hsn_sac_code.split(" ")[0] : "998822");
-                            const qty = it.quantity || it.meters || it.item || it.takka || "-";
-                            const amt = it.amount ? parseFloat(String(it.amount)) : 0;
-                            let rateDisplay = "-";
-                            if (it.rate) {
-                              rateDisplay = parseFloat(String(it.rate)).toFixed(2);
-                            } else if (amt > 0) {
-                              const wNum = it.weight ? parseFloat(String(it.weight)) : 0;
-                              const matchNum = String(qty || "").match(/^([\d.]+)/);
-                              const qNum = matchNum ? parseFloat(matchNum[1]) : 0;
-                              if (wNum > 0) {
-                                rateDisplay = (amt / wNum).toFixed(2);
-                              } else if (qNum > 0) {
-                                rateDisplay = (amt / qNum).toFixed(2);
-                              }
-                            }
-
-                            return (
-                              <tr key={idx} className="h-6">
-                                <td className="py-1 px-2 text-center border-r border-black">
-                                  {idx + 1}
-                                </td>
-                                <td className="py-1 px-3 border-r border-black">
-                                  {desc}
-                                </td>
-                                <td className="py-1 px-2 text-center font-mono border-r border-black">
-                                  {hsn}
-                                </td>
-                                <td className="py-1 px-2 text-center font-mono border-r border-black">
-                                  {qty}
-                                </td>
-                                <td className="py-1 px-2 text-right font-mono border-r border-black">
-                                  {it.weight ? Number(it.weight).toFixed(2) : "-"}
-                                </td>
-                                <td className="py-1 px-2 text-right font-mono border-r border-black">
-                                  {it.kg ? Number(it.kg).toFixed(2) : "-"}
-                                </td>
-                                {hasCartoon && (
-                                  <td className="py-1 px-2 text-center font-mono border-r border-black">
-                                    {it.cartoon || "-"}
-                                  </td>
-                                )}
-                                <td className="py-1 px-2 text-right font-mono border-r border-black">
-                                  {rateDisplay}
-                                </td>
-                                <td className="py-1 px-3 text-right font-mono font-bold">
-                                  {amt > 0 ? amt.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
-                                </td>
-                              </tr>
-                            );
-                          })
-                        ) : (
-                          <tr className="h-6">
-                            <td className="py-1 px-2 text-center border-r border-black">1</td>
-                            <td className="py-1 px-3 border-r border-black">
-                              {previewChallan.notes || "Textile Dispatches"}
-                            </td>
-                            <td className="py-1 px-2 text-center font-mono border-r border-black">
-                              {companySettings.hsn_sac_code ? companySettings.hsn_sac_code.split(" ")[0] : "998822"}
-                            </td>
-                            <td className="py-1 px-2 text-center font-mono border-r border-black">
-                              {previewChallan.total_quantity || previewChallan.total_meters || previewChallan.total_item || "-"}
-                            </td>
-                            <td className="py-1 px-2 text-right font-mono border-r border-black">
-                              {previewChallan.total_weight ? Number(previewChallan.total_weight).toFixed(2) : "-"}
-                            </td>
-                            <td className="py-1 px-2 text-right font-mono border-r border-black">
-                              {(previewChallan as any).total_kg ? Number((previewChallan as any).total_kg).toFixed(2) : "-"}
-                            </td>
-                            {hasCartoon && (
-                              <td className="py-1 px-2 text-center font-mono border-r border-black">
-                                {previewChallan.total_cartoon || "-"}
-                              </td>
-                            )}
-                            <td className="py-1 px-2 text-right font-mono border-r border-black">-</td>
-                            <td className="py-1 px-3 text-right font-mono font-bold">
-                              {billTotalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                          </tr>
-                        )}
-
-                        {/* Spacer with tall vertical column lines extending down, matching Image 1 */}
-                        <tr className="h-64 sm:h-72">
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          {hasCartoon && <td className="border-r border-black"></td>}
-                          <td className="border-r border-black"></td>
-                          <td></td>
-                        </tr>
-                      </tbody>
-
-                      {/* Total Row (Grey Background) */}
-                      <tfoot>
-                        <tr className="bg-[#d9d9d9] border-t border-b border-black font-bold text-xs">
-                          <td className="py-1.5 px-2 border-r border-black"></td>
-                          <td className="py-1.5 px-3 border-r border-black"></td>
-                          <td className="py-1.5 px-2 border-r border-black"></td>
-                          <td className="py-1.5 px-2 text-center font-mono border-r border-black">
-                            {hasNumericQty ? (qtyUnit ? `${totalQtySum} ${qtyUnit}` : totalQtySum) : (previewChallan.total_quantity || previewChallan.total_meters || "")}
-                          </td>
-                          <td className="py-1.5 px-2 text-right font-mono border-r border-black">
-                            {hasNumericWeight ? totalWeightSum.toFixed(2) : (previewChallan.total_weight ? Number(previewChallan.total_weight).toFixed(2) : "")}
-                          </td>
-                          <td className="py-1.5 px-2 text-right font-mono border-r border-black">
-                            {hasKg ? totalKgSum.toFixed(2) : ((previewChallan as any).total_kg ? Number((previewChallan as any).total_kg).toFixed(2) : "")}
-                          </td>
-                          {hasCartoon && (
-                            <td className="py-1.5 px-2 text-center font-mono border-r border-black">
-                              {totalCartoonSum}
-                            </td>
-                          )}
-                          <td className="py-1.5 px-2 border-r border-black"></td>
-                          <td className="py-1.5 px-3 text-right font-mono font-black">
-                            {billTotalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-
-                  {/* 6. BANK DETAILS & GST / SUBTOTAL GRID (60% / 40% SPLIT) */}
-                  <div className="grid grid-cols-[1.4fr_1fr] border-b border-black text-black">
-                    {/* Left: Bank Details */}
-                    <div className="p-2.5 text-xs font-bold space-y-1 border-r border-black">
-                      <div className="underline font-black pb-0.5">Bank Details:</div>
-                      <div>Bank Name : <span className="font-medium">{companySettings.bank_name || ""}</span></div>
-                      <div>Bank A/c : <span className="font-mono font-medium">{companySettings.account_no || ""}</span></div>
-                      <div>Bank Ifsc : <span className="font-mono font-medium">{companySettings.ifsc || ""}</span></div>
-                    </div>
-
-                    {/* Right: GST & Subtotal */}
-                    <div className="divide-y divide-black text-xs font-bold flex flex-col justify-center">
-                      <div className="flex justify-between items-center px-3 py-2">
-                        <span>GST</span>
-                        <span className="font-mono">
-                          {companySettings.gst_rate ? companySettings.gst_rate.split(" ")[0] : "5%"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center px-3 py-2">
-                        <span>Subtotal</span>
-                        <span className="font-mono text-sm">
-                          {billTotalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 7. TOTAL AMOUNT ROW (SPLIT: BLANK GREY ON LEFT, TOTAL AMOUNT ON RIGHT) */}
-                  <div className="grid grid-cols-[1.4fr_1fr] border-b border-black bg-[#d9d9d9] text-black">
-                    <div className="border-r border-black p-2 min-h-[30px]"></div>
-                    <div className="p-2 px-3 flex justify-between items-center text-xs font-black">
-                      <span>Total Amount :</span>
-                      <span className="font-mono text-sm">
-                        {billTotalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 8. TERMS & CONDITIONS AND AUTHORISED SIGNATORY (60% / 40% SPLIT) */}
-                  <div className="grid grid-cols-[1.4fr_1fr] text-black">
-                    {/* Left Column: Terms and Conditions */}
-                    <div className="p-3 text-[10px] space-y-1 font-normal text-black leading-tight border-r border-black">
-                      <div className="font-bold text-xs pb-0.5">Terms and Conditions :</div>
-                      {termsList.map((term, i) => (
-                        <p key={i}>{term}</p>
-                      ))}
-                    </div>
-
-                    {/* Right Column: Signatory */}
-                    <div className="p-3 flex flex-col justify-between items-end min-h-[140px] text-right">
-                      <div className="font-bold text-xs text-black uppercase">
-                        FOR {companySettings.brand_name || companySettings.company_name || "TEXAFLOW"}
-                      </div>
-                      <div className="font-bold text-[10px] text-black uppercase tracking-wider">
-                        AUTHORISED SIGNATORY
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
+                <InvoiceTemplateRenderer
+                  templateId={printTemplateId || companySettings.bill_format || "standard"}
+                  data={challanRenderData}
+                  settings={companySettings}
+                />
               </div>
             </div>
           </div>
