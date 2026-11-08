@@ -19,7 +19,8 @@ import {
   ShieldCheck,
   LogOut,
   Truck,
-  FileCheck
+  FileCheck,
+  CalendarDays
 } from "lucide-react";
 
 const destinationModules = [
@@ -68,6 +69,12 @@ const destinationModules = [
     title: "Payments",
     href: "/payments",
     icon: CreditCard,
+    isUpcoming: false
+  },
+  {
+    title: "Day Book",
+    href: "/daybook",
+    icon: CalendarDays,
     isUpcoming: false
   },
   {

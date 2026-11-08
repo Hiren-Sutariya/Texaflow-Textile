@@ -26,7 +26,8 @@ import {
   Settings,
   UserCheck,
   Truck,
-  FileCheck
+  FileCheck,
+  CalendarDays
 } from "lucide-react";
 
 const destinationModules = [
@@ -81,6 +82,14 @@ const destinationModules = [
     href: "/payments",
     icon: CreditCard,
     color: "bg-indigo-50 text-indigo-600 border-indigo-100",
+    isUpcoming: false
+  },
+  {
+    title: "Day Book",
+    description: "Daily cash & bank receipts, payments and cash-in-hand register",
+    href: "/daybook",
+    icon: CalendarDays,
+    color: "bg-teal-50 text-teal-700 border-teal-100",
     isUpcoming: false
   },
   {
