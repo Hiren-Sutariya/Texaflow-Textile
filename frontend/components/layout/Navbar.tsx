@@ -32,7 +32,6 @@ const pageTitles: Record<string, string> = {
   "/recycle-bin": "Recycle Bin & Data Vault",
   "/settings": "System & Company Settings",
   "/designs": "Design Library",
-  "/job-works": "Job Work Directory",
   "/worker-payout": "Worker Payout & Karigar Salary Ledger",
   "/oms-performance": "OMS Performance & Operation Engine",
   "/reports": "Reports & Business Analytics",
@@ -104,14 +103,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
     setIsLangOpen(false);
   };
 
-  let rawPageTitle = pageTitles[pathname];
-  if (!rawPageTitle) {
-    if (pathname.startsWith("/job-works/")) {
-      rawPageTitle = "Job Work 360 View";
-    } else {
-      rawPageTitle = "Business Monitoring";
-    }
-  }
+  let rawPageTitle = pageTitles[pathname] || "Business Monitoring";
   const pageTitle = t(rawPageTitle);
 
   const handleRefresh = useCallback(() => {

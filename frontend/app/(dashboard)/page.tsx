@@ -398,8 +398,8 @@ export default function DashboardPage() {
           <div className="mt-6 pt-4 border-t border-slate-100">
             <h4 className="text-xs font-bold text-slate-800 mb-2">Quick Commands</h4>
             <div className="grid grid-cols-2 gap-2">
-              <Link href="/job-works/new" className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 text-center">
-                + New Job Work
+              <Link href="/sales/new" className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 text-center">
+                + New Sale Bill
               </Link>
               <Link href="/payments" className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 text-center">
                 + Record Payment

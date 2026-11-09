@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
-import { getStoredCompanySettings, fetchLiveCompanySettings, CompanySettings, getFieldLabel } from "@/lib/companySettings";
+import { getStoredCompanySettings, fetchLiveCompanySettings, CompanySettings, getFieldLabel, getDefaultBillFormat } from "@/lib/companySettings";
 import { calculateDueDate, getDueStatus, parseAnyDate } from "@/lib/creditTerms";
 import { useLanguage } from "@/context/LanguageContext";
 import {
@@ -917,7 +917,12 @@ export default function SalesPage() {
 
         return (
           <div
-            className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
+            className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:static"
+            style={{
+              backgroundColor: "rgba(15, 23, 42, 0.82)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)"
+            }}
             onClick={(e) => {
               if (e.target === e.currentTarget) setPreviewChallan(null);
             }}
@@ -926,7 +931,7 @@ export default function SalesPage() {
               @media print {
                 @page {
                   size: A4 portrait;
-                  margin: 8mm;
+                  margin: 6mm;
                 }
                 html, body {
                   margin: 0 !important;
@@ -952,6 +957,16 @@ export default function SalesPage() {
                   margin: 0 !important;
                   background: white !important;
                 }
+                .half-a4-sheet {
+                  max-height: 140mm !important;
+                  zoom: 0.68;
+                  page-break-after: avoid !important;
+                  page-break-inside: avoid !important;
+                }
+                .two-in-one-sheet {
+                  zoom: 0.64;
+                  page-break-inside: avoid !important;
+                }
                 .no-print {
                   display: none !important;
                 }
@@ -960,22 +975,6 @@ export default function SalesPage() {
 
             {/* FLOATING ACTION BUTTONS */}
             <div className="fixed top-4 right-4 flex items-center gap-2 z-50 no-print flex-wrap justify-end">
-              {/* Dynamic Format Selector Dropdown */}
-              <div className="flex items-center gap-1.5 bg-slate-900/95 text-white px-3 py-1.5 rounded-full border border-slate-700 shadow-xl text-xs font-bold">
-                <span className="text-slate-400 font-medium">Format:</span>
-                <select
-                  value={printTemplateId || companySettings.bill_format || "standard"}
-                  onChange={(e) => setPrintTemplateId(e.target.value)}
-                  className="bg-transparent text-white font-bold text-xs outline-none cursor-pointer border-none"
-                >
-                  {INVOICE_TEMPLATES.map((tmpl) => (
-                    <option key={tmpl.id} value={tmpl.id} className="text-slate-900 bg-white">
-                      {tmpl.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <button
                 type="button"
                 onClick={() => previewChallan && handleShareWhatsApp(previewChallan)}
@@ -1011,7 +1010,7 @@ export default function SalesPage() {
                 className="w-full bg-white p-2 sm:p-6 rounded-sm shadow-2xl text-black font-sans select-text text-left"
               >
                 <InvoiceTemplateRenderer
-                  templateId={printTemplateId || companySettings.bill_format || "standard"}
+                  templateId={companySettings.bill_format || getDefaultBillFormat() || "standard"}
                   data={challanRenderData}
                   settings={companySettings}
                 />

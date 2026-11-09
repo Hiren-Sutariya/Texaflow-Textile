@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { calculateDueDate, getDueStatus, parseAnyDate } from "@/lib/creditTerms";
-import { getStoredCompanySettings, fetchLiveCompanySettings, CompanySettings, getFieldLabel } from "@/lib/companySettings";
+import { getStoredCompanySettings, fetchLiveCompanySettings, CompanySettings, getFieldLabel, getDefaultBillFormat } from "@/lib/companySettings";
+import InvoiceTemplateRenderer, { InvoiceRenderData } from "@/components/invoice/InvoiceTemplateRenderer";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   getStoredSalesInvoices,
@@ -866,263 +867,148 @@ export default function SalesInvoicesPage() {
       </div>
 
       {/* 4. A4 FULL-FIDELITY PRINT & PREVIEW MODAL */}
-      {previewInvoice && (
-        <div
-          className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
-          onClick={() => setPreviewInvoice(null)}
-        >
+      {previewInvoice && (() => {
+        const salesInvoiceRenderData: InvoiceRenderData = {
+          invoice_no: previewInvoice.invoice_no,
+          date: previewInvoice.date,
+          invoice_type: "TAX INVOICE",
+          copy_type: "ORIGINAL",
+          customer_name: previewInvoice.customer_name,
+          customer_address: previewInvoice.customer_address,
+          customer_phone: (previewInvoice as any).customer_phone,
+          customer_gstin: previewInvoice.customer_gstin,
+          customer_state: (previewInvoice as any).customer_state || "Gujarat",
+          customer_state_code: (previewInvoice as any).customer_state_code || "24",
+          credit_days: previewInvoice.credit_days,
+          due_date: previewInvoice.due_date,
+          items: (previewInvoice.items && previewInvoice.items.length > 0 ? previewInvoice.items : [
+            {
+              description: previewInvoice.category || "Textile Fabric",
+              hsn_code: "5407",
+              quantity: previewInvoice.total_meters || previewInvoice.total_quantity || "-",
+              weight: previewInvoice.total_weight || "-",
+              kg: (previewInvoice as any).total_kg || "-",
+              rate: (previewInvoice as any).rate || "-",
+              amount: previewInvoice.total_amount
+            }
+          ]).map((it: any, idx: number) => ({
+            sr: idx + 1,
+            description: it.description || it.item_name || "Textile Fabric",
+            design_no: it.design_no,
+            hsn: it.hsn_code || "5407",
+            taka: it.takka || it.taka,
+            meters: it.meters || it.quantity,
+            weight: it.weight,
+            kg: it.kg,
+            cartoon: it.cartoon,
+            rate: it.rate || "-",
+            amount: Number(it.amount || 0)
+          })),
+          taxable_amount: previewInvoice.taxable_amount || previewInvoice.subtotal || previewInvoice.total_amount,
+          cgst_amount: previewInvoice.cgst_amount,
+          sgst_amount: previewInvoice.sgst_amount,
+          igst_amount: previewInvoice.igst_amount,
+          total_gst_amount: (previewInvoice as any).total_gst_amount,
+          round_off: previewInvoice.round_off,
+          total_amount: previewInvoice.total_amount,
+          notes: previewInvoice.notes
+        };
+
+        return (
           <div
-            onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-[850px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]"
+            className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:static"
+            style={{
+              backgroundColor: "rgba(15, 23, 42, 0.82)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)"
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setPreviewInvoice(null);
+            }}
           >
-            {/* Modal Header */}
-            <div className="bg-slate-900 text-white px-5 py-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Printer className="w-4 h-4 text-blue-400" />
-                <h3 className="font-extrabold text-xs uppercase tracking-wider">
-                  {isGujarati ? "ટેક્સ ઇન્વોઇસ પ્રિવ્યુ & પ્રિન્ટ" : "TAX INVOICE PREVIEW & PRINT"} - {previewInvoice.invoice_no}
-                </h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => previewInvoice && handleShareWhatsApp(previewInvoice)}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
-                  title="WhatsApp પર શેર કરો"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>WhatsApp Share</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>{isGujarati ? "પ્રિન્ટ કરો (A4)" : "Print (A4)"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewInvoice(null)}
-                  className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+            <style>{`
+              @media print {
+                @page {
+                  size: A4 portrait;
+                  margin: 6mm;
+                }
+                html, body {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  background: white !important;
+                  width: 100% !important;
+                }
+                body * {
+                  visibility: hidden !important;
+                }
+                #printable-sales-invoice, #printable-sales-invoice * {
+                  visibility: visible !important;
+                }
+                #printable-sales-invoice {
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                  padding: 0 !important;
+                  margin: 0 !important;
+                  background: white !important;
+                }
+                .no-print {
+                  display: none !important;
+                }
+              }
+            `}</style>
+
+            {/* FLOATING ACTION BUTTONS */}
+            <div className="fixed top-4 right-4 flex items-center gap-2 z-50 no-print flex-wrap justify-end">
+              <button
+                type="button"
+                onClick={() => previewInvoice && handleShareWhatsApp(previewInvoice)}
+                className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-full shadow-xl flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 text-xs"
+                title="WhatsApp પર શેર કરો"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>WhatsApp Share</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="h-9 px-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-full shadow-xl flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 text-xs"
+                title={isGujarati ? "પ્રિન્ટ કરો (A4)" : "Print (A4)"}
+              >
+                <Printer className="w-4 h-4" />
+                <span>{isGujarati ? "પ્રિન્ટ કરો (A4)" : "Print (A4)"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewInvoice(null)}
+                className="p-2 bg-slate-800/90 hover:bg-slate-900 text-white rounded-full shadow-xl transition-all cursor-pointer active:scale-95"
+                title={t("Close")}
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Modal Scrollable Body */}
-            <div className="p-4 sm:p-6 overflow-y-auto bg-slate-100/50">
-              <div className="max-w-[760px] mx-auto bg-white border-2 border-slate-900 p-5 rounded shadow-sm text-slate-950 font-sans text-xs space-y-4">
-                {/* Firm Header */}
-                <div className="text-center border-b-2 border-slate-900 pb-3">
-                  <h1 className="font-serif font-black text-2xl uppercase tracking-wider text-slate-950">
-                    {companySettings.company_name || companySettings.brand_name || "OM SAI ENTERPRISE"}
-                  </h1>
-                  <p className="text-[11px] font-bold text-slate-700 mt-0.5">
-                    {companySettings.address || "Ring Road Textile Market"}, {companySettings.city_state || "Surat, Gujarat"} {companySettings.pincode ? `- ${companySettings.pincode}` : ""}
-                  </p>
-                  <div className="flex items-center justify-center gap-4 text-[10px] font-mono font-bold text-slate-800 mt-1">
-                    {companySettings.gstin && <span>GSTIN: {companySettings.gstin}</span>}
-                    {companySettings.phone && <span>MO: {companySettings.phone}</span>}
-                  </div>
-                  <div className="inline-block mt-1 px-3 py-0.5 bg-slate-100 border border-slate-900 rounded font-black text-[11px] uppercase tracking-wider">
-                    TAX INVOICE
-                  </div>
-                </div>
-
-                {/* Invoice Meta Grid */}
-                <div className="grid grid-cols-2 gap-4 border-b border-slate-300 pb-3 text-xs">
-                  <div>
-                    <span className="font-extrabold text-[10px] uppercase text-slate-500 block">Buyer / Customer:</span>
-                    <p className="font-black text-sm text-slate-900">{previewInvoice.customer_name}</p>
-                    {previewInvoice.customer_address && (
-                      <p className="text-[11px] text-slate-600 mt-0.5">{previewInvoice.customer_address}</p>
-                    )}
-                    {previewInvoice.customer_gstin && (
-                      <p className="text-[11px] font-mono font-bold text-blue-700 mt-0.5">
-                        GSTIN: {previewInvoice.customer_gstin}
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right space-y-1 font-mono text-xs">
-                    <div>
-                      <span className="text-slate-500 font-bold">Invoice No:</span>{" "}
-                      <span className="font-black text-slate-900">{previewInvoice.invoice_no}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 font-bold">Invoice Date:</span>{" "}
-                      <span className="font-bold text-slate-900">{previewInvoice.date}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 font-bold">Credit Terms:</span>{" "}
-                      <span className="font-bold text-slate-900">{previewInvoice.payment_terms || "30 Days"}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 font-bold">Due Date:</span>{" "}
-                      <span className="font-bold text-slate-900">{previewInvoice.due_date || previewInvoice.date}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Items Table */}
-                {(() => {
-                  const hasCartoon = Boolean(
-                    (previewInvoice.total_cartoon && Number(previewInvoice.total_cartoon) > 0) ||
-                    (previewInvoice.items && previewInvoice.items.some((it: any) => it.cartoon && Number(it.cartoon) > 0))
-                  );
-
-                  return (
-                    <table className="w-full text-left border-collapse text-xs border border-slate-900">
-                      <thead className="bg-slate-100 border-b border-slate-900 font-bold text-[10px] uppercase">
-                        <tr>
-                          <th className="p-1.5 border-r border-slate-900 w-8 text-center">Sr</th>
-                          <th className="p-1.5 border-r border-slate-900">{getFieldLabel(companySettings, "item_name", "Description / Quality")}</th>
-                          <th className="p-1.5 border-r border-slate-900 w-16 text-center">{getFieldLabel(companySettings, "hsn_code", "HSN")}</th>
-                          <th className="p-1.5 border-r border-slate-900 w-20 text-right">{getFieldLabel(companySettings, "quantity", "Meters")}</th>
-                          <th className="p-1.5 border-r border-slate-900 w-16 text-right">{getFieldLabel(companySettings, "weight", "Weight")}</th>
-                          <th className="p-1.5 border-r border-slate-900 w-16 text-right">{getFieldLabel(companySettings, "kg", "KG")}</th>
-                          {hasCartoon && (
-                            <th className="p-1.5 border-r border-slate-900 w-14 text-center">{getFieldLabel(companySettings, "cartoon", "Cartoon")}</th>
-                          )}
-                          <th className="p-1.5 border-r border-slate-900 w-16 text-right">{getFieldLabel(companySettings, "rate", "Rate (₹)")}</th>
-                          <th className="p-1.5 w-24 text-right">{getFieldLabel(companySettings, "total_amount", "Amount (₹)")}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {(previewInvoice.items && previewInvoice.items.length > 0
-                          ? previewInvoice.items
-                          : [
-                              {
-                                description: previewInvoice.category || "Textile Fabric",
-                                hsn_code: "5407",
-                                quantity: previewInvoice.total_meters || previewInvoice.total_quantity || "-",
-                                weight: previewInvoice.total_weight || "-",
-                                kg: (previewInvoice as any).total_kg || "-",
-                                cartoon: previewInvoice.total_cartoon || "-",
-                                rate: "-",
-                                amount: previewInvoice.subtotal
-                              }
-                            ]
-                        ).map((it: any, idx: number) => (
-                          <tr key={idx} className="font-medium text-xs">
-                            <td className="p-1.5 text-center font-mono border-r border-slate-900">{idx + 1}</td>
-                            <td className="p-1.5 border-r border-slate-900 font-bold">{it.description || it.category || "Fabric"}</td>
-                            <td className="p-1.5 text-center font-mono border-r border-slate-900">{it.hsn_code || "5407"}</td>
-                            <td className="p-1.5 text-right font-mono border-r border-slate-900">{it.quantity || it.meters || "-"}</td>
-                            <td className="p-1.5 text-right font-mono border-r border-slate-900">{it.weight ? Number(it.weight).toFixed(2) : "-"}</td>
-                            <td className="p-1.5 text-right font-mono border-r border-slate-900">{it.kg ? Number(it.kg).toFixed(2) : "-"}</td>
-                            {hasCartoon && (
-                              <td className="p-1.5 text-center font-mono border-r border-slate-900">{it.cartoon || "-"}</td>
-                            )}
-                            <td className="p-1.5 text-right font-mono border-r border-slate-900">{it.rate || "-"}</td>
-                            <td className="p-1.5 text-right font-mono font-bold">
-                              ₹{Number(it.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="border-t border-slate-900 font-bold bg-slate-50">
-                        <tr>
-                          <td colSpan={3} className="p-1.5 border-r border-slate-900 text-right uppercase text-[10px]">Total:</td>
-                          <td className="p-1.5 text-right font-mono border-r border-slate-900">
-                            {previewInvoice.total_meters || previewInvoice.total_quantity || "-"}
-                          </td>
-                          <td className="p-1.5 text-right font-mono border-r border-slate-900">
-                            {previewInvoice.total_weight ? Number(previewInvoice.total_weight).toFixed(2) : "-"}
-                          </td>
-                          <td className="p-1.5 text-right font-mono border-r border-slate-900">
-                            {(previewInvoice as any).total_kg ? Number((previewInvoice as any).total_kg).toFixed(2) : "-"}
-                          </td>
-                          {hasCartoon && (
-                            <td className="p-1.5 text-center font-mono border-r border-slate-900">
-                              {previewInvoice.total_cartoon || "-"}
-                            </td>
-                          )}
-                          <td className="p-1.5 border-r border-slate-900"></td>
-                          <td className="p-1.5 text-right font-mono font-black text-slate-950">
-                            ₹{Number(previewInvoice.subtotal || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  );
-                })()}
-
-                {/* Tax Breakdown & Grand Total */}
-                <div className="flex justify-between items-start gap-4 pt-1">
-                  <div className="flex-1 space-y-1 text-[11px]">
-                    <p className="font-bold text-slate-700">Amount in Words:</p>
-                    <p className="font-serif italic text-slate-900 font-semibold">{numberToIndianWords(previewInvoice.total_amount)}</p>
-                    {previewInvoice.notes && (
-                      <p className="text-[10px] text-slate-500 pt-1">
-                        <span className="font-bold">Remarks:</span> {previewInvoice.notes}
-                      </p>
-                    )}
-                  </div>
-                  <div className="w-56 space-y-1 text-xs border border-slate-300 p-2.5 rounded bg-slate-50/50">
-                    <div className="flex justify-between text-slate-600 font-medium">
-                      <span>Taxable Amount:</span>
-                      <span className="font-mono font-bold text-slate-900">
-                        ₹{Number(previewInvoice.taxable_amount || previewInvoice.subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                    {Number(previewInvoice.cgst_amount) > 0 && (
-                      <div className="flex justify-between text-slate-600">
-                        <span>CGST:</span>
-                        <span className="font-mono font-bold text-slate-800">
-                          + ₹{Number(previewInvoice.cgst_amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                    )}
-                    {Number(previewInvoice.sgst_amount) > 0 && (
-                      <div className="flex justify-between text-slate-600">
-                        <span>SGST:</span>
-                        <span className="font-mono font-bold text-slate-800">
-                          + ₹{Number(previewInvoice.sgst_amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                    )}
-                    {Number(previewInvoice.igst_amount) > 0 && (
-                      <div className="flex justify-between text-slate-600">
-                        <span>IGST:</span>
-                        <span className="font-mono font-bold text-slate-800">
-                          + ₹{Number(previewInvoice.igst_amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                    )}
-                    <div className="pt-1.5 border-t border-slate-300 flex justify-between font-black text-sm text-slate-950">
-                      <span>Grand Total:</span>
-                      <span className="font-mono text-blue-700">
-                        ₹{Number(previewInvoice.total_amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer Signatures */}
-                <div className="grid grid-cols-2 gap-4 pt-6 text-[10px] border-t border-slate-300">
-                  <div>
-                    <p className="font-bold uppercase text-slate-600">Terms & Conditions:</p>
-                    <p className="text-slate-500 text-[9px] mt-0.5">
-                      1. Goods once sold will not be taken back.<br />
-                      2. Interest @ 18% p.a. will be charged if payment is not made on due date.<br />
-                      3. Subject to Surat Jurisdiction only.
-                    </p>
-                  </div>
-                  <div className="text-right flex flex-col justify-between">
-                    <p className="font-bold uppercase text-slate-800">
-                      For, {companySettings.company_name || companySettings.brand_name || "OM SAI ENTERPRISE"}
-                    </p>
-                    <p className="font-extrabold uppercase text-slate-700 pt-8">Authorised Signatory</p>
-                  </div>
-                </div>
-
+            <div className="flex flex-col items-center max-w-[840px] w-full my-auto space-y-3">
+              {/* THE WHITE INVOICE SHEET (MATCHING SALES CHALLAN MODAL 100%) */}
+              <div
+                id="printable-sales-invoice"
+                className="w-full bg-white p-2 sm:p-6 rounded-sm shadow-2xl text-black font-sans select-text text-left"
+              >
+                <InvoiceTemplateRenderer
+                  templateId={companySettings.bill_format || getDefaultBillFormat() || "standard"}
+                  data={salesInvoiceRenderData}
+                  settings={companySettings}
+                  showQr={companySettings.print_qr}
+                />
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </div>
   );

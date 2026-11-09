@@ -47,7 +47,7 @@ import {
   formatShortcutDisplay
 } from "@/lib/shortcutsStorage";
 import { getStoredCompanyId, getStoredUserName } from "@/lib/tenantStorage";
-import { CompanySettings, CustomFieldLabels } from "@/lib/companySettings";
+import { CompanySettings, CustomFieldLabels, getDefaultBillFormat, setDefaultBillFormat } from "@/lib/companySettings";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import InvoiceTemplateRenderer, {
   INVOICE_TEMPLATES,
@@ -616,6 +616,7 @@ export default function SettingsPage() {
                 signatory_label: data.signatory_label !== undefined && data.signatory_label !== "" ? data.signatory_label : prev.signatory_label,
                 eway_threshold: data.eway_threshold !== undefined && data.eway_threshold !== "" ? data.eway_threshold : prev.eway_threshold,
                 print_qr: data.print_qr !== undefined ? data.print_qr : prev.print_qr,
+                bill_format: data.bill_format || data.settings_json?.bill_format || (typeof window !== "undefined" ? localStorage.getItem("app_default_bill_format") : null) || prev.bill_format || "standard",
                 terms_conditions: data.terms_conditions !== undefined && data.terms_conditions !== "" ? data.terms_conditions : prev.terms_conditions,
                 custom_labels
               };
@@ -1467,6 +1468,7 @@ export default function SettingsPage() {
             signatory_label: formData.signatory_label?.trim(),
             eway_threshold: formData.eway_threshold?.trim(),
             print_qr: formData.print_qr,
+            bill_format: formData.bill_format || "standard",
             terms_conditions: formData.terms_conditions?.trim(),
             custom_labels: settingsToSave.custom_labels,
             settings_json: settingsToSave
@@ -2379,7 +2381,7 @@ export default function SettingsPage() {
                 @media print {
                   @page {
                     size: A4 portrait;
-                    margin: 8mm;
+                    margin: 6mm;
                   }
                   body * {
                     visibility: hidden !important;
@@ -2398,6 +2400,16 @@ export default function SettingsPage() {
                     margin: 0 !important;
                     background: white !important;
                   }
+                  .half-a4-sheet {
+                    max-height: 140mm !important;
+                    zoom: 0.68;
+                    page-break-after: avoid !important;
+                    page-break-inside: avoid !important;
+                  }
+                  .two-in-one-sheet {
+                    zoom: 0.64;
+                    page-break-inside: avoid !important;
+                  }
                 }
               `}</style>
 
@@ -2415,6 +2427,7 @@ export default function SettingsPage() {
                     onClick={() => {
                       isUserEditingRef.current = true;
                       setFormData((prev: any) => ({ ...prev, bill_format: selectedFormatId }));
+                      setDefaultBillFormat(selectedFormatId);
                     }}
                     className={`h-8 px-3.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                       ((formData.bill_format || "standard").toLowerCase().includes(selectedFormatId))
@@ -2436,8 +2449,8 @@ export default function SettingsPage() {
                   {[
                     { id: "standard", label: "⭐ Standard Textile" },
                     { id: "format2", label: "Format 2" },
-                    { id: "format3", label: "Format 3" },
-                    { id: "format4", label: "Format 4" }
+                    { id: "format3", label: "Format 3 (Half A4)" },
+                    { id: "format4", label: "Format 4 (Debit Memo)" }
                   ].map((fmt) => {
                     const isSelected = selectedFormatId === fmt.id || (fmt.id === "standard" && (selectedFormatId === "standard" || !selectedFormatId));
                     const curDefault = (formData.bill_format || "standard").toLowerCase();
@@ -2447,7 +2460,11 @@ export default function SettingsPage() {
                       <button
                         key={fmt.id}
                         type="button"
-                        onClick={() => setSelectedFormatId(fmt.id)}
+                        onClick={() => {
+                          setSelectedFormatId(fmt.id);
+                          setFormData((prev: any) => ({ ...prev, bill_format: fmt.id }));
+                          setDefaultBillFormat(fmt.id);
+                        }}
                         className={`flex-1 min-w-[130px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
                           isSelected
                             ? "bg-white text-blue-700 shadow-xs border border-slate-200/90 font-black"
@@ -2468,11 +2485,7 @@ export default function SettingsPage() {
               <div className="bg-slate-200/60 p-3 sm:p-6 rounded-2xl border border-slate-300/80 flex flex-col items-center justify-center overflow-x-auto shadow-inner">
                 <div
                   id="settings-printable-bill"
-                  className={`bg-white shadow-xl rounded-sm text-black border border-slate-300 transition-all ${
-                    selectedFormatId === "compact"
-                      ? "w-full max-w-[620px] p-3 sm:p-6"
-                      : "w-full max-w-[820px] p-4 sm:p-8"
-                  }`}
+                  className="w-full max-w-[820px] p-4 sm:p-7 bg-white shadow-xl rounded-sm text-black border border-slate-300 transition-all"
                 >
                   <InvoiceTemplateRenderer
                     templateId={selectedFormatId}

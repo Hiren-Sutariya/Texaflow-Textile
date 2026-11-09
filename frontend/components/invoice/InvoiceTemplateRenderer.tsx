@@ -98,25 +98,36 @@ export const INVOICE_TEMPLATES: InvoiceTemplateMeta[] = [
   },
   {
     id: "compact",
-    name: "Format 3",
-    tagline: "Textile Invoice Format 3",
-    badge: "Format 3",
+    name: "Format 3 (Half A4)",
+    tagline: "Half A4 Single Bill Format",
+    badge: "Format 3 (Half A4)",
     badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
-    paper: "A4 Portrait",
-    recommendedFor: "Custom Bill Format 3",
-    desc: "Clean textile bill layout ready for customization.",
-    features: ["Textile items table", "Bank & GST summary"]
+    paper: "Half A4 / A5",
+    recommendedFor: "A4 ના અડધા પેપર પર પ્રિન્ટ માટે",
+    desc: "A4 પેપરના અડધા ભાગ (Half A4) પર માત્ર 1 જ બિલ પ્રિન્ટ થાય, સંપૂર્ણ ઓરિજિનલ ડિઝાઇન અને ઊંચા સ્ક્વેર સાથે.",
+    features: [
+      "A4 ના અડધા પેપર (Half A4) પર પ્રિન્ટ",
+      "માત્ર 1 જ બિલ પ્રિન્ટ થાય (Only in Half)",
+      "બિલની ડિઝાઇન Standard Textile જેવી જ સેમ-ટુ-સેમ",
+      "ટેબલ સ્ક્વેર અને ઊભી ખાતાવહી લાઇનો સંપૂર્ણ યથાવત"
+    ]
   },
   {
     id: "classic",
-    name: "Format 4",
-    tagline: "Textile Invoice Format 4",
+    name: "Format 4 (Debit Memo)",
+    tagline: "Debit Memo GST Format",
     badge: "Format 4",
     badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
     paper: "A4 Portrait",
-    recommendedFor: "Custom Bill Format 4",
-    desc: "Clean textile bill layout ready for customization.",
-    features: ["Textile items table", "Bank & GST summary"]
+    recommendedFor: "Debit Memo & Corporate Textile GST",
+    desc: "Clean Debit Memo format with SrNo, HSN, Qty, Rate, GST %, Sub Total, and Grand Total bar.",
+    features: [
+      "Debit Memo & TAX INVOICE",
+      "SrNo, Particulars, HSN, Qty, Rate, GST %, Amount",
+      "Sub Total & Grand Total Bar",
+      "Total GST & Bill Amount in words",
+      "4 Standard Trade Terms & Clean Signatory"
+    ]
   }
 ];
 
@@ -142,6 +153,7 @@ export interface InvoiceRenderData {
   date: string;
   invoice_type?: string; // Tax Invoice, Delivery Challan, Jobwork Bill
   due_date?: string;
+  copy_type?: string; // e.g. "ORIGINAL", "DUPLICATE", "ORIGINAL FOR RECIPIENT", etc.
   credit_days?: number | string;
   challan_no?: string;
   challan_date?: string;
@@ -177,6 +189,7 @@ export function getSampleInvoiceData(settings?: CompanySettings | null): Invoice
     invoice_no: (settings?.sales_invoice_prefix || "SC/26/") + "6609",
     date: new Date().toLocaleDateString("en-IN").replace(/\//g, "-"),
     invoice_type: "TAX INVOICE",
+    copy_type: "ORIGINAL",
     due_date: new Date(Date.now() + 30 * 86400000).toLocaleDateString("en-IN").replace(/\//g, "-"),
     credit_days: 30,
     challan_no: "CH-1024",
@@ -261,13 +274,15 @@ function StandardTextileTemplate({
   settings,
   showLogo = true,
   showQr = true,
-  showLogoBox = false
+  showLogoBox = false,
+  copyType
 }: {
   data: InvoiceRenderData;
   settings: CompanySettings;
   showLogo?: boolean;
   showQr?: boolean;
   showLogoBox?: boolean;
+  copyType?: string;
 }) {
   const firmName = settings.brand_name || settings.company_name || "SHIV CREATION";
   const address = settings.address
@@ -366,10 +381,12 @@ function StandardTextileTemplate({
             </span>
           </div>
 
-          {/* Right: Only Date (without 30d / credit days) */}
-          <div className="text-right font-mono">
-            <span>Date : </span>
-            <span className="font-bold">{data.date}</span>
+          {/* Right: Only Date and Copy Type */}
+          <div className="text-right font-mono flex items-center justify-end gap-2">
+            <span>Date : <strong className="font-bold">{data.date}</strong></span>
+            <span className="font-black text-xs uppercase tracking-wider text-black">
+              [{copyType || data.copy_type || "ORIGINAL"}]
+            </span>
           </div>
         </div>
       ) : (
@@ -381,9 +398,9 @@ function StandardTextileTemplate({
             </span>
           </div>
           <div className="text-right font-mono">
-            {data.due_date ? (
-              <span>Due: {data.due_date} {data.credit_days ? `(${data.credit_days}d)` : ""}</span>
-            ) : null}
+            <span className="font-mono font-black text-xs uppercase tracking-wider text-black">
+              [{copyType || data.copy_type || "ORIGINAL"}]
+            </span>
           </div>
         </div>
       )}
@@ -462,18 +479,23 @@ function StandardTextileTemplate({
                 </td>
               </tr>
             ))}
-            {/* Tall vertical lines spacer */}
-            <tr className="h-44 sm:h-52">
-              <td className="border-r border-black"></td>
-              <td className="border-r border-black"></td>
-              <td className="border-r border-black"></td>
-              <td className="border-r border-black"></td>
-              <td className="border-r border-black"></td>
-              <td className="border-r border-black"></td>
-              <td className="border-r border-black"></td>
-              <td className="border-r border-black"></td>
-              <td></td>
-            </tr>
+            {/* Tall vertical lines spacer filling full A4 ledger page */}
+            {(() => {
+              const spacerHeight = Math.max(180, 500 - (data.items.length * 28));
+              return (
+                <tr style={{ height: `${spacerHeight}px` }} className="min-h-[220px]">
+                  <td className="border-r border-black"></td>
+                  <td className="border-r border-black"></td>
+                  <td className="border-r border-black"></td>
+                  <td className="border-r border-black"></td>
+                  <td className="border-r border-black"></td>
+                  <td className="border-r border-black"></td>
+                  <td className="border-r border-black"></td>
+                  <td className="border-r border-black"></td>
+                  <td></td>
+                </tr>
+              );
+            })()}
           </tbody>
           <tfoot>
             <tr className="bg-[#d9d9d9] border-t border-b border-black font-bold text-xs">
@@ -578,18 +600,53 @@ function StandardTextileTemplate({
 }
 
 // ============================================================================
+// TEMPLATE 3 (HALF A4): SINGLE BILL PRINTED ONLY ON HALF OF A4 PAPER
+// ============================================================================
+function HalfA4TextileTemplate({
+  data,
+  settings,
+  showLogo = true,
+  showQr = true,
+  showLogoBox = false,
+  copyType
+}: {
+  data: InvoiceRenderData;
+  settings: CompanySettings;
+  showLogo?: boolean;
+  showQr?: boolean;
+  showLogoBox?: boolean;
+  copyType?: string;
+}) {
+  return (
+    <div className="w-full half-a4-sheet select-text">
+      {/* Exactly ONE bill, with the exact same-to-same design of Image 2 */}
+      <StandardTextileTemplate
+        data={data}
+        settings={settings}
+        showLogo={showLogo}
+        showQr={showQr}
+        showLogoBox={showLogoBox}
+        copyType={copyType}
+      />
+    </div>
+  );
+}
+
+// ============================================================================
 // 6. TEMPLATE 2: MODERN CORPORATE GST FORMAT (A4)
 // ============================================================================
 function ModernCorporateTemplate({
   data,
   settings,
   showLogo = true,
-  showQr = true
+  showQr = true,
+  copyType
 }: {
   data: InvoiceRenderData;
   settings: CompanySettings;
   showLogo?: boolean;
   showQr?: boolean;
+  copyType?: string;
 }) {
   const firmName = settings.brand_name || settings.company_name || "SHIV CREATION";
   const address = settings.address
@@ -654,12 +711,12 @@ function ModernCorporateTemplate({
               <span className="font-mono font-bold text-slate-800">{data.challan_no || "Direct Bill"}</span>
             </div>
             <div>
-              <span className="text-slate-400 font-semibold block text-[10px]">Payment Terms:</span>
-              <span className="font-bold text-slate-800">{data.credit_days ? `${data.credit_days} Days Credit` : "Due on Receipt"}</span>
+              <span className="text-slate-400 font-semibold block text-[10px]">Copy Type:</span>
+              <span className="font-bold text-blue-600 font-mono">{copyType || data.copy_type || "ORIGINAL"}</span>
             </div>
             <div>
-              <span className="text-slate-400 font-semibold block text-[10px]">Due Date:</span>
-              <span className="font-mono font-bold text-rose-600">{data.due_date || data.date}</span>
+              <span className="text-slate-400 font-semibold block text-[10px]">Payment Terms:</span>
+              <span className="font-bold text-slate-800">{data.credit_days ? `${data.credit_days} Days Credit` : "Due on Receipt"}</span>
             </div>
             <div>
               <span className="text-slate-400 font-semibold block text-[10px]">Transporter:</span>
@@ -892,96 +949,247 @@ function CompactChallanTemplate({
 }
 
 // ============================================================================
-// 8. TEMPLATE 4: CLASSIC ACCOUNTING LEDGER FORMAT (A4)
+// 8. TEMPLATE 4: DEBIT MEMO TEXTILE GST FORMAT (A4)
+// Matches authentic Surat Debit Memo layout (media_1794234860456_00560b5b.png)
 // ============================================================================
-function ClassicAccountingTemplate({
+function DebitMemoGSTTemplate({
   data,
-  settings
+  settings,
+  showLogo = true,
+  showQr = true,
+  copyType
 }: {
   data: InvoiceRenderData;
   settings: CompanySettings;
+  showLogo?: boolean;
+  showQr?: boolean;
+  copyType?: string;
 }) {
   const firmName = settings.brand_name || settings.company_name || "SHIV CREATION";
+  const address = settings.address
+    ? `${settings.address}, ${settings.city_state || "Surat, Gujarat"}${settings.pincode ? ` - ${settings.pincode}` : ""}`
+    : (settings.city_state || "SURAT, GUJARAT");
+  const phone = settings.phone || settings.alt_phone || "9978987181";
+
+  const totalGst = Number(data.total_gst_amount || (Number(data.cgst_amount || 0) + Number(data.sgst_amount || 0) + Number(data.igst_amount || 0)));
+  const cgstVal = Number(data.cgst_amount || (data.taxable_amount * 0.025));
+  const sgstVal = Number(data.sgst_amount || (data.taxable_amount * 0.025));
+  const roundOffVal = Number(data.round_off || 0);
+
   return (
-    <div className="w-full bg-white text-black font-serif text-xs border-4 border-double border-black p-4 space-y-3">
-      {/* Formal Top Bar */}
-      <div className="flex justify-between items-center border-b-2 border-black pb-2">
-        <span className="font-sans text-[10px] font-bold uppercase tracking-widest bg-black text-white px-2 py-0.5">
-          TAX INVOICE - ORIGINAL
-        </span>
-        <span className="font-sans text-[11px] font-bold">GSTIN: {settings.gstin || "24AAAFA1234A1Z5"}</span>
+    <div className="w-full bg-white text-black font-sans text-xs border-2 border-black selection:bg-none">
+      {/* 1. Top Header Bar: Grey Box with Firm Name in Bold Serif */}
+      <div className="bg-[#d9d9d9] py-3 text-center border-b border-black">
+        <h1 className="font-serif font-black text-2xl sm:text-3xl tracking-widest uppercase text-black">
+          {firmName}
+        </h1>
       </div>
 
-      <div className="text-center py-2 border-b border-black">
-        <h1 className="font-black text-2xl tracking-wider uppercase font-sans">{firmName}</h1>
-        <p className="text-xs italic">{settings.address || "Textile Market, Surat, Gujarat"}</p>
-        <p className="text-[11px] font-bold font-sans">Contact: {settings.phone || "9978987181"} | State Code: 24</p>
+      {/* 2. Sub-Header: City, State | Mobile */}
+      <div className="bg-white border-b border-black py-1 px-4 text-center font-bold text-[11px] sm:text-xs text-black uppercase tracking-wider">
+        {address.toUpperCase()} | MO: {phone}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 border-b border-black pb-2 text-xs font-sans">
-        <div>
-          <p className="font-bold uppercase text-neutral-500 text-[10px]">Buyer Particulars:</p>
-          <p className="font-black text-sm">{data.customer_name}</p>
-          <p className="text-[11px]">{data.customer_address || "Surat, Gujarat"}</p>
-          <p className="font-bold font-mono">GSTIN: {data.customer_gstin || "N/A"}</p>
+      {/* 3. Document Type Bar: Debit Memo | TAX INVOICE | Original */}
+      <div className="bg-white border-b border-black px-4 py-1.5 grid grid-cols-3 items-center text-xs text-black">
+        <div className="text-left font-bold text-xs text-black">
+          Debit Memo
         </div>
-        <div className="text-right space-y-0.5 font-mono">
-          <p><span className="font-sans font-bold">Invoice No:</span> {data.invoice_no}</p>
-          <p><span className="font-sans font-bold">Date:</span> {data.date}</p>
-          <p><span className="font-sans font-bold">Terms:</span> {data.credit_days ? `${data.credit_days} Days` : "Net 30"}</p>
-          <p><span className="font-sans font-bold">Place of Supply:</span> 24-Gujarat</p>
+        <div className="text-center font-black text-sm tracking-wider uppercase text-black">
+          {data.invoice_type || "TAX INVOICE"}
+        </div>
+        <div className="text-right font-bold text-xs text-black">
+          {copyType || data.copy_type || "Original"}
         </div>
       </div>
 
-      {/* Items */}
-      <table className="w-full text-left border-collapse border border-black font-sans text-xs">
-        <thead>
-          <tr className="bg-neutral-100 font-bold border-b border-black">
-            <th className="p-1.5 text-center w-8 border-r border-black">#</th>
-            <th className="p-1.5 border-r border-black">Item Description & HSN</th>
-            <th className="p-1.5 text-center w-14 border-r border-black">Taka</th>
-            <th className="p-1.5 text-center w-16 border-r border-black">Meters</th>
-            <th className="p-1.5 text-right w-16 border-r border-black">Rate (₹)</th>
-            <th className="p-1.5 text-right w-24">Amount (₹)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.items.map((it, idx) => (
-            <tr key={idx} className="border-b border-neutral-300">
-              <td className="p-1.5 text-center font-mono border-r border-black">{idx + 1}</td>
-              <td className="p-1.5 border-r border-black font-semibold">
-                {it.design_no && `[D.No ${it.design_no}] `}{it.description} <span className="font-mono text-neutral-500 text-[10px]">(HSN: {it.hsn || "5402"})</span>
-              </td>
-              <td className="p-1.5 text-center font-mono border-r border-black">{it.taka || "-"}</td>
-              <td className="p-1.5 text-center font-mono border-r border-black">{it.meters || "-"}</td>
-              <td className="p-1.5 text-right font-mono border-r border-black">{it.rate || "-"}</td>
-              <td className="p-1.5 text-right font-mono font-bold">
-                {Number(it.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-              </td>
+      {/* 4. Two Columns: Customer Info (Left) vs Invoice Info (Right) */}
+      <div className="grid grid-cols-[1.4fr_1fr] border-b border-black text-black">
+        {/* Left Box: Customer / Buyer */}
+        <div className="p-3 space-y-1 text-xs">
+          <div>
+            <span className="font-bold">M/s. : </span>
+            <span className="font-black text-sm uppercase">{data.customer_name}</span>
+          </div>
+          {data.customer_address && (
+            <p className="text-[11px] text-neutral-800 leading-tight">{data.customer_address}</p>
+          )}
+          <div className="pt-1 space-y-0.5">
+            <div>
+              <span className="font-bold">Place of Supply</span>
+              <span className="mx-1">:</span>
+              <span>{data.customer_state_code ? `${data.customer_state_code}-${data.customer_state || "Gujarat"}` : "24-Gujarat"}</span>
+            </div>
+            <div>
+              <span className="font-bold">GSTIN No.</span>
+              <span className="mx-1">:</span>
+              <span className="font-mono">{data.customer_gstin || "URP (Unregistered)"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Box: Invoice Meta */}
+        <div className="p-3 border-l border-black space-y-1.5 text-xs font-mono">
+          <div className="flex items-center">
+            <span className="w-24 font-bold text-black font-sans">Invoice No.</span>
+            <span className="mr-2">:</span>
+            <strong className="font-black text-sm text-black">{data.invoice_no}</strong>
+          </div>
+          <div className="flex items-center">
+            <span className="w-24 font-bold text-black font-sans">Date</span>
+            <span className="mr-2">:</span>
+            <span className="font-bold text-black">{data.date}</span>
+          </div>
+          <div className="flex items-center pt-0.5">
+            <span className="w-24 font-bold text-black font-sans">Period</span>
+            <span className="mr-2">:</span>
+            <span className="text-[11px] text-neutral-800 font-sans">
+              {data.challan_date ? `${data.challan_date} to ${data.date}` : `01-11-2026 to ${data.date}`}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Item Table */}
+      <div className="w-full">
+        <table className="w-full text-left text-xs border-collapse text-black">
+          <thead>
+            <tr className="border-b border-black text-xs font-bold text-black bg-white">
+              <th className="py-1 px-2 border-r border-black text-center w-12">SrNo</th>
+              <th className="py-1 px-3 border-r border-black">Particulars</th>
+              <th className="py-1 px-2 border-r border-black text-center w-16">HSN</th>
+              <th className="py-1 px-2 border-r border-black text-center w-16">Qty</th>
+              <th className="py-1 px-2 border-r border-black text-right w-20">Rate (₹)</th>
+              <th className="py-1 px-2 border-r border-black text-center w-16">GST %</th>
+              <th className="py-1 px-3 text-right w-24">Amount (₹)</th>
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="bg-neutral-100 font-black">
-            <td colSpan={2} className="p-2 border-r border-black text-right">TOTAL INVOICE VALUE</td>
-            <td className="p-2 text-center font-mono border-r border-black">{data.items.reduce((s, it) => s + (Number(it.taka) || 0), 0)}</td>
-            <td className="p-2 text-center font-mono border-r border-black">{data.items.reduce((s, it) => s + (Number(it.meters) || 0), 0).toFixed(2)}</td>
-            <td className="p-2 border-r border-black"></td>
-            <td className="p-2 text-right font-mono text-sm">₹{data.total_amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-          </tr>
-        </tfoot>
-      </table>
+          </thead>
+          <tbody>
+            {data.items.map((it, idx) => {
+              const qtyVal = Number(it.meters || it.taka || 1);
+              const gstPercent = (totalGst > 0 && Number(data.taxable_amount || 0) > 0)
+                ? ((totalGst / Number(data.taxable_amount)) * 100).toFixed(2)
+                : "5.00";
+              return (
+                <tr key={idx} className="h-6">
+                  <td className="py-1 px-2 text-center border-r border-black font-mono">{idx + 1}</td>
+                  <td className="py-1 px-3 border-r border-black font-bold uppercase text-black">
+                    {it.description} {it.design_no ? `[DESIGN NO-${it.design_no}]` : ""}
+                  </td>
+                  <td className="py-1 px-2 text-center font-mono border-r border-black">{it.hsn || "5407"}</td>
+                  <td className="py-1 px-2 text-center font-mono border-r border-black">{qtyVal.toFixed(3)}</td>
+                  <td className="py-1 px-2 text-right font-mono border-r border-black">{Number(it.rate || 0).toFixed(2)}</td>
+                  <td className="py-1 px-2 text-center font-mono border-r border-black">{gstPercent}</td>
+                  <td className="py-1 px-3 text-right font-mono font-bold text-black">
+                    {Number(it.amount || 0).toFixed(2)}
+                  </td>
+                </tr>
+              );
+            })}
+            {/* Tall vertical lines spacer filling full A4 ledger page matching image */}
+            {(() => {
+              const memoSpacerHeight = Math.max(180, 500 - (data.items.length * 28));
+              return (
+                <tr style={{ height: `${memoSpacerHeight}px` }} className="min-h-[220px]">
+                  <td className="border-r border-black"></td>
+                  <td className="border-r border-black"></td>
+                  <td className="border-r border-black"></td>
+                  <td className="border-r border-black"></td>
+                  <td className="border-r border-black"></td>
+                  <td className="border-r border-black"></td>
+                  <td></td>
+                </tr>
+              );
+            })()}
+          </tbody>
+        </table>
+      </div>
 
-      {/* Words & Bank */}
-      <div className="flex justify-between items-start gap-3 border-t border-black pt-2 font-sans text-xs">
-        <div className="flex-1 space-y-1">
-          <p className="text-[11px] font-serif italic"><strong>In Words:</strong> {numberToIndianWords(data.total_amount)}</p>
-          <p className="text-[10px] text-neutral-600">Bank: {settings.bank_name} | A/c: {settings.account_no} | IFSC: {settings.ifsc}</p>
+      {/* 6. Sub Total Bar: Left (Firm GSTIN) vs Right (Sub Total Amount) */}
+      <div className="grid grid-cols-[1.4fr_1fr] border-t border-b border-black text-black bg-[#d9d9d9]">
+        <div className="py-1.5 px-3 font-bold text-xs flex items-center">
+          <span>GSTIN No.: {settings.gstin || "24BTYPS5349N1ZI"}</span>
         </div>
-        <div className="text-right">
-          <p className="font-bold text-xs uppercase">FOR {firmName}</p>
-          <div className="h-8"></div>
-          <p className="font-bold text-[10px] uppercase border-t border-black pt-1">Authorised Signatory</p>
+        <div className="py-1.5 px-3 border-l border-black flex justify-between items-center text-xs font-black">
+          <span>Sub Total</span>
+          <span className="font-mono text-sm">
+            {data.taxable_amount.toFixed(2)}
+          </span>
+        </div>
+      </div>
+
+      {/* 7. Total GST & Bill Amount in Words (Left) vs Tax Calculation (Right) */}
+      <div className="grid grid-cols-[1.4fr_1fr] border-b border-black text-black">
+        {/* Left: In Words */}
+        <div className="p-3 space-y-2 text-xs">
+          <div className="flex items-start gap-3">
+            <span className="font-bold w-24 shrink-0">Total GST :</span>
+            <span className="font-serif italic font-bold">
+              {numberToIndianWords(totalGst).replace(" Rupees Only", " Only")}
+            </span>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="font-bold w-24 shrink-0">Bill Amount :</span>
+            <span className="font-serif italic font-bold">
+              {numberToIndianWords(data.total_amount).replace(" Rupees Only", " Only")}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: Tax Breakdown */}
+        <div className="border-l border-black p-3 space-y-1 text-xs font-mono">
+          <div className="flex justify-between items-center font-bold">
+            <span className="font-sans font-bold">Taxable Amount</span>
+            <span>{data.taxable_amount.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center text-neutral-800">
+            <span className="font-sans">CGST &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2.50%</span>
+            <span>{cgstVal.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center text-neutral-800">
+            <span className="font-sans">SGST &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2.50%</span>
+            <span>{sgstVal.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center text-neutral-800">
+            <span className="font-sans">Round Off</span>
+            <span>{roundOffVal.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 8. Note (Left) vs Grand Total (Right) */}
+      <div className="grid grid-cols-[1.4fr_1fr] border-b border-black text-black">
+        <div className="py-2 px-3 font-bold text-xs flex items-center">
+          <span>Note : </span>
+          <span className="font-normal font-sans ml-1.5">{data.notes || ""}</span>
+        </div>
+        <div className="py-2 px-3 border-l border-black flex justify-between items-center text-xs font-black bg-[#d9d9d9]">
+          <span className="text-sm font-black uppercase">Grand Total</span>
+          <span className="font-mono text-base font-black">
+            {data.total_amount.toFixed(2)}
+          </span>
+        </div>
+      </div>
+
+      {/* 9. Terms & Condition (Left) vs Authorised Signatory (Right) */}
+      <div className="grid grid-cols-[1.4fr_1fr] text-black">
+        {/* Left: 4 Terms & Condition */}
+        <div className="p-3 text-[10px] space-y-1 font-normal italic leading-relaxed">
+          <div className="font-bold not-italic text-xs pb-0.5 text-black">Terms & Condition :</div>
+          <p>1. Goods once sold will not be taken back.</p>
+          <p>2. Interest @18% p.a. will be charged if payment is not made within due date.</p>
+          <p>3. Our risk and responsibility ceases as soon as the goods leave our premises.</p>
+          <p>4. &ldquo;Subject to &apos;SURAT&apos; Jurisdiction only. E.&amp;O.E&rdquo;</p>
+        </div>
+
+        {/* Right: Authorised Signatory */}
+        <div className="p-3 border-l border-black flex flex-col justify-between items-end min-h-[110px] text-right">
+          <div className="font-semibold text-xs text-black">
+            For, {firmName}
+          </div>
+          <div className="italic text-xs text-neutral-800">
+            (Authorised Signatory)
+          </div>
         </div>
       </div>
     </div>
@@ -996,29 +1204,32 @@ export default function InvoiceTemplateRenderer({
   data,
   settings,
   showLogo = true,
-  showQr = true
+  showQr = true,
+  copyType
 }: {
   templateId?: string;
   data: InvoiceRenderData;
   settings: CompanySettings;
   showLogo?: boolean;
   showQr?: boolean;
+  copyType?: string;
 }) {
   const normId = (templateId || "").toLowerCase();
+  const effectiveCopyType = copyType || data.copy_type || "ORIGINAL";
 
   // FORMAT 2: Textile format with Logo Box in top-left corner of the header
   if (normId.includes("format2") || normId.includes("modern")) {
-    return <StandardTextileTemplate data={data} settings={settings} showLogo={showLogo} showQr={showQr} showLogoBox={true} />;
+    return <StandardTextileTemplate data={data} settings={settings} showLogo={showLogo} showQr={showQr} showLogoBox={true} copyType={effectiveCopyType} />;
   }
-  // FORMAT 3: Textile format ready for custom bill 3
+  // FORMAT 3: Half A4 Textile format (Single bill printed only in half of A4 paper)
   if (normId.includes("format3") || normId.includes("compact")) {
-    return <StandardTextileTemplate data={data} settings={settings} showLogo={showLogo} showQr={showQr} showLogoBox={false} />;
+    return <HalfA4TextileTemplate data={data} settings={settings} showLogo={showLogo} showQr={showQr} showLogoBox={false} copyType={effectiveCopyType} />;
   }
-  // FORMAT 4: Textile format ready for custom bill 4
+  // FORMAT 4: Debit Memo Textile GST Format (New distinct design matching user image)
   if (normId.includes("format4") || normId.includes("classic")) {
-    return <StandardTextileTemplate data={data} settings={settings} showLogo={showLogo} showQr={showQr} showLogoBox={false} />;
+    return <DebitMemoGSTTemplate data={data} settings={settings} showLogo={showLogo} showQr={showQr} copyType={effectiveCopyType} />;
   }
   // Default: FORMAT 1 - Standard Textile (full-width centered title)
-  return <StandardTextileTemplate data={data} settings={settings} showLogo={showLogo} showQr={showQr} showLogoBox={false} />;
+  return <StandardTextileTemplate data={data} settings={settings} showLogo={showLogo} showQr={showQr} showLogoBox={false} copyType={effectiveCopyType} />;
 }
 

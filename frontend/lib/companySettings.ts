@@ -338,6 +338,9 @@ export function saveCompanySettings(settings: CompanySettings): void {
   const cid = getStoredCompanyId() || "comp-002";
   try {
     localStorage.setItem(`app_settings_${cid}`, JSON.stringify(settings));
+    if (settings.bill_format) {
+      localStorage.setItem("app_default_bill_format", settings.bill_format);
+    }
     window.dispatchEvent(new CustomEvent("app_settings_update", { detail: { ...settings, company_id: cid } }));
   } catch {}
 }
@@ -349,7 +352,34 @@ export function updateCompanySetting<K extends keyof CompanySettings>(key: K, va
     const current = getStoredCompanySettings();
     const updated = { ...current, [key]: value };
     localStorage.setItem(`app_settings_${cid}`, JSON.stringify(updated));
+    if (key === "bill_format" && typeof value === "string") {
+      localStorage.setItem("app_default_bill_format", value);
+    }
     window.dispatchEvent(new CustomEvent("app_settings_update", { detail: { ...updated, company_id: cid } }));
+  } catch {}
+}
+
+export function getDefaultBillFormat(): string {
+  if (typeof window === "undefined") return "standard";
+  const cid = getStoredCompanyId() || "comp-002";
+  try {
+    const raw = localStorage.getItem(`app_settings_${cid}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.bill_format) return parsed.bill_format;
+    }
+    const globalDefault = localStorage.getItem("app_default_bill_format");
+    if (globalDefault) return globalDefault;
+  } catch {}
+  return "standard";
+}
+
+export function setDefaultBillFormat(formatId: string): void {
+  if (typeof window === "undefined") return;
+  const cid = getStoredCompanyId() || "comp-002";
+  try {
+    localStorage.setItem("app_default_bill_format", formatId);
+    updateCompanySetting("bill_format", formatId);
   } catch {}
 }
 

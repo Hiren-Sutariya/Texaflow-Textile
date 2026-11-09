@@ -1730,27 +1730,6 @@ export default function LedgerPage() {
                 <Download className="w-3.5 h-3.5" />
                 <span>Excel</span>
               </button>
-
-              {/* Print PDF (Blue) */}
-              <button
-                type="button"
-                onClick={() => setIsPrintModalOpen(true)}
-                className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print PDF</span>
-              </button>
-
-              {/* WhatsApp (Deep Green) */}
-              <button
-                type="button"
-                onClick={handleSharePartyStatementWhatsApp}
-                style={{ backgroundColor: "#0e7a53" }}
-                className="h-9 px-3.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
-              >
-                <MessageCircle className="w-3.5 h-3.5 text-white" />
-                <span>WhatsApp</span>
-              </button>
             </div>
           </div>
 
@@ -2794,198 +2773,302 @@ export default function LedgerPage() {
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* 6. OFFICIAL PRINT / PDF STATEMENT MODAL                        */}
       {/* ------------------------------------------------------------- */}
-      {isPrintModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-4xl w-full p-6 sm:p-8 space-y-6 animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[92vh] overflow-y-auto">
-            
-            {/* MODAL ACTION HEADER */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Printer className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">
-                    Official Statement Print Preview
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Print on A4 or save as PDF
-                  </p>
-                </div>
-              </div>
+      {/* 6. OFFICIAL BILL-STYLE LEDGER STATEMENT PRINT / PDF MODAL    */}
+      {/* ------------------------------------------------------------- */}
+      {isPrintModalOpen && (() => {
+        const stmtDr = filteredEntries.reduce((s, e) => s + (e.debit || 0), 0);
+        const stmtCr = filteredEntries.reduce((s, e) => s + (e.credit || 0), 0);
+        const isCust = currentPartyAccountType === "Customer / Client";
+        const net = (partyFilter !== "All" ? selectedPartyOpeningBal : 0) + (isCust ? (stmtDr - stmtCr) : (stmtCr - stmtDr));
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print Now</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsPrintModalOpen(false)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+        const fmtInt = (val: number | null | undefined) => {
+          if (val === null || val === undefined || isNaN(val)) return "0";
+          return Math.round(Number(val)).toLocaleString("en-IN");
+        };
+
+        const cleanDescription = (desc: string) => {
+          if (!desc) return "";
+          return desc
+            .replace(/\s*\(\s*[₹Rs.]*\s*[\d,.]+\s*\)/g, "")
+            .replace(/\s*₹\s*[\d,.]+/g, "")
+            .trim();
+        };
+
+        const displayAddress = (() => {
+          const parts = [
+            companySettings.address,
+            companySettings.city_state,
+            companySettings.pincode
+          ].filter(Boolean);
+          const uniqueParts: string[] = [];
+          parts.forEach(p => {
+            const cleanP = String(p).trim();
+            if (cleanP && !uniqueParts.some(u => u.toLowerCase() === cleanP.toLowerCase())) {
+              uniqueParts.push(cleanP);
+            }
+          });
+          return uniqueParts.join(", ") || "Surat, Gujarat";
+        })();
+
+        const validDates = filteredEntries.map(e => e.date).filter(Boolean);
+        const fromDate = partyFilter !== "All" && selectedPartyOpeningBal
+          ? "01-04-2026"
+          : (validDates.length > 0 ? validDates[0] : "01-04-2026");
+        const toDate = validDates.length > 0
+          ? validDates[validDates.length - 1]
+          : new Date().toLocaleDateString("en-IN").replace(/\//g, "-");
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto print:p-0 print:bg-white print:static"
+            style={{
+              backgroundColor: "rgba(15, 23, 42, 0.82)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)"
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsPrintModalOpen(false);
+            }}
+          >
+            <style jsx global>{`
+              @media print {
+                @page {
+                  size: A4 portrait;
+                  margin: 6mm 8mm;
+                }
+                html, body {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  background: white !important;
+                  width: 100% !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+                body * {
+                  visibility: hidden !important;
+                }
+                #printable-ledger-statement, #printable-ledger-statement * {
+                  visibility: visible !important;
+                }
+                #printable-ledger-statement {
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  border: 2px solid black !important;
+                  box-shadow: none !important;
+                  padding: 0 !important;
+                  margin: 0 !important;
+                  background: white !important;
+                }
+                .no-print {
+                  display: none !important;
+                }
+              }
+            `}</style>
+
+            {/* FLOATING ACTION BUTTONS */}
+            <div className="fixed top-4 right-4 flex items-center gap-2 z-50 no-print flex-wrap justify-end">
+              <button
+                type="button"
+                onClick={handleSharePartyStatementWhatsApp}
+                className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-full shadow-xl flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 text-xs"
+                title="Share Statement on WhatsApp"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>WhatsApp Share</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="h-9 px-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-full shadow-xl flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 text-xs"
+                title="Print Statement / Save PDF"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print (A4)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPrintModalOpen(false)}
+                className="p-2 bg-slate-800/90 hover:bg-slate-900 text-white rounded-full shadow-xl transition-all cursor-pointer active:scale-95"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* PRINTABLE STATEMENT CONTAINER (STYLED AS OFFICIAL STATEMENT) */}
-            <div className="p-6 sm:p-8 bg-white border border-slate-200 rounded-2xl space-y-6">
-              
-              {/* BRAND HEADER */}
-              <div className="flex items-start justify-between border-b-2 border-slate-900 pb-4">
-                <div>
-                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                    {companySettings.brand_name || companySettings.company_name}
+            {/* A4 PROPORTIONED SHEET CONTAINER - FIXED TO A4 PORTRAIT PROPORTIONS */}
+            <div
+              className="flex flex-col items-center w-full my-auto space-y-3 py-4"
+              style={{ maxWidth: "794px" }}
+            >
+              {/* THE WHITE LEDGER STATEMENT SHEET (EXACT SURAT BILL TEMPLATE DESIGN) */}
+              <div
+                id="printable-ledger-statement"
+                className="w-full border-2 border-black bg-white text-black font-sans select-text shadow-2xl"
+                style={{ width: "100%", maxWidth: "794px" }}
+              >
+                {/* 1. TOP FIRM HEADER (GREY BAR LIKE BILL FORMAT) */}
+                <div className="bg-[#d9d9d9] py-2.5 px-4 text-center border-b border-black">
+                  <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-black">
+                    {companySettings.brand_name || companySettings.company_name || "SHIV CREATION"}
                   </h1>
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mt-0.5">
-                    {companySettings.tagline || "Wholesale Fabric Manufacturers & Embroidery Job Work"}
-                  </p>
-                  <p className="text-xs text-slate-600 font-medium mt-1">
-                    {companySettings.address}, {companySettings.city_state} - {companySettings.pincode}
-                  </p>
-                  <p className="text-xs text-slate-600 font-medium">
-                    GSTIN: <b className="text-slate-900">{companySettings.gstin || "—"}</b> | Phone: +91 {companySettings.phone}
-                  </p>
                 </div>
-                <div className="text-right">
-                  <span className="inline-block px-3 py-1 bg-slate-900 text-white text-xs font-black uppercase rounded-lg tracking-wider">
-                    STATEMENT OF ACCOUNT
-                  </span>
-                  <p className="text-xs font-bold text-slate-700 mt-2">
-                    Date: <span className="font-mono">{new Date().toLocaleDateString("en-IN")}</span>
-                  </p>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Financial Year: 2026-2027
-                  </p>
+                {/* COMPANY ADDRESS & MOBILE STRIP (DEDUPLICATED) */}
+                <div className="text-center py-1.5 px-3 text-xs font-semibold border-b border-black text-black bg-white">
+                  {displayAddress} | MO: {companySettings.phone || "9978987181"}
                 </div>
-              </div>
 
-              {/* PARTY & PERIOD DETAILS */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Statement For Party</span>
-                  <h4 className="text-sm font-extrabold text-slate-900 mt-0.5">
-                    {partyFilter === "All" ? "All Parties / Combined Statement" : partyFilter}
-                  </h4>
-                  <p className="text-slate-500 mt-0.5">Surat, Gujarat, India</p>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Net Closing Balance</span>
-                  {(() => {
-                    const stmtDr = filteredEntries.reduce((s, e) => s + (e.debit || 0), 0);
-                    const stmtCr = filteredEntries.reduce((s, e) => s + (e.credit || 0), 0);
-                    const isCust = currentPartyAccountType === "Customer / Client";
-                    const net = (partyFilter !== "All" ? selectedPartyOpeningBal : 0) + (isCust ? (stmtDr - stmtCr) : (stmtCr - stmtDr));
-                    const badgeText = net === 0
-                      ? "Settled (Nil)"
-                      : isCust
-                      ? (net > 0 ? "To Receive (Dr)" : "Advance Recd (Cr)")
-                      : (net > 0 ? "To Pay (Cr)" : "Advance Paid (Dr)");
-                    return (
-                      <div className="text-base font-black font-mono text-slate-900 mt-0.5">
-                        ₹{Math.abs(net).toLocaleString("en-IN")}{" "}
-                        <span className="text-xs font-bold text-blue-700">({badgeText})</span>
-                      </div>
-                    );
-                  })()}
-                  <span className="text-[11px] text-slate-500 font-bold">Total Transactions: {filteredEntries.length}</span>
-                </div>
-              </div>
-
-              {/* STATEMENT TABLE */}
-              <div className="overflow-hidden border border-slate-200 rounded-xl">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-100 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">
-                    <tr>
-                      <th className="py-2.5 px-3">Date</th>
-                      <th className="py-2.5 px-3">Ref / No</th>
-                      <th className="py-2.5 px-3">Particulars</th>
-                      <th className="py-2.5 px-3 text-right">Debit Dr (+) (₹)</th>
-                      <th className="py-2.5 px-3 text-right">Credit Cr (-) (₹)</th>
-                      <th className="py-2.5 px-3 text-right">Balance (₹)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                    {/* OPENING BALANCE ROW */}
-                    {partyFilter !== "All" && (
-                      <tr className="bg-slate-50 font-bold">
-                        <td className="py-2 px-3 font-mono text-slate-500">01-04-2026</td>
-                        <td className="py-2 px-3 font-mono">OP-BAL</td>
-                        <td className="py-2 px-3">Opening Balance Brought Forward</td>
-                        <td className="py-2 px-3 text-right font-mono">—</td>
-                        <td className="py-2 px-3 text-right font-mono">—</td>
-                        <td className="py-2 px-3 text-right font-mono font-black text-slate-900">
-                          ₹{selectedPartyOpeningBal.toLocaleString("en-IN")}
-                        </td>
-                      </tr>
-                    )}
-                    {filteredEntries.map((e) => (
-                      <tr key={e.id}>
-                        <td className="py-2 px-3 font-mono">{e.date}</td>
-                        <td className="py-2 px-3 font-mono font-bold text-slate-800">{formatShortRefNo(e.refNo)}</td>
-                        <td className="py-2 px-3">{e.description}</td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-blue-700">
-                          {e.debit > 0 ? `+₹${e.debit.toLocaleString("en-IN")}` : "—"}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-emerald-700">
-                          {e.credit > 0 ? `-₹${e.credit.toLocaleString("en-IN")}` : "—"}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono font-black text-slate-900">
-                          ₹{(e.runningBalance ?? 0).toLocaleString("en-IN")} {e.balanceType || ""}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  {(() => {
-                    const stmtDr = filteredEntries.reduce((s, e) => s + (e.debit || 0), 0);
-                    const stmtCr = filteredEntries.reduce((s, e) => s + (e.credit || 0), 0);
-                    return (
-                      <tfoot className="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-300">
-                        <tr>
-                          <td colSpan={3} className="py-2.5 px-3 uppercase">Total Statement Amounts</td>
-                          <td className="py-2.5 px-3 text-right font-mono text-blue-700">₹{stmtDr.toLocaleString("en-IN")}</td>
-                          <td className="py-2.5 px-3 text-right font-mono text-emerald-700">₹{stmtCr.toLocaleString("en-IN")}</td>
-                          <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900">
-                            Dr ₹{stmtDr.toLocaleString("en-IN")} / Cr ₹{stmtCr.toLocaleString("en-IN")}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    );
-                  })()}
-                </table>
-              </div>
-
-              {/* BANK DETAILS & SIGNATURE BLOCK */}
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 text-xs">
-                <div>
-                  <span className="font-extrabold text-slate-800 block mb-1">Bank Payment Details:</span>
-                  <p className="text-slate-600">Bank: <b className="text-slate-900">{companySettings.bank_name || "State Bank of India"}</b></p>
-                  <p className="text-slate-600">Account: <b className="text-slate-900 font-mono">{companySettings.account_holder || companySettings.company_name} ({companySettings.account_no || "—"})</b></p>
-                  <p className="text-slate-600">IFSC Code: <b className="text-slate-900 font-mono">{companySettings.ifsc || "—"}</b></p>
-                  {companySettings.branch_name && (
-                    <p className="text-slate-600">Branch: <b className="text-slate-900">{companySettings.branch_name}</b></p>
-                  )}
-                </div>
-                <div className="flex flex-col items-end justify-end">
-                  <div className="w-56 border-t border-dashed border-slate-400 pt-1 text-center">
-                    <p className="font-bold text-slate-800">{companySettings.signatory_label || `For, ${companySettings.company_name}`}</p>
-                    <p className="text-[10px] text-slate-400 mt-3">Authorized Signatory</p>
+                {/* SUB HEADER STRIP - GST NO (LEFT), DATE RANGE (CENTER), F.Y. (RIGHT) */}
+                <div className="flex justify-between items-center px-3 py-2 border-b border-black text-xs font-bold bg-white text-black font-mono">
+                  <div className="flex items-center gap-1">
+                    <span className="font-sans">GST No. : </span>
+                    <span className="font-bold">{companySettings.gstin || "-"}</span>
+                  </div>
+                  <div className="text-center font-bold underline font-sans text-xs sm:text-sm">
+                    {fromDate} to {toDate}
+                  </div>
+                  <div className="text-right">
+                    <span className="font-sans">F.Y. : </span>
+                    <span className="font-bold">2026-2027</span>
                   </div>
                 </div>
+
+                {/* PARTY ACCOUNT DETAILS (CLEAN BAR - REGULAR WEIGHT, NO TAG) */}
+                <div className="px-3 py-2 border-b border-black flex items-center bg-white text-black text-xs sm:text-sm">
+                  <span>M/s. : </span>
+                  <span className="ml-1 uppercase tracking-wide">
+                    {partyFilter === "All" ? "ALL PARTIES (COMBINED)" : partyFilter}
+                  </span>
+                </div>
+
+                {/* 3. OPENING & CLOSING BALANCE KPI STRIP (UNIFORM SIZES, SHORT TEXT) */}
+                <div className="grid grid-cols-4 text-xs border-b border-black divide-x divide-black bg-white text-center">
+                  <div className="py-2.5 px-2">
+                    <div className="text-[11px] font-bold text-neutral-600 uppercase tracking-wide">Opening Balance</div>
+                    <div className="font-mono font-black text-sm sm:text-base text-black mt-0.5">
+                      ₹{fmtInt(partyFilter !== "All" ? selectedPartyOpeningBal : 0)}
+                    </div>
+                  </div>
+                  <div className="py-2.5 px-2">
+                    <div className="text-[11px] font-bold text-neutral-600 uppercase tracking-wide">Total Debit (+)</div>
+                    <div className="font-mono font-black text-sm sm:text-base text-black mt-0.5">
+                      ₹{fmtInt(stmtDr)}
+                    </div>
+                  </div>
+                  <div className="py-2.5 px-2">
+                    <div className="text-[11px] font-bold text-neutral-600 uppercase tracking-wide">Total Credit (-)</div>
+                    <div className="font-mono font-black text-sm sm:text-base text-black mt-0.5">
+                      ₹{fmtInt(stmtCr)}
+                    </div>
+                  </div>
+                  <div className="py-2.5 px-2 bg-[#d9d9d9]/30">
+                    <div className="text-[11px] font-bold text-neutral-600 uppercase tracking-wide">Closing Balance</div>
+                    <div className="font-mono font-black text-sm sm:text-base text-black mt-0.5">
+                      ₹{fmtInt(Math.abs(net))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. STATEMENT LEDGER TABLE (EXACT BILL GRID DESIGN WITH TALL VERTICAL LINES) */}
+                <div className="w-full">
+                  <table className="w-full text-left text-xs border-collapse font-sans table-fixed">
+                    <thead>
+                      <tr className="bg-[#d9d9d9] border-b border-black text-center font-bold text-xs text-black">
+                        <th className="py-2 px-1 border-r border-black w-10 text-center">No</th>
+                        <th className="py-2 px-2 border-r border-black w-24 text-center">Date</th>
+                        <th className="py-2 px-2 border-r border-black w-24 text-center">Ref No</th>
+                        <th className="py-2 px-3 border-r border-black text-left">Particulars</th>
+                        <th className="py-2 px-2.5 border-r border-black w-24 text-right">Debit (₹)</th>
+                        <th className="py-2 px-2.5 border-r border-black w-24 text-right">Credit (₹)</th>
+                        <th className="py-2 px-2.5 w-28 text-right">Balance (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-xs text-black">
+                      {/* Opening Balance Row */}
+                      {partyFilter !== "All" && (
+                        <tr className="border-b border-black font-bold">
+                          <td className="py-2 px-1 text-center font-mono border-r border-black">1</td>
+                          <td className="py-2 px-2 text-center font-mono border-r border-black whitespace-nowrap">01-04-2026</td>
+                          <td className="py-2 px-2 text-center font-mono border-r border-black whitespace-nowrap">OP-BAL</td>
+                          <td className="py-2 px-3 border-r border-black italic font-semibold">
+                            Opening Balance Brought Forward
+                          </td>
+                          <td className="py-2 px-2.5 text-right font-mono border-r border-black">—</td>
+                          <td className="py-2 px-2.5 text-right font-mono border-r border-black">—</td>
+                          <td className="py-2 px-2.5 text-right font-mono font-black whitespace-nowrap">
+                            ₹{fmtInt(selectedPartyOpeningBal)}
+                          </td>
+                        </tr>
+                      )}
+
+                      {filteredEntries.map((e, idx) => {
+                        const rowNum = (partyFilter !== "All" ? 2 : 1) + idx;
+                        return (
+                          <tr key={e.id} className="border-b border-black/30">
+                            <td className="py-2 px-1 text-center font-mono border-r border-black text-[11px]">{rowNum}</td>
+                            <td className="py-2 px-2 text-center font-mono border-r border-black text-[11px] whitespace-nowrap">{e.date}</td>
+                            <td className="py-2 px-2 text-center font-mono font-bold border-r border-black text-[11px] whitespace-nowrap">{formatShortRefNo(e.refNo)}</td>
+                            <td className="py-2 px-3 border-r border-black text-xs leading-snug">{cleanDescription(e.description)}</td>
+                            <td className="py-2 px-2.5 text-right font-mono font-bold border-r border-black text-xs whitespace-nowrap">
+                              {e.debit > 0 ? fmtInt(e.debit) : "—"}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono font-bold border-r border-black text-xs whitespace-nowrap">
+                              {e.credit > 0 ? fmtInt(e.credit) : "—"}
+                            </td>
+                            <td className="py-2 px-2.5 text-right font-mono font-black text-xs whitespace-nowrap">
+                              ₹{fmtInt(Math.abs(Number(e.runningBalance ?? 0)))}
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {/* TALL VERTICAL SPACER ROW TO FILL A4 SHEET LIKE BILL FORMAT IN IMAGE 3 */}
+                      {(() => {
+                        const rowCount = filteredEntries.length + (partyFilter !== "All" ? 1 : 0);
+                        const spacerHeight = Math.max(70, 420 - (rowCount * 26));
+                        if (spacerHeight <= 0) return null;
+                        return (
+                          <tr style={{ height: `${spacerHeight}px` }}>
+                            <td className="border-r border-black"></td>
+                            <td className="border-r border-black"></td>
+                            <td className="border-r border-black"></td>
+                            <td className="border-r border-black"></td>
+                            <td className="border-r border-black"></td>
+                            <td className="border-r border-black"></td>
+                            <td></td>
+                          </tr>
+                        );
+                      })()}
+                    </tbody>
+
+                    {/* TOTAL STATEMENT AMOUNTS FOOTER (NO GUJARATI TEXT) */}
+                    <tfoot>
+                      <tr className="bg-[#d9d9d9] border-t-2 border-black font-black text-xs text-black">
+                        <td colSpan={4} className="py-2.5 px-3 border-r border-black text-center font-black uppercase tracking-wider">
+                          TOTAL STATEMENT AMOUNTS
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right font-mono border-r border-black font-black">
+                          ₹{fmtInt(stmtDr)}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right font-mono border-r border-black font-black">
+                          ₹{fmtInt(stmtCr)}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right font-mono font-black">
+                          ₹{fmtInt(Math.abs(net))}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
               </div>
-
             </div>
-
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </div>
   );

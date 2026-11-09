@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantStorage";
 import { calculateDueDate, getDueStatus, parseAnyDate } from "@/lib/creditTerms";
-import { getStoredCompanySettings, fetchLiveCompanySettings, CompanySettings, getFieldLabel } from "@/lib/companySettings";
+import { getStoredCompanySettings, fetchLiveCompanySettings, CompanySettings, getFieldLabel, getDefaultBillFormat } from "@/lib/companySettings";
+import InvoiceTemplateRenderer, { InvoiceRenderData } from "@/components/invoice/InvoiceTemplateRenderer";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   getStoredSalesInvoices,
@@ -743,9 +744,47 @@ export default function InvoicesPage() {
         const totalGstInWords = numberToIndianWords(Math.round(totalGst));
         const finalTotalInWords = numberToIndianWords(finalTotal);
 
+        const invoiceRenderData: InvoiceRenderData = {
+          invoice_no: previewInvoice.invoice_no,
+          date: previewInvoice.date,
+          invoice_type: "TAX INVOICE",
+          copy_type: "ORIGINAL",
+          customer_name: previewInvoice.customer_name,
+          customer_address: previewInvoice.customer_address,
+          customer_phone: (previewInvoice as any).customer_phone,
+          customer_gstin: previewInvoice.customer_gstin,
+          customer_state: (previewInvoice as any).customer_state || "Gujarat",
+          customer_state_code: (previewInvoice as any).customer_state_code || "24",
+          credit_days: previewInvoice.credit_days,
+          due_date: previewInvoice.due_date,
+          items: statementRows.map((r: any, idx: number) => ({
+            sr: idx + 1,
+            description: r.description,
+            design_no: r.design_no,
+            hsn: r.hsn_code || "5407",
+            taka: r.takka,
+            meters: r.quantity,
+            rate: r.rate,
+            amount: Number(r.amount || 0)
+          })),
+          taxable_amount: taxableAmount,
+          cgst_amount: cgstAmount,
+          sgst_amount: sgstAmount,
+          igst_amount: igstAmount,
+          total_gst_amount: totalGst,
+          round_off: roundOff,
+          total_amount: finalTotal,
+          notes: previewInvoice.notes
+        };
+
         return (
           <div
-            className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
+            className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:static"
+            style={{
+              backgroundColor: "rgba(15, 23, 42, 0.82)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)"
+            }}
             onClick={(e) => {
               if (e.target === e.currentTarget) setPreviewInvoice(null);
             }}
@@ -816,344 +855,17 @@ export default function InvoicesPage() {
             </div>
 
             <div className="flex flex-col items-center max-w-[840px] w-full my-auto py-4 space-y-3">
-              {/* WHITE A4 INVOICE SHEET (A4 PROPORTION 210mm x 297mm) */}
+              {/* WHITE INVOICE SHEET */}
               <div
                 id="printable-tax-invoice"
-                className="w-full max-w-[794px] min-h-[1050px] bg-white p-4 sm:p-7 rounded-sm shadow-2xl text-black font-sans select-text text-left"
+                className="w-full max-w-[820px] bg-white p-2 sm:p-6 rounded-sm shadow-2xl text-black font-sans select-text text-left"
               >
-                {/* INNER BORDERED TAX INVOICE BOX */}
-                {/* INNER BORDERED TAX INVOICE BOX */}
-                <div className="w-full border-2 border-black bg-white">
-                  {/* 1. TOP HEADER GREY BOX (COMPANY NAME - SERIF FONT MATCHING IMAGE 1) */}
-                  <div className="bg-[#d9d9d9] border-b border-black py-2.5 text-center">
-                    <h1 className="font-serif font-black text-2xl sm:text-3xl tracking-wide text-black uppercase">
-                      {companySettings.brand_name || companySettings.company_name || "OM SAI ENTERPRISE"}
-                    </h1>
-                  </div>
-
-                  {/* 2. COMPANY ADDRESS, PHONE & GST */}
-                  <div className="py-1 px-3 text-center border-b border-black text-[11px] font-semibold text-black uppercase tracking-wider">
-                    {companyAddressDisplay}
-                    {companySettings.phone ? ` | MO: ${companySettings.phone}` : ""}
-                  </div>
-
-                  {/* 3. SUBHEADER STRIP (DEBIT MEMO | TAX INVOICE | ORIGINAL MATCHING IMAGE 1) */}
-                  <div className="grid grid-cols-3 items-center py-1.5 px-3 border-b border-black text-xs font-bold text-black bg-white">
-                    <div>Debit Memo</div>
-                    <div className="text-center font-black text-sm uppercase tracking-wider">TAX INVOICE</div>
-                    <div className="text-right">Original</div>
-                  </div>
-
-                  {/* 4. BUYER DETAILS (LEFT) & INVOICE DETAILS (RIGHT) - 300px RIGHT BOX CONNECTS DIRECTLY WITH QTY COLUMN */}
-                  <div className="flex border-b border-black text-black">
-                    {/* Left: Buyer Details (Compact fit, aligned with SrNo, Product Name, and HSN/SAC columns) */}
-                    <div className="flex-1 p-2 px-3 border-r border-black flex flex-col justify-between text-xs">
-                      <div>
-                        <div className="flex items-start text-xs font-bold text-black">
-                          <span className="w-14 shrink-0 font-bold">M/s. :</span>
-                          <div className="flex-1">
-                            <div className="font-black text-sm uppercase tracking-wide">
-                              {previewInvoice.customer_name}
-                            </div>
-                            {previewInvoice.customer_address ? (
-                              <div className="text-[11px] font-semibold text-black leading-tight mt-0.5 whitespace-pre-line">
-                                {previewInvoice.customer_address}
-                              </div>
-                            ) : (
-                              <div className="text-[11px] font-semibold text-black leading-tight mt-0.5">
-                                SURAT, GUJARAT
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="text-xs space-y-0.5 pt-1.5">
-                          <div className="flex items-center">
-                            <span className="font-bold text-black text-[11px] w-28">Place of Supply</span>
-                            <span className="w-3 font-bold text-[11px]">:</span>
-                            <span className="font-bold text-black text-[11px]">{previewInvoice.place_of_supply || "24-Gujarat"}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <span className="font-bold text-black text-[11px] w-28">GSTIN No.</span>
-                            <span className="w-3 font-bold text-[11px]">:</span>
-                            <span className="font-mono font-black text-black text-[11px]">{previewInvoice.customer_gstin || "URP (Unregistered)"}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: Invoice Details Box (Exact 320px to match Qty(75px) + Rate(100px) + GST %(58px) + Amount(87px)) */}
-                    <div className="w-[320px] flex flex-col text-xs font-bold bg-white">
-                      {/* Box 1 (Top): Light Grey Box for Invoice No. & Date */}
-                      <div className="bg-[#e5e7eb] border-b border-black py-1.5 px-3 space-y-1">
-                        <div className="flex items-center text-xs">
-                          <span className="w-24 text-black font-bold">Invoice No.</span>
-                          <span className="w-3 font-bold">:</span>
-                          <span className="font-mono font-black text-sm">{previewInvoice.invoice_no}</span>
-                        </div>
-                        <div className="flex items-center text-xs">
-                          <span className="w-24 text-black font-bold">Date</span>
-                          <span className="w-3 font-bold">:</span>
-                          <span className="font-mono font-bold text-xs">{previewInvoice.date}</span>
-                        </div>
-                      </div>
-
-                      {/* Box 2 (Bottom): White Box for Period / Extra Info */}
-                      <div className="bg-white py-1.5 px-3 flex-1 flex flex-col justify-center min-h-[28px]">
-                        {(periodFrom || periodTo) ? (
-                          <div className="flex items-center text-xs">
-                            <span className="w-24 text-black font-bold">Period</span>
-                            <span className="w-3 font-bold">:</span>
-                            <span className="font-mono font-medium text-xs">
-                              {periodFrom} to {periodTo}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="h-3.5"></div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 5. UNIFIED ITEMS & FINANCIAL TABLE (MATCHING REFERENCE IMAGE 1 EXACTLY) */}
-                  <div className="w-full">
-                    <table className="w-full text-left text-xs border-collapse text-black table-fixed">
-                      <thead>
-                        {/* COLUMN HEADERS: SrNo, Product Name, HSN | Qty, Rate, GST %, Amount */}
-                        <tr className="border-b border-black text-xs font-bold text-black bg-white">
-                          <th className="py-1 px-1 text-center w-[40px] border-r border-black">SrNo</th>
-                          <th className="py-1 px-3 border-r border-black">
-                            {getFieldLabel(companySettings, "sales_item", "Product Name")}
-                          </th>
-                          <th className="py-1 px-1 text-center w-[54px] border-r border-black">HSN</th>
-                          <th className="py-1 px-1 text-right w-[75px] border-r border-black pr-3">
-                            {getFieldLabel(companySettings, "sales_qty", "Qty")}
-                          </th>
-                          <th className="py-1 px-1 text-right w-[100px] border-r border-black pr-3">
-                            {getFieldLabel(companySettings, "sales_rate", "Rate")}
-                          </th>
-                          <th className="py-1 px-1 text-center w-[58px] border-r border-black whitespace-nowrap">GST %</th>
-                          <th className="py-1 px-2 text-right w-[87px] pr-3">
-                            {getFieldLabel(companySettings, "sales_total", "Amount")}
-                          </th>
-                        </tr>
-                      </thead>
-
-                      <tbody className="text-xs font-medium text-black">
-                        {statementRows.map((row, idx) => {
-                          const displayProductName = row.design_no
-                            ? (row.description && !row.description.includes(row.design_no)
-                                ? `${row.description} [DESIGN NO-${row.design_no}]`
-                                : row.description || `DESIGN NO-${row.design_no}`)
-                            : (row.description || "Textile Goods");
-
-                          const qtyFormatted = typeof row.quantity === "number"
-                            ? row.quantity.toFixed(3)
-                            : (!isNaN(Number(row.quantity)) && row.quantity !== "-"
-                                ? Number(row.quantity).toFixed(3)
-                                : row.quantity);
-
-                          return (
-                            <tr key={idx} className="h-6">
-                              <td className="py-1 px-1 text-center border-r border-black font-mono">
-                                {idx + 1}
-                              </td>
-                              <td className="py-1 px-3 border-r border-black font-bold uppercase">
-                                {displayProductName}
-                              </td>
-                              <td className="py-1 px-1 text-center font-mono border-r border-black">
-                                {row.hsn_code || companySettings.hsn_sac_code || "5407"}
-                              </td>
-                              <td className="py-1 px-1 text-right font-mono border-r border-black pr-3">
-                                {qtyFormatted}
-                              </td>
-                              <td className="py-1 px-1 text-right font-mono border-r border-black pr-3">
-                                {row.rate}
-                              </td>
-                              <td className="py-1 px-1 text-center font-mono border-r border-black">
-                                {gstRate.toFixed(2)}
-                              </td>
-                              <td className="py-1 px-2 text-right font-mono font-bold pr-3">
-                                {row.amount > 0 ? (row.amount >= 1000000 ? row.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : row.amount.toFixed(2)) : "-"}
-                              </td>
-                            </tr>
-                          );
-                        })}
-
-                        {/* Tall Spacer row with vertical column lines connecting seamlessly to the bottom */}
-                        <tr className="h-80 sm:h-96">
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td className="border-r border-black"></td>
-                          <td></td>
-                        </tr>
-                      </tbody>
-
-                      {/* 6. BOTTOM FINANCIAL, BANK & TERMS GRID - EXACT MATCH TO IMAGE 2 & 4 */}
-                      <tfoot>
-                        {/* ROW 1: Grey Header Strip (GSTIN No. & Bank on Left, Sub Total on Right) */}
-                        <tr className="border-t border-black bg-[#e5e7eb] text-black">
-                          <td colSpan={4} className="py-1 px-3 border-r border-black font-bold text-xs">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <span>GSTIN No.: </span>
-                                <span className="font-mono font-extrabold">{companySettings.gstin || "24BTYPS5349N1ZI"}</span>
-                              </div>
-                              {companySettings.bank_name && (
-                                <div className="text-[11px] font-semibold text-gray-700">
-                                  <span>Bank: {companySettings.bank_name}</span>
-                                  {companySettings.account_no && <span className="ml-2 font-mono">A/c: {companySettings.account_no}</span>}
-                                  {companySettings.ifsc && <span className="ml-2 font-mono">IFSC: {companySettings.ifsc}</span>}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td colSpan={3} className="py-1 px-3 text-xs font-bold">
-                            <div className="flex justify-between items-center pr-1">
-                              <span>Sub Total</span>
-                              <span className="font-mono font-extrabold text-sm">
-                                {subTotal.toFixed(2)}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-
-                        {/* ROW 2: Words on Left | Taxable Amount & GST Calculations on Right (Matching Image 2) */}
-                        <tr className="border-t border-black bg-white text-black">
-                          {/* Left: Total GST & Bill Amount in words (Directly opposite to Calculations) */}
-                          <td colSpan={4} className="p-2.5 px-3 border-r border-black align-top bg-white">
-                            <div className="text-xs space-y-2 pt-1">
-                              <div className="flex items-start gap-1">
-                                <span className="font-bold whitespace-nowrap w-24 text-black text-xs">Total GST :</span>
-                                <span className="italic font-medium leading-tight text-[11px] text-black">
-                                  {totalGstInWords}
-                                </span>
-                              </div>
-                              <div className="flex items-start gap-1">
-                                <span className="font-bold whitespace-nowrap w-24 text-black text-xs">Bill Amount :</span>
-                                <span className="italic font-medium leading-tight text-[11px] text-black">
-                                  {finalTotalInWords}
-                                </span>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Right: Calculations (Taxable Amount, CGST, SGST, Round Off matching Image 2 perfectly) */}
-                          <td colSpan={3} className="p-2.5 px-3 align-top bg-white">
-                            <div className="flex flex-col justify-between text-xs min-h-[115px]">
-                              {/* Top Part: Discount (with gap below, exactly as in Image 2) */}
-                              <div>
-                                {discountAmount > 0 ? (
-                                  <div className="flex items-center justify-between text-black font-medium">
-                                    <span className="w-24 shrink-0 font-medium">Discount</span>
-                                    <span className="font-mono text-center flex-1">{discountRate.toFixed(2)}%</span>
-                                    <span className="font-mono text-right w-24 shrink-0 pr-1">{discountAmount.toFixed(2)}</span>
-                                  </div>
-                                ) : (
-                                  <div className="h-3.5"></div>
-                                )}
-                              </div>
-
-                              {/* Bottom Part: Taxable Amount, CGST, SGST, Round Off */}
-                              <div className="space-y-1.5 pt-2">
-                                {/* Taxable Amount Row */}
-                                <div className="flex items-center justify-between text-black font-bold">
-                                  <span className="w-28 shrink-0 font-bold">Taxable Amount</span>
-                                  <span className="flex-1"></span>
-                                  <span className="font-mono font-bold text-right w-24 shrink-0 pr-1">{taxableAmount.toFixed(2)}</span>
-                                </div>
-
-                                {/* CGST / SGST or IGST Rows */}
-                                {igstAmount > 0 ? (
-                                  <div className="flex items-center justify-between text-black font-medium">
-                                    <span className="w-24 shrink-0">IGST</span>
-                                    <span className="font-mono text-center flex-1">{gstRate.toFixed(2)}%</span>
-                                    <span className="font-mono text-right w-24 shrink-0 pr-1">{igstAmount.toFixed(2)}</span>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div className="flex items-center justify-between text-black font-medium">
-                                      <span className="w-24 shrink-0">CGST</span>
-                                      <span className="font-mono text-center flex-1">{cgstRate.toFixed(2)}%</span>
-                                      <span className="font-mono text-right w-24 shrink-0 pr-1">{cgstAmount.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between text-black font-medium">
-                                      <span className="w-24 shrink-0">SGST</span>
-                                      <span className="font-mono text-center flex-1">{sgstRate.toFixed(2)}%</span>
-                                      <span className="font-mono text-right w-24 shrink-0 pr-1">{sgstAmount.toFixed(2)}</span>
-                                    </div>
-                                  </>
-                                )}
-
-                                {/* Round Off Row */}
-                                <div className="flex items-center justify-between text-black font-medium">
-                                  <span className="w-24 shrink-0">Round Off</span>
-                                  <span className="flex-1"></span>
-                                  <span className="font-mono text-right w-24 shrink-0 pr-1">{roundOff >= 0 ? roundOff.toFixed(2) : roundOff.toFixed(2)}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-
-                        {/* ROW 3: Note on Left | Grand Total on Right (Matching Image 2) */}
-                        <tr className="border-t border-black text-black">
-                          {/* Left: Note Row directly opposite to Grand Total */}
-                          <td colSpan={4} className="py-2 px-3 border-r border-black align-middle bg-white text-xs">
-                            <div className="flex items-center gap-1.5 whitespace-nowrap overflow-hidden">
-                              <span className="font-bold shrink-0 text-black">Note :</span>
-                              <span className="font-medium text-black truncate">
-                                {previewInvoice.notes || (linkedNos.length > 0 ? `Consolidated Tax Invoice against Sales Challans: ${linkedNos.join(", ")}` : "")}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Right: Grand Total (Grey background) */}
-                          <td colSpan={3} className="p-2.5 px-3 align-middle bg-[#e5e7eb] font-black">
-                            <div className="flex justify-between items-center text-black pr-1">
-                              <span className="text-sm font-black">Grand Total</span>
-                              <span className="font-mono text-base font-black">
-                                {finalTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-
-                        {/* ROW 4: Terms & Conditions (Left) | Authorized Signatory (Right) */}
-                        <tr className="border-t border-black bg-white text-black">
-                          {/* Left: Terms & Condition */}
-                          <td colSpan={4} className="p-2.5 px-3 border-r border-black align-top">
-                            <div className="text-xs space-y-0.5">
-                              <div className="font-bold text-black pb-0.5">Terms & Condition :</div>
-                              <div className="text-[10px] italic text-black leading-snug">
-                                <div>1. Goods once sold will not be taken back.</div>
-                                <div>2. Interest @18% p.a. will be charged if payment is not made within due date.</div>
-                                <div>3. Our risk and responsibility ceases as soon as the goods leave our premises.</div>
-                                <div>4. "Subject to 'SURAT' Jurisdiction only. E.&.O.E"</div>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Right: Authorised Signatory */}
-                          <td colSpan={3} className="p-2.5 px-3 text-right align-top">
-                            <div className="flex flex-col justify-between items-end h-full min-h-[90px]">
-                              <div className="font-medium text-xs text-black">
-                                For, {companySettings.brand_name || companySettings.company_name || "OM SAI ENTERPRISE"}
-                              </div>
-                              <div className="font-medium text-[11px] text-black italic">
-                                (Authorised Signatory)
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-
-                </div>
+                <InvoiceTemplateRenderer
+                  templateId={companySettings.bill_format || getDefaultBillFormat() || "standard"}
+                  data={invoiceRenderData}
+                  settings={companySettings}
+                  showQr={companySettings.print_qr}
+                />
               </div>
             </div>
           </div>

@@ -16,7 +16,6 @@ import {
   Check,
   X,
   SlidersHorizontal,
-  Printer,
   Trash2,
   Eye,
   Receipt
@@ -1001,16 +1000,9 @@ export default function PaymentsAndVouchersPage() {
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 onClick={() => setPreviewVoucher(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-2xs"
               >
                 Close
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print Voucher</span>
               </button>
             </div>
           </div>

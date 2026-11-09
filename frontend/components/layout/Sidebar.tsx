@@ -86,7 +86,6 @@ const menuGroups: MenuGroup[] = [
   {
     groupTitle: "Upcoming Features",
     items: [
-      { name: "Karigar Issue", href: "/job-works", icon: FileText, isUpcoming: true },
       { name: "OMS Performance", href: "/oms-performance", icon: TrendingUp, isUpcoming: true },
       { name: "Reports", href: "/reports", icon: BarChart3, isUpcoming: true },
     ]
@@ -134,7 +133,7 @@ export function Sidebar({
 
   // Auto-expand "Upcoming Features" if current route matches an upcoming item
   useEffect(() => {
-    const isUpcomingActive = ["/designs", "/job-works", "/worker-payout", "/oms-performance", "/reports"].some(
+    const isUpcomingActive = ["/designs", "/worker-payout", "/oms-performance", "/reports"].some(
       (path) => pathname === path || (path !== "/" && pathname.startsWith(path + "/"))
     );
     if (isUpcomingActive) {
