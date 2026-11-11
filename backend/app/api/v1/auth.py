@@ -1,3 +1,4 @@
+import hmac
 import hashlib
 import secrets
 import json
@@ -32,14 +33,14 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, stored_password: str) -> bool:
     if not stored_password:
         return False
-    # If legacy plain text
-    if stored_password == plain_password:
+    # If legacy plain text (constant-time comparison protects against timing attacks)
+    if hmac.compare_digest(stored_password, plain_password):
         return True
     if ":" in stored_password:
         try:
             salt, key_hex = stored_password.split(":", 1)
             new_key = hashlib.pbkdf2_hmac("sha256", plain_password.encode("utf-8"), salt.encode("utf-8"), 100000)
-            return new_key.hex() == key_hex
+            return hmac.compare_digest(new_key.hex(), key_hex)
         except Exception:
             return False
     return False
@@ -47,7 +48,7 @@ def verify_password(plain_password: str, stored_password: str) -> bool:
 # In-memory ultra-fast authentication cache (keyed by lowercased username, email, user_id)
 AUTH_FAST_STORE = {}
 
-def sync_user_to_cache(user_id: str, username: str, email: str, name: str, firm_name: str, company_id: str, password_hash: str = "", plain_password: Optional[str] = None):
+def sync_user_to_cache(user_id: str, username: str, email: str, name: str, firm_name: str, company_id: str, password_hash: str = ""):
     entry = {
         "id": user_id,
         "name": name,
@@ -58,7 +59,6 @@ def sync_user_to_cache(user_id: str, username: str, email: str, name: str, firm_
         "firmName": firm_name,
         "companyId": company_id or "comp-001",
         "password_hash": password_hash,
-        "plain_password": plain_password
     }
     if username:
         AUTH_FAST_STORE[username.strip().lower()] = entry
@@ -82,8 +82,7 @@ def preload_auth_cache_from_db():
                     name=u.name,
                     firm_name=firm,
                     company_id=u.company_id or "comp-001",
-                    password_hash=u.password_hash or "",
-                    plain_password=None
+                    password_hash=u.password_hash or ""
                 )
         finally:
             db.close()
@@ -129,10 +128,18 @@ def login(req: LoginRequest):
                 detail="Incorrect password. Please try again."
             )
 
+        # Security Upgrade: Automatically upgrade legacy plaintext password to secure PBKDF2 hash
+        if user.password_hash and ":" not in user.password_hash:
+            user.password_hash = hash_password(req.password)
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+
         company = db.query(Company).filter(Company.id == user.company_id).first()
         firm_name = company.name if company else (user.firm_name or "Om Sai Enterprise")
 
-        # Sync credentials to cache
+        # Sync credentials to cache (no plain passwords in memory)
         sync_user_to_cache(
             user_id=user.id,
             username=user.username,
@@ -140,8 +147,7 @@ def login(req: LoginRequest):
             name=user.name,
             firm_name=firm_name,
             company_id=user.company_id or "comp-001",
-            password_hash=user.password_hash,
-            plain_password=None
+            password_hash=user.password_hash
         )
 
         token = create_access_token({
@@ -501,8 +507,7 @@ def change_credentials(req: ChangeCredentialsRequest, db: Session = Depends(get_
         name=user.name,
         firm_name=user.firm_name,
         company_id=user.company_id or "comp-001",
-        password_hash=user.password_hash,
-        plain_password=req.new_password.strip() if req.new_password and req.new_password.strip() else None
+        password_hash=user.password_hash
     )
 
     return {
@@ -1010,8 +1015,7 @@ def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db))
         name=new_user.name,
         firm_name=new_company.name,
         company_id=new_company.id,
-        password_hash=new_user.password_hash,
-        plain_password=req.password.strip()
+        password_hash=new_user.password_hash
     )
 
     # Clear OTP from memory

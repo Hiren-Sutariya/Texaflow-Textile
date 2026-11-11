@@ -84,6 +84,17 @@ def get_tenant_company_id(
                 detail=f"Authentication token invalid or expired: {err}"
             )
 
+    # Security Enforcement:
+    # If no authenticated Bearer token is provided, callers cannot access other tenant companies.
+    # Only the default bootstrap tenant ('comp-001') is accessible without authentication.
+    # Any attempt to access other companies ('comp-002', 'comp-003', etc.) without a valid token is rejected!
     if x_company_id and x_company_id.strip():
-        return x_company_id.strip()
+        requested_cid = x_company_id.strip()
+        if requested_cid != "comp-001":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Authentication required: Access to company '{requested_cid}' requires a valid Bearer token."
+            )
+        return requested_cid
+
     return "comp-001"

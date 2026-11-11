@@ -11,11 +11,15 @@ import base64
 import time
 from typing import Optional, Dict, Any
 
+import secrets
+
 # Cryptographic secret key for signing tokens
-JWT_SECRET_KEY = os.getenv(
-    "JWT_SECRET_KEY", 
-    "texaflow-production-secure-jwt-key-2026-texa-erp-om-sai-enterprise-master-secret"
-)
+_raw_secret = os.getenv("JWT_SECRET_KEY")
+if not _raw_secret or _raw_secret.strip() == "texaflow-production-secure-jwt-key-2026-texa-erp-om-sai-enterprise-master-secret":
+    # Generate a cryptographically strong 256-bit runtime secret if unconfigured to prevent known-key forgery
+    JWT_SECRET_KEY = secrets.token_hex(32)
+else:
+    JWT_SECRET_KEY = _raw_secret.strip()
 
 # Default token lifetime: 30 days
 DEFAULT_EXPIRE_SECONDS = 86400 * 30
