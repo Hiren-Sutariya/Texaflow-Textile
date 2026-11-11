@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { API_BASE_URL, invalidateApiCache } from "@/lib/api";
+import { API_BASE_URL, CLOUD_API_URL, getLocalApiUrl, setWorkingApiUrl, invalidateApiCache } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { setTenantCookie, clearTenantCookie } from "@/lib/cookieStorage";
 import { clearTenantData } from "@/lib/tenantStorage";
@@ -234,73 +234,151 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const cleanId = emailOrPin.trim();
     const cleanPassword = (password || "").trim();
 
-    try {
-      // Connect to Backend API for strict ID & password authentication directly from database
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username_or_email: cleanId,
-          password: cleanPassword
-        })
-      });
+    // 1. Instant Device Verification (0ms login if previously authenticated on this device with correct credentials)
+    let verifiedLocalSession: UserSession | null = null;
+    let verifiedLocalToken = "";
+    if (typeof window !== "undefined") {
+      try {
+        const savedAuthRaw = localStorage.getItem("texaflow_device_auth_v1");
+        if (savedAuthRaw) {
+          const creds = JSON.parse(savedAuthRaw);
+          const inputHash = btoa(encodeURIComponent(cleanPassword));
+          const matchesUser =
+            creds.username?.toLowerCase() === cleanId.toLowerCase() ||
+            creds.email?.toLowerCase() === cleanId.toLowerCase() ||
+            creds.id?.toLowerCase() === cleanId.toLowerCase();
 
-      if (res.ok) {
-        const data = await res.json();
-        const tenant = resolveSessionTenant({
-          ...data.user,
-          firmName: data.user.firmName,
-          companyId: data.user.companyId || data.user.company_id
-        });
-
-        const session: UserSession = {
-          id: data.user.id,
-          name: tenant.name,
-          email: data.user.email || data.user.username,
-          username: data.user.username || data.user.email,
-          role: data.user.role || "Owner",
-          roleTitle: data.user.roleTitle || "Proprietor & Director",
-          firmName: tenant.firmName,
-          companyId: tenant.resolvedCompanyId,
-          lastLogin: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-          expiresAt: Date.now() + 4 * 60 * 60 * 1000 // Valid for 4 hours
-        };
-        const prevSessionRaw = typeof window !== "undefined" ? localStorage.getItem(SESSION_STORAGE_KEY) : null;
-        if (prevSessionRaw) {
-          try {
-            const prev = JSON.parse(prevSessionRaw);
-            if (prev.id !== data.user.id || prev.companyId !== tenant.resolvedCompanyId) {
-              invalidateApiCache();
-            }
-          } catch {}
+          if (matchesUser && creds.hash === inputHash && creds.session) {
+            verifiedLocalSession = creds.session;
+            verifiedLocalToken = creds.token || "";
+          }
         }
-
-        setUser(session);
-        if (data.token || data.access_token) {
-          const jwtToken = data.token || data.access_token;
-          sessionStorage.setItem("texaflow_auth_token", jwtToken);
-          localStorage.setItem("texaflow_auth_token", jwtToken);
-        }
-        sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-        sessionStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
-        localStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
-        setTenantCookie(tenant.resolvedCompanyId, tenant.firmName, tenant.name);
-        return { success: true };
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        return {
-          success: false,
-          error: errData.detail || "Invalid User ID or Password. Please try again."
-        };
-      }
-    } catch (networkErr) {
-      console.error("Backend login network error:", networkErr);
-      return {
-        success: false,
-        error: "Cannot connect to server. Please verify your internet connection."
-      };
+      } catch {}
     }
+
+    if (verifiedLocalSession) {
+      // Instant login directly from verified device credentials!
+      setUser(verifiedLocalSession);
+      if (verifiedLocalToken) {
+        sessionStorage.setItem("texaflow_auth_token", verifiedLocalToken);
+        localStorage.setItem("texaflow_auth_token", verifiedLocalToken);
+      }
+      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(verifiedLocalSession));
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(verifiedLocalSession));
+      if (verifiedLocalSession.companyId) {
+        sessionStorage.setItem("texaflow_active_company_id", verifiedLocalSession.companyId);
+        localStorage.setItem("texaflow_active_company_id", verifiedLocalSession.companyId);
+        setTenantCookie(verifiedLocalSession.companyId, verifiedLocalSession.firmName, verifiedLocalSession.name);
+      }
+      // Return immediately for 0ms UI transition!
+      return { success: true };
+    }
+
+    // 2. Multi-Candidate Resilient Server Authentication
+    const candidateUrls = [
+      API_BASE_URL,
+      CLOUD_API_URL,
+      getLocalApiUrl()
+    ].filter(Boolean).filter((val, idx, arr) => arr.indexOf(val) === idx);
+
+    let lastError = "Cannot connect to server. Please verify your connection.";
+
+    for (const baseUrl of candidateUrls) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+        const res = await fetch(`${baseUrl}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username_or_email: cleanId,
+            password: cleanPassword
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          // Successfully authenticated! Mark this endpoint as the working URL
+          setWorkingApiUrl(baseUrl);
+
+          const tenant = resolveSessionTenant({
+            ...data.user,
+            firmName: data.user.firmName,
+            companyId: data.user.companyId || data.user.company_id
+          });
+
+          const session: UserSession = {
+            id: data.user.id,
+            name: tenant.name,
+            email: data.user.email || data.user.username,
+            username: data.user.username || data.user.email,
+            role: data.user.role || "Owner",
+            roleTitle: data.user.roleTitle || "Proprietor & Director",
+            firmName: tenant.firmName,
+            companyId: tenant.resolvedCompanyId,
+            lastLogin: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+            expiresAt: Date.now() + 4 * 60 * 60 * 1000 // Valid for 4 hours
+          };
+
+          const prevSessionRaw = typeof window !== "undefined" ? localStorage.getItem(SESSION_STORAGE_KEY) : null;
+          if (prevSessionRaw) {
+            try {
+              const prev = JSON.parse(prevSessionRaw);
+              if (prev.id !== data.user.id || prev.companyId !== tenant.resolvedCompanyId) {
+                invalidateApiCache();
+              }
+            } catch {}
+          }
+
+          setUser(session);
+          const jwtToken = data.token || data.access_token || "";
+          if (jwtToken) {
+            sessionStorage.setItem("texaflow_auth_token", jwtToken);
+            localStorage.setItem("texaflow_auth_token", jwtToken);
+          }
+          sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+          sessionStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
+          localStorage.setItem("texaflow_active_company_id", tenant.resolvedCompanyId);
+          setTenantCookie(tenant.resolvedCompanyId, tenant.firmName, tenant.name);
+
+          // Save verified device authentication for future instant logins
+          try {
+            localStorage.setItem(
+              "texaflow_device_auth_v1",
+              JSON.stringify({
+                id: session.id,
+                username: (session.username || cleanId).toLowerCase(),
+                email: (session.email || cleanId).toLowerCase(),
+                hash: btoa(encodeURIComponent(cleanPassword)),
+                session,
+                token: jwtToken
+              })
+            );
+          } catch {}
+
+          return { success: true };
+        } else {
+          // Server reached but credentials were wrong (401/403)
+          const errData = await res.json().catch(() => ({}));
+          return {
+            success: false,
+            error: errData.detail || "Invalid User ID or Password. Please try again."
+          };
+        }
+      } catch (networkErr: any) {
+        console.warn(`[Auth] Failed to reach ${baseUrl}:`, networkErr?.message || networkErr);
+        // Continue loop to try the next candidate endpoint
+      }
+    }
+
+    return {
+      success: false,
+      error: lastError
+    };
   };
 
   const loginWithGoogle = async (data: {

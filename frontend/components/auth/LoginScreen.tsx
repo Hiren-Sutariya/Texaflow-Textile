@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, prewarmBackend } from "@/lib/api";
 import {
   Lock,
   Mail,
@@ -79,7 +79,10 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
     };
   }, [isOtpModalOpen, otpCountdown]);
 
-  // Forgot password form state
+  // Pre-warm backend on page load so login is instant (eliminates Render cold start delay)
+  useEffect(() => {
+    prewarmBackend();
+  }, []);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
 

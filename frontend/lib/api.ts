@@ -1,16 +1,55 @@
 import { getStoredCompanyId } from "./tenantStorage";
 
-const getBaseUrl = (): string => {
+export const CLOUD_API_URL = process.env.NEXT_PUBLIC_API_URL || "https://texaflow-backend.onrender.com/api/v1";
+
+export const getLocalApiUrl = (): string => {
   if (typeof window !== "undefined") {
     const h = window.location.hostname;
     if (h === "localhost" || h === "127.0.0.1" || h.startsWith("192.168.") || h.startsWith("10.") || h.endsWith(".local")) {
       return `http://${h}:8000/api/v1`;
     }
   }
-  return process.env.NEXT_PUBLIC_API_URL || "https://texaflow-backend.onrender.com/api/v1";
+  return "";
 };
 
-export const API_BASE_URL = getBaseUrl();
+const getBaseUrl = (): string => {
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem("texaflow_active_api_url");
+    if (saved) return saved;
+
+    const h = window.location.hostname;
+    if (h === "localhost" || h === "127.0.0.1" || h.startsWith("192.168.") || h.startsWith("10.") || h.endsWith(".local")) {
+      // If NEXT_PUBLIC_API_URL explicitly set, prefer it, otherwise use Cloud
+      return process.env.NEXT_PUBLIC_API_URL || CLOUD_API_URL;
+    }
+  }
+  return CLOUD_API_URL;
+};
+
+export let API_BASE_URL = getBaseUrl();
+
+export function setWorkingApiUrl(url: string): void {
+  API_BASE_URL = url;
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem("texaflow_active_api_url", url);
+    } catch {}
+  }
+}
+
+/** Pre-warms the backend in background so cold starts never delay user login */
+export function prewarmBackend(): void {
+  if (typeof window === "undefined") return;
+  const cloudRoot = CLOUD_API_URL.replace("/api/v1", "");
+  const localUrl = getLocalApiUrl();
+  const localRoot = localUrl ? localUrl.replace("/api/v1", "") : "";
+
+  [cloudRoot, localRoot].filter(Boolean).forEach((target) => {
+    try {
+      fetch(`${target}/`, { method: "GET", mode: "no-cors" }).catch(() => {});
+    } catch {}
+  });
+}
 
 // Fast in-memory SWR cache for instant 0ms tab switching
 // Cache TTL: 30 seconds — ensures live site always shows fresh data within 30s
@@ -125,11 +164,29 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const res = await fetch(url, {
-      ...options,
-      headers,
-      signal: options.signal || controller.signal
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        ...options,
+        headers,
+        signal: options.signal || controller.signal
+      });
+    } catch (networkErr: any) {
+      // If primary endpoint failed due to network / connection refused, auto-fallback to Cloud
+      const isLocal = url.includes("localhost") || url.includes("127.0.0.1");
+      const fallbackUrl = isLocal ? `${CLOUD_API_URL}${endpoint}` : (getLocalApiUrl() ? `${getLocalApiUrl()}${endpoint}` : "");
+      if (fallbackUrl && fallbackUrl !== url) {
+        console.warn(`[API] Retrying on fallback endpoint: ${fallbackUrl}`);
+        res = await fetch(fallbackUrl, {
+          ...options,
+          headers,
+          signal: options.signal || controller.signal
+        });
+        setWorkingApiUrl(isLocal ? CLOUD_API_URL : getLocalApiUrl());
+      } else {
+        throw networkErr;
+      }
+    }
     clearTimeout(timer);
 
     if (!res.ok) {

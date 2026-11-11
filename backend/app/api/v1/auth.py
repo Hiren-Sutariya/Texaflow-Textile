@@ -108,6 +108,37 @@ class ChangeCredentialsRequest(BaseModel):
 def login(req: LoginRequest):
     """Authenticate user strictly with their registered username or email and password directly against the database."""
     clean_id = req.username_or_email.strip()
+    cache_key = clean_id.lower()
+
+    # 1. Fast in-memory cache check (<1ms response, skips DB roundtrip)
+    cached = AUTH_FAST_STORE.get(cache_key)
+    if cached and cached.get("password_hash") and verify_password(req.password, cached.get("password_hash")):
+        token = create_access_token({
+            "sub": cached["id"],
+            "user_id": cached["id"],
+            "username": cached["username"],
+            "email": cached["email"],
+            "name": cached["name"],
+            "company_id": cached.get("companyId") or "comp-001",
+            "role": cached.get("role", "Owner") or "Owner"
+        })
+        return {
+            "success": True,
+            "message": "Login successful",
+            "token": token,
+            "access_token": token,
+            "token_type": "bearer",
+            "user": {
+                "id": cached["id"],
+                "name": cached["name"],
+                "email": cached["email"],
+                "username": cached["username"],
+                "role": cached.get("role", "Owner") or "Owner",
+                "roleTitle": cached.get("roleTitle", "Proprietor & Director"),
+                "firmName": cached.get("firmName", "Om Sai Enterprise"),
+                "companyId": cached.get("companyId", "comp-001")
+            }
+        }
 
     db = SessionLocal()
     try:
