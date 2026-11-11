@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TexaFlow Textile</string>
+    <string name="title_activity_main">TexaFlow Textile</string>
+    <string name="package_name">com.texaflow.textile</string>
+    <string name="custom_url_scheme">com.texaflow.textile</string>
+</resources>

@@ -26,6 +26,8 @@ build/
 */build/
 dist/
 */dist/
+*.apk
+
 
 # Logs
 npm-debug.log*
