@@ -61,7 +61,7 @@ export interface PurchaseLineItem {
   amount: string;
 }
 
-export function getCategoryDefaultHsn(categoryName?: string): string {
+function getCategoryDefaultHsn(categoryName?: string): string {
   if (!categoryName) return "5402";
   const cat = categoryName.trim().toLowerCase();
   if (cat.includes("dhaga") || cat.includes("thread") || cat.includes("yarn") || cat.includes("sui")) {

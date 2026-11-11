@@ -448,13 +448,13 @@ export default function SalesInvoicesPage() {
       </div>
 
       {/* 2. SEARCH & ACTION TOOLBAR */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
+      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3 text-xs">
         {/* Search */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 w-full lg:max-w-md">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder={isGujarati ? "ઇન્વોઇસ નં, ગ્રાહક, જીએસટી નં અથવા માલની વિગત શોધો..." : "Search by invoice no, customer, GSTIN, description..."}
+            placeholder={isGujarati ? "ઇન્વોઇસ નં, ગ્રાહક, જીએસટી નં શોધો..." : "Search by invoice no, customer, GSTIN..."}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full h-9 pl-9 pr-3 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400"
@@ -462,15 +462,15 @@ export default function SalesInvoicesPage() {
         </div>
 
         {/* Filters and CTA */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-wrap">
           {/* Status Segment Filter */}
-          <div className="bg-slate-100 p-0.5 rounded-xl flex items-center border border-slate-200">
+          <div className="bg-slate-100 p-0.5 rounded-xl flex items-center border border-slate-200 overflow-x-auto no-scrollbar shrink-0">
             {(["All", "Pending", "Paid", "Overdue"] as const).map((st) => (
               <button
                 key={st}
                 type="button"
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap text-center ${
                   statusFilter === st
                     ? "bg-white text-slate-900 shadow-2xs"
                     : "text-slate-600 hover:text-slate-900"
@@ -484,36 +484,38 @@ export default function SalesInvoicesPage() {
             ))}
           </div>
 
-          {/* Customer filter dropdown */}
-          {customerOptions.length > 0 && (
-            <select
-              value={selectedCustomer}
-              onChange={(e) => setSelectedCustomer(e.target.value)}
-              className="h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
-            >
-              <option value="All">{isGujarati ? "બધા ગ્રાહક (All Customers)" : "All Customers"}</option>
-              {customerOptions.map((cust) => (
-                <option key={cust} value={cust}>
-                  {cust}
-                </option>
-              ))}
-            </select>
-          )}
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+            {/* Customer filter dropdown */}
+            {customerOptions.length > 0 && (
+              <select
+                value={selectedCustomer}
+                onChange={(e) => setSelectedCustomer(e.target.value)}
+                className="w-full sm:w-auto h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value="All">{isGujarati ? "બધા ગ્રાહક" : "All Customers"}</option>
+                {customerOptions.map((cust) => (
+                  <option key={cust} value={cust}>
+                    {cust}
+                  </option>
+                ))}
+              </select>
+            )}
 
-          {/* Action: New Direct Sales Tax Invoice */}
-          <Link
-            href="/sales-invoices/new"
-            className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 text-xs shrink-0"
-            title={isGujarati ? "ચલણ વગર સીધું પાકું જીએસટી બિલ બનાવો" : "Create direct sales tax invoice"}
-          >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>{isGujarati ? "નવું સેલ્સ બિલ બનાવો" : "New Sales Invoice"}</span>
-          </Link>
+            {/* Action: New Direct Sales Tax Invoice */}
+            <Link
+              href="/sales-invoices/new"
+              className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 text-xs shrink-0"
+              title={isGujarati ? "ચલણ વગર સીધું પાકું જીએસટી બિલ બનાવો" : "Create direct sales tax invoice"}
+            >
+              <Plus className="w-4 h-4 stroke-[2.5] shrink-0" />
+              <span className="truncate">{isGujarati ? "નવું બિલ" : "New Invoice"}</span>
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* 3. SALES INVOICE DATA TABLE */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
+      {/* 3. DESKTOP SALES INVOICE DATA TABLE (Visible on md screens and up) */}
+      <div className="hidden md:block bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs table-fixed min-w-[1280px]">
             <thead className="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-extrabold text-[10px] uppercase tracking-wider whitespace-nowrap">
@@ -864,6 +866,164 @@ export default function SalesInvoicesPage() {
             )}
           </table>
         </div>
+      </div>
+
+      {/* MOBILE CARD VIEW (Visible below md screens) */}
+      <div className="block md:hidden space-y-3">
+        {filteredInvoices.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs text-slate-400 font-medium shadow-2xs">
+            {isGujarati ? "કોઈ સેલ્સ ઇન્વોઇસ મળ્યા નથી." : "No sales invoices found."}
+          </div>
+        ) : (
+          filteredInvoices.map((inv) => {
+            const firstItem = inv.items?.[0];
+            const extraItemsCount = (inv.items?.length || 0) - 1;
+            const categoryName = firstItem?.description || inv.category || "-";
+            const qtyVal = inv.total_meters || inv.total_quantity || firstItem?.quantity || "-";
+            const isPaid = inv.payment_status === "Paid";
+            const dueInfo = getInvoiceDueInfo(inv);
+
+            return (
+              <div
+                key={inv.id}
+                onClick={() => setPreviewInvoice(inv)}
+                className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs space-y-2.5 cursor-pointer hover:border-blue-300 transition-all active:scale-[0.99]"
+              >
+                {/* Header: Invoice No, Date & Status */}
+                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-black text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                      {inv.invoice_no}
+                    </span>
+                    <span className="font-mono text-[11px] text-slate-500">{inv.date}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTogglePayment(inv);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                      isPaid
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-amber-50 text-amber-700 border border-amber-200"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isPaid ? "bg-emerald-500" : "bg-amber-500"}`} />
+                      <span>{isPaid ? t("Paid") : t("Pending")}</span>
+                    </span>
+                  </button>
+                </div>
+
+                {/* Party Name & Description */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/ledger?party=${encodeURIComponent(inv.customer_name)}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-black text-slate-900 text-sm hover:text-blue-600 truncate block"
+                    >
+                      {inv.customer_name}
+                    </Link>
+                    <div className="text-xs text-slate-600 font-medium mt-0.5 truncate flex items-center gap-1">
+                      <span>{categoryName}</span>
+                      {extraItemsCount > 0 && (
+                        <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-1 rounded">+{extraItemsCount}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-mono font-black text-slate-900 text-base">
+                      ₹{Number(inv.total_amount || 0).toLocaleString("en-IN", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metric Summary */}
+                <div className="grid grid-cols-3 gap-2 p-2 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">{t("QTY")}</span>
+                    <span className="font-mono text-xs font-bold text-slate-800">
+                      {qtyVal !== "-" && Number(qtyVal) > 0 ? `${Number(qtyVal).toFixed(1)}m` : "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">{isGujarati ? "કરપાત્ર" : "TAXABLE"}</span>
+                    <span className="font-mono text-xs font-bold text-slate-800">
+                      ₹{Number(inv.taxable_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">{isGujarati ? "જીએસટી" : "GST"}</span>
+                    <span className="font-mono text-xs font-bold text-slate-800">
+                      ₹{(Number(inv.cgst_amount || 0) + Number(inv.sgst_amount || 0) + Number(inv.igst_amount || 0)).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Due Date & Action Buttons */}
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-[11px] font-mono font-bold">
+                    {dueInfo.isPaid ? (
+                      <span className="text-emerald-700 inline-flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span>{t("Settled")}</span>
+                      </span>
+                    ) : dueInfo.isOverdue ? (
+                      <span className="text-rose-600 inline-flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-rose-600 shrink-0" />
+                        <span>{dueInfo.text}</span>
+                      </span>
+                    ) : (
+                      <span className="text-amber-700 inline-flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                        <span>{dueInfo.text}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewInvoice(inv)}
+                      className="p-1.5 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                      title={isGujarati ? "બિલ જુઓ અને પ્રિન્ટ કરો" : "View & Print Invoice"}
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleShareWhatsApp(inv)}
+                      className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer"
+                      title="WhatsApp"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                    </button>
+                    <Link
+                      href={`/sales-invoices/new?id=${inv.id}`}
+                      className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                      title={t("Edit")}
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteInvoice(inv.id, inv.invoice_no)}
+                      className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+                      title={t("Delete")}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* 4. A4 FULL-FIDELITY PRINT & PREVIEW MODAL */}

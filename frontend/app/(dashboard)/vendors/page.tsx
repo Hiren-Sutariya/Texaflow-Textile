@@ -199,7 +199,7 @@ export interface BankDetail {
   qr_setup: "Auto Generate from UPI" | "Upload Custom QR";
 }
 
-export const ACCOUNT_TYPES = [
+const ACCOUNT_TYPES = [
   "Supplier",
   "Customer",
   "Dyeing & Printing Mill",
@@ -209,7 +209,7 @@ export const ACCOUNT_TYPES = [
   "Internal Firm"
 ] as const;
 
-export function normalizeAccountType(type?: string): string {
+function normalizeAccountType(type?: string): string {
   if (!type) return "Supplier";
   const t = type.trim();
   if (t === "Supplier / Vendor" || t === "Supplier / Party" || t === "Supplier") return "Supplier";

@@ -128,7 +128,7 @@ export interface LedgerEntry {
   isCustomer?: boolean;
 }
 
-export function formatShortRefNo(ref: string) {
+function formatShortRefNo(ref: string) {
   if (!ref) return "-";
   return ref.replace(/-(?:20\d{2})-/, "-");
 }
@@ -2870,46 +2870,47 @@ export default function LedgerPage() {
             `}</style>
 
             {/* FLOATING ACTION BUTTONS */}
-            <div className="fixed top-4 right-4 flex items-center gap-2 z-50 no-print flex-wrap justify-end">
+            <div className="fixed top-3 right-3 sm:top-4 sm:right-4 flex items-center gap-1.5 sm:gap-2 z-50 no-print flex-wrap justify-end">
               <button
                 type="button"
                 onClick={handleSharePartyStatementWhatsApp}
-                className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-full shadow-xl flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 text-xs"
+                className="h-8 sm:h-9 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-full shadow-xl flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer active:scale-95 text-xs"
                 title="Share Statement on WhatsApp"
               >
-                <MessageCircle className="w-4 h-4" />
-                <span>WhatsApp Share</span>
+                <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">WhatsApp</span>
               </button>
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="h-9 px-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-full shadow-xl flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 text-xs"
+                className="h-8 sm:h-9 px-2.5 sm:px-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-full shadow-xl flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer active:scale-95 text-xs"
                 title="Print Statement / Save PDF"
               >
-                <Printer className="w-4 h-4" />
+                <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>Print (A4)</span>
               </button>
               <button
                 type="button"
                 onClick={() => setIsPrintModalOpen(false)}
-                className="p-2 bg-slate-800/90 hover:bg-slate-900 text-white rounded-full shadow-xl transition-all cursor-pointer active:scale-95"
+                className="p-1.5 sm:p-2 bg-slate-800/90 hover:bg-slate-900 text-white rounded-full shadow-xl transition-all cursor-pointer active:scale-95"
                 title="Close"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* A4 PROPORTIONED SHEET CONTAINER - FIXED TO A4 PORTRAIT PROPORTIONS */}
-            <div
-              className="flex flex-col items-center w-full my-auto space-y-3 py-4"
-              style={{ maxWidth: "794px" }}
-            >
-              {/* THE WHITE LEDGER STATEMENT SHEET (EXACT SURAT BILL TEMPLATE DESIGN) */}
+            {/* A4 PROPORTIONED SHEET CONTAINER - FULLY SCROLLABLE ON MOBILE */}
+            <div className="w-full overflow-x-auto flex justify-center py-4 sm:py-6">
               <div
-                id="printable-ledger-statement"
-                className="w-full border-2 border-black bg-white text-black font-sans select-text shadow-2xl"
-                style={{ width: "100%", maxWidth: "794px" }}
+                className="flex flex-col items-center w-full my-auto space-y-3 shrink-0"
+                style={{ width: "100%", maxWidth: "794px", minWidth: "680px" }}
               >
+                {/* THE WHITE LEDGER STATEMENT SHEET (EXACT SURAT BILL TEMPLATE DESIGN) */}
+                <div
+                  id="printable-ledger-statement"
+                  className="w-full border-2 border-black bg-white text-black font-sans select-text shadow-2xl"
+                  style={{ width: "100%", maxWidth: "794px" }}
+                >
                 {/* 1. TOP FIRM HEADER (GREY BAR LIKE BILL FORMAT) */}
                 <div className="bg-[#d9d9d9] py-2.5 px-4 text-center border-b border-black">
                   <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-black">
@@ -3065,6 +3066,7 @@ export default function LedgerPage() {
                 </div>
 
               </div>
+            </div>
             </div>
           </div>
         );

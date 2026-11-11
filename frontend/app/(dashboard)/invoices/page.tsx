@@ -371,8 +371,8 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      {/* 3. SALES INVOICE DATA TABLE */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
+      {/* 3. DESKTOP SALES INVOICE DATA TABLE (Visible on md: and up) */}
+      <div className="hidden md:block bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs min-w-[1180px]">
             <thead className="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-extrabold text-[10px] uppercase tracking-wider whitespace-nowrap">
@@ -592,6 +592,163 @@ export default function InvoicesPage() {
             )}
           </table>
         </div>
+      </div>
+
+      {/* MOBILE INVOICE CARDS (< md) */}
+      <div className="block md:hidden space-y-3">
+        {filteredInvoices.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs text-slate-400 font-medium shadow-2xs">
+            {isGujarati ? "કોઈ સેલ્સ પાકા બિલ મળ્યા નથી." : "No sales invoices found."}
+          </div>
+        ) : (
+          filteredInvoices.map((inv) => {
+            const isPaid = inv.payment_status === "Paid";
+            const dueDate = inv.due_date || (inv.credit_days ? calculateDueDate(inv.date, inv.credit_days) : inv.date);
+            const dueInfo = dueDate ? getDueStatus(dueDate, isPaid) : null;
+
+            const takkaVal = inv.total_takka ?? inv.total_item ?? (
+              Array.isArray(inv.items) && inv.items.length > 0
+                ? inv.items.reduce((acc, it) => acc + (Number(it.takka ?? it.item_qty ?? it.total_takka) || 0), 0)
+                : 0
+            );
+            const metersVal = inv.total_meters ?? inv.total_quantity ?? (
+              Array.isArray(inv.items) && inv.items.length > 0
+                ? inv.items.reduce((acc, it) => acc + (Number(it.quantity ?? it.meters ?? it.total_meters) || 0), 0)
+                : 0
+            );
+
+            const taxableVal = Number(inv.taxable_amount || inv.subtotal || 0);
+            const storedTax = (Number(inv.cgst_amount) || 0) + (Number(inv.sgst_amount) || 0) + (Number(inv.igst_amount) || 0);
+            const gstRateVal = Number(inv.gst_rate || 0);
+            const gstAmountVal = storedTax > 0 ? storedTax : Number((taxableVal * gstRateVal) / 100);
+
+            return (
+              <div
+                key={inv.id}
+                onClick={() => setPreviewInvoice(inv)}
+                className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs space-y-2.5 cursor-pointer hover:border-blue-300 transition-all active:scale-[0.99]"
+              >
+                {/* Header: Invoice No + Date + Status */}
+                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-black text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                      {inv.invoice_no}
+                    </span>
+                    <span className="font-mono text-[11px] text-slate-500">{inv.date}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTogglePayment(inv);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                      isPaid
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-amber-50 text-amber-700 border border-amber-200"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isPaid ? "bg-emerald-500" : "bg-amber-500"}`} />
+                      <span>{isPaid ? (isGujarati ? "ચૂકતે" : "Paid") : (isGujarati ? "બાકી" : "Pending")}</span>
+                    </span>
+                  </button>
+                </div>
+
+                {/* Party Name */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/ledger?party=${encodeURIComponent(inv.customer_name)}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-black text-slate-900 text-sm hover:text-blue-600 truncate block"
+                    >
+                      {inv.customer_name}
+                    </Link>
+                    <div className="text-xs text-slate-600 font-medium mt-0.5 truncate">
+                      {metersVal > 0 ? `${metersVal} Qty` : ""} {takkaVal > 0 ? `• ${takkaVal} Takka` : ""}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-mono font-black text-slate-900 text-base">
+                      ₹{Number(inv.total_amount || 0).toLocaleString("en-IN", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metrics Breakdown */}
+                <div className="grid grid-cols-3 gap-2 p-2 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">{t("TAXABLE")}</span>
+                    <span className="font-mono text-xs font-bold text-slate-800">
+                      ₹{taxableVal.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">{t("GST")}</span>
+                    <span className="font-mono text-xs font-bold text-slate-800">
+                      ₹{gstAmountVal.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">{isGujarati ? "કુલ રકમ" : "TOTAL"}</span>
+                    <span className="font-mono text-xs font-black text-slate-900">
+                      ₹{Number(inv.total_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Due Date & Action Buttons */}
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-[11px] font-mono font-bold">
+                    {dueInfo ? (
+                      isPaid ? (
+                        <span className="text-emerald-700 inline-flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>{isGujarati ? "ચૂકતે" : "Settled"}</span>
+                        </span>
+                      ) : dueInfo.status === "Overdue" ? (
+                        <span className="text-rose-600 inline-flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-rose-600" />
+                          <span>{isGujarati ? dueInfo.labelGu : dueInfo.label}</span>
+                        </span>
+                      ) : (
+                        <span className="text-amber-700 inline-flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-600" />
+                          <span>{isGujarati ? dueInfo.labelGu : dueInfo.label}</span>
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-slate-400">-</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewInvoice(inv)}
+                      className="p-1.5 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                      title={isGujarati ? "બિલ જુઓ અને પ્રિન્ટ કરો" : "View & Print Invoice"}
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteInvoice(inv.id, inv.invoice_no)}
+                      className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+                      title={t("Delete")}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* 4. MONTHLY CONSOLIDATED TAX INVOICE STATEMENT (A4 REPORT STYLE) */}

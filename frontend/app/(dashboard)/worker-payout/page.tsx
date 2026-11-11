@@ -517,8 +517,8 @@ export default function WorkerPayoutPage() {
         </div>
       </div>
 
-      {/* 3. WORKER PAYROLL REGISTER TABLE */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+      {/* 3. DESKTOP WORKER PAYROLL REGISTER TABLE (Visible on md: and up) */}
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs min-w-[1020px]">
             <thead>
@@ -737,6 +737,172 @@ export default function WorkerPayoutPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* MOBILE WORKER PAYOUT CARDS (< md) */}
+      <div className="block md:hidden space-y-3">
+        {displayWorkers.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-400 font-medium shadow-2xs">
+            No workers found for this month.
+          </div>
+        ) : (
+          displayWorkers.map((worker) => {
+            const payout = monthPayoutsMap.get(worker.id);
+            const isPaid = payout?.payment_status === "Paid";
+            const isPartial = payout?.payment_status === "Partially Paid";
+
+            const att = workerAttendanceSummary.get(worker.id) || { fullDays: 0, halfDays: 0, absentDays: 0, totalHours: 0, overtimeHours: 0, estimatedOtAmount: 0 };
+            const fDays = att.fullDays;
+            const hDays = att.halfDays;
+            const paidDays = fDays + (hDays * 0.5);
+
+            const baseSalary = Number(worker.monthly_salary) || 0;
+            const earnedWages = paidDays > 0 ? Math.round((baseSalary / 30) * paidDays) : 0;
+            const otAmt = payout ? payout.overtime_amount : att.estimatedOtAmount;
+            const otHrs = att.overtimeHours;
+            const grossEarned = payout ? payout.total_earnings : (earnedWages + otAmt);
+            const upadAmt = payout ? payout.total_upad_deduction : getWorkerMonthlyUpad(worker.name, selectedMonth).total;
+            const otherAmt = payout ? payout.total_other_deductions : 0;
+            const netPay = payout ? payout.net_payable : Math.max(0, grossEarned - upadAmt - otherAmt);
+
+            return (
+              <div
+                key={worker.id}
+                className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs space-y-2.5"
+              >
+                {/* Header: Name + Status */}
+                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                  <div>
+                    <h4 className="font-black text-slate-900 text-sm">{worker.name}</h4>
+                    <span className="text-[11px] font-mono text-slate-500">
+                      {paidDays} Days Worked ({fDays}F • {hDays}H)
+                    </span>
+                  </div>
+                  <div>
+                    {isPaid ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        PAID
+                      </span>
+                    ) : isPartial ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200">
+                        PARTIAL
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-50 text-amber-700 border border-amber-200">
+                        PENDING
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Metrics Breakdown */}
+                <div className="grid grid-cols-3 gap-2 p-2 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Gross</span>
+                    <span className="font-mono text-xs font-bold text-slate-900">
+                      ₹{grossEarned.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Upad Ded.</span>
+                    <span className="font-mono text-xs font-bold text-amber-700">
+                      {upadAmt > 0 ? `-₹${upadAmt.toLocaleString("en-IN")}` : "₹0"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Net Pay</span>
+                    <span className="font-mono text-xs font-black text-slate-900">
+                      ₹{netPay.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100 gap-2">
+                  <div className="text-[10px] font-mono font-medium text-slate-500">
+                    Base: ₹{baseSalary.toLocaleString("en-IN")}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {!isPaid ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPayoutModal(worker)}
+                          className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1 cursor-pointer"
+                        >
+                          <Wallet className="w-3.5 h-3.5" />
+                          <span>Settle & Pay</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const draftSlip: SalaryPayoutRecord = {
+                              id: `draft-${worker.id}`,
+                              payout_no: `DRAFT-${selectedMonth}`,
+                              company_id: getStoredCompanyId() || "comp-001",
+                              worker_id: worker.id,
+                              worker_name: worker.name,
+                              worker_code: worker.code,
+                              month: selectedMonth,
+                              month_label: monthLabel,
+                              monthly_base_salary: baseSalary,
+                              total_days_in_month: 30,
+                              full_days: fDays,
+                              half_days: hDays,
+                              absent_days: att.absentDays,
+                              paid_days: paidDays,
+                              earned_gross_salary: earnedWages,
+                              overtime_amount: otAmt,
+                              bonus_amount: 0,
+                              total_earnings: grossEarned,
+                              deductions: [],
+                              total_upad_deduction: upadAmt,
+                              total_other_deductions: otherAmt,
+                              total_deductions: upadAmt + otherAmt,
+                              net_payable: netPay,
+                              paid_amount: 0,
+                              balance_due: netPay,
+                              payment_status: "Pending",
+                              payment_date: getTodayStr(),
+                              payment_mode: "Cash",
+                              created_at: new Date().toISOString()
+                            };
+                            setViewingSlipRecord(draftSlip);
+                          }}
+                          className="p-2 bg-slate-100 hover:bg-blue-50 text-slate-600 rounded-xl border border-slate-200 cursor-pointer"
+                          title="Print Slip"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setViewingSlipRecord(payout)}
+                          className="h-8 px-3 bg-slate-100 hover:bg-blue-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Print Slip</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPayoutModal(worker)}
+                          className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl border border-slate-200 cursor-pointer"
+                          title="Edit Settlement"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* 5. INTERACTIVE PAYOUT & DEDUCTIONS SETTLEMENT MODAL */}

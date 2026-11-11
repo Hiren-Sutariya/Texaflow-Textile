@@ -148,9 +148,9 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
   }, [handleRefresh]);
 
   return (
-    <header className="h-14 border-b border-slate-200/80 bg-white px-3 sm:px-4 flex items-center justify-between sticky top-0 z-50 shadow-2xs select-none">
+    <header className="h-14 border-b border-slate-200/80 bg-white px-2.5 sm:px-4 flex items-center justify-between sticky top-0 z-50 shadow-2xs select-none">
       {/* Mobile Menu Button + Single Authoritative Page Title */}
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 max-w-[55%] sm:max-w-[70%]">
         <button
           type="button"
           onClick={onToggleMobileMenu}
@@ -159,13 +159,13 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-none truncate">
+        <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-none truncate" title={pageTitle}>
           {pageTitle}
         </h1>
       </div>
 
       {/* Right Section: Quick Controls & Corner Language Selector */}
-      <div className="flex items-center gap-2 sm:gap-2.5">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
 
         {/* 3. Fullscreen Toggle Button - hidden on mobile screens */}
         <button
@@ -265,12 +265,15 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           <button
             type="button"
             onClick={() => setIsLangOpen((prev) => !prev)}
-            className="h-9 px-3.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-2xs select-none active:scale-98"
+            className="h-8.5 sm:h-9 px-2 sm:px-3 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl font-bold text-xs flex items-center gap-1 sm:gap-2 transition-all cursor-pointer shadow-2xs select-none active:scale-98"
             title={language === "gu" ? "ભાષા પસંદ કરો" : "Select Language"}
           >
-            <Languages className="w-4 h-4 text-blue-600 shrink-0" />
-            <span className="font-bold tracking-tight">
+            <Languages className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
+            <span className="hidden sm:inline font-bold tracking-tight">
               {language === "gu" ? "ગુજરાતી" : "English"}
+            </span>
+            <span className="inline sm:hidden font-extrabold tracking-tight text-[11px]">
+              {language === "gu" ? "ગુજ" : "EN"}
             </span>
             <ChevronDown className={`w-3.5 h-3.5 text-blue-500 transition-transform duration-200 ${isLangOpen ? "rotate-180" : ""}`} />
           </button>

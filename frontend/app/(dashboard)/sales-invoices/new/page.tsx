@@ -33,7 +33,7 @@ import {
   Receipt
 } from "lucide-react";
 
-export const GST_RATE_OPTIONS = [
+const GST_RATE_OPTIONS = [
   { id: "none", label: "None (0%)", rate: 0, mode: "none" },
   { id: "cgst_sgst_5", label: "CGST + SGST @ 5%", rate: 5, mode: "cgst_sgst" },
   { id: "cgst_sgst_12", label: "CGST + SGST @ 12%", rate: 12, mode: "cgst_sgst" },

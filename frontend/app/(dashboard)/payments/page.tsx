@@ -41,9 +41,9 @@ export interface PaymentVoucherItem {
   company_id?: string;
 }
 
-export const SEED_VOUCHERS: PaymentVoucherItem[] = [];
+const SEED_VOUCHERS: PaymentVoucherItem[] = [];
 
-export function formatShortVoucherNo(vNo: string) {
+function formatShortVoucherNo(vNo: string) {
   if (!vNo) return "-";
   // Convert REC-2026-084 -> REC-084, PAY-2026-102 -> PAY-102, VOU-2026-877 -> VOU-877
   return vNo.replace(/-(?:20\d{2})-/, "-");

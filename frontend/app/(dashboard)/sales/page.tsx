@@ -122,7 +122,7 @@ function CustomSelect({
   );
 }
 
-export function getSalesDueInfo(challan: SalesChallan) {
+function getSalesDueInfo(challan: SalesChallan) {
   if (challan.billing_status === "Billed") {
     return {
       isBillPending: false,
@@ -412,8 +412,8 @@ export default function SalesPage() {
       </div>
 
       {/* Filters & Actions Bar */}
-      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
-        <div className="relative flex-1 max-w-md">
+      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3 text-xs">
+        <div className="relative flex-1 w-full lg:max-w-md">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -424,55 +424,57 @@ export default function SalesPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Status Dropdown */}
-          <div className="w-40 shrink-0">
-            <CustomSelect
-              value={statusFilter}
-              onChange={(val) => setStatusFilter(val)}
-              options={[
-                { value: "All", label: t("All Status") },
-                { value: "Unbilled", label: t("Unbilled") },
-                { value: "Billed", label: t("Billed") }
-              ]}
-            />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-wrap">
+          {/* Status & Party Dropdowns (2 columns on mobile, flex on sm+) */}
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+            <div className="w-full sm:w-36 md:w-40">
+              <CustomSelect
+                value={statusFilter}
+                onChange={(val) => setStatusFilter(val)}
+                options={[
+                  { value: "All", label: t("All Status") },
+                  { value: "Unbilled", label: t("Unbilled") },
+                  { value: "Billed", label: t("Billed") }
+                ]}
+              />
+            </div>
+
+            <div className="w-full sm:w-40 md:w-44">
+              <CustomSelect
+                value={selectedParty}
+                onChange={(val) => setSelectedParty(val)}
+                options={[
+                  { value: "All", label: t("All Customers") },
+                  ...partiesList.map((p) => ({ value: p, label: p }))
+                ]}
+              />
+            </div>
           </div>
 
-          {/* Party Dropdown */}
-          <div className="w-44 shrink-0">
-            <CustomSelect
-              value={selectedParty}
-              onChange={(val) => setSelectedParty(val)}
-              options={[
-                { value: "All", label: t("All Customers") },
-                ...partiesList.map((p) => ({ value: p, label: p }))
-              ]}
-            />
+          {/* Action Buttons (2 columns on mobile, flex on sm+) */}
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+            <Link
+              href="/invoices/generate"
+              className="h-9 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer text-xs"
+              title={isGujarati ? "ચલણમાંથી માસિક પાકું બિલ બનાવો" : "Generate Monthly Tax Invoice"}
+            >
+              <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span className="truncate">{isGujarati ? "પાકું બિલ" : "Generate Invoice"}</span>
+            </Link>
+
+            <Link
+              href="/sales/new"
+              className="h-9 px-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 hover:bg-blue-700 transition-all shadow-2xs cursor-pointer text-xs"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              <span className="truncate">{t("New Sales Challan")}</span>
+            </Link>
           </div>
-
-          {/* Generate Monthly Invoice Button */}
-          <Link
-            href="/invoices/generate"
-            className="h-9 px-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer shrink-0 text-xs"
-            title={isGujarati ? "ચલણમાંથી માસિક પાકું બિલ બનાવો" : "Generate Monthly Tax Invoice"}
-          >
-            <FileText className="w-3.5 h-3.5 text-indigo-600" />
-            <span>{isGujarati ? "પાકું બિલ બનાવો" : "Generate Invoice"}</span>
-          </Link>
-
-          {/* New Sales Challan Button */}
-          <Link
-            href="/sales/new"
-            className="h-9 px-3.5 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 hover:bg-blue-700 transition-all shadow-2xs cursor-pointer shrink-0 text-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t("New Sales Challan")}</span>
-          </Link>
         </div>
       </div>
 
-      {/* EXCEL SHEET TABLE - EXACT MATCH WITH DUE (DAYS) BEFORE STATUS */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      {/* DESKTOP EXCEL SHEET TABLE (Visible on md screens and up) */}
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs table-fixed min-w-[1100px]">
             <thead>
@@ -731,6 +733,168 @@ export default function SalesPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* MOBILE CARD VIEW (Visible below md screens) */}
+      <div className="block md:hidden space-y-3">
+        {filteredChallans.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-400 font-medium shadow-2xs">
+            {t("No sales records found.")}
+          </div>
+        ) : (
+          filteredChallans.map((challan) => {
+            const firstItem = challan.items?.[0];
+            const extraItemsCount = (challan.items?.length || 0) - 1;
+            const isBilled = challan.billing_status === "Billed";
+            const dueInfo = getSalesDueInfo(challan);
+            const categoryName = firstItem?.category || firstItem?.design_no || firstItem?.description || "-";
+            const totalQtyVal = challan.total_quantity || challan.total_meters || "-";
+            const totalKgVal = (challan.items || []).reduce((acc: number, it: any) => acc + (parseFloat(String(it.kg || "")) || 0), 0);
+            const kgDisplay = (challan as any).total_kg ? String((challan as any).total_kg) : (totalKgVal > 0 ? totalKgVal.toFixed(2) : "-");
+
+            let rateDisplay = "-";
+            const firstItemRate = firstItem?.rate ? parseFloat(String(firstItem.rate)) : 0;
+            if (firstItemRate > 0) {
+              rateDisplay = `₹${firstItemRate.toFixed(2)}`;
+            } else {
+              const itemWithRate = challan.items?.find((it) => it.rate && parseFloat(String(it.rate)) > 0);
+              if (itemWithRate?.rate) {
+                rateDisplay = `₹${parseFloat(String(itemWithRate.rate)).toFixed(2)}`;
+              }
+            }
+
+            return (
+              <div
+                key={challan.id}
+                onClick={() => handlePrint(challan)}
+                className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs space-y-2.5 cursor-pointer hover:border-blue-300 transition-all active:scale-[0.99]"
+              >
+                {/* Header: Challan No, Date & Status */}
+                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-black text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                      {challan.challan_no}
+                    </span>
+                    <span className="font-mono text-[11px] text-slate-500">{challan.date}</span>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                    isBilled
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${isBilled ? "bg-emerald-500" : "bg-amber-500"}`} />
+                    <span>{isBilled ? t("Paid") : t("Pending")}</span>
+                  </span>
+                </div>
+
+                {/* Party Name & Particulars */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/ledger?party=${encodeURIComponent(challan.party_name)}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-black text-slate-900 text-sm hover:text-blue-600 truncate block"
+                    >
+                      {challan.party_name}
+                    </Link>
+                    <div className="text-xs text-slate-600 font-medium mt-0.5 truncate flex items-center gap-1">
+                      <span>{categoryName}</span>
+                      {extraItemsCount > 0 && (
+                        <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-1 rounded">+{extraItemsCount}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-mono font-black text-slate-900 text-base">
+                      ₹{Number(challan.total_amount || 0).toLocaleString("en-IN", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metric Summary */}
+                <div className="grid grid-cols-3 gap-2 p-2 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">{t("QTY")}</span>
+                    <span className="font-mono text-xs font-bold text-slate-800">
+                      {typeof totalQtyVal === "number" ? Number(totalQtyVal).toFixed(1) : totalQtyVal}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">{t("KG")}</span>
+                    <span className="font-mono text-xs font-bold text-slate-800">
+                      {kgDisplay}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">{t("RATE")}</span>
+                    <span className="font-mono text-xs font-bold text-slate-800">
+                      {rateDisplay}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Due Date & Action Buttons */}
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-[11px] font-mono font-bold">
+                    {dueInfo.isPaid ? (
+                      <span className="text-emerald-700 inline-flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span>{t("Settled")}</span>
+                      </span>
+                    ) : dueInfo.isOverdue ? (
+                      <span className="text-rose-600 inline-flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-rose-600" />
+                        <span>{dueInfo.text}</span>
+                      </span>
+                    ) : (
+                      <span className="text-amber-700 inline-flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-amber-600" />
+                        <span>{dueInfo.text}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handlePrint(challan)}
+                      className="p-1.5 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                      title={t("Print Bill Slip")}
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleShareWhatsApp(challan)}
+                      className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer"
+                      title="WhatsApp"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                    </button>
+                    <Link
+                      href={`/sales/new?id=${challan.id}`}
+                      className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                      title={t("Edit")}
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingId(challan.id)}
+                      className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+                      title={t("Delete")}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* DELETE CONFIRMATION MODAL */}

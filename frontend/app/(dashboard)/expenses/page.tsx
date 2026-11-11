@@ -135,7 +135,7 @@ const parseDate = (dateStr: string): Date => {
   return new Date(dateStr);
 };
 
-export const normalizeAndRenumberExpenses = (list: ExpenseItem[]): ExpenseItem[] => {
+const normalizeAndRenumberExpenses = (list: ExpenseItem[]): ExpenseItem[] => {
   if (!Array.isArray(list) || list.length === 0) return list;
 
   // Professional ERP: Never purge actual records or mutate permanent expense numbers.

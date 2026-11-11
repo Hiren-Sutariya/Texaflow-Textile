@@ -432,7 +432,7 @@ export function Sidebar({
 
       <aside 
         className={`fixed inset-y-0 left-0 z-50 w-[270px] max-w-[85vw] bg-white border-r border-slate-200 flex flex-col h-full shadow-2xl lg:hidden transform transition-transform duration-300 ease-in-out select-none ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
+          mobileOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"
         }`}
       >
         {renderNavContent(true)}

@@ -127,7 +127,7 @@ export interface ParsedPurchaseData {
   itemCount: number;
 }
 
-export function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
+function parsePurchaseRecord(item: PurchaseItem): ParsedPurchaseData {
   let lineItems: any = item.items;
   if (typeof lineItems === "string") {
     try {
@@ -486,7 +486,7 @@ function RateDisplayCell({ item }: { item: PurchaseItem }) {
   );
 }
 
-export function getPurchaseDueInfo(item: PurchaseItem) {
+function getPurchaseDueInfo(item: PurchaseItem) {
   if (item.payment_status === "Bill Pending" || item.amount === 0) {
     return {
       isBillPending: true,
@@ -609,7 +609,7 @@ export interface PurchaseItem {
 }
 
 
-export const isMonthlyBillRecord = (item: PurchaseItem) => {
+const isMonthlyBillRecord = (item: PurchaseItem) => {
   if (item.record_type === "monthly_bill") return true;
   const no = (item.purchase_no || "").trim().toUpperCase();
   if (no.startsWith("INV-") || no.startsWith("PB-")) return true;
