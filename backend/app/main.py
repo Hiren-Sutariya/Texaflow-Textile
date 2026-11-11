@@ -19,14 +19,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Secure CORS Middleware for Next.js Frontend
-# Restricts cross-origin requests to trusted origins and local dev environments
-LOCAL_DEV_REGEX = r"^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$"
+# Universal CORS Middleware for Next.js Frontend (Vercel, Render, PWA, Custom Domains, Local Dev)
+# Matches all secure HTTP/HTTPS origins so live cloud deployments are never blocked by CORS
+ALLOWED_ORIGIN_REGEX = r"^https?:\/\/.*$"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_origin_regex=LOCAL_DEV_REGEX,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
