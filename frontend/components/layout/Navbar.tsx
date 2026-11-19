@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { 
   Bell, 
   RefreshCw, 
@@ -13,12 +14,16 @@ import {
   Minimize2, 
   AlertTriangle, 
   CheckCircle2, 
-  X
+  X,
+  ShieldCheck
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
+import { API_BASE_URL } from "@/lib/api";
 
 const pageTitles: Record<string, string> = {
   "/": "Owner Command Center",
+  "/saas-admin": "SaaS Platform Super Admin",
   "/parties": "Parties Directory",
   "/vendors": "Parties Directory",
   "/employees": "Staff & Karigar Directory",
@@ -45,9 +50,38 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
+  const { user } = useAuth();
   const [isSpinning, setIsSpinning] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
   const langDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Subscription status for tenant companies
+  const [subscription, setSubscription] = useState<{
+    status?: string;
+    plan_name?: string;
+    days_left?: number;
+    is_trial?: boolean;
+    is_expired?: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!user || user.role === "SuperAdmin") return;
+    const token = typeof window !== "undefined" 
+      ? (sessionStorage.getItem("texaflow_auth_token") || localStorage.getItem("texaflow_auth_token")) 
+      : null;
+    if (!token) return;
+
+    fetch(`${API_BASE_URL}/auth/subscription-status`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.success) {
+          setSubscription(data);
+        }
+      })
+      .catch(() => {});
+  }, [user?.companyId, user?.role]);
 
   // Notification dropdown state
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -164,8 +198,42 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
         </h1>
       </div>
 
-      {/* Right Section: Quick Controls & Corner Language Selector */}
+      {/* Right Section: Quick Controls, SaaS Status & Corner Language Selector */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        {/* SuperAdmin Quick Access Badge */}
+        {user?.role === "SuperAdmin" && (
+          <Link
+            href="/saas-admin"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition-all shadow-2xs"
+            title="SaaS Platform Super Administrator"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+            <span className="hidden sm:inline">Super Admin</span>
+          </Link>
+        )}
+
+        {/* Tenant Subscription Indicator */}
+        {user && user.role !== "SuperAdmin" && subscription && (
+          <>
+            {subscription.is_expired ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold animate-pulse shadow-2xs">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                <span className="hidden sm:inline">Plan Expired (Read-Only)</span>
+                <span className="sm:hidden">Expired</span>
+              </div>
+            ) : subscription.is_trial ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                <span>Trial: {subscription.days_left ?? 14}d</span>
+              </div>
+            ) : (
+              <div className="hidden xl:flex items-center gap-1.5 px-2 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                <span>{subscription.plan_name || "Enterprise"}</span>
+              </div>
+            )}
+          </>
+        )}
 
         {/* 3. Fullscreen Toggle Button - hidden on mobile screens */}
         <button

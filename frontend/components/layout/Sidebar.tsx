@@ -27,7 +27,8 @@ import {
   FileCheck,
   Clock,
   UserCog,
-  CalendarDays
+  CalendarDays,
+  ShieldCheck
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -285,6 +286,29 @@ export function Sidebar({
 
       {/* Navigation List - Ultra Clean Linear / Vercel Style */}
       <nav className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-3.5">
+        {/* SuperAdmin Quick Access Switcher */}
+        {user?.role === "SuperAdmin" && (
+          <div>
+            <Link
+              href="/saas-admin"
+              onClick={() => {
+                if (isMobile) onClose?.();
+              }}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white text-xs font-bold shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center">
+                  <ShieldCheck className="w-3.5 h-3.5 text-white" />
+                </div>
+                <span>SaaS Super Admin</span>
+              </div>
+              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-white/20 text-white">
+                Live
+              </span>
+            </Link>
+          </div>
+        )}
+
         {/* Primary Action Button */}
         <div>
           <button
@@ -391,14 +415,14 @@ export function Sidebar({
       <div suppressHydrationWarning className="h-[57px] px-3 border-t border-slate-200 bg-white flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-extrabold text-xs flex items-center justify-center border border-amber-200 shrink-0">
-            {user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : userInitials}
+            {user?.role === "SuperAdmin" ? "🛡️" : user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : userInitials}
           </div>
           <div className="truncate">
             <p className="text-xs font-bold text-slate-900 truncate leading-none">
               {displayedUserName}
             </p>
             <p className="text-[10px] text-slate-400 font-medium truncate mt-1">
-              {t(user?.roleTitle || (user?.role === "Manager" ? "Factory Manager" : user?.role === "Accounts" ? "Accounts Officer" : "Proprietor & Director"))}
+              {t(user?.roleTitle || (user?.role === "SuperAdmin" ? "SaaS Super Administrator" : user?.role === "Manager" ? "Factory Manager" : user?.role === "Accounts" ? "Accounts Officer" : "Proprietor & Director"))}
             </p>
           </div>
         </div>

@@ -50,14 +50,16 @@ def verify_password(plain_password: str, stored_password: str) -> bool:
 # In-memory ultra-fast authentication cache (keyed by lowercased username, email, user_id)
 AUTH_FAST_STORE = {}
 
-def sync_user_to_cache(user_id: str, username: str, email: str, name: str, firm_name: str, company_id: str, password_hash: str = ""):
+def sync_user_to_cache(user_id: str, username: str, email: str, name: str, firm_name: str, company_id: str, password_hash: str = "", role: str = "Owner"):
+    user_role = role or "Owner"
+    role_title = "SaaS Super Administrator" if user_role == "SuperAdmin" else ("Proprietor & Director" if user_role == "Owner" else user_role)
     entry = {
         "id": user_id,
         "name": name,
         "email": email or username,
         "username": username or email,
-        "role": "Owner",
-        "roleTitle": "Proprietor & Director",
+        "role": user_role,
+        "roleTitle": role_title,
         "firmName": firm_name,
         "companyId": company_id or "comp-001",
         "password_hash": password_hash,
@@ -84,7 +86,8 @@ def preload_auth_cache_from_db():
                     name=u.name,
                     firm_name=firm,
                     company_id=u.company_id or "comp-001",
-                    password_hash=u.password_hash or ""
+                    password_hash=u.password_hash or "",
+                    role=getattr(u, "role", "Owner") or "Owner"
                 )
         finally:
             db.close()
@@ -173,6 +176,7 @@ def login(req: LoginRequest):
         firm_name = company.name if company else (user.firm_name or "Om Sai Enterprise")
 
         # Sync credentials to cache (no plain passwords in memory)
+        user_role = getattr(user, "role", "Owner") or "Owner"
         sync_user_to_cache(
             user_id=user.id,
             username=user.username,
@@ -180,7 +184,8 @@ def login(req: LoginRequest):
             name=user.name,
             firm_name=firm_name,
             company_id=user.company_id or "comp-001",
-            password_hash=user.password_hash
+            password_hash=user.password_hash,
+            role=user_role
         )
 
         token = create_access_token({
@@ -190,7 +195,7 @@ def login(req: LoginRequest):
             "email": user.email,
             "name": user.name,
             "company_id": user.company_id or "comp-001",
-            "role": getattr(user, "role", "Owner") or "Owner"
+            "role": user_role
         })
 
         return {
@@ -204,8 +209,8 @@ def login(req: LoginRequest):
                 "name": user.name,
                 "email": user.email,
                 "username": user.username,
-                "role": getattr(user, "role", "Owner") or "Owner",
-                "roleTitle": "Proprietor & Director",
+                "role": user_role,
+                "roleTitle": "SaaS Super Administrator" if user_role == "SuperAdmin" else "Proprietor & Director",
                 "firmName": firm_name,
                 "companyId": user.company_id or "comp-001"
             }
@@ -363,9 +368,31 @@ def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)):
         email=clean_email,
         username=clean_email,
         password_hash=pw_hash,
-        company_id=next_comp_id
+        company_id=next_comp_id,
+        role="Owner",
+        is_active=True
     )
     db.add(new_user)
+
+    # Assign automated 14-day Professional Plan trial to new tenant
+    from app.models.subscription import TenantSubscription
+    from datetime import datetime, timedelta
+    now_dt = datetime.utcnow()
+    new_sub = TenantSubscription(
+        id=f"sub-{next_comp_id}",
+        company_id=next_comp_id,
+        plan_id="plan-pro",
+        status="trialing",
+        billing_cycle="monthly",
+        trial_start_at=now_dt,
+        trial_ends_at=now_dt + timedelta(days=14),
+        current_period_start=now_dt,
+        current_period_end=now_dt + timedelta(days=14),
+        grace_period_end=now_dt + timedelta(days=21),
+        notes="Automated 14-day trial assigned upon onboarding."
+    )
+    db.add(new_sub)
+
     db.commit()
     db.refresh(new_company)
     db.refresh(new_user)
@@ -592,6 +619,62 @@ class UpdateCompanySettingsRequest(BaseModel):
     terms_conditions: Optional[str] = None
     custom_labels: Optional[Any] = None
     settings_json: Optional[Any] = None
+
+@router.get("/subscription-status")
+def get_tenant_subscription_status(
+    current_user: Dict[str, Any] = Depends(get_required_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retrieve the caller's tenant subscription status, active plan, and days remaining."""
+    from app.models.subscription import TenantSubscription, SubscriptionPlan
+    from datetime import datetime
+    
+    cid = current_user.get("company_id") or "comp-001"
+    sub = db.query(TenantSubscription).filter(TenantSubscription.company_id == cid).first()
+    
+    if not sub:
+        return {
+            "success": True,
+            "status": "active",
+            "plan_id": "plan-enterprise",
+            "plan_name": "Enterprise Plan",
+            "days_left": None,
+            "is_trial": False,
+            "is_expired": False,
+            "company_id": cid
+        }
+        
+    plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.id == sub.plan_id).first()
+    plan_name = plan.name if plan else "Professional Plan"
+    
+    now_dt = datetime.utcnow()
+    days_left = None
+    if sub.status == "trialing" and sub.trial_ends_at:
+        delta = sub.trial_ends_at - now_dt
+        days_left = max(0, delta.days)
+    elif sub.current_period_end:
+        delta = sub.current_period_end - now_dt
+        days_left = max(0, delta.days)
+        
+    is_expired = sub.status in ("expired", "canceled", "suspended") or (days_left is not None and days_left <= 0 and sub.status == "trialing")
+    
+    effective_status = sub.status
+    if is_expired and effective_status not in ("suspended", "canceled"):
+        effective_status = "expired"
+
+    return {
+        "success": True,
+        "company_id": cid,
+        "status": effective_status,
+        "plan_id": sub.plan_id,
+        "plan_name": plan_name,
+        "is_trial": sub.status == "trialing",
+        "days_left": days_left,
+        "trial_ends_at": sub.trial_ends_at.isoformat() if sub.trial_ends_at else None,
+        "current_period_end": sub.current_period_end.isoformat() if sub.current_period_end else None,
+        "is_expired": is_expired,
+        "billing_cycle": sub.billing_cycle
+    }
 
 @router.get("/company-settings")
 def get_company_settings(
@@ -1023,9 +1106,31 @@ def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db))
         email=clean_email,
         username=clean_username,
         password_hash=pw_hash,
-        company_id=next_comp_id
+        company_id=next_comp_id,
+        role="Owner",
+        is_active=True
     )
     db.add(new_user)
+
+    # Assign automated 14-day Professional Plan trial to new tenant
+    from app.models.subscription import TenantSubscription
+    from datetime import datetime, timedelta
+    now_dt = datetime.utcnow()
+    new_sub = TenantSubscription(
+        id=f"sub-{next_comp_id}",
+        company_id=next_comp_id,
+        plan_id="plan-pro",
+        status="trialing",
+        billing_cycle="monthly",
+        trial_start_at=now_dt,
+        trial_ends_at=now_dt + timedelta(days=14),
+        current_period_start=now_dt,
+        current_period_end=now_dt + timedelta(days=14),
+        grace_period_end=now_dt + timedelta(days=21),
+        notes="Automated 14-day trial assigned upon onboarding."
+    )
+    db.add(new_sub)
+
     db.commit()
     db.refresh(new_company)
     db.refresh(new_user)

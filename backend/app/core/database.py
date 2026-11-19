@@ -61,25 +61,42 @@ def init_db():
         from app.models.category import Category
         from app.models.design import Design
         from app.models.user import User
+        from app.models.subscription import SubscriptionPlan, TenantSubscription, PaymentTransaction, PlatformAuditLog
+        from datetime import datetime, timedelta
+        import secrets, hashlib
 
         from app.models.sales_challan import SalesChallan
         from app.models.sales_invoice import SalesInvoice
 
         active_tables = [
-            User.__table__,           # 00_auth_users
-            Settings.__table__,       # 00_settings
-            Party.__table__,          # 01_parties
-            Worker.__table__,         # 02_workers
-            Expense.__table__,        # 03_expenses
-            Purchase.__table__,       # 04_purchases
-            PaymentVoucher.__table__, # 05_payments
-            Category.__table__,       # 06_categories
-            Design.__table__,         # 07_design_library
-            SalesChallan.__table__,   # 08_sales_challans
-            SalesInvoice.__table__,   # 09_sales_invoices
+            User.__table__,                 # 00_auth_users
+            Settings.__table__,             # 00_settings
+            SubscriptionPlan.__table__,     # 00_saas_plans
+            TenantSubscription.__table__,   # 00_saas_subscriptions
+            PaymentTransaction.__table__,   # 00_saas_payments
+            PlatformAuditLog.__table__,     # 00_saas_audit_logs
+            Party.__table__,                # 01_parties
+            Worker.__table__,               # 02_workers
+            Expense.__table__,              # 03_expenses
+            Purchase.__table__,             # 04_purchases
+            PaymentVoucher.__table__,       # 05_payments
+            Category.__table__,             # 06_categories
+            Design.__table__,               # 07_design_library
+            SalesChallan.__table__,         # 08_sales_challans
+            SalesInvoice.__table__,         # 09_sales_invoices
         ]
         Base.metadata.create_all(bind=engine, tables=active_tables)
-        print("✅ All 11 active database tables verified / initialized successfully.")
+        print("✅ All 15 active SaaS & ERP database tables verified / initialized successfully.")
+
+        # Safe non-destructive column migrations for existing tables
+        with engine.connect() as conn:
+            try:
+                from sqlalchemy import text
+                conn.execute(text('ALTER TABLE "00_auth_users" ADD COLUMN IF NOT EXISTS role VARCHAR(32) DEFAULT \'Owner\';'))
+                conn.execute(text('ALTER TABLE "00_auth_users" ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;'))
+                conn.commit()
+            except Exception as mig_err:
+                print(f"⚠️ Safe column migration notice: {mig_err}")
 
         db = SessionLocal()
         try:
@@ -133,6 +150,128 @@ def init_db():
                 db.add_all(default_categories)
                 db.commit()
                 print("✅ Default expense categories seeded.")
+
+            # 4. Ensure default SaaS subscription plans exist
+            if db.query(SubscriptionPlan).count() == 0:
+                default_plans = [
+                    SubscriptionPlan(
+                        id="plan-starter",
+                        name="Starter Jobwork Edition",
+                        code="starter",
+                        description="Essential jobwork, challans, parties and cash book for small textile units.",
+                        price_monthly=999,
+                        price_annual=9999,
+                        max_users=3,
+                        max_storage_mb=1024,
+                        monthly_docs_limit=500,
+                        allow_hrms=False,
+                        allow_custom_print=True,
+                        allow_export_reports=True,
+                        allow_api_access=False,
+                        features_json=[
+                            "Up to 3 Team Members",
+                            "500 Invoices & Challans / month",
+                            "Parties & Vendors Ledger",
+                            "Day Book & Cash Flow",
+                            "Recycle Bin Data Protection (30 Days)"
+                        ],
+                        display_order=1
+                    ),
+                    SubscriptionPlan(
+                        id="plan-pro",
+                        name="Professional Weaving & Embroidery",
+                        code="professional",
+                        description="Complete enterprise manufacturing suite with worker attendance and payroll.",
+                        price_monthly=2499,
+                        price_annual=24999,
+                        max_users=10,
+                        max_storage_mb=5120,
+                        monthly_docs_limit=2500,
+                        allow_hrms=True,
+                        allow_custom_print=True,
+                        allow_export_reports=True,
+                        allow_api_access=False,
+                        features_json=[
+                            "Up to 10 Team Members",
+                            "2,500 Invoices & Challans / month",
+                            "Full HRMS, Attendance & Salary Payout",
+                            "Design Library Master Management",
+                            "GST Tax Reports & Multi-device Access",
+                            "Priority Email & WhatsApp Support"
+                        ],
+                        display_order=2
+                    ),
+                    SubscriptionPlan(
+                        id="plan-enterprise",
+                        name="Enterprise OSE House Edition",
+                        code="enterprise",
+                        description="Unlimited multi-branch powerhouse for large textile conglomerates & exporters.",
+                        price_monthly=4999,
+                        price_annual=49999,
+                        max_users=999,
+                        max_storage_mb=51200,
+                        monthly_docs_limit=999999,
+                        allow_hrms=True,
+                        allow_custom_print=True,
+                        allow_export_reports=True,
+                        allow_api_access=True,
+                        features_json=[
+                            "Unlimited Team Members & Roles",
+                            "Unlimited Monthly Documents",
+                            "Advanced Financial Analytics & Audits",
+                            "Custom Print Templates & QR Codes",
+                            "Multi-tenant Cloud Resilience & API Access",
+                            "24/7 Dedicated Account Manager"
+                        ],
+                        display_order=3
+                    )
+                ]
+                db.add_all(default_plans)
+                db.commit()
+                print("✅ Default SaaS subscription plans seeded (Starter, Professional, Enterprise).")
+
+            # 5. Ensure Super Admin account exists
+            super_admin = db.query(User).filter(User.role == "SuperAdmin").first()
+            if not super_admin:
+                salt = secrets.token_hex(16)
+                key = hashlib.pbkdf2_hmac("sha256", "SuperAdmin@2026".encode("utf-8"), salt.encode("utf-8"), 100000)
+                pw_hash = f"{salt}:{key.hex()}"
+                
+                super_user = User(
+                    id="usr-super-001",
+                    firm_name="TexaFlow SaaS Cloud Platform",
+                    name="SaaS Super Administrator",
+                    email="superadmin@texaflow.com",
+                    username="superadmin",
+                    password_hash=pw_hash,
+                    role="SuperAdmin",
+                    is_active=True,
+                    company_id="comp-platform"
+                )
+                db.add(super_user)
+                db.commit()
+                print("✅ SaaS Super Administrator seeded (username: superadmin).")
+
+            # 6. Ensure default enterprise subscriptions exist for existing active tenants
+            all_companies = db.query(Settings).all()
+            for comp in all_companies:
+                existing_sub = db.query(TenantSubscription).filter(TenantSubscription.company_id == comp.id).first()
+                if not existing_sub:
+                    now = datetime.utcnow()
+                    new_sub = TenantSubscription(
+                        id=f"sub-{comp.id}",
+                        company_id=comp.id,
+                        plan_id="plan-enterprise",
+                        status="active",
+                        billing_cycle="annual",
+                        current_period_start=now,
+                        current_period_end=now + timedelta(days=365),
+                        grace_period_end=now + timedelta(days=372),
+                        notes="Grandfathered Enterprise SaaS license for verified anchor tenant."
+                    )
+                    db.add(new_sub)
+            db.commit()
+            print("✅ Tenant subscriptions verified / initialized for all active companies.")
         finally:
             db.close()
     except Exception as e:

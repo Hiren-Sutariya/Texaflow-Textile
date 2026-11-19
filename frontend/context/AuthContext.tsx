@@ -11,7 +11,7 @@ export interface UserSession {
   name: string;
   email: string;
   username?: string;
-  role: "Owner" | "Manager" | "Accounts";
+  role: "SuperAdmin" | "Owner" | "Admin" | "Manager" | "Accounts" | "Employee";
   roleTitle: string;
   firmName: string;
   companyId?: string;
