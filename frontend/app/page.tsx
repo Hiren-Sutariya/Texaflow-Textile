@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { getStoredFirmName, getStoredUserName, getStoredCompanyId } from "@/lib/tenantStorage";
@@ -108,11 +109,18 @@ const destinationModules = [
 export default function Home() {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const { t } = useLanguage();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user?.role === "SuperAdmin") {
+      router.push("/platform");
+    }
+  }, [isLoading, isAuthenticated, user, router]);
 
   // 1. Clean silent mount transition - no thread icon or loading message
   if (!mounted || isLoading) {

@@ -6,14 +6,28 @@ import { useAuth } from "@/context/AuthContext";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 
 export default function LoginPage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.push("/");
+      if (user?.role === "SuperAdmin") {
+        router.push("/platform");
+      } else {
+        router.push("/");
+      }
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, user, router]);
 
-  return <LoginScreen onSuccess={() => router.push("/")} />;
+  return (
+    <LoginScreen 
+      onSuccess={() => {
+        if (user?.role === "SuperAdmin") {
+          router.push("/platform");
+        } else {
+          router.push("/");
+        }
+      }} 
+    />
+  );
 }

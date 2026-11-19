@@ -98,7 +98,9 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
       const res = await login(email, password);
       if (res.success) {
         setSuccessMsg("Signed in successfully!");
-        if (onSuccess) {
+        if ((res as any).user?.role === "SuperAdmin" || email.trim().toLowerCase() === "superadmin") {
+          router.push("/platform");
+        } else if (onSuccess) {
           onSuccess();
         } else {
           router.push("/");

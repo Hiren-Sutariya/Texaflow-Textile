@@ -34,11 +34,13 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { getStoredFirmName, getStoredUserName, getStoredCompanyId } from "@/lib/tenantStorage";
 import { setTenantCookie } from "@/lib/cookieStorage";
+import { API_BASE_URL } from "@/lib/api";
 
 interface MenuItem {
   name: string;
   href: string;
   icon: any;
+  moduleKey?: string;
   isUpcoming?: boolean;
 }
 
@@ -51,44 +53,44 @@ const menuGroups: MenuGroup[] = [
   {
     groupTitle: "Masters",
     items: [
-      { name: "Parties", href: "/vendors", icon: Users },
+      { name: "Parties", href: "/vendors", icon: Users, moduleKey: "parties" },
     ]
   },
   {
     groupTitle: "HRMS & Payroll",
     items: [
-      { name: "Workers", href: "/employees", icon: UserCheck },
-      { name: "Attendance", href: "/hrms/attendance", icon: Clock },
-      { name: "Worker Payout", href: "/worker-payout", icon: Wallet },
-      { name: "Worker Portal", href: "/worker-portal", icon: UserCog },
+      { name: "Workers", href: "/employees", icon: UserCheck, moduleKey: "workers" },
+      { name: "Attendance", href: "/hrms/attendance", icon: Clock, moduleKey: "attendance" },
+      { name: "Worker Payout", href: "/worker-payout", icon: Wallet, moduleKey: "worker_payout" },
+      { name: "Worker Portal", href: "/worker-portal", icon: UserCog, moduleKey: "workers" },
     ]
   },
   {
     groupTitle: "Finance",
     items: [
-      { name: "Expenses", href: "/expenses", icon: Receipt },
-      { name: "Purchases", href: "/purchases", icon: ShoppingCart },
-      { name: "Sales Challans", href: "/sales", icon: Truck },
-      { name: "Sales Invoices", href: "/sales-invoices", icon: FileCheck },
-      { name: "Invoices", href: "/invoices", icon: FileText },
-      { name: "Payments", href: "/payments", icon: CreditCard },
-      { name: "Day Book", href: "/daybook", icon: CalendarDays },
-      { name: "Ledger", href: "/ledger", icon: BookOpen },
+      { name: "Expenses", href: "/expenses", icon: Receipt, moduleKey: "expenses" },
+      { name: "Purchases", href: "/purchases", icon: ShoppingCart, moduleKey: "purchases" },
+      { name: "Sales Challans", href: "/sales", icon: Truck, moduleKey: "sales_challans" },
+      { name: "Sales Invoices", href: "/sales-invoices", icon: FileCheck, moduleKey: "sales_invoices" },
+      { name: "Invoices", href: "/invoices", icon: FileText, moduleKey: "sales_invoices" },
+      { name: "Payments", href: "/payments", icon: CreditCard, moduleKey: "payments" },
+      { name: "Day Book", href: "/daybook", icon: CalendarDays, moduleKey: "daybook" },
+      { name: "Ledger", href: "/ledger", icon: BookOpen, moduleKey: "ledger" },
     ]
   },
   {
     groupTitle: "Settings",
     items: [
-      { name: "Categories", href: "/categories", icon: Tags },
-      { name: "Recycle Bin", href: "/recycle-bin", icon: Trash2 },
-      { name: "Settings", href: "/settings", icon: Settings },
+      { name: "Categories", href: "/categories", icon: Tags, moduleKey: "settings" },
+      { name: "Recycle Bin", href: "/recycle-bin", icon: Trash2, moduleKey: "recycle_bin" },
+      { name: "Settings", href: "/settings", icon: Settings, moduleKey: "settings" },
     ]
   },
   {
     groupTitle: "Upcoming Features",
     items: [
       { name: "OMS Performance", href: "/oms-performance", icon: TrendingUp, isUpcoming: true },
-      { name: "Reports", href: "/reports", icon: BarChart3, isUpcoming: true },
+      { name: "Reports", href: "/reports", icon: BarChart3, moduleKey: "reports", isUpcoming: true },
     ]
   }
 ];
@@ -157,6 +159,30 @@ export function Sidebar({
   // Dynamic Company Brand Name & Owner Name (Syncs with Settings in Real-Time with ZERO delay on refresh)
   const [liveUpdatedFirm, setLiveUpdatedFirm] = useState<string>("");
   const [liveUpdatedOwner, setLiveUpdatedOwner] = useState<string>("");
+  const [activeModules, setActiveModules] = useState<Record<string, boolean> | null>(null);
+
+  useEffect(() => {
+    async function loadActiveModules() {
+      try {
+        const token = localStorage.getItem("token") || localStorage.getItem("auth_token");
+        if (!token) return;
+        const res = await fetch(`${API_BASE_URL}/auth/my-permissions`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.modules) {
+            setActiveModules(data.modules);
+          }
+        }
+      } catch (e) {
+        // Fallback gracefully
+      }
+    }
+    loadActiveModules();
+  }, [user?.companyId]);
 
   useEffect(() => {
     const handleSettingsUpdate = (e: any) => {
@@ -294,16 +320,17 @@ export function Sidebar({
               onClick={() => {
                 if (isMobile) onClose?.();
               }}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white text-xs font-bold shadow-md transition-all group"
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-purple-700 via-indigo-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 text-white text-xs font-bold shadow-md transition-all group border border-purple-400/30"
+              title="Switch to SaaS Platform Administration Console"
             >
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
                   <ShieldCheck className="w-3.5 h-3.5 text-white" />
                 </div>
-                <span>SaaS Super Admin</span>
+                <span className="truncate">Open Super Admin Panel</span>
               </div>
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-white/20 text-white">
-                Live
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-white/25 text-white shrink-0 flex items-center gap-1">
+                <span>Console</span> ➔
               </span>
             </Link>
           </div>
@@ -366,7 +393,12 @@ export function Sidebar({
                 {/* Menu Items List Dropdown */}
                 {isOpen && (
                   <div className="space-y-0.5 pt-0.5 animate-in fade-in duration-150">
-                    {group.items?.map((sub) => {
+                    {group.items?.filter((sub) => {
+                      if (user?.role === "SuperAdmin") return true;
+                      if (!sub.moduleKey) return true;
+                      if (activeModules && activeModules[sub.moduleKey] === false) return false;
+                      return true;
+                    }).map((sub) => {
                       const isSubActive =
                         pathname === sub.href || (sub.href !== "/" && pathname.startsWith(sub.href + "/"));
                       const SubIcon = sub.icon;

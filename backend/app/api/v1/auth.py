@@ -22,7 +22,8 @@ from app.core.mailer import (
     send_registration_otp_email,
 )
 from app.core.jwt import create_access_token
-from app.core.tenant import get_required_current_user
+from app.core.tenant import get_required_current_user, get_tenant_context, TenantContext
+from app.services.permission_engine import PermissionEngine
 from fastapi import Header
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -674,6 +675,26 @@ def get_tenant_subscription_status(
         "current_period_end": sub.current_period_end.isoformat() if sub.current_period_end else None,
         "is_expired": is_expired,
         "billing_cycle": sub.billing_cycle
+    }
+
+@router.get("/my-permissions")
+def get_my_permissions(
+    ctx: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns active company modules and role action permissions for current user.
+    Used by frontend Sidebar and Navigation to dynamically filter allowed modules.
+    """
+    modules = PermissionEngine.get_company_module_settings(db, ctx.company_id)
+    permissions = PermissionEngine.get_role_permissions(db, ctx.company_id, ctx.role)
+    return {
+        "success": True,
+        "company_id": ctx.company_id,
+        "role": ctx.role,
+        "is_super_admin": ctx.is_super_admin,
+        "modules": modules,
+        "permissions": permissions
     }
 
 @router.get("/company-settings")
