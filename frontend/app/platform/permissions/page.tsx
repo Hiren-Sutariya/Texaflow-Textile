@@ -52,55 +52,58 @@ const FIELD_TARGETS = [
     entity: "purchase",
     entityLabel: "Purchases & Inward",
     fields: [
-      { key: "cost_breakdown", label: "Internal Cost Breakdown" },
-      { key: "total_amount", label: "Total Payable Bill" },
+      { key: "supplier_cost", label: "Supplier Costing Rate" },
+      { key: "internal_notes", label: "Internal Procurement Notes" },
+      { key: "broker_commission", label: "Broker Commission %" },
     ]
   },
   {
     entity: "expense",
     entityLabel: "Expenses",
     fields: [
-      { key: "internal_notes", label: "Private Expense Notes" },
       { key: "amount", label: "Expense Amount" },
+      { key: "approval_notes", label: "Approval Notes" },
     ]
   },
   {
     entity: "party",
     entityLabel: "Parties & Vendors",
     fields: [
-      { key: "credit_limit", label: "Credit Limit (₹)" },
+      { key: "credit_limit", label: "Credit Limit" },
+      { key: "closing_balance", label: "Current Balance" },
+      { key: "pan", label: "PAN Number" },
+      { key: "bank_account", label: "Bank Account Details" },
     ]
   }
 ];
 
 export default function PlatformPermissionsPage() {
   const [companies, setCompanies] = useState<any[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState<string>("*"); // '*' is platform default
+  const [selectedCompany, setSelectedCompany] = useState<string>("*"); // '*' is platform defaults
   const [modules, setModules] = useState<any[]>([]);
-  const [matrix, setMatrix] = useState<any>({});
+  const [matrix, setMatrix] = useState<Record<string, Record<string, Record<string, boolean>>>>({});
   const [fieldRules, setFieldRules] = useState<any>({});
   const [activeTab, setActiveTab] = useState<"role_actions" | "field_level">("role_actions");
+  const [selectedRole, setSelectedRole] = useState<string>("ACCOUNTANT");
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Selected filter for Role Action tab
-  const [selectedRole, setSelectedRole] = useState<string>("ACCOUNTANT");
-
   const loadData = async () => {
     setLoading(true);
     try {
-      const [compsRes, matrixRes, fieldsRes, modsRes] = await Promise.all([
+      const [compsRes, modsRes, matrixRes, fieldsRes] = await Promise.all([
         fetchApi("/platform/companies"),
+        fetchApi("/platform/modules"),
         fetchApi(`/platform/permissions/matrix?company_id=${selectedCompany}`),
-        fetchApi(`/platform/permissions/fields?company_id=${selectedCompany}`),
-        fetchApi("/platform/modules")
+        fetchApi(`/platform/permissions/fields?company_id=${selectedCompany}`)
       ]);
 
-      if (compsRes && compsRes.success) setCompanies(compsRes.companies || []);
-      if (matrixRes && matrixRes.success) setMatrix(matrixRes.matrix || {});
-      if (fieldsRes && fieldsRes.success) setFieldRules(fieldsRes.fields || {});
-      if (modsRes && modsRes.success) setModules(modsRes.modules || []);
+      if (compsRes?.success) setCompanies(compsRes.companies || []);
+      if (modsRes?.success) setModules(modsRes.modules || []);
+      if (matrixRes?.success) setMatrix(matrixRes.matrix || {});
+      if (fieldsRes?.success) setFieldRules(fieldsRes.fields || {});
     } catch (e) {
       console.error(e);
     } finally {
@@ -113,7 +116,7 @@ export default function PlatformPermissionsPage() {
   }, [selectedCompany]);
 
   const toggleAction = (role: string, moduleKey: string, actionKey: string) => {
-    setMatrix((prev: any) => {
+    setMatrix((prev) => {
       const next = JSON.parse(JSON.stringify(prev));
       if (!next[role]) next[role] = {};
       if (!next[role][moduleKey]) next[role][moduleKey] = {};
@@ -208,15 +211,15 @@ export default function PlatformPermissionsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-purple-400" />
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <ShieldCheck className="w-6 h-6 text-blue-600" />
             <span>Centralized Access Control Matrix</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Super Admin exclusively controls module, action, and backend field visibility across all 5 fixed roles.
           </p>
         </div>
@@ -225,7 +228,7 @@ export default function PlatformPermissionsPage() {
           {selectedCompany !== "*" && (
             <button
               onClick={handleResetToDefaults}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-amber-400 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-amber-700 transition-colors cursor-pointer shadow-2xs"
               title="Revert company to platform defaults"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -236,7 +239,7 @@ export default function PlatformPermissionsPage() {
           <button
             onClick={handleSaveAll}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-md shadow-purple-600/30 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20 cursor-pointer"
           >
             <Save className={`w-3.5 h-3.5 ${saving ? "animate-spin" : ""}`} />
             <span>{saving ? "Saving..." : "Save Matrix"}</span>
@@ -244,15 +247,15 @@ export default function PlatformPermissionsPage() {
         </div>
       </div>
 
-      {/* Target Company Selector */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-900 border border-slate-800">
+      {/* Target Company Selector - Clean White & Blue */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
         <div className="flex items-center gap-2.5">
-          <Building2 className="w-4 h-4 text-purple-400" />
-          <span className="text-xs font-bold text-slate-300">Target Tenant Scope:</span>
+          <Building2 className="w-4 h-4 text-blue-600" />
+          <span className="text-xs font-bold text-slate-700">Target Tenant Scope:</span>
           <select
             value={selectedCompany}
             onChange={(e) => setSelectedCompany(e.target.value)}
-            className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white font-bold focus:outline-none focus:border-purple-500"
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-500 shadow-2xs"
           >
             <option value="*">🌐 Global Platform Defaults (All Companies)</option>
             {companies.map((c) => (
@@ -264,11 +267,11 @@ export default function PlatformPermissionsPage() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 self-start sm:self-auto">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 self-start sm:self-auto">
           <button
             onClick={() => setActiveTab("role_actions")}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "role_actions" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
+              activeTab === "role_actions" ? "bg-white text-blue-700 shadow-2xs" : "text-slate-600 hover:text-slate-900"
             }`}
           >
             Level 2 & 3: Role Actions
@@ -276,7 +279,7 @@ export default function PlatformPermissionsPage() {
           <button
             onClick={() => setActiveTab("field_level")}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "field_level" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
+              activeTab === "field_level" ? "bg-white text-blue-700 shadow-2xs" : "text-slate-600 hover:text-slate-900"
             }`}
           >
             Level 4: Field-Level Rules
@@ -287,8 +290,8 @@ export default function PlatformPermissionsPage() {
       {saveStatus && (
         <div className={`p-3 rounded-xl text-xs font-bold ${
           saveStatus.type === "success"
-            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-            : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+            : "bg-rose-50 text-rose-700 border border-rose-200"
         }`}>
           {saveStatus.text}
         </div>
@@ -303,10 +306,10 @@ export default function PlatformPermissionsPage() {
               <button
                 key={role}
                 onClick={() => setSelectedRole(role)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 shadow-2xs ${
                   selectedRole === role
-                    ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
-                    : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                    : "bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50"
                 }`}
               >
                 {role}
@@ -315,10 +318,10 @@ export default function PlatformPermissionsPage() {
           </div>
 
           {/* Action Permissions Table */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-900 border-b border-slate-800 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
                   <tr>
                     <th className="py-3 px-4">Module Name</th>
                     {ACTIONS.map((a) => (
@@ -328,13 +331,13 @@ export default function PlatformPermissionsPage() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-100">
                   {modules.map((m) => {
                     const rolePerms = matrix[selectedRole]?.[m.key] || {};
                     return (
-                      <tr key={m.key} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={m.key} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-3 px-4">
-                          <p className="font-bold text-white text-xs">{m.label}</p>
+                          <p className="font-bold text-slate-900 text-xs">{m.label}</p>
                           <p className="text-[10px] text-slate-400 font-mono">{m.key} • {m.category}</p>
                         </td>
 
@@ -347,8 +350,8 @@ export default function PlatformPermissionsPage() {
                                 onClick={() => toggleAction(selectedRole, m.key, a.key)}
                                 className={`w-7 h-7 rounded-lg inline-flex items-center justify-center transition-all cursor-pointer ${
                                   isChecked
-                                    ? "bg-purple-600 text-white shadow-xs"
-                                    : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300"
+                                    ? "bg-blue-600 text-white shadow-xs"
+                                    : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
                                 }`}
                                 title={`${selectedRole} ${a.label} in ${m.label}`}
                               >
@@ -370,23 +373,23 @@ export default function PlatformPermissionsPage() {
       {/* TAB 2: FIELD-LEVEL SECURITY MATRIX */}
       {activeTab === "field_level" && (
         <div className="space-y-6">
-          <div className="p-4 rounded-xl bg-purple-950/30 border border-purple-500/20 text-xs text-purple-300 flex items-start gap-3">
-            <Lock className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 text-xs text-blue-900 flex items-start gap-3 shadow-2xs">
+            <Lock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-white">Strict Backend Enforcement</p>
-              <p className="text-slate-400 mt-0.5">
-                Fields marked <span className="text-rose-400 font-bold">'Hidden'</span> are stripped from JSON API responses on the server.
-                Fields marked <span className="text-amber-400 font-bold">'Read-Only'</span> or <span className="text-slate-300 font-bold">'Not Permitted'</span> cannot be modified via direct API requests.
+              <p className="font-bold text-slate-900">Strict Backend Enforcement</p>
+              <p className="text-slate-600 mt-0.5">
+                Fields marked <span className="text-rose-600 font-bold">'Hidden'</span> are stripped from JSON API responses on the server.
+                Fields marked <span className="text-amber-700 font-bold">'Read-Only'</span> or <span className="text-slate-700 font-bold">'No Update'</span> cannot be modified via direct API requests.
               </p>
             </div>
           </div>
 
           <div className="space-y-6">
             {FIELD_TARGETS.map((target) => (
-              <div key={target.entity} className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                <div className="bg-slate-900 px-5 py-3 border-b border-slate-800 flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Boxes className="w-4 h-4 text-purple-400" />
+              <div key={target.entity} className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs">
+                <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Boxes className="w-4 h-4 text-blue-600" />
                     <span>{target.entityLabel} Field Controls</span>
                   </h3>
                   <span className="text-[10px] font-mono text-slate-400">{target.entity}</span>
@@ -394,7 +397,7 @@ export default function PlatformPermissionsPage() {
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-900/50 border-b border-slate-800/80 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    <thead className="bg-slate-50/50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
                       <tr>
                         <th className="py-3 px-4">Field Name</th>
                         {FIXED_ROLES.map((r) => (
@@ -402,11 +405,11 @@ export default function PlatformPermissionsPage() {
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody className="divide-y divide-slate-100">
                       {target.fields.map((f) => (
-                        <tr key={f.key} className="hover:bg-slate-800/30 transition-colors">
+                        <tr key={f.key} className="hover:bg-slate-50/70 transition-colors">
                           <td className="py-3.5 px-4">
-                            <p className="font-bold text-white text-xs">{f.label}</p>
+                            <p className="font-bold text-slate-900 text-xs">{f.label}</p>
                             <p className="text-[10px] text-slate-400 font-mono">{f.key}</p>
                           </td>
 
@@ -419,12 +422,12 @@ export default function PlatformPermissionsPage() {
                                   onChange={(e) => setFieldPermission(target.entity, f.key, role, e.target.value)}
                                   className={`text-[11px] font-bold rounded-lg px-2 py-1 border transition-colors cursor-pointer ${
                                     currentPerm === "hidden"
-                                      ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                                      ? "bg-rose-50 text-rose-700 border-rose-200"
                                       : currentPerm === "read_only"
-                                      ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                                      ? "bg-amber-50 text-amber-700 border-amber-200"
                                       : currentPerm === "not_permitted_update"
-                                      ? "bg-slate-800 text-slate-400 border-slate-700"
-                                      : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                      ? "bg-slate-100 text-slate-600 border-slate-200"
+                                      : "bg-emerald-50 text-emerald-700 border-emerald-200"
                                   }`}
                                 >
                                   <option value="editable">✏️ Editable</option>

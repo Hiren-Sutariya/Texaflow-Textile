@@ -104,15 +104,15 @@ export default function PlatformModulesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-            <Boxes className="w-6 h-6 text-purple-400" />
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <Boxes className="w-6 h-6 text-blue-600" />
             <span>Module Management</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Level 1 Security: Selectively enable or disable entire ERP business modules per tenant company.
           </p>
         </div>
@@ -120,22 +120,22 @@ export default function PlatformModulesPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-md shadow-purple-600/30 cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20 cursor-pointer"
         >
           <Save className={`w-3.5 h-3.5 ${saving ? "animate-spin" : ""}`} />
           <span>{saving ? "Saving..." : "Save Module Configuration"}</span>
         </button>
       </div>
 
-      {/* Tenant Selector & Bulk Controls */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-900 border border-slate-800">
+      {/* Tenant Selector & Bulk Controls - Clean White & Blue */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
         <div className="flex items-center gap-2.5">
-          <Building2 className="w-4 h-4 text-purple-400" />
-          <span className="text-xs font-bold text-slate-300">Selected Enterprise:</span>
+          <Building2 className="w-4 h-4 text-blue-600" />
+          <span className="text-xs font-bold text-slate-700">Selected Enterprise:</span>
           <select
             value={selectedCompany}
             onChange={(e) => setSelectedCompany(e.target.value)}
-            className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white font-bold focus:outline-none focus:border-purple-500"
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-500 shadow-2xs"
           >
             {companies.map((c) => (
               <option key={c.id} value={c.id}>
@@ -148,13 +148,13 @@ export default function PlatformModulesPage() {
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             onClick={() => handleBulk(true)}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-emerald-400 transition-colors cursor-pointer"
+            className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-xs font-bold text-emerald-700 border border-emerald-200 transition-colors cursor-pointer shadow-2xs"
           >
             Enable All
           </button>
           <button
             onClick={() => handleBulk(false)}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-rose-400 transition-colors cursor-pointer"
+            className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-xs font-bold text-rose-700 border border-rose-200 transition-colors cursor-pointer shadow-2xs"
           >
             Disable All
           </button>
@@ -164,14 +164,14 @@ export default function PlatformModulesPage() {
       {status && (
         <div className={`p-3 rounded-xl text-xs font-bold ${
           status.type === "success"
-            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-            : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+            : "bg-rose-50 text-rose-700 border border-rose-200"
         }`}>
           {status.text}
         </div>
       )}
 
-      {/* Modules Grid */}
+      {/* Modules Grid - Clean White & Blue Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {modules.map((m) => {
           const isEnabled = moduleStates[m.key] !== false; // default True
@@ -179,16 +179,16 @@ export default function PlatformModulesPage() {
             <div
               key={m.key}
               onClick={() => toggleModule(m.key)}
-              className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+              className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between shadow-2xs ${
                 isEnabled
-                  ? "bg-slate-900/90 border-purple-500/40 hover:border-purple-500/80 shadow-md"
-                  : "bg-slate-950/60 border-slate-800 hover:border-slate-700 opacity-60"
+                  ? "bg-white border-blue-200 hover:border-blue-400 hover:shadow-xs"
+                  : "bg-slate-50/70 border-slate-200 opacity-60 hover:opacity-80"
               }`}
             >
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-bold text-white">{m.label}</h4>
-                  <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
+                  <h4 className="text-xs font-bold text-slate-900">{m.label}</h4>
+                  <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
                     {m.category}
                   </span>
                 </div>
@@ -197,8 +197,8 @@ export default function PlatformModulesPage() {
 
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
                 isEnabled
-                  ? "bg-purple-600 text-white shadow-xs"
-                  : "bg-slate-800 text-slate-500"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "bg-slate-200 text-slate-400"
               }`}>
                 {isEnabled ? <Check className="w-4 h-4 stroke-[3]" /> : <X className="w-4 h-4" />}
               </div>

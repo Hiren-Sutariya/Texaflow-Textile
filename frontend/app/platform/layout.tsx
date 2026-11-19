@@ -19,9 +19,7 @@ import {
   ChevronRight,
   ShieldAlert,
   ArrowLeft,
-  Sparkles,
   RefreshCw,
-  Bell
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -59,10 +57,10 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
 
   if (!mounted || isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-700">
         <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="w-8 h-8 animate-spin text-purple-400" />
-          <p className="text-sm font-semibold tracking-wide text-slate-300">Authenticating Platform Operator...</p>
+          <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
+          <p className="text-sm font-semibold tracking-wide text-slate-500">Authenticating Platform Operator...</p>
         </div>
       </div>
     );
@@ -70,18 +68,18 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
 
   if (!user || user.role !== "SuperAdmin") {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <div className="bg-slate-900 border border-rose-500/30 rounded-2xl p-8 max-w-md w-full text-center space-y-4">
-          <div className="w-12 h-12 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto border border-rose-500/20">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white border border-rose-200 rounded-2xl p-8 max-w-md w-full text-center space-y-4 shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-200">
             <ShieldAlert className="w-6 h-6" />
           </div>
-          <h2 className="text-xl font-bold text-white">Access Denied</h2>
-          <p className="text-sm text-slate-400">
+          <h2 className="text-xl font-bold text-slate-900">Access Denied</h2>
+          <p className="text-sm text-slate-500">
             This administration console requires platform-level SuperAdmin credentials.
           </p>
           <Link
             href="/login"
-            className="inline-block px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors"
+            className="inline-block px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-sm"
           >
             Sign in as SuperAdmin
           </Link>
@@ -91,28 +89,28 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased">
-      {/* Platform Top Header */}
-      <header className="h-14 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-50">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col antialiased font-sans">
+      {/* Platform Top Header - Clean White & Blue */}
+      <header className="h-14 border-b border-slate-200/90 bg-white/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-50 shadow-2xs">
         <div className="flex items-center gap-3">
           <Link href="/platform" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-md font-black text-sm">
-              🛡️
+            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 font-black text-xs">
+              SA
             </div>
             <div>
-              <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
-                TexaFlow <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">SuperAdmin</span>
+              <span className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                TexaFlow <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">SuperAdmin</span>
               </span>
               <p className="text-[9px] text-slate-400 tracking-tight leading-none mt-0.5">Centralized SaaS Control Plane</p>
             </div>
           </Link>
 
-          <span className="h-4 w-[1px] bg-slate-800 mx-2 hidden sm:block" />
+          <span className="h-4 w-[1px] bg-slate-200 mx-2 hidden sm:block" />
 
           {/* Quick ERP jump link */}
           <Link
             href="/"
-            className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-slate-800 transition-colors"
+            className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-700 px-2.5 py-1 rounded-lg hover:bg-blue-50/60 transition-colors font-semibold"
             title="Switch to ERP Tenant Mode"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -121,23 +119,23 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hidden md:inline-flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hidden md:inline-flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Production Engine
           </span>
 
-          <div className="flex items-center gap-2 pl-3 border-l border-slate-800">
-            <div className="w-8 h-8 rounded-full bg-purple-900/80 text-purple-200 border border-purple-700/50 flex items-center justify-center text-xs font-black">
+          <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
+            <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center text-xs font-black">
               SA
             </div>
             <div className="hidden lg:block text-left text-xs">
-              <p className="font-bold text-white leading-tight">Super Administrator</p>
+              <p className="font-bold text-slate-900 leading-tight">Super Administrator</p>
               <p className="text-[10px] text-slate-400">{user.email || "superadmin@texaflow.com"}</p>
             </div>
 
             <button
               onClick={logout}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors ml-1"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1 cursor-pointer"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
@@ -148,8 +146,8 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
 
       {/* Main Container: Sidebar + Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Dedicated SaaS Admin Sidebar */}
-        <aside className="w-64 bg-slate-900/70 border-r border-slate-800/80 flex flex-col shrink-0 overflow-y-auto no-scrollbar p-3 space-y-1">
+        {/* Dedicated SaaS Admin Sidebar - Clean White & Blue */}
+        <aside className="w-64 bg-white border-r border-slate-200/80 flex flex-col shrink-0 overflow-y-auto no-scrollbar p-3 space-y-1">
           <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
             Platform Management
           </div>
@@ -166,16 +164,16 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
                 href={item.href}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
                   isActive
-                    ? "bg-purple-600 text-white shadow-md shadow-purple-600/20"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                } ${item.highlight && !isActive ? "border border-purple-500/30 text-purple-300" : ""}`}
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                } ${item.highlight && !isActive ? "bg-blue-50/50 text-blue-700 border border-blue-100" : ""}`}
               >
                 <div className="flex items-center gap-2.5">
-                  <Icon className={`w-4 h-4 ${isActive ? "text-white" : item.highlight ? "text-purple-400" : "text-slate-400"}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? "text-white" : item.highlight ? "text-blue-600" : "text-slate-400"}`} />
                   <span>{item.name}</span>
                 </div>
                 {item.highlight && (
-                  <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300">
+                  <span className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${isActive ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"}`}>
                     Core
                   </span>
                 )}
@@ -185,7 +183,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>

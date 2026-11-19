@@ -105,15 +105,15 @@ export default function PlatformSupportPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-            <Headphones className="w-6 h-6 text-purple-400" />
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <Headphones className="w-6 h-6 text-blue-600" />
             <span>Customer Support & Diagnostic Access</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Audited, time-limited tenant support sessions with mandatory justification. Passwords remain completely private.
           </p>
         </div>
@@ -121,7 +121,7 @@ export default function PlatformSupportPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => { setOpenModal(true); setSessionResult(null); setErr(null); }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
           >
             <Plus className="w-4 h-4" />
             <span>Generate Support Session</span>
@@ -129,37 +129,37 @@ export default function PlatformSupportPage() {
 
           <button
             onClick={loadData}
-            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 transition-colors cursor-pointer shadow-2xs"
             title="Refresh"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-purple-400" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : "text-slate-500"}`} />
           </button>
         </div>
       </div>
 
-      {/* Security Notice */}
-      <div className="p-4 rounded-2xl bg-amber-950/20 border border-amber-500/30 text-xs text-amber-200/90 flex items-start gap-3">
-        <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+      {/* Security Notice - Clean White & Blue */}
+      <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 text-xs text-blue-900 flex items-start gap-3 shadow-2xs">
+        <ShieldAlert className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
         <div>
-          <p className="font-bold text-white">Strict Customer Privacy & Audit Policy</p>
-          <p className="text-slate-400 mt-0.5">
+          <p className="font-bold text-slate-900">Strict Customer Privacy & Audit Policy</p>
+          <p className="text-slate-600 mt-0.5">
             Every diagnostic support action is permanently logged with the administrator identity, timestamp, and justification reason. Silent or unlogged customer data access is cryptographically forbidden.
           </p>
         </div>
       </div>
 
-      {/* Active Support Sessions Table */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="bg-slate-900 px-5 py-3 border-b border-slate-800 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Clock className="w-4 h-4 text-emerald-400" />
+      {/* Active Support Sessions Table - Clean White & Blue */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs">
+        <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-emerald-600" />
             <span>Active Support Sessions ({activeSessions.length})</span>
           </h3>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-900/50 border-b border-slate-800/80 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+            <thead className="bg-slate-50/50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
               <tr>
                 <th className="py-3 px-4">Operator / Company</th>
                 <th className="py-3 px-4">Support Justification</th>
@@ -168,32 +168,32 @@ export default function PlatformSupportPage() {
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-slate-100">
               {activeSessions.map((s) => (
-                <tr key={s.id} className="hover:bg-slate-800/30 transition-colors">
+                <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
                   <td className="py-3.5 px-4">
-                    <p className="font-bold text-white">{s.company_name}</p>
+                    <p className="font-bold text-slate-900">{s.company_name}</p>
                     <p className="text-[10px] text-slate-400 font-mono mt-0.5">
                       Operator: {s.admin_email}
                     </p>
                   </td>
 
-                  <td className="py-3.5 px-4 text-slate-300 max-w-xs truncate font-medium">
+                  <td className="py-3.5 px-4 text-slate-700 max-w-xs truncate font-medium">
                     "{s.reason}"
                   </td>
 
-                  <td className="py-3.5 px-4 text-slate-400 text-[11px]">
+                  <td className="py-3.5 px-4 text-slate-500 text-[11px]">
                     {s.created_at ? new Date(s.created_at).toLocaleTimeString() : "—"}
                   </td>
 
-                  <td className="py-3.5 px-4 text-amber-400 font-bold text-[11px]">
+                  <td className="py-3.5 px-4 text-amber-700 font-bold text-[11px]">
                     {new Date(s.expires_at).toLocaleTimeString()}
                   </td>
 
                   <td className="py-3.5 px-4 text-right">
                     <button
                       onClick={() => handleRevoke(s.id)}
-                      className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[11px] font-bold transition-colors cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold transition-colors cursor-pointer shadow-2xs"
                     >
                       Revoke Immediately
                     </button>
@@ -214,32 +214,34 @@ export default function PlatformSupportPage() {
 
       {/* Generate Support Session Modal */}
       {openModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Headphones className="w-4 h-4 text-purple-400" />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Headphones className="w-4 h-4" />
+                </div>
                 <span>Audited Diagnostic Support Session</span>
               </h3>
-              <button onClick={() => setOpenModal(false)} className="p-1 text-slate-400 hover:text-white">
+              <button onClick={() => setOpenModal(false)} className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {err && (
-              <div className="p-3 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+              <div className="p-3 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
                 {err}
               </div>
             )}
 
             {sessionResult ? (
               <div className="space-y-4 py-2">
-                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold space-y-1">
-                  <p className="flex items-center gap-1.5">
+                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold space-y-1">
+                  <p className="flex items-center gap-1.5 text-emerald-700">
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Support Session Provisioned Successfully</span>
                   </p>
-                  <p className="text-[11px] text-slate-300 font-normal">
+                  <p className="text-[11px] text-slate-600 font-normal">
                     Valid for {sessionResult.expires_at} with permanent audit logging.
                   </p>
                 </div>
@@ -247,21 +249,28 @@ export default function PlatformSupportPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => launchSupportPortal(sessionResult.token, sessionResult.company_id)}
-                    className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                    className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                   >
-                    <span>Launch Diagnostic Tenant Portal</span>
+                    <span>Launch Diagnostic ERP Portal</span>
                     <ExternalLink className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setOpenModal(false)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold"
+                  >
+                    Close
                   </button>
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleCreateSession} className="space-y-3.5 text-xs">
+              <form onSubmit={handleCreateSession} className="space-y-3 text-xs">
                 <div>
-                  <label className="block text-slate-400 font-bold mb-1">Target Tenant Enterprise</label>
+                  <label className="block text-slate-600 font-bold mb-1">Target Tenant Company</label>
                   <select
                     value={selectedCompanyId}
                     onChange={(e) => setSelectedCompanyId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
+                    required
                   >
                     {companies.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -272,49 +281,50 @@ export default function PlatformSupportPage() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 font-bold mb-1">
-                    Mandatory Diagnostic Justification <span className="text-rose-400">*</span>
+                  <label className="block text-slate-600 font-bold mb-1">
+                    Mandatory Diagnostic Justification
                   </label>
                   <textarea
                     rows={3}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    placeholder="e.g. Diagnosing GST rounding discrepancy reported in Support Ticket #1084..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    placeholder="e.g., Investigating GST tax calculation discrepancy reported on ticket #4812"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-3 text-slate-900 focus:border-blue-500 focus:outline-none placeholder-slate-400"
                     required
-                    minLength={5}
                   />
-                  <p className="text-[10px] text-slate-500 mt-1">This reason is permanently preserved in the platform audit trail.</p>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    * This statement is immutably written to platform audit trails.
+                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 font-bold mb-1">Access Duration</label>
+                  <label className="block text-slate-600 font-bold mb-1">Session Duration</label>
                   <select
                     value={duration}
                     onChange={(e) => setDuration(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
                   >
-                    <option value={15}>15 Minutes (Quick Inspection)</option>
+                    <option value={15}>15 Minutes</option>
                     <option value={30}>30 Minutes</option>
-                    <option value={60}>60 Minutes (Standard Diagnostic)</option>
-                    <option value={120}>120 Minutes (Maximum Permitted)</option>
+                    <option value={60}>60 Minutes (Default)</option>
+                    <option value={120}>120 Minutes (Max)</option>
                   </select>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => setOpenModal(false)}
-                    className="px-4 py-2 text-slate-400 hover:text-white"
+                    className="px-4 py-2 text-slate-500 hover:text-slate-800 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer shadow-xs"
                   >
-                    {submitting ? "Authorizing..." : "Authorize Diagnostic Session"}
+                    {submitting ? "Provisioning..." : "Generate & Sign Session"}
                   </button>
                 </div>
               </form>
