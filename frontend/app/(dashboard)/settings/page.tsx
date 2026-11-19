@@ -567,31 +567,29 @@ export default function SettingsPage() {
     // 2. Fetch live company profile from Backend API (Supabase) to keep in sync
     const fetchCompanySettings = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/auth/company-settings?company_id=${cid}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.company_name) {
-            setFormData((prev) => {
-              const serverCustomLabels = data.custom_labels || (data.settings_json && data.settings_json.custom_labels);
-              const custom_labels = {
-                ...(prev.custom_labels || {}),
-                ...(serverCustomLabels || {})
-              };
-              const updated = {
-                ...prev,
-                company_name: data.company_name || prev.company_name,
-                brand_name: data.brand_name || prev.brand_name,
-                tagline: data.tagline !== undefined && data.tagline !== "" ? data.tagline : prev.tagline,
-                phone: (data.phone && data.phone.trim()) ? data.phone.trim() : prev.phone,
-                alt_phone: data.alt_phone !== undefined && data.alt_phone !== "" ? data.alt_phone : prev.alt_phone,
-                email: (data.email && data.email.trim()) ? data.email.trim() : (cid === "comp-001" ? "owner@shivcreation.com" : (cid === "comp-002" ? "owner@om-sai.com" : prev.email)),
-                address: (data.address && data.address.trim()) ? data.address.trim() : prev.address,
-                city_state: data.city_state !== undefined && data.city_state !== "" ? data.city_state : prev.city_state,
-                pincode: data.pincode !== undefined && data.pincode !== "" ? data.pincode : prev.pincode,
-                msme_no: data.msme_no !== undefined && data.msme_no !== "" ? data.msme_no : prev.msme_no,
-                website: data.website !== undefined && data.website !== "" ? data.website : prev.website,
-                gstin: (data.gstin && data.gstin.trim()) ? data.gstin.trim() : prev.gstin,
-                pan: data.pan !== undefined && data.pan !== "" ? data.pan : prev.pan,
+        const data = await fetchApi<any>(`/auth/company-settings?company_id=${cid}`);
+        if (data && data.company_name) {
+          setFormData((prev) => {
+            const serverCustomLabels = data.custom_labels || (data.settings_json && data.settings_json.custom_labels);
+            const custom_labels = {
+              ...(prev.custom_labels || {}),
+              ...(serverCustomLabels || {})
+            };
+            const updated = {
+              ...prev,
+              company_name: data.company_name || prev.company_name,
+              brand_name: data.brand_name || prev.brand_name,
+              tagline: data.tagline !== undefined && data.tagline !== "" ? data.tagline : prev.tagline,
+              phone: (data.phone && data.phone.trim()) ? data.phone.trim() : prev.phone,
+              alt_phone: data.alt_phone !== undefined && data.alt_phone !== "" ? data.alt_phone : prev.alt_phone,
+              email: (data.email && data.email.trim()) ? data.email.trim() : (cid === "comp-001" ? "owner@shivcreation.com" : (cid === "comp-002" ? "owner@om-sai.com" : prev.email)),
+              address: (data.address && data.address.trim()) ? data.address.trim() : prev.address,
+              city_state: data.city_state !== undefined && data.city_state !== "" ? data.city_state : prev.city_state,
+              pincode: data.pincode !== undefined && data.pincode !== "" ? data.pincode : prev.pincode,
+              msme_no: data.msme_no !== undefined && data.msme_no !== "" ? data.msme_no : prev.msme_no,
+              website: data.website !== undefined && data.website !== "" ? data.website : prev.website,
+              gstin: (data.gstin && data.gstin.trim()) ? data.gstin.trim() : prev.gstin,
+              pan: data.pan !== undefined && data.pan !== "" ? data.pan : prev.pan,
 
                 // Bank Details
                 bank_name: data.bank_name !== undefined && data.bank_name !== "" ? data.bank_name : prev.bank_name,
@@ -636,7 +634,6 @@ export default function SettingsPage() {
               localStorage.setItem(`texaflow_login_username_${cid}`, data.username);
             } catch {}
           }
-        }
       } catch (err) {
         console.warn("Could not fetch company settings from backend:", err);
       }
@@ -664,10 +661,8 @@ export default function SettingsPage() {
         if (cid) queryParams.set("company_id", cid);
         if (user?.username || user?.email) queryParams.set("username", user.username || user.email || "");
 
-        const url = `${API_BASE_URL}/auth/credentials?${queryParams.toString()}`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
+        const data = await fetchApi<any>(`/auth/credentials?${queryParams.toString()}`);
+        if (data && data.success) {
           // Strict Tenant Guard: NEVER overwrite current tenant with another tenant's credentials
           if (data.company_id && data.company_id !== cid) {
             console.warn("Ignoring mismatched tenant credentials:", data);
@@ -1335,9 +1330,8 @@ export default function SettingsPage() {
       setIsSaving(true);
 
       try {
-        const res = await fetch(`${API_BASE_URL}/auth/change-credentials`, {
+        const data = await fetchApi<any>("/auth/change-credentials", {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             current_password: isChangingPassword ? authData.currentPassword.trim() : "",
             new_username: authData.username.trim(),
@@ -1348,9 +1342,7 @@ export default function SettingsPage() {
           })
         });
 
-        const data = await res.json();
-
-        if (res.ok) {
+        if (data && (data.success || data.user)) {
           setSaveSuccessMsg(
             isChangingPassword
               ? "Login User ID, Name & Password updated successfully!"
@@ -1377,10 +1369,10 @@ export default function SettingsPage() {
 
           setTimeout(() => setSaveSuccessMsg(""), 3500);
         } else {
-          setAuthErrorMsg(data.detail || "Failed to update profile.");
+          setAuthErrorMsg(data?.detail || "Failed to update profile.");
         }
-      } catch (err) {
-        setAuthErrorMsg("Cannot connect to backend server.");
+      } catch (err: any) {
+        setAuthErrorMsg(err?.message || "Cannot connect to backend server.");
       } finally {
         isSavingRef.current = false;
         setIsSaving(false);
@@ -1423,9 +1415,8 @@ export default function SettingsPage() {
 
       // Also sync company name, username and details to backend API
       try {
-        await fetch(`${API_BASE_URL}/auth/company-settings`, {
+        await fetchApi<any>("/auth/company-settings", {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             company_id: cid,
             user_id: user?.id,
@@ -1476,9 +1467,8 @@ export default function SettingsPage() {
         });
 
         if (newUsername || newName) {
-          await fetch(`${API_BASE_URL}/auth/change-credentials`, {
+          await fetchApi<any>("/auth/change-credentials", {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               new_username: newUsername || user?.username || user?.email,
               name: newName || "",

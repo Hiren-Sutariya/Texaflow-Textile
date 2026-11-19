@@ -16,13 +16,7 @@ export interface WorkerItem {
   company_id?: string;
 }
 
-export const DEFAULT_WORKERS: WorkerItem[] = [
-  { id: "wrk-001", name: "Rakesh Bind", code: "KAR-001", role: "Karigar", shift: "Day Shift", assigned_machine: "Machine 1", monthly_salary: 33000 },
-  { id: "wrk-002", name: "Gaurav", code: "KAR-002", role: "Karigar", shift: "Day Shift", assigned_machine: "Machine 3", monthly_salary: 33000 },
-  { id: "wrk-005", name: "RajKumar", code: "STF-005", role: "Staff", shift: "Day Shift", monthly_salary: 10000 },
-  { id: "wrk-006", name: "Tanuja", code: "STF-006", role: "Staff", shift: "Day Shift", monthly_salary: 10000 },
-  { id: "wrk-007", name: "Kailash", code: "STF-007", role: "Staff", shift: "Day Shift", monthly_salary: 9500 },
-];
+export const DEFAULT_WORKERS: WorkerItem[] = [];
 
 // Clean up any test records created during development/testing
 export function purgeTestingData(): void {
@@ -99,12 +93,12 @@ export function purgeTestingData(): void {
 }
 
 export function getStoredWorkers(): WorkerItem[] {
-  if (typeof window === "undefined") return DEFAULT_WORKERS;
+  if (typeof window === "undefined") return [];
   try {
     const cid = getStoredCompanyId() || "comp-001";
 
-    // 1. Primary Source: app_employees_data (synchronized with Employees / Workers master)
-    const saved = localStorage.getItem("app_employees_data");
+    // 1. Primary Source: Scoped tenant employee data
+    const saved = localStorage.getItem(`app_employees_data_${cid}`) || localStorage.getItem("app_employees_data");
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -160,7 +154,7 @@ export function getStoredWorkers(): WorkerItem[] {
     }
   } catch {}
 
-  return DEFAULT_WORKERS;
+  return [];
 }
 
 export async function refreshWorkersFromApi(onSuccess?: (workers: WorkerItem[]) => void): Promise<WorkerItem[]> {
@@ -208,7 +202,7 @@ export function calculateAttendanceStatus(hours: number): {
   overtime_hours: number;
 } {
   if (hours <= 0) {
-    return { status: "Present", overtime_hours: 0 };
+    return { status: "Absent", overtime_hours: 0 };
   }
   if (hours >= 9.5) {
     return { status: "Overtime", overtime_hours: Math.round((hours - 8) * 10) / 10 };

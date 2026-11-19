@@ -66,7 +66,7 @@ def create_sales_challan(
         challan_data["date"] = format_to_dd_mm_yyyy(challan_data["date"])
 
     # ID generation: sc-101, sc-102 ...
-    existing_all = db.query(SalesChallan.id).all()
+    existing_all = db.query(SalesChallan.id).filter(SalesChallan.company_id == company_id).all()
     max_id = 0
     for (cid,) in existing_all:
         if cid and "sc-" in cid:

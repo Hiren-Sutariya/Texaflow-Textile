@@ -6,7 +6,7 @@ def get_engine():
     db_url = settings.DATABASE_URL
     is_sqlite = db_url.startswith("sqlite")
     connect_args = {"check_same_thread": False} if is_sqlite else {
-        "connect_timeout": 3,
+        "connect_timeout": 10,
         "keepalives": 1,
         "keepalives_idle": 30,
         "keepalives_interval": 10,
@@ -17,19 +17,23 @@ def get_engine():
         engine = create_engine(
             db_url,
             connect_args=connect_args,
-            pool_pre_ping=False,
+            pool_pre_ping=True,
             pool_recycle=120,
-            pool_timeout=5,
+            pool_timeout=15,
             **({} if is_sqlite else {"pool_size": 10, "max_overflow": 20})
         )
         return engine
     except Exception as e:
-        print(f"⚠️ Notice creating engine with '{db_url}': {e}")
-        print("🔄 Falling back to transient in-memory SQLite database for testing.")
-        return create_engine(
-            "sqlite:///:memory:",
-            connect_args={"check_same_thread": False}
-        )
+        print(f"❌ Critical error creating database engine for '{db_url}': {e}")
+        # Only fall back to transient in-memory database in explicit local test mode
+        import os
+        if os.getenv("TESTING") == "1" or is_sqlite:
+            print("🔄 Falling back to transient in-memory SQLite database for test runner.")
+            return create_engine(
+                "sqlite:///:memory:",
+                connect_args={"check_same_thread": False}
+            )
+        raise RuntimeError(f"Database connection failed: {e}")
 
 engine = get_engine()
 
@@ -55,6 +59,7 @@ def init_db():
         from app.models.expense import Expense
         from app.models.purchase import Purchase
         from app.models.category import Category
+        from app.models.design import Design
         from app.models.user import User
 
         from app.models.sales_challan import SalesChallan
@@ -69,11 +74,12 @@ def init_db():
             Purchase.__table__,       # 04_purchases
             PaymentVoucher.__table__, # 05_payments
             Category.__table__,       # 06_categories
+            Design.__table__,         # 07_design_library
             SalesChallan.__table__,   # 08_sales_challans
             SalesInvoice.__table__,   # 09_sales_invoices
         ]
         Base.metadata.create_all(bind=engine, tables=active_tables)
-        print("✅ All 10 active database tables verified / initialized successfully.")
+        print("✅ All 11 active database tables verified / initialized successfully.")
 
         db = SessionLocal()
         try:

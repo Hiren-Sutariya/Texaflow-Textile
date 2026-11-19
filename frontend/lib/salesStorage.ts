@@ -47,9 +47,16 @@ const STORAGE_KEY = "texaflow_sales";
 
 function getHeaders() {
   const cid = getStoredCompanyId() || "comp-001";
+  let token = "";
+  if (typeof window !== "undefined") {
+    try {
+      token = sessionStorage.getItem("texaflow_auth_token") || localStorage.getItem("texaflow_auth_token") || "";
+    } catch {}
+  }
   return {
     "Content-Type": "application/json",
-    "x-company-id": cid
+    "x-company-id": cid,
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
   };
 }
 

@@ -22,6 +22,8 @@ from app.core.mailer import (
     send_registration_otp_email,
 )
 from app.core.jwt import create_access_token
+from app.core.tenant import get_required_current_user
+from fastapi import Header
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -403,45 +405,35 @@ def get_credentials(
     user_id: Optional[str] = None,
     username: Optional[str] = None,
     company_id: Optional[str] = None,
-    firm_name: Optional[str] = None
+    firm_name: Optional[str] = None,
+    current_user: Dict[str, Any] = Depends(get_required_current_user),
+    db: Session = Depends(get_db)
 ):
-    """Fetch current primary admin credentials info strictly from the database."""
-    cid_clean = (company_id or "").strip()
-    uid_clean = (user_id or "").strip()
-    uname_clean = (username or "").strip().lower()
+    """Fetch current user credentials info strictly isolated to the caller's authenticated tenant."""
+    cid_tenant = current_user.get("company_id")
+    caller_uid = current_user.get("user_id") or current_user.get("sub")
 
-    db = SessionLocal()
-    try:
-        query = db.query(User)
-        user = None
+    query = db.query(User).filter(User.company_id == cid_tenant)
+    user = query.filter(User.id == caller_uid).first()
+    if not user:
+        user = query.first()
 
-        if uid_clean:
-            user = query.filter(User.id == uid_clean).first()
-        elif uname_clean:
-            user = query.filter((User.username.ilike(uname_clean)) | (User.email.ilike(uname_clean))).first()
-        elif cid_clean:
-            user = query.filter(User.company_id == cid_clean).first()
-        elif firm_name and firm_name.strip():
-            user = query.filter(User.firm_name.ilike(f"%{firm_name.strip()}%")).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Credentials not found for the requested company"
+        )
 
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Credentials not found for the requested company"
-            )
-
-        return {
-            "success": True,
-            "id": user.id,
-            "username": user.username,
-            "email": user.email or user.username,
-            "name": user.name,
-            "role": getattr(user, "role", "Owner") or "Owner",
-            "firm_name": user.firm_name,
-            "company_id": user.company_id or "comp-001"
-        }
-    finally:
-        db.close()
+    return {
+        "success": True,
+        "id": user.id,
+        "username": user.username,
+        "email": user.email or user.username,
+        "name": user.name,
+        "role": getattr(user, "role", "Owner") or "Owner",
+        "firm_name": user.firm_name,
+        "company_id": user.company_id or cid_tenant
+    }
 
 class ChangeCredentialsRequest(BaseModel):
     current_password: Optional[str] = None
@@ -453,20 +445,21 @@ class ChangeCredentialsRequest(BaseModel):
     company_id: Optional[str] = None
 
 @router.put("/change-credentials")
-def change_credentials(req: ChangeCredentialsRequest, db: Session = Depends(get_db)):
-    """Change admin login username, display name, and optionally password in the database."""
-    query = db.query(User)
-    user = None
-    if req.user_id and req.user_id.strip():
-        user = query.filter(User.id == req.user_id.strip()).first()
-    elif req.company_id and req.company_id.strip():
-        user = query.filter(User.company_id == req.company_id.strip()).first()
+def change_credentials(
+    req: ChangeCredentialsRequest,
+    current_user: Dict[str, Any] = Depends(get_required_current_user),
+    db: Session = Depends(get_db)
+):
+    """Change admin login username, display name, and optionally password with strict tenant verification."""
+    cid_tenant = current_user.get("company_id")
+    caller_uid = current_user.get("user_id") or current_user.get("sub")
 
-    if not user and req.new_username and req.new_username.strip():
-        user = query.filter(
-            (User.username.ilike(req.new_username.strip())) |
-            (User.email.ilike(req.new_username.strip()))
-        ).first()
+    query = db.query(User).filter(User.company_id == cid_tenant)
+    user = query.filter(User.id == caller_uid).first()
+    if not user and req.user_id:
+        user = query.filter(User.id == req.user_id.strip()).first()
+    if not user:
+        user = query.first()
 
     if not user:
         raise HTTPException(
@@ -604,16 +597,11 @@ class UpdateCompanySettingsRequest(BaseModel):
 def get_company_settings(
     company_id: Optional[str] = None,
     user_id: Optional[str] = None,
+    current_user: Dict[str, Any] = Depends(get_required_current_user),
     db: Session = Depends(get_db)
 ):
-    """Retrieve full company settings and profile strictly isolated by company_id or user_id."""
-    cid = company_id.strip() if company_id and company_id.strip() else None
-    if not cid and user_id and user_id.strip():
-        user = db.query(User).filter(User.id == user_id.strip()).first()
-        if user:
-            cid = user.company_id
-    if not cid:
-        cid = "comp-001"
+    """Retrieve full company settings and profile strictly isolated by caller's authenticated company_id."""
+    cid = current_user.get("company_id") or "comp-001"
 
     comp = None
     try:
@@ -684,9 +672,13 @@ def get_company_settings(
     }
 
 @router.put("/company-settings")
-def update_company_settings(req: UpdateCompanySettingsRequest, db: Session = Depends(get_db)):
-    """Update all company profile, bank, invoice preferences, and username in 00_settings database."""
-    cid = req.company_id or "comp-001"
+def update_company_settings(
+    req: UpdateCompanySettingsRequest,
+    current_user: Dict[str, Any] = Depends(get_required_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update all company profile, bank, invoice preferences, and username in 00_settings database strictly for caller's company."""
+    cid = current_user.get("company_id") or "comp-001"
     clean_name = req.company_name.strip()
     clean_user = req.username.strip() if req.username else None
 
@@ -1091,9 +1083,15 @@ def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db))
     }
 
 @router.get("/companies")
-def list_companies(db: Session = Depends(get_db)):
-    """Lists all registered tenant companies."""
-    companies = db.query(Company).order_by(Company.id.asc()).all()
+def list_companies(
+    current_user: Dict[str, Any] = Depends(get_required_current_user),
+    db: Session = Depends(get_db)
+):
+    """Lists registered tenant companies for current authenticated session."""
+    cid = current_user.get("company_id")
+    companies = db.query(Company).filter(Company.id == cid).all()
+    if not companies:
+        companies = db.query(Company).order_by(Company.id.asc()).limit(1).all()
     return [
         {
             "id": c.id,
@@ -1108,11 +1106,22 @@ def list_companies(db: Session = Depends(get_db)):
     ]
 
 @router.delete("/companies/{company_id}")
-def delete_company(company_id: str, db: Session = Depends(get_db)):
-    """Delete a company and associated users (comp-001 protected)."""
+def delete_company(
+    company_id: str,
+    confirm_header: Optional[str] = Header(None, alias="x-confirm-delete"),
+    current_user: Dict[str, Any] = Depends(get_required_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a company and associated users (comp-001 protected, requires owner role and explicit confirmation)."""
     clean_id = company_id.strip()
     if clean_id == "comp-001":
         raise HTTPException(status_code=400, detail="Primary company comp-001 cannot be deleted.")
+
+    if current_user.get("role") != "Owner" or current_user.get("company_id") != clean_id:
+        raise HTTPException(status_code=403, detail="Only the company Owner can delete this tenant company.")
+
+    if confirm_header != "CONFIRM_DELETE_COMPANY":
+        raise HTTPException(status_code=400, detail="Missing required 'x-confirm-delete: CONFIRM_DELETE_COMPANY' header.")
 
     comp = db.query(Company).filter(Company.id == clean_id).first()
     if not comp:

@@ -70,7 +70,7 @@ def create_sales_invoice(
         inv_data["date"] = format_to_dd_mm_yyyy(inv_data["date"])
 
     # ID generation: inv-0001, inv-0002 ...
-    existing_all = db.query(SalesInvoice.id).all()
+    existing_all = db.query(SalesInvoice.id).filter(SalesInvoice.company_id == company_id).all()
     max_id = 0
     for (iid,) in existing_all:
         if iid and "inv-" in iid:

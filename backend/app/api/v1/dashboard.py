@@ -13,14 +13,19 @@ def get_dashboard_metrics(
     company_id: str = Depends(get_tenant_company_id),
     db: Session = Depends(get_db)
 ):
-    total_expenses = db.query(func.sum(Expense.amount)).filter(Expense.company_id == company_id).scalar() or 0.0
+    total_expenses = db.query(func.sum(Expense.amount)).filter(
+        Expense.company_id == company_id,
+        Expense.is_deleted == False
+    ).scalar() or 0.0
     paid_expenses = db.query(func.sum(Expense.amount)).filter(
         Expense.company_id == company_id,
-        Expense.payment_status == "Paid"
+        Expense.payment_status == "Paid",
+        Expense.is_deleted == False
     ).scalar() or 0.0
     pending_expenses = db.query(func.sum(Expense.amount)).filter(
         Expense.company_id == company_id,
-        Expense.payment_status == "Pending"
+        Expense.payment_status == "Pending",
+        Expense.is_deleted == False
     ).scalar() or 0.0
 
     return {

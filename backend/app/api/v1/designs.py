@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime
 
 from app.core.database import get_db
 from app.models.design import Design
@@ -17,7 +18,10 @@ def get_designs(
     company_id: str = Depends(get_tenant_company_id),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Design).filter(Design.company_id == company_id)
+    query = db.query(Design).filter(
+        Design.company_id == company_id,
+        Design.is_deleted == False
+    )
     if party_name and party_name != "All":
         query = query.filter(Design.party_name == party_name)
     if search:
@@ -75,7 +79,8 @@ def delete_design(
     design = db.query(Design).filter(Design.id == design_id, Design.company_id == company_id).first()
     if not design:
         raise HTTPException(status_code=404, detail="Design not found")
-    db.delete(design)
+    design.is_deleted = True
+    design.deleted_at = datetime.utcnow()
     db.commit()
     return None
 

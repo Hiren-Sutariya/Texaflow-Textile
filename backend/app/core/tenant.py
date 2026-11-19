@@ -56,45 +56,41 @@ def get_tenant_company_id(
 ) -> str:
     """
     Authoritative Multi-Tenant Company ID Provider:
-    1. If an Authorization JWT token is provided:
-       - Signature is cryptographically verified against server secret key.
-       - company_id is extracted strictly from the token payload.
-       - Any attempt to spoof x_company_id from another tenant triggers 403 Forbidden.
-    2. Fallback for unauthenticated endpoints or bootstrap calls:
-       - Uses x_company_id or defaults to 'comp-001'.
+    1. Authorization Bearer JWT token is MANDATORY for all private tenant operations.
+    2. Signature is cryptographically verified against server secret key.
+    3. company_id is extracted strictly from the token payload.
+    4. Any attempt to spoof x_company_id from another tenant triggers 403 Forbidden.
+    5. Unauthenticated requests are rejected with 401 Unauthorized (no insecure defaults).
     """
     token = _extract_bearer_token(authorization)
-    if token:
-        try:
-            payload = verify_access_token(token)
-            token_cid = payload.get("company_id")
-            if token_cid and isinstance(token_cid, str) and token_cid.strip():
-                verified_cid = token_cid.strip()
-                # Security Gate: Prevent cross-tenant header spoofing!
-                if x_company_id and x_company_id.strip() and x_company_id.strip() != verified_cid:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Access Forbidden: Token company ID mismatch. You cannot access another company's data."
-                    )
-                return verified_cid
-        except ValueError as err:
-            # If a token was provided but is invalid or expired, reject the request!
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Authentication token invalid or expired: {err}"
-            )
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required: Access to tenant resources requires a valid signed Bearer token."
+        )
 
-    # Security Enforcement:
-    # If no authenticated Bearer token is provided, callers cannot access other tenant companies.
-    # Only the default bootstrap tenant ('comp-001') is accessible without authentication.
-    # Any attempt to access other companies ('comp-002', 'comp-003', etc.) without a valid token is rejected!
-    if x_company_id and x_company_id.strip():
-        requested_cid = x_company_id.strip()
-        if requested_cid != "comp-001":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Authentication required: Access to company '{requested_cid}' requires a valid Bearer token."
-            )
-        return requested_cid
+    try:
+        payload = verify_access_token(token)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Authentication token invalid or expired: {err}"
+        )
 
-    return "comp-001"
+    token_cid = payload.get("company_id")
+    if not token_cid or not isinstance(token_cid, str) or not token_cid.strip():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Malformed token: Token does not contain a valid company_id claim."
+        )
+
+    verified_cid = token_cid.strip()
+
+    # Security Gate: Prevent cross-tenant header spoofing!
+    if x_company_id and x_company_id.strip() and x_company_id.strip() != verified_cid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access Forbidden: Token company ID mismatch. You cannot access another company's data."
+        )
+
+    return verified_cid

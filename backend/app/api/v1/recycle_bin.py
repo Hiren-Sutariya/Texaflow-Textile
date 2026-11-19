@@ -13,6 +13,7 @@ from app.models.worker import Worker
 from app.models.payment import PaymentVoucher
 from app.models.sales_challan import SalesChallan
 from app.models.sales_invoice import SalesInvoice
+from app.models.design import Design
 
 router = APIRouter(prefix="/recycle-bin", tags=["Recycle Bin"])
 
@@ -46,6 +47,8 @@ def get_model_by_module(module: str):
         "sales_invoice": SalesInvoice,
         "invoices": SalesInvoice,
         "invoice": SalesInvoice,
+        "designs": Design,
+        "design": Design,
     }
     model = mapping.get(module_lower)
     if not model:
@@ -55,7 +58,7 @@ def get_model_by_module(module: str):
 def auto_purge_expired_records(db: Session, company_id: str):
     """Automatically permanently purge records deleted more than 30 days ago."""
     cutoff_date = datetime.utcnow() - timedelta(days=RETENTION_DAYS)
-    models = [Party, Purchase, Expense, Category, Worker, PaymentVoucher, SalesChallan, SalesInvoice]
+    models = [Party, Purchase, Expense, Category, Worker, PaymentVoucher, SalesChallan, SalesInvoice, Design]
     purged_count = 0
     for model in models:
         try:
@@ -263,6 +266,31 @@ def list_trash_items(
                 "amount": inv.total_amount
             })
 
+    # 8. Designs
+    if not module or module.lower() in ("designs", "design"):
+        designs = db.query(Design).filter(
+            Design.company_id == company_id,
+            Design.is_deleted == True
+        ).all()
+        for d in designs:
+            del_at = d.deleted_at or d.updated_at or now
+            days_passed = max(0, (now - del_at).days)
+            results.append({
+                "id": d.id,
+                "module": "designs",
+                "module_label": "Design Library",
+                "title": d.title or d.folder_code,
+                "subtitle": f"Folder: {d.folder_code} | Party: {d.party_name or 'N/A'}",
+                "record_no": d.folder_code,
+                "party_name": d.party_name,
+                "category": d.category or "Design",
+                "record_date": d.created_date,
+                "deleted_at": del_at.isoformat(),
+                "deleted_by": getattr(d, "deleted_by", None) or "Admin",
+                "days_remaining": max(0, RETENTION_DAYS - days_passed),
+                "amount": None
+            })
+
     # Sort newest deleted first
     results.sort(key=lambda x: x["deleted_at"], reverse=True)
     return results
@@ -273,7 +301,7 @@ def restore_item_by_id(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    models = [SalesChallan, SalesInvoice, Party, Purchase, Expense, Category, Worker, PaymentVoucher]
+    models = [SalesChallan, SalesInvoice, Party, Purchase, Expense, Category, Worker, PaymentVoucher, Design]
     for model in models:
         item = db.query(model).filter(
             model.id == record_id,
@@ -284,7 +312,7 @@ def restore_item_by_id(
             item.deleted_at = None
             item.deleted_by = None
             db.commit()
-            title = getattr(item, "challan_no", None) or getattr(item, "invoice_no", None) or getattr(item, "display_name", None) or getattr(item, "purchase_no", None) or getattr(item, "name", None) or record_id
+            title = getattr(item, "folder_code", None) or getattr(item, "challan_no", None) or getattr(item, "invoice_no", None) or getattr(item, "display_name", None) or getattr(item, "purchase_no", None) or getattr(item, "name", None) or record_id
             return {"success": True, "message": f"Successfully restored '{title}'"}
     raise HTTPException(status_code=404, detail="Item not found in Recycle Bin")
 
@@ -324,7 +352,7 @@ def permanently_delete_item_by_id(
     db: Session = Depends(get_db),
     company_id: str = Depends(get_tenant_company_id)
 ):
-    models = [SalesChallan, SalesInvoice, Party, Purchase, Expense, Category, Worker, PaymentVoucher]
+    models = [SalesChallan, SalesInvoice, Party, Purchase, Expense, Category, Worker, PaymentVoucher, Design]
     for model in models:
         item = db.query(model).filter(
             model.id == record_id,
@@ -370,7 +398,7 @@ def restore_all(
     """
     Restore all items in the Recycle Bin for the active tenant company.
     """
-    models = [Party, Purchase, Expense, Category, Worker, PaymentVoucher, SalesChallan, SalesInvoice]
+    models = [Party, Purchase, Expense, Category, Worker, PaymentVoucher, SalesChallan, SalesInvoice, Design]
     restored_count = 0
     for model in models:
         items = db.query(model).filter(
@@ -396,7 +424,7 @@ def empty_recycle_bin(
     """
     Permanently delete all items currently in the Recycle Bin for the active tenant company.
     """
-    models = [Party, Purchase, Expense, Category, Worker, PaymentVoucher, SalesChallan, SalesInvoice]
+    models = [Party, Purchase, Expense, Category, Worker, PaymentVoucher, SalesChallan, SalesInvoice, Design]
     deleted_count = 0
     for model in models:
         items = db.query(model).filter(

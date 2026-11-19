@@ -62,7 +62,7 @@ def create_purchase(
     if purchase_data.get("date"):
         purchase_data["date"] = format_to_dd_mm_yyyy(purchase_data["date"])
 
-    existing_all = db.query(Purchase.id).all()
+    existing_all = db.query(Purchase.id).filter(Purchase.company_id == company_id).all()
     max_id = 0
     for (pid,) in existing_all:
         if pid and "pur-" in pid:

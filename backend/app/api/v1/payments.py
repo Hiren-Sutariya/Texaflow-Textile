@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime
 
 from app.core.database import get_db
 from app.models.payment import PaymentVoucher
@@ -19,7 +20,10 @@ def get_payment_vouchers(
     company_id: str = Depends(get_tenant_company_id),
     db: Session = Depends(get_db)
 ):
-    query = db.query(PaymentVoucher).filter(PaymentVoucher.company_id == company_id)
+    query = db.query(PaymentVoucher).filter(
+        PaymentVoucher.company_id == company_id,
+        PaymentVoucher.is_deleted == False
+    )
     if voucher_type:
         query = query.filter(PaymentVoucher.voucher_type == voucher_type)
     if party_name:
@@ -60,7 +64,8 @@ def delete_payment_voucher(
     ).first()
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not found")
-    db.delete(voucher)
+    voucher.is_deleted = True
+    voucher.deleted_at = datetime.utcnow()
     db.commit()
     return None
 

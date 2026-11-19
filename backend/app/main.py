@@ -19,15 +19,16 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Universal CORS Middleware for Next.js Frontend (Vercel, Render, PWA, Custom Domains, Local Dev)
-# Matches all secure HTTP/HTTPS origins so live cloud deployments are never blocked by CORS
-ALLOWED_ORIGIN_REGEX = r"^https?:\/\/.*$"
+# Strict, Secure CORS Configuration for Trusted Production and Development Origins
+# Supports Vercel preview/production domains, Render cloud endpoints, local network IPs & localhost
+ALLOWED_ORIGIN_REGEX = r"^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|[a-zA-Z0-9-]+\.vercel\.app|[a-zA-Z0-9-]+\.onrender\.com)(:\d+)?$"
 
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=[str(origin) for origin in settings.CORS_ORIGINS] if settings.CORS_ORIGINS else ["*"],
     allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

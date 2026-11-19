@@ -1,5 +1,5 @@
 import { getStoredCompanyId } from "./tenantStorage";
-import { API_BASE_URL } from "./api";
+import { API_BASE_URL, fetchApi } from "./api";
 
 export interface CustomFieldLabels {
   // 1. Unified Common Fields (Used everywhere: Sales, Invoices, Purchases, Ledger)
@@ -386,29 +386,26 @@ export function setDefaultBillFormat(formatId: string): void {
 export async function fetchLiveCompanySettings(cid?: string): Promise<CompanySettings | null> {
   const targetCid = cid || getStoredCompanyId() || "comp-002";
   try {
-    const res = await fetch(`${API_BASE_URL}/auth/company-settings?company_id=${targetCid}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && (data.company_name || data.brand_name)) {
-        const defaults = getDefaultCompanySettings(targetCid);
-        const existingLocal = getStoredCompanySettings();
-        const serverCustomLabels = data.custom_labels || (data.settings_json && data.settings_json.custom_labels);
-        const resolvedCustomLabels = {
-          ...(defaults.custom_labels || {}),
-          ...(existingLocal.custom_labels || {}),
-          ...(serverCustomLabels || {})
-        };
-        const merged: CompanySettings = {
-          ...defaults,
-          ...existingLocal,
-          ...data,
-          custom_labels: resolvedCustomLabels
-        };
-        if (typeof window !== "undefined") {
-          localStorage.setItem(`app_settings_${targetCid}`, JSON.stringify(merged));
-        }
-        return merged;
+    const data = await fetchApi<any>(`/auth/company-settings?company_id=${targetCid}`);
+    if (data && (data.company_name || data.brand_name)) {
+      const defaults = getDefaultCompanySettings(targetCid);
+      const existingLocal = getStoredCompanySettings();
+      const serverCustomLabels = data.custom_labels || (data.settings_json && data.settings_json.custom_labels);
+      const resolvedCustomLabels = {
+        ...(defaults.custom_labels || {}),
+        ...(existingLocal.custom_labels || {}),
+        ...(serverCustomLabels || {})
+      };
+      const merged: CompanySettings = {
+        ...defaults,
+        ...existingLocal,
+        ...data,
+        custom_labels: resolvedCustomLabels
+      };
+      if (typeof window !== "undefined") {
+        localStorage.setItem(`app_settings_${targetCid}`, JSON.stringify(merged));
       }
+      return merged;
     }
   } catch {}
   return null;
