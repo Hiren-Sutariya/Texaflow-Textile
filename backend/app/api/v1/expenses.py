@@ -225,7 +225,7 @@ def delete_expense(
     if not expense:
         expense = db.query(Expense).filter(
             Expense.expense_no == expense_id,
-            Expense.company_id == company_id, 
+            Expense.company_id == ctx.company_id, 
             Expense.is_deleted == False
         ).first()
 
