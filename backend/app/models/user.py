@@ -1,3 +1,4 @@
+import uuid
 from sqlalchemy import Column, String, Boolean
 from app.core.database import Base
 from app.models.base import TimestampMixin
@@ -5,7 +6,7 @@ from app.models.base import TimestampMixin
 class User(Base, TimestampMixin):
     __tablename__ = "00_auth_users"
 
-    id = Column(String(64), primary_key=True)
+    id = Column(String(64), primary_key=True, default=lambda: f"usr-{uuid.uuid4().hex[:12]}")
     firm_name = Column(String(255), default="Om Sai Enterprise")
     name = Column(String(255), nullable=False, default="Hiren Sutariya")
     email = Column(String(255), nullable=True)

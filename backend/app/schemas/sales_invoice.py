@@ -35,6 +35,9 @@ class SalesInvoiceBase(BaseModel):
     due_date: Optional[str] = None
     payment_status: Optional[str] = "Pending"
     paid_via: Optional[str] = None
+    paid_amount: Optional[float] = 0.0
+    outstanding_amount: Optional[float] = 0.0
+    profit_margin: Optional[float] = 0.0
     notes: Optional[str] = None
 
 class SalesInvoiceCreate(SalesInvoiceBase):
@@ -73,6 +76,9 @@ class SalesInvoiceUpdate(BaseModel):
     due_date: Optional[str] = None
     payment_status: Optional[str] = None
     paid_via: Optional[str] = None
+    paid_amount: Optional[float] = None
+    outstanding_amount: Optional[float] = None
+    profit_margin: Optional[float] = None
     notes: Optional[str] = None
 
 class SalesInvoiceResponse(SalesInvoiceBase):

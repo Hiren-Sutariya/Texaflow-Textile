@@ -290,7 +290,7 @@ export function Sidebar({
         {user?.role === "SuperAdmin" && (
           <div>
             <Link
-              href="/saas-admin"
+              href="/platform"
               onClick={() => {
                 if (isMobile) onClose?.();
               }}

@@ -369,7 +369,7 @@ def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)):
         username=clean_email,
         password_hash=pw_hash,
         company_id=next_comp_id,
-        role="Owner",
+        role="OWNER",
         is_active=True
     )
     db.add(new_user)
@@ -1107,7 +1107,7 @@ def register_company(req: RegisterCompanyRequest, db: Session = Depends(get_db))
         username=clean_username,
         password_hash=pw_hash,
         company_id=next_comp_id,
-        role="Owner",
+        role="OWNER",
         is_active=True
     )
     db.add(new_user)

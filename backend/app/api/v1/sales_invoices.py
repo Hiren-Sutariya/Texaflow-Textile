@@ -10,7 +10,8 @@ from app.models.sales_invoice import SalesInvoice
 from app.models.sales_challan import SalesChallan
 from app.schemas.sales_invoice import SalesInvoiceCreate, SalesInvoiceUpdate, SalesInvoiceResponse
 from app.core.formatters import format_to_dd_mm_yyyy
-from app.core.tenant import get_tenant_company_id
+from app.core.tenant import get_tenant_context, TenantContext
+from app.services.permission_engine import PermissionEngine
 
 router = APIRouter(prefix="/sales-invoices", tags=["Sales Invoices"])
 
@@ -24,10 +25,12 @@ def get_sales_invoices(
     skip: int = 0,
     limit: int = 300,
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "sales_invoices", "view")
+
     query = db.query(SalesInvoice).filter(
-        SalesInvoice.company_id == company_id,
+        SalesInvoice.company_id == ctx.company_id,
         SalesInvoice.is_deleted == False
     )
 
@@ -49,17 +52,39 @@ def get_sales_invoices(
             (SalesInvoice.notes.ilike(search_pattern))
         )
 
-    return query.order_by(SalesInvoice.id.desc()).offset(skip).limit(limit).all()
+    results = query.order_by(SalesInvoice.id.desc()).offset(skip).limit(limit).all()
+    # Level 4 Field-Level Response Masking
+    fld_perms = PermissionEngine.get_field_permissions(db, ctx.company_id, ctx.role, "sales_invoice")
+    hidden_flds = {k for k, v in fld_perms.items() if v == "hidden"}
+    if hidden_flds:
+        for inv in results:
+            for hf in hidden_flds:
+                if hasattr(inv, hf):
+                    setattr(inv, hf, None)
+                if hf == "internal_notes" and hasattr(inv, "notes"):
+                    setattr(inv, "notes", None)
+    return results
 
 @router.post("", response_model=SalesInvoiceResponse, status_code=status.HTTP_201_CREATED)
 def create_sales_invoice(
     invoice_in: SalesInvoiceCreate,
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "sales_invoices", "create")
+
     inv_data = invoice_in.model_dump()
-    inv_data["company_id"] = company_id
+    inv_data["company_id"] = ctx.company_id
     inv_data["is_deleted"] = False
+
+    # Level 4 Field Mutation Validation
+    check_fields = {}
+    if inv_data.get("profit_margin") is not None and inv_data.get("profit_margin") != 0.0:
+        check_fields["profit_margin"] = inv_data.get("profit_margin")
+    if inv_data.get("notes"):
+        check_fields["internal_notes"] = inv_data.get("notes")
+    if check_fields:
+        PermissionEngine.validate_mutation_fields(db, ctx.company_id, ctx.role, "sales_invoice", check_fields)
 
     # Convert complex fields to JSON string if needed
     for json_col in ["items", "linked_challan_ids", "linked_challan_nos"]:
@@ -70,7 +95,7 @@ def create_sales_invoice(
         inv_data["date"] = format_to_dd_mm_yyyy(inv_data["date"])
 
     # ID generation: inv-0001, inv-0002 ...
-    existing_all = db.query(SalesInvoice.id).filter(SalesInvoice.company_id == company_id).all()
+    existing_all = db.query(SalesInvoice.id).filter(SalesInvoice.company_id == ctx.company_id).all()
     max_id = 0
     for (iid,) in existing_all:
         if iid and "inv-" in iid:
@@ -105,7 +130,7 @@ def create_sales_invoice(
             if isinstance(ids_list, list):
                 db.query(SalesChallan).filter(
                     SalesChallan.id.in_(ids_list),
-                    SalesChallan.company_id == company_id
+                    SalesChallan.company_id == ctx.company_id
                 ).update({
                     "billing_status": "Billed",
                     "linked_invoice_no": inv_data["invoice_no"]
@@ -120,10 +145,10 @@ def create_sales_invoice(
 @router.get("/next-no")
 def get_next_invoice_no(
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
     invoices = db.query(SalesInvoice.invoice_no).filter(
-        SalesInvoice.company_id == company_id,
+        SalesInvoice.company_id == ctx.company_id,
         SalesInvoice.is_deleted == False
     ).all()
     
@@ -138,21 +163,34 @@ def get_next_invoice_no(
                         max_num = num
                 except ValueError:
                     pass
-    return {"next_invoice_no": f"INV-{str(max_num + 1).padStart(4, '0') if hasattr(str, 'padStart') else f'{max_num + 1:04d}'}"}
+    return {"next_invoice_no": f"INV-{f'{max_num + 1:04d}'}"}
 
 @router.get("/{invoice_id}", response_model=SalesInvoiceResponse)
 def get_sales_invoice(
     invoice_id: str,
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "sales_invoices", "view")
+
     invoice = db.query(SalesInvoice).filter(
         (SalesInvoice.id == invoice_id) | (SalesInvoice.invoice_no == invoice_id),
-        SalesInvoice.company_id == company_id,
+        SalesInvoice.company_id == ctx.company_id,
         SalesInvoice.is_deleted == False
     ).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Sales Invoice not found")
+
+    # Level 4 Field-Level Response Masking
+    fld_perms = PermissionEngine.get_field_permissions(db, ctx.company_id, ctx.role, "sales_invoice")
+    hidden_flds = {k for k, v in fld_perms.items() if v == "hidden"}
+    if hidden_flds:
+        for hf in hidden_flds:
+            if hasattr(invoice, hf):
+                setattr(invoice, hf, None)
+            if hf == "internal_notes" and hasattr(invoice, "notes"):
+                setattr(invoice, "notes", None)
+
     return invoice
 
 @router.put("/{invoice_id}", response_model=SalesInvoiceResponse)
@@ -160,17 +198,29 @@ def update_sales_invoice(
     invoice_id: str,
     invoice_in: SalesInvoiceUpdate,
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "sales_invoices", "edit")
+
     invoice = db.query(SalesInvoice).filter(
         (SalesInvoice.id == invoice_id) | (SalesInvoice.invoice_no == invoice_id),
-        SalesInvoice.company_id == company_id,
+        SalesInvoice.company_id == ctx.company_id,
         SalesInvoice.is_deleted == False
     ).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Sales Invoice not found")
 
     update_data = invoice_in.model_dump(exclude_unset=True)
+
+    # Level 4 Field Mutation Validation
+    check_fields = {}
+    if "profit_margin" in update_data:
+        check_fields["profit_margin"] = update_data["profit_margin"]
+    if "notes" in update_data:
+        check_fields["internal_notes"] = update_data["notes"]
+    if check_fields:
+        PermissionEngine.validate_mutation_fields(db, ctx.company_id, ctx.role, "sales_invoice", check_fields)
+
     for json_col in ["items", "linked_challan_ids", "linked_challan_nos"]:
         if json_col in update_data and update_data[json_col] is not None and isinstance(update_data[json_col], (list, dict)):
             update_data[json_col] = json.dumps(update_data[json_col])
@@ -189,11 +239,13 @@ def update_sales_invoice(
 def delete_sales_invoice(
     invoice_id: str,
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "sales_invoices", "delete")
+
     invoice = db.query(SalesInvoice).filter(
         (SalesInvoice.id == invoice_id) | (SalesInvoice.invoice_no == invoice_id),
-        SalesInvoice.company_id == company_id,
+        SalesInvoice.company_id == ctx.company_id,
         SalesInvoice.is_deleted == False
     ).first()
     if not invoice:
@@ -206,7 +258,7 @@ def delete_sales_invoice(
             if isinstance(ids_list, list):
                 db.query(SalesChallan).filter(
                     SalesChallan.id.in_(ids_list),
-                    SalesChallan.company_id == company_id
+                    SalesChallan.company_id == ctx.company_id
                 ).update({
                     "billing_status": "Unbilled",
                     "linked_invoice_no": None

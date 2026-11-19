@@ -9,7 +9,8 @@ from app.core.database import get_db
 from app.models.expense import Expense
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseResponse
 from app.core.formatters import format_to_dd_mm_yyyy
-from app.core.tenant import get_tenant_company_id
+from app.core.tenant import get_tenant_context, TenantContext
+from app.services.permission_engine import PermissionEngine
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
@@ -30,9 +31,11 @@ def get_expenses(
     skip: int = 0,
     limit: int = 200,
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
-    query = db.query(Expense).filter(Expense.company_id == company_id, Expense.is_deleted == False)
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "expenses", "view")
+
+    query = db.query(Expense).filter(Expense.company_id == ctx.company_id, Expense.is_deleted == False)
 
     if category and category != "All":
         query = query.filter(Expense.category == category)
@@ -57,10 +60,19 @@ def get_expenses(
 def create_expense(
     expense_in: ExpenseCreate, 
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "expenses", "create")
+
     expense_data = expense_in.model_dump()
-    expense_data["company_id"] = company_id
+    expense_data["company_id"] = ctx.company_id
+
+    # Level 4 Field Mutation Validation
+    check_fields = {}
+    if expense_data.get("notes"):
+        check_fields["internal_notes"] = expense_data.get("notes")
+    if check_fields:
+        PermissionEngine.validate_mutation_fields(db, ctx.company_id, ctx.role, "expense", check_fields)
 
     # 1. Format date to DD-MM-YYYY (e.g., 12-10-2026)
     if expense_data.get("date"):
@@ -70,7 +82,7 @@ def create_expense(
 
     # 2. Continuous sequential numbering - never renumbers existing bills
     existing_records = db.query(Expense.expense_no, Expense.id).filter(
-        Expense.company_id == company_id, 
+        Expense.company_id == ctx.company_id, 
         Expense.is_deleted == False
     ).all()
     
@@ -91,7 +103,7 @@ def create_expense(
         assigned_no = f"EB-{next_num:03d}"
 
     # Globally unique primary key id
-    base_id = f"exp-{next_num:03d}" if company_id == "comp-001" else f"{company_id}-exp-{next_num:03d}"
+    base_id = f"exp-{next_num:03d}" if ctx.company_id == "comp-001" else f"{ctx.company_id}-exp-{next_num:03d}"
     candidate_id = base_id
     if db.query(Expense.id).filter(Expense.id == candidate_id).first():
         candidate_id = f"{base_id}-{uuid.uuid4().hex[:6]}"
@@ -115,12 +127,14 @@ def create_expense(
 def get_expense(
     expense_id: str, 
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "expenses", "view")
+
     # 1. Exact match on primary key ID first (prevents key collision)
     expense = db.query(Expense).filter(
         Expense.id == expense_id,
-        Expense.company_id == company_id, 
+        Expense.company_id == ctx.company_id, 
         Expense.is_deleted == False
     ).first()
 
@@ -128,12 +142,18 @@ def get_expense(
     if not expense:
         expense = db.query(Expense).filter(
             Expense.expense_no == expense_id,
-            Expense.company_id == company_id, 
+            Expense.company_id == ctx.company_id, 
             Expense.is_deleted == False
         ).first()
 
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
+
+    # Level 4 Field-Level Response Masking
+    fld_perms = PermissionEngine.get_field_permissions(db, ctx.company_id, ctx.role, "expense")
+    if fld_perms.get("internal_notes") == "hidden" and hasattr(expense, "notes"):
+        setattr(expense, "notes", None)
+
     return expense
 
 @router.put("/{expense_id}", response_model=ExpenseResponse)
@@ -141,12 +161,14 @@ def update_expense(
     expense_id: str, 
     expense_in: ExpenseUpdate, 
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "expenses", "edit")
+
     # 1. Exact match on primary key ID first
     expense = db.query(Expense).filter(
         Expense.id == expense_id,
-        Expense.company_id == company_id, 
+        Expense.company_id == ctx.company_id, 
         Expense.is_deleted == False
     ).first()
 
@@ -154,7 +176,7 @@ def update_expense(
     if not expense:
         expense = db.query(Expense).filter(
             Expense.expense_no == expense_id,
-            Expense.company_id == company_id, 
+            Expense.company_id == ctx.company_id, 
             Expense.is_deleted == False
         ).first()
 
@@ -162,6 +184,14 @@ def update_expense(
         raise HTTPException(status_code=404, detail="Expense not found")
 
     update_data = expense_in.model_dump(exclude_unset=True)
+
+    # Level 4 Field Mutation Validation
+    check_fields = {}
+    if "notes" in update_data:
+        check_fields["internal_notes"] = update_data["notes"]
+    if check_fields:
+        PermissionEngine.validate_mutation_fields(db, ctx.company_id, ctx.role, "expense", check_fields)
+
     if "vendor_name" in update_data and update_data["vendor_name"] in ("General Vendor", "general vendor", "General vendor", ""):
         update_data["vendor_name"] = None
     if update_data.get("date"):
@@ -180,12 +210,14 @@ def update_expense(
 def delete_expense(
     expense_id: str, 
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "expenses", "delete")
+
     # 1. Exact match on primary key ID first
     expense = db.query(Expense).filter(
         Expense.id == expense_id,
-        Expense.company_id == company_id, 
+        Expense.company_id == ctx.company_id, 
         Expense.is_deleted == False
     ).first()
 

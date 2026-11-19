@@ -7,7 +7,8 @@ from app.core.database import get_db
 from app.models.purchase import Purchase
 from app.schemas.purchase import PurchaseCreate, PurchaseUpdate, PurchaseResponse
 from app.core.formatters import format_to_dd_mm_yyyy
-from app.core.tenant import get_tenant_company_id
+from app.core.tenant import get_tenant_context, TenantContext
+from app.services.permission_engine import PermissionEngine
 
 router = APIRouter(prefix="/purchases", tags=["Purchases"])
 
@@ -21,9 +22,11 @@ def get_purchases(
     skip: int = 0,
     limit: int = 200,
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
-    query = db.query(Purchase).filter(Purchase.company_id == company_id, Purchase.is_deleted == False)
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "purchases", "view")
+
+    query = db.query(Purchase).filter(Purchase.company_id == ctx.company_id, Purchase.is_deleted == False)
 
     if category and category != "All":
         query = query.filter(Purchase.category == category)
@@ -48,10 +51,12 @@ def get_purchases(
 def create_purchase(
     purchase_in: PurchaseCreate, 
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "purchases", "create")
+
     purchase_data = purchase_in.model_dump()
-    purchase_data["company_id"] = company_id
+    purchase_data["company_id"] = ctx.company_id
     purchase_data["is_deleted"] = False
 
     if purchase_data.get("items") is not None:
@@ -62,7 +67,7 @@ def create_purchase(
     if purchase_data.get("date"):
         purchase_data["date"] = format_to_dd_mm_yyyy(purchase_data["date"])
 
-    existing_all = db.query(Purchase.id).filter(Purchase.company_id == company_id).all()
+    existing_all = db.query(Purchase.id).filter(Purchase.company_id == ctx.company_id).all()
     max_id = 0
     for (pid,) in existing_all:
         if pid and "pur-" in pid:
@@ -96,11 +101,13 @@ def create_purchase(
 def get_purchase(
     purchase_id: str, 
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "purchases", "view")
+
     purchase = db.query(Purchase).filter(
         Purchase.id == purchase_id,
-        Purchase.company_id == company_id,
+        Purchase.company_id == ctx.company_id,
         Purchase.is_deleted == False
     ).first()
     if not purchase:
@@ -112,11 +119,13 @@ def update_purchase(
     purchase_id: str, 
     purchase_in: PurchaseUpdate, 
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "purchases", "edit")
+
     purchase = db.query(Purchase).filter(
         Purchase.id == purchase_id,
-        Purchase.company_id == company_id,
+        Purchase.company_id == ctx.company_id,
         Purchase.is_deleted == False
     ).first()
     if not purchase:
@@ -145,11 +154,13 @@ def update_purchase(
 def delete_purchase(
     purchase_id: str, 
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "purchases", "delete")
+
     purchase = db.query(Purchase).filter(
         (Purchase.id == purchase_id) | (Purchase.purchase_no == purchase_id),
-        Purchase.company_id == company_id,
+        Purchase.company_id == ctx.company_id,
         Purchase.is_deleted == False
     ).first()
     if not purchase:

@@ -90,3 +90,24 @@ class PlatformAuditLog(Base, TimestampMixin):
     target_company_id = Column(String(64), nullable=True, index=True)
     details = Column(JSON, nullable=True)
     ip_address = Column(String(64), nullable=True)
+
+class BillingInvoice(Base, TimestampMixin):
+    """Official SaaS Subscription Billing Tax Invoice."""
+    __tablename__ = "00_saas_invoices"
+
+    id = Column(String(64), primary_key=True, default=lambda: f"inv-saas-{uuid.uuid4().hex[:12]}")
+    invoice_number = Column(String(64), unique=True, nullable=False, index=True) # e.g. INV-SAAS-2026-001
+    company_id = Column(String(64), nullable=False, index=True)
+    subscription_id = Column(String(64), nullable=True)
+    plan_id = Column(String(64), nullable=False)
+    
+    amount = Column(Integer, nullable=False) # In INR rupees
+    gst_amount = Column(Integer, nullable=False, default=0) # 18% GST for B2B software
+    total_amount = Column(Integer, nullable=False)
+    currency = Column(String(16), nullable=False, default="INR")
+    status = Column(String(32), nullable=False, default="paid") # paid, unpaid, void
+    
+    period_start = Column(DateTime, nullable=True)
+    period_end = Column(DateTime, nullable=True)
+    payment_method = Column(String(64), default="Online / Gateway")
+    notes = Column(Text, nullable=True)

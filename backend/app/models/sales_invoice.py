@@ -47,4 +47,7 @@ class SalesInvoice(Base, TimestampMixin, SoftDeleteMixin):
     due_date = Column(String(20), nullable=True)
     payment_status = Column(String(20), default="Pending")  # Paid, Pending, Unpaid
     paid_via = Column(String(50), nullable=True)
+    paid_amount = Column(Float, nullable=True, default=0.0)
+    outstanding_amount = Column(Float, nullable=True, default=0.0)
+    profit_margin = Column(Float, nullable=True, default=0.0)
     notes = Column(Text, nullable=True)

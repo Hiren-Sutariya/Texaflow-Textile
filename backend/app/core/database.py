@@ -67,6 +67,11 @@ def init_db():
 
         from app.models.sales_challan import SalesChallan
         from app.models.sales_invoice import SalesInvoice
+        from app.models.permission import (
+            CompanyModuleSetting, RolePermissionSetting, FieldPermissionSetting,
+            SupportSession, PLATFORM_MODULES, FIXED_ROLES
+        )
+        from app.models.subscription import BillingInvoice
 
         active_tables = [
             User.__table__,                 # 00_auth_users
@@ -75,6 +80,11 @@ def init_db():
             TenantSubscription.__table__,   # 00_saas_subscriptions
             PaymentTransaction.__table__,   # 00_saas_payments
             PlatformAuditLog.__table__,     # 00_saas_audit_logs
+            BillingInvoice.__table__,       # 00_saas_invoices
+            CompanyModuleSetting.__table__, # 00_saas_company_modules
+            RolePermissionSetting.__table__,# 00_saas_role_permissions
+            FieldPermissionSetting.__table__,# 00_saas_field_permissions
+            SupportSession.__table__,       # 00_saas_support_sessions
             Party.__table__,                # 01_parties
             Worker.__table__,               # 02_workers
             Expense.__table__,              # 03_expenses
@@ -86,7 +96,7 @@ def init_db():
             SalesInvoice.__table__,         # 09_sales_invoices
         ]
         Base.metadata.create_all(bind=engine, tables=active_tables)
-        print("✅ All 15 active SaaS & ERP database tables verified / initialized successfully.")
+        print("✅ All 20 active SaaS & ERP database tables verified / initialized successfully.")
 
         # Safe non-destructive column migrations for existing tables
         with engine.connect() as conn:
@@ -94,6 +104,9 @@ def init_db():
                 from sqlalchemy import text
                 conn.execute(text('ALTER TABLE "00_auth_users" ADD COLUMN IF NOT EXISTS role VARCHAR(32) DEFAULT \'Owner\';'))
                 conn.execute(text('ALTER TABLE "00_auth_users" ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;'))
+                conn.execute(text('ALTER TABLE "09_sales_invoices" ADD COLUMN IF NOT EXISTS paid_amount FLOAT DEFAULT 0.0;'))
+                conn.execute(text('ALTER TABLE "09_sales_invoices" ADD COLUMN IF NOT EXISTS outstanding_amount FLOAT DEFAULT 0.0;'))
+                conn.execute(text('ALTER TABLE "09_sales_invoices" ADD COLUMN IF NOT EXISTS profit_margin FLOAT DEFAULT 0.0;'))
                 conn.commit()
             except Exception as mig_err:
                 print(f"⚠️ Safe column migration notice: {mig_err}")
@@ -134,6 +147,31 @@ def init_db():
                 db.add(default_company)
                 db.commit()
                 print("✅ Default company settings initialized (comp-001 / Shiv Creation)")
+
+            # 2. Ensure Om Sai Enterprise (OSE House / comp-002) exists
+            ose_company = db.query(Settings).filter(Settings.id == "comp-002").first()
+            if not ose_company:
+                ose_default = Settings(
+                    id="comp-002",
+                    name="Om Sai Enterprise - OSE House",
+                    code="OSE-01",
+                    owner_name="Nilesh Sutariya",
+                    phone="9825123456",
+                    email="nilesh@omsai.com",
+                    address="Plot 104, Road No 4, Sachin GIDC, Surat, Gujarat 394230",
+                    gstin="24AABCO1234F1Z8",
+                    bank_name="State Bank of India",
+                    account_no="38920194819",
+                    ifsc="SBIN0001234",
+                    branch_name="Sachin GIDC Surat",
+                    upi_id="omsai@sbi",
+                    status="active",
+                    print_qr=True,
+                    terms_conditions="1. Goods once sold will not be taken back.\n2. Subject to Surat jurisdiction only."
+                )
+                db.add(ose_default)
+                db.commit()
+                print("✅ Default company settings initialized (comp-002 / Om Sai Enterprise)")
 
             # 3. Ensure default categories exist (Only expenses by default)
             if db.query(Category).count() == 0:
@@ -272,6 +310,98 @@ def init_db():
                     db.add(new_sub)
             db.commit()
             print("✅ Tenant subscriptions verified / initialized for all active companies.")
+
+            # 7. Seed Platform Default Role Permissions (company_id='*')
+            if db.query(RolePermissionSetting).filter(RolePermissionSetting.company_id == "*").count() == 0:
+                print("🔄 Seeding platform default role permission matrix...")
+                default_perms = []
+                for mod in PLATFORM_MODULES:
+                    mkey = mod["key"]
+                    # OWNER: Everything
+                    default_perms.append(RolePermissionSetting(
+                        id=f"perm-def-owner-{mkey}", company_id="*", role="OWNER", module_key=mkey,
+                        can_view=True, can_create=True, can_edit=True, can_delete=True,
+                        can_export=True, can_approve=True, can_print=True
+                    ))
+                    # ADMIN: Operational everything except system/platform
+                    default_perms.append(RolePermissionSetting(
+                        id=f"perm-def-admin-{mkey}", company_id="*", role="ADMIN", module_key=mkey,
+                        can_view=True, can_create=True, can_edit=True, can_delete=True,
+                        can_export=True, can_approve=True, can_print=True
+                    ))
+                    # ACCOUNTANT: Finance & Accounting modules
+                    is_fin = mkey in ("purchases", "expenses", "sales_invoices", "payments", "daybook", "ledger", "reports", "parties")
+                    is_view_only = mkey in ("workers", "attendance", "designs", "sales_challans", "dashboard")
+                    default_perms.append(RolePermissionSetting(
+                        id=f"perm-def-acct-{mkey}", company_id="*", role="ACCOUNTANT", module_key=mkey,
+                        can_view=is_fin or is_view_only,
+                        can_create=is_fin,
+                        can_edit=is_fin,
+                        can_delete=False,
+                        can_export=is_fin,
+                        can_approve=is_fin,
+                        can_print=is_fin or is_view_only
+                    ))
+                    # MANAGER: HRMS, Workers, Attendance, Operations
+                    is_mgr = mkey in ("workers", "attendance", "worker_payout", "purchases", "sales_challans", "designs", "dashboard", "parties")
+                    default_perms.append(RolePermissionSetting(
+                        id=f"perm-def-mgr-{mkey}", company_id="*", role="MANAGER", module_key=mkey,
+                        can_view=is_mgr,
+                        can_create=is_mgr,
+                        can_edit=is_mgr,
+                        can_delete=False,
+                        can_export=is_mgr,
+                        can_approve=is_mgr,
+                        can_print=is_mgr
+                    ))
+                    # EMPLOYEE: Very restricted assigned duties
+                    is_emp = mkey in ("dashboard", "attendance", "sales_challans")
+                    default_perms.append(RolePermissionSetting(
+                        id=f"perm-def-emp-{mkey}", company_id="*", role="EMPLOYEE", module_key=mkey,
+                        can_view=is_emp,
+                        can_create=mkey in ("attendance", "sales_challans"),
+                        can_edit=False,
+                        can_delete=False,
+                        can_export=False,
+                        can_approve=False,
+                        can_print=mkey == "sales_challans"
+                    ))
+                db.add_all(default_perms)
+                db.commit()
+                print("✅ Platform default role permissions initialized successfully.")
+
+            # 8. Seed Platform Default Field-Level Permissions (company_id='*')
+            if db.query(FieldPermissionSetting).filter(FieldPermissionSetting.company_id == "*").count() == 0:
+                print("🔄 Seeding platform default field-level permission templates...")
+                field_rules = [
+                    # Sales Invoice Field Rules
+                    ("sales_invoice", "profit_margin", {"OWNER": "editable", "ADMIN": "read_only", "ACCOUNTANT": "hidden", "MANAGER": "hidden", "EMPLOYEE": "hidden"}),
+                    ("sales_invoice", "outstanding_amount", {"OWNER": "read_only", "ADMIN": "read_only", "ACCOUNTANT": "read_only", "MANAGER": "hidden", "EMPLOYEE": "hidden"}),
+                    ("sales_invoice", "internal_notes", {"OWNER": "editable", "ADMIN": "editable", "ACCOUNTANT": "editable", "MANAGER": "read_only", "EMPLOYEE": "hidden"}),
+                    ("sales_invoice", "paid_amount", {"OWNER": "editable", "ADMIN": "editable", "ACCOUNTANT": "editable", "MANAGER": "read_only", "EMPLOYEE": "hidden"}),
+                    ("sales_invoice", "discount", {"OWNER": "editable", "ADMIN": "editable", "ACCOUNTANT": "read_only", "MANAGER": "hidden", "EMPLOYEE": "hidden"}),
+                    # Expense Field Rules
+                    ("expense", "internal_notes", {"OWNER": "editable", "ADMIN": "editable", "ACCOUNTANT": "editable", "MANAGER": "read_only", "EMPLOYEE": "hidden"}),
+                    ("expense", "amount", {"OWNER": "editable", "ADMIN": "editable", "ACCOUNTANT": "editable", "MANAGER": "read_only", "EMPLOYEE": "read_only"}),
+                    # Purchase Field Rules
+                    ("purchase", "cost_breakdown", {"OWNER": "editable", "ADMIN": "editable", "ACCOUNTANT": "editable", "MANAGER": "hidden", "EMPLOYEE": "hidden"}),
+                    # Party Field Rules
+                    ("party", "credit_limit", {"OWNER": "editable", "ADMIN": "editable", "ACCOUNTANT": "read_only", "MANAGER": "hidden", "EMPLOYEE": "hidden"}),
+                ]
+                default_field_perms = []
+                for entity, fld, role_map in field_rules:
+                    for role, perm in role_map.items():
+                        default_field_perms.append(FieldPermissionSetting(
+                            id=f"fld-def-{entity}-{fld}-{role.lower()}",
+                            company_id="*",
+                            role=role,
+                            entity_type=entity,
+                            field_name=fld,
+                            permission=perm
+                        ))
+                db.add_all(default_field_perms)
+                db.commit()
+                print("✅ Platform default field-level permissions initialized successfully.")
         finally:
             db.close()
     except Exception as e:

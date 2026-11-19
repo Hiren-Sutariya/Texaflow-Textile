@@ -139,7 +139,7 @@ export function invalidateApiCache(endpointPrefix?: string): void {
   } catch {}
 }
 
-export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function fetchApi<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   const tenantCompanyId = getStoredCompanyId() || "comp-001";
   const method = (options.method || "GET").toUpperCase();

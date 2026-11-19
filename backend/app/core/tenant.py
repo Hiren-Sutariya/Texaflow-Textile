@@ -182,6 +182,37 @@ def get_tenant_company_id(
 
     return verified_cid
 
+class TenantContext:
+    def __init__(self, company_id: str, role: str, user_id: str, email: str, is_super_admin: bool):
+        self.company_id = company_id
+        self.role = role
+        self.user_id = user_id
+        self.email = email
+        self.is_super_admin = is_super_admin
+
+def get_tenant_context(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_company_id: Optional[str] = Header(None)
+) -> TenantContext:
+    """
+    Authoritative dependency returning verified TenantContext (company_id, role, user_id).
+    Used across ERP routers for multi-level permission checks and field-level security.
+    """
+    company_id = get_tenant_company_id(request, authorization, x_company_id)
+    token = _extract_bearer_token(authorization)
+    payload = verify_access_token(token) if token else {}
+    role = payload.get("role", "EMPLOYEE")
+    user_id = payload.get("user_id") or payload.get("sub") or ""
+    email = payload.get("email") or ""
+    return TenantContext(
+        company_id=company_id,
+        role=role,
+        user_id=user_id,
+        email=email,
+        is_super_admin=(role == "SuperAdmin")
+    )
+
 def require_super_admin(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
     """
     Ensures the caller has platform-level SuperAdmin privileges.

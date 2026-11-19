@@ -6,7 +6,8 @@ from app.core.database import get_db
 from app.models.party import Party
 from app.schemas.party import PartyCreate, PartyUpdate, PartyResponse
 from app.core.formatters import generate_short_id
-from app.core.tenant import get_tenant_company_id
+from app.core.tenant import get_tenant_context, TenantContext
+from app.services.permission_engine import PermissionEngine
 
 from datetime import datetime
 
@@ -17,9 +18,11 @@ def get_parties(
     account_type: Optional[str] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
-    query = db.query(Party).filter(Party.company_id == company_id, Party.is_deleted == False)
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "parties", "view")
+
+    query = db.query(Party).filter(Party.company_id == ctx.company_id, Party.is_deleted == False)
     if account_type and account_type != "All":
         query = query.filter(Party.account_type == account_type)
     if search:
@@ -36,15 +39,17 @@ def get_parties(
 def create_party(
     party_in: PartyCreate, 
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "parties", "create")
+
     data = party_in.model_dump()
-    data["company_id"] = company_id
+    data["company_id"] = ctx.company_id
     data["is_deleted"] = False
     if not data.get("id") or len(str(data.get("id"))) > 10:
         data["id"] = generate_short_id(db, Party, "pty")
     if not data.get("sr_no"):
-        data["sr_no"] = db.query(Party).filter(Party.company_id == company_id, Party.is_deleted == False).count() + 1
+        data["sr_no"] = db.query(Party).filter(Party.company_id == ctx.company_id, Party.is_deleted == False).count() + 1
     party = Party(**data)
     db.add(party)
     db.commit()
@@ -56,9 +61,11 @@ def update_party(
     party_id: str, 
     party_in: PartyUpdate, 
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
-    party = db.query(Party).filter(Party.id == party_id, Party.company_id == company_id, Party.is_deleted == False).first()
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "parties", "edit")
+
+    party = db.query(Party).filter(Party.id == party_id, Party.company_id == ctx.company_id, Party.is_deleted == False).first()
     if not party:
         raise HTTPException(status_code=404, detail="Party not found")
     update_data = party_in.model_dump(exclude_unset=True)
@@ -72,9 +79,11 @@ def update_party(
 def delete_party(
     party_id: str, 
     db: Session = Depends(get_db),
-    company_id: str = Depends(get_tenant_company_id)
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
-    party = db.query(Party).filter(Party.id == party_id, Party.company_id == company_id, Party.is_deleted == False).first()
+    PermissionEngine.require_permission(db, ctx.company_id, ctx.role, "parties", "delete")
+
+    party = db.query(Party).filter(Party.id == party_id, Party.company_id == ctx.company_id, Party.is_deleted == False).first()
     if not party:
         raise HTTPException(status_code=404, detail="Party not found")
     party.is_deleted = True

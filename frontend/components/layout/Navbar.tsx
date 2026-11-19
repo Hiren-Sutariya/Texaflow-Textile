@@ -64,6 +64,22 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
     is_expired?: boolean;
   } | null>(null);
 
+  const [isSupportActive, setIsSupportActive] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsSupportActive(sessionStorage.getItem("texaflow_support_mode") === "active");
+    }
+  }, []);
+
+  const exitSupportMode = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("texaflow_support_mode");
+      sessionStorage.removeItem("texaflow_auth_token");
+      window.location.href = "/platform/support";
+    }
+  };
+
   useEffect(() => {
     if (!user || user.role === "SuperAdmin") return;
     const token = typeof window !== "undefined" 
@@ -200,10 +216,23 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
 
       {/* Right Section: Quick Controls, SaaS Status & Corner Language Selector */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        {/* Diagnostic Support Session Indicator */}
+        {isSupportActive && (
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-amber-500 text-slate-950 font-black text-xs animate-pulse shadow-sm">
+            <span>🚨 DIAGNOSTIC SUPPORT MODE</span>
+            <button
+              onClick={exitSupportMode}
+              className="bg-black/20 hover:bg-black/30 text-white px-2 py-0.5 rounded-lg text-[10px] uppercase font-black"
+            >
+              Exit
+            </button>
+          </div>
+        )}
+
         {/* SuperAdmin Quick Access Badge */}
         {user?.role === "SuperAdmin" && (
           <Link
-            href="/saas-admin"
+            href="/platform"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition-all shadow-2xs"
             title="SaaS Platform Super Administrator"
           >

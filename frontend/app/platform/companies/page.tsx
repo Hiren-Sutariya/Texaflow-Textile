@@ -1,0 +1,419 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import {
+  Building2,
+  Search,
+  Filter,
+  RefreshCw,
+  Edit2,
+  Users,
+  CreditCard,
+  CheckCircle2,
+  AlertTriangle,
+  X,
+  Check,
+  ChevronRight,
+  ShieldAlert,
+  ArrowUpRight
+} from "lucide-react";
+import { fetchApi } from "@/lib/api";
+
+interface CompanyItem {
+  id: string;
+  name: string;
+  legal_name: string;
+  owner_name: string;
+  email: string;
+  phone: string;
+  city_state: string;
+  gstin: string;
+  pan: string;
+  status: string;
+  user_count: number;
+  created_at?: string;
+  subscription?: {
+    plan_id: string;
+    plan_name: string;
+    status: string;
+    billing_cycle: string;
+    trial_ends_at?: string;
+    current_period_end?: string;
+  };
+}
+
+export default function PlatformCompaniesPage() {
+  const [companies, setCompanies] = useState<CompanyItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  // Edit Drawer / Modal state
+  const [selectedComp, setSelectedComp] = useState<CompanyItem | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const loadCompanies = async () => {
+    setLoading(true);
+    try {
+      const q = new URLSearchParams();
+      if (statusFilter !== "all") q.append("status", statusFilter);
+      if (search.trim()) q.append("search", search.trim());
+
+      const res = await fetchApi(`/platform/companies?${q.toString()}`);
+      if (res && res.success) {
+        setCompanies(res.companies || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCompanies();
+  }, [statusFilter]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    loadCompanies();
+  };
+
+  const openEditModal = (comp: CompanyItem) => {
+    setSelectedComp(comp);
+    setEditFormData({
+      name: comp.name || "",
+      brand_name: comp.legal_name || "",
+      owner_name: comp.owner_name || "",
+      phone: comp.phone || "",
+      email: comp.email || "",
+      city_state: comp.city_state || "",
+      gstin: comp.gstin || "",
+      pan: comp.pan || ""
+    });
+    setEditModalOpen(true);
+    setMessage(null);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!selectedComp) return;
+    setSaving(true);
+    try {
+      const res = await fetchApi(`/platform/companies/${selectedComp.id}`, {
+        method: "PUT",
+        body: JSON.stringify(editFormData)
+      });
+      if (res && res.success) {
+        setMessage({ type: "success", text: "Profile updated successfully!" });
+        loadCompanies();
+        setTimeout(() => setEditModalOpen(false), 1000);
+      } else {
+        setMessage({ type: "error", text: res.detail || "Failed to update" });
+      }
+    } catch (e: any) {
+      setMessage({ type: "error", text: e.message || "Network error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleStatus = async (comp: CompanyItem) => {
+    const nextStatus = comp.status === "active" ? "suspended" : "active";
+    const confirmMsg = nextStatus === "suspended"
+      ? `Are you sure you want to SUSPEND '${comp.name}'? All user mutations will be immediately blocked.`
+      : `Reactivate company '${comp.name}'?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await fetchApi(`/platform/companies/${comp.id}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status: nextStatus })
+      });
+      if (res && res.success) {
+        loadCompanies();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Enterprise Tenants</h1>
+          <p className="text-xs text-slate-400 mt-1">
+            Centrally manage company profiles, status, users, and subscription tiers.
+          </p>
+        </div>
+
+        <button
+          onClick={loadCompanies}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-300 transition-colors cursor-pointer self-start sm:self-auto"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-purple-400" : ""}`} />
+          <span>Refresh</span>
+        </button>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <form onSubmit={handleSearchSubmit} className="flex-1 relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by company name, owner, phone, GSTIN..."
+            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+          />
+        </form>
+
+        <div className="flex items-center gap-2">
+          {["all", "active", "trialing", "suspended"].map((st) => (
+            <button
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={`px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                statusFilter === st
+                  ? "bg-purple-600 text-white"
+                  : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+              }`}
+            >
+              {st}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Companies Table */}
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-900 border-b border-slate-800 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+              <tr>
+                <th className="py-3.5 px-4">Company Details</th>
+                <th className="py-3.5 px-4">Contact & Location</th>
+                <th className="py-3.5 px-4">Tax & Legal</th>
+                <th className="py-3.5 px-4">Subscription Plan</th>
+                <th className="py-3.5 px-4">Users</th>
+                <th className="py-3.5 px-4">Status</th>
+                <th className="py-3.5 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60">
+              {companies.map((c) => (
+                <tr key={c.id} className="hover:bg-slate-800/30 transition-colors">
+                  <td className="py-3.5 px-4">
+                    <p className="font-bold text-white text-xs">{c.name}</p>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">{c.id}</p>
+                  </td>
+
+                  <td className="py-3.5 px-4">
+                    <p className="text-white font-medium">{c.owner_name}</p>
+                    <p className="text-[11px] text-slate-400">{c.phone || c.email || "No contact"}</p>
+                    {c.city_state && <p className="text-[10px] text-slate-400">{c.city_state}</p>}
+                  </td>
+
+                  <td className="py-3.5 px-4 font-mono text-[11px]">
+                    <p className="text-slate-300">GSTIN: {c.gstin || "Unregistered"}</p>
+                    <p className="text-slate-400">PAN: {c.pan || "—"}</p>
+                  </td>
+
+                  <td className="py-3.5 px-4">
+                    {c.subscription ? (
+                      <div>
+                        <span className="font-bold text-purple-300 text-xs">
+                          {c.subscription.plan_name}
+                        </span>
+                        <p className="text-[10px] text-slate-400 capitalize">
+                          {c.subscription.billing_cycle} • {c.subscription.status}
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 text-xs">No active plan</span>
+                    )}
+                  </td>
+
+                  <td className="py-3.5 px-4">
+                    <span className="inline-flex items-center gap-1 text-slate-300 font-bold">
+                      <Users className="w-3.5 h-3.5 text-blue-400" />
+                      <span>{c.user_count}</span>
+                    </span>
+                  </td>
+
+                  <td className="py-3.5 px-4">
+                    <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
+                      c.status === "active"
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                        : c.status === "suspended"
+                        ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                        : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                    }`}>
+                      {c.status}
+                    </span>
+                  </td>
+
+                  <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                    <button
+                      onClick={() => openEditModal(c)}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                      title="Edit Profile"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      onClick={() => toggleStatus(c)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
+                        c.status === "active"
+                          ? "bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                          : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                      }`}
+                    >
+                      {c.status === "active" ? "Suspend" : "Activate"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {companies.length === 0 && !loading && (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-xs text-slate-400">
+                    No matching companies found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Edit Profile Modal */}
+      {editModalOpen && selectedComp && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-purple-400" />
+                <h3 className="text-sm font-bold text-white">Edit Company Profile</h3>
+              </div>
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {message && (
+              <div className={`p-3 rounded-xl text-xs font-bold ${
+                message.type === "success"
+                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                  : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+              }`}>
+                {message.text}
+              </div>
+            )}
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Company / Firm Name</label>
+                <input
+                  type="text"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Owner / Proprietor Name</label>
+                <input
+                  type="text"
+                  value={editFormData.owner_name}
+                  onChange={(e) => setEditFormData({ ...editFormData, owner_name: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={editFormData.phone}
+                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editFormData.email}
+                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">GSTIN</label>
+                  <input
+                    type="text"
+                    value={editFormData.gstin}
+                    onChange={(e) => setEditFormData({ ...editFormData, gstin: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">PAN</label>
+                  <input
+                    type="text"
+                    value={editFormData.pan}
+                    onChange={(e) => setEditFormData({ ...editFormData, pan: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">City & State</label>
+                <input
+                  type="text"
+                  value={editFormData.city_state}
+                  onChange={(e) => setEditFormData({ ...editFormData, city_state: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={saving}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white transition-colors cursor-pointer"
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
