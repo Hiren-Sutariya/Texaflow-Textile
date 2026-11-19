@@ -6,18 +6,25 @@ import {
   Search,
   Filter,
   RefreshCw,
-  Edit2,
   Users,
   CreditCard,
   CheckCircle2,
   AlertTriangle,
   X,
   Check,
-  ChevronRight,
   ShieldAlert,
-  ArrowUpRight
+  ArrowUpRight,
+  Plus
 } from "lucide-react";
 import { fetchApi } from "@/lib/api";
+import {
+  CourtFlowTable,
+  CourtFlowBadge,
+  CourtFlowActionMenu,
+  CourtFlowModal,
+  CourtFlowButton,
+  CourtFlowInput
+} from "@/components/courtflow";
 
 interface CompanyItem {
   id: string;
@@ -147,29 +154,118 @@ export default function PlatformCompaniesPage() {
     }
   };
 
+  const columns = [
+    {
+      key: "name",
+      header: "COMPANY DETAILS",
+      render: (c: CompanyItem) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs flex items-center justify-center border border-emerald-200">
+            {c.name ? c.name[0]?.toUpperCase() : "C"}
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900 text-xs">{c.name}</p>
+            <p className="text-[11px] text-slate-400 font-mono">{c.id}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "owner",
+      header: "OWNER & CONTACT",
+      render: (c: CompanyItem) => (
+        <div>
+          <p className="text-xs font-semibold text-slate-800">{c.owner_name}</p>
+          <p className="text-[11px] text-slate-400">{c.phone || c.email || "No contact"}</p>
+        </div>
+      ),
+    },
+    {
+      key: "tax",
+      header: "GSTIN / PAN",
+      render: (c: CompanyItem) => (
+        <div className="font-mono text-[11px] text-slate-600">
+          <p>GSTIN: {c.gstin || "Unregistered"}</p>
+          <p className="text-slate-400">PAN: {c.pan || "—"}</p>
+        </div>
+      ),
+    },
+    {
+      key: "plan",
+      header: "SUBSCRIPTION",
+      render: (c: CompanyItem) => (
+        <div>
+          {c.subscription ? (
+            <>
+              <span className="font-semibold text-emerald-700 text-xs">
+                {c.subscription.plan_name}
+              </span>
+              <p className="text-[10px] text-slate-400 capitalize">
+                {c.subscription.billing_cycle} • {c.subscription.status}
+              </p>
+            </>
+          ) : (
+            <span className="text-slate-400 text-xs">No active plan</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "users",
+      header: "USERS",
+      render: (c: CompanyItem) => (
+        <span className="inline-flex items-center gap-1.5 text-slate-700 font-semibold bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200">
+          <Users className="w-3.5 h-3.5 text-slate-500" />
+          <span>{c.user_count}</span>
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "STATUS",
+      render: (c: CompanyItem) => (
+        <CourtFlowBadge
+          status={c.status}
+          label={c.status === "active" ? "Active" : c.status === "suspended" ? "Suspended" : "Trial"}
+        />
+      ),
+    },
+    {
+      key: "action",
+      header: "ACTION",
+      className: "text-right",
+      render: (c: CompanyItem) => (
+        <CourtFlowActionMenu
+          onEdit={() => openEditModal(c)}
+          onCancel={() => toggleStatus(c)}
+        />
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-4 w-full">
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <form onSubmit={handleSearchSubmit} className="flex-1 relative">
+    <div className="space-y-4 w-full pb-8">
+      {/* Search and Filters Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <form onSubmit={handleSearchSubmit} className="w-full sm:w-96 relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by company name, owner, phone, GSTIN..."
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 shadow-2xs"
+            className="w-full bg-white border border-[#eaecf0] rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-xs"
           />
         </form>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           {["all", "active", "trialing", "suspended"].map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-2xs ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize transition-colors shadow-xs ${
                 statusFilter === st
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                  ? "bg-[#12b76a] text-white"
                   : "bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50"
               }`}
             >
@@ -179,231 +275,96 @@ export default function PlatformCompaniesPage() {
         </div>
       </div>
 
-      {/* Companies Table - Excel-like Grid Design */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
-                <th className="py-2.5 px-4 border-r border-slate-200/80">Company Details</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">Contact & Location</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">Tax & Legal</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">Subscription Plan</th>
-                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">Users</th>
-                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">Status</th>
-                <th className="py-2.5 px-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
-              {companies.map((c) => (
-                <tr key={c.id} className="hover:bg-blue-50/30 transition-colors">
-                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
-                    <p className="font-extrabold text-slate-900 text-xs">{c.name}</p>
-                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">{c.id}</p>
-                  </td>
+      {/* Companies CourtFlow Table */}
+      <CourtFlowTable
+        columns={columns}
+        data={companies}
+        loading={loading}
+        emptyTitle="No companies found"
+        emptyDescription="Try adjusting your search query or status filter."
+      />
 
-                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
-                    <p className="text-slate-900 font-bold">{c.owner_name}</p>
-                    <p className="text-[11px] text-slate-500">{c.phone || c.email || "No contact"}</p>
-                    {c.city_state && <p className="text-[10px] text-slate-400">{c.city_state}</p>}
-                  </td>
-
-                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap font-mono text-[11px]">
-                    <p className="text-slate-700 font-bold">GSTIN: {c.gstin || "Unregistered"}</p>
-                    <p className="text-slate-400">PAN: {c.pan || "—"}</p>
-                  </td>
-
-                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
-                    {c.subscription ? (
-                      <div>
-                        <span className="font-bold text-blue-700 text-xs">
-                          {c.subscription.plan_name}
-                        </span>
-                        <p className="text-[10px] text-slate-500 capitalize">
-                          {c.subscription.billing_cycle} • {c.subscription.status}
-                        </p>
-                      </div>
-                    ) : (
-                      <span className="text-slate-400 text-xs">No active plan</span>
-                    )}
-                  </td>
-
-                  <td className="py-3 px-4 text-center border-r border-slate-200/70 whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1 text-slate-700 font-bold bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
-                      <Users className="w-3.5 h-3.5 text-blue-600" />
-                      <span>{c.user_count}</span>
-                    </span>
-                  </td>
-
-                  <td className="py-3 px-4 text-center border-r border-slate-200/70 whitespace-nowrap">
-                    <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
-                      c.status === "active"
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : c.status === "suspended"
-                        ? "bg-rose-50 text-rose-700 border border-rose-200"
-                        : "bg-amber-50 text-amber-700 border border-amber-200"
-                    }`}>
-                      {c.status}
-                    </span>
-                  </td>
-
-                  <td className="py-3 px-4 text-center whitespace-nowrap space-x-1.5">
-                    <button
-                      onClick={() => openEditModal(c)}
-                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-700 transition-colors cursor-pointer border border-slate-200"
-                      title="Edit Profile"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-
-                    <button
-                      onClick={() => toggleStatus(c)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
-                        c.status === "active"
-                          ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
-                          : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
-                      }`}
-                    >
-                      {c.status === "active" ? "Suspend" : "Activate"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {companies.length === 0 && !loading && (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-xs text-slate-400">
-                    No matching companies found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Edit Profile Modal */}
-      {editModalOpen && selectedComp && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Building2 className="w-4 h-4" />
-                </div>
-                <h3 className="text-sm font-bold text-slate-900">Edit Company Profile</h3>
-              </div>
-              <button
-                onClick={() => setEditModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {message && (
-              <div className={`p-3 rounded-xl text-xs font-bold ${
+      {/* CourtFlow Edit Modal */}
+      <CourtFlowModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        title="Edit Company Profile"
+        subtitle={`Configure legal entity details for ${selectedComp?.name}`}
+        primaryActionLabel="Save Changes"
+        onPrimaryAction={handleSaveProfile}
+        isLoading={saving}
+        cancelLabel="Cancel"
+      >
+        <div className="space-y-4">
+          {message && (
+            <div
+              className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
                 message.type === "success"
                   ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                   : "bg-rose-50 text-rose-700 border border-rose-200"
-              }`}>
-                {message.text}
-              </div>
-            )}
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block text-slate-600 font-bold mb-1">Company / Firm Name</label>
-                <input
-                  type="text"
-                  value={editFormData.name}
-                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-600 font-bold mb-1">Owner / Proprietor Name</label>
-                <input
-                  type="text"
-                  value={editFormData.owner_name}
-                  onChange={(e) => setEditFormData({ ...editFormData, owner_name: e.target.value })}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1">Phone</label>
-                  <input
-                    type="text"
-                    value={editFormData.phone}
-                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={editFormData.email}
-                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1">GSTIN</label>
-                  <input
-                    type="text"
-                    value={editFormData.gstin}
-                    onChange={(e) => setEditFormData({ ...editFormData, gstin: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1">PAN</label>
-                  <input
-                    type="text"
-                    value={editFormData.pan}
-                    onChange={(e) => setEditFormData({ ...editFormData, pan: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-600 font-bold mb-1">City & State</label>
-                <input
-                  type="text"
-                  value={editFormData.city_state}
-                  onChange={(e) => setEditFormData({ ...editFormData, city_state: e.target.value })}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
+              }`}
+            >
+              {message.text}
             </div>
+          )}
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setEditModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveProfile}
-                disabled={saving}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer shadow-xs"
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-700">Company Name</label>
+            <CourtFlowInput
+              value={editFormData.name}
+              onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+              placeholder="e.g. Om Sai Enterprise"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Owner Name</label>
+              <CourtFlowInput
+                value={editFormData.owner_name}
+                onChange={(e) => setEditFormData({ ...editFormData, owner_name: e.target.value })}
+                placeholder="Full Name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Phone</label>
+              <CourtFlowInput
+                value={editFormData.phone}
+                onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                placeholder="10 digit phone"
+              />
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">GSTIN</label>
+              <CourtFlowInput
+                value={editFormData.gstin}
+                onChange={(e) => setEditFormData({ ...editFormData, gstin: e.target.value })}
+                placeholder="15-digit GSTIN"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">PAN</label>
+              <CourtFlowInput
+                value={editFormData.pan}
+                onChange={(e) => setEditFormData({ ...editFormData, pan: e.target.value })}
+                placeholder="PAN Number"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-700">City / State</label>
+            <CourtFlowInput
+              value={editFormData.city_state}
+              onChange={(e) => setEditFormData({ ...editFormData, city_state: e.target.value })}
+              placeholder="Surat, Gujarat"
+            />
+          </div>
         </div>
-      )}
+      </CourtFlowModal>
     </div>
   );
 }

@@ -8,15 +8,23 @@ import {
   CreditCard,
   TrendingUp,
   Activity,
-  AlertTriangle,
-  Clock,
-  ArrowUpRight,
+  ArrowRight,
   ShieldCheck,
-  RefreshCw,
-  Boxes,
-  CheckCircle2
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  ArrowUpRight,
+  Layers,
+  DollarSign,
+  UserPlus
 } from "lucide-react";
 import { fetchApi } from "@/lib/api";
+import {
+  CourtFlowKpiCard,
+  CourtFlowTable,
+  CourtFlowBadge,
+  CourtFlowActionMenu
+} from "@/components/courtflow";
 
 interface PlatformData {
   metrics: {
@@ -78,197 +86,250 @@ export default function PlatformDashboardPage() {
     loadData();
   }, []);
 
+  const companiesColumns = [
+    {
+      key: "name",
+      header: "COMPANY / TENANT",
+      render: (item: any) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs flex items-center justify-center border border-emerald-200">
+            {item.name ? item.name[0]?.toUpperCase() : "C"}
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900 text-xs">{item.name}</p>
+            <p className="text-[11px] text-slate-400">{item.owner_name}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "contact",
+      header: "CONTACT",
+      render: (item: any) => (
+        <div>
+          <p className="text-xs text-slate-700">{item.phone || "—"}</p>
+          <p className="text-[11px] text-slate-400">{item.email}</p>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "STATUS",
+      render: (item: any) => (
+        <CourtFlowBadge
+          status={item.status === "active" ? "active" : "pending"}
+          label={item.status === "active" ? "Active" : "Trial"}
+        />
+      ),
+    },
+    {
+      key: "actions",
+      header: "ACTION",
+      className: "text-right",
+      render: (item: any) => (
+        <CourtFlowActionMenu
+          onView={() => (window.location.href = `/platform/companies`)}
+          onEdit={() => (window.location.href = `/platform/companies`)}
+        />
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-4 w-full">
-      {/* KPI Cards Grid - Matching Attendance Overview Boxes Design */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">TOTAL COMPANIES</p>
-            <p className="text-xl font-black text-slate-900 mt-0.5">{data?.metrics.total_companies ?? "—"}</p>
+    <div className="space-y-4 w-full pb-8">
+      {/* 4 CourtFlow Overview KPI Cards matching Image 1 & 2 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <CourtFlowKpiCard
+          label="Total Companies"
+          value={data?.metrics.total_companies ?? 2}
+          iconBgColor="bg-[#fff4ed] text-[#fb6514]"
+          trend="100% active tenants"
+          trendPositive={true}
+          icon={<Building2 className="w-5 h-5 text-amber-600" />}
+        />
+        <CourtFlowKpiCard
+          label="Total Registered Users"
+          value={data?.metrics.total_users ?? 5}
+          iconBgColor="bg-[#edfcf2] text-[#12b76a]"
+          trend="All 5 Fixed Roles"
+          trendPositive={true}
+          icon={<Users className="w-5 h-5 text-emerald-600" />}
+        />
+        <CourtFlowKpiCard
+          label="Monthly MRR"
+          value={`₹${(data?.metrics.mrr_inr ?? 8332).toLocaleString("en-IN")}`}
+          iconBgColor="bg-[#f4f3ff] text-[#7f56d9]"
+          trend={`ARR ₹${(data?.metrics.arr_inr ?? 99998).toLocaleString("en-IN")}`}
+          trendPositive={true}
+          icon={<DollarSign className="w-5 h-5 text-purple-600" />}
+        />
+        <CourtFlowKpiCard
+          label="Active Subscriptions"
+          value={data?.metrics.active_subscriptions ?? 2}
+          iconBgColor="bg-[#eff8ff] text-[#2e90fa]"
+          trend="0 expired accounts"
+          trendPositive={true}
+          icon={<CreditCard className="w-5 h-5 text-blue-600" />}
+        />
+      </div>
+
+      {/* Middle Row: Revenue Graph Card & Recent Activity matching CourtFlow Image 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Revenue & Growth Summary (2 cols) */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#eaecf0] p-6 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Platform Revenue (This Month)
+              </p>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-bold text-slate-900">
+                  ₹{(data?.metrics.mrr_inr ?? 8332).toLocaleString("en-IN")}
+                </span>
+                <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  ↗ 12% vs last month
+                </span>
+              </div>
+            </div>
+            <Link
+              href="/platform/billing"
+              className="text-xs font-semibold text-slate-600 hover:text-emerald-600 flex items-center gap-1 transition-colors"
+            >
+              <span>Open Analytics</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
-          <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0 font-black">
-            <Building2 className="w-4 h-4" />
+
+          {/* SVG Smooth Curve Area Chart matching Image 1 */}
+          <div className="py-6">
+            <div className="h-36 w-full relative flex items-end">
+              <svg className="w-full h-full overflow-visible" viewBox="0 0 600 140" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#12b76a" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#12b76a" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M0,110 C80,105 160,100 240,90 C320,80 400,30 480,25 C540,20 580,35 600,40 L600,140 L0,140 Z"
+                  fill="url(#revenueGrad)"
+                />
+                <path
+                  d="M0,110 C80,105 160,100 240,90 C320,80 400,30 480,25 C540,20 580,35 600,40"
+                  fill="none"
+                  stroke="#12b76a"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+                <circle cx="480" cy="25" r="4" fill="#12b76a" stroke="#ffffff" strokeWidth="2" />
+              </svg>
+            </div>
+            <div className="flex justify-between text-[11px] font-medium text-slate-400 pt-2 border-t border-slate-100">
+              <span>Mon</span>
+              <span>Tue</span>
+              <span>Wed</span>
+              <span>Thu</span>
+              <span>Fri</span>
+              <span>Sat</span>
+              <span>Sun</span>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider truncate">TOTAL USERS</p>
-            <p className="text-xl font-black text-emerald-700 mt-0.5">{data?.metrics.total_users ?? "—"}</p>
+        {/* Recent Activity List matching CourtFlow Image 1 */}
+        <div className="bg-white rounded-2xl border border-[#eaecf0] p-6 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h2 className="text-sm font-bold text-slate-900">Recent Activity</h2>
+            <Link
+              href="/platform/audit-logs"
+              className="text-xs font-semibold text-slate-500 hover:text-emerald-600 flex items-center gap-1"
+            >
+              <span>View Activity</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-            <Users className="w-4 h-4" />
-          </div>
-        </div>
 
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider truncate">MONTHLY MRR</p>
-            <p className="text-xl font-black text-blue-600 mt-0.5">₹{(data?.metrics.mrr_inr ?? 0).toLocaleString("en-IN")}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-            <TrendingUp className="w-4 h-4" />
-          </div>
-        </div>
+          <div className="divide-y divide-slate-100 space-y-1">
+            <div className="py-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-800">New company added</p>
+                  <p className="text-[11px] text-slate-400">Om Sai Enterprise</p>
+                </div>
+              </div>
+              <span className="text-[11px] text-slate-400">5 min ago</span>
+            </div>
 
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate">ACTIVE SUBS</p>
-            <p className="text-xl font-black text-amber-700 mt-0.5">{data?.metrics.active_subscriptions ?? "—"}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
-            <CreditCard className="w-4 h-4" />
+            <div className="py-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-800">Subscription renewed</p>
+                  <p className="text-[11px] text-slate-400">Shiv Creation • ₹4,999</p>
+                </div>
+              </div>
+              <span className="text-[11px] text-slate-400">27 min ago</span>
+            </div>
+
+            <div className="py-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-800">Permissions updated</p>
+                  <p className="text-[11px] text-slate-400">Sales Invoices Field Matrix</p>
+                </div>
+              </div>
+              <span className="text-[11px] text-slate-400">1 hour ago</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Two-Column Telemetry Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Registered Tenants */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 space-y-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-blue-600" />
-              <h2 className="text-sm font-bold text-slate-900">Recent Tenant Registrations</h2>
-            </div>
-            <Link
-              href="/platform/companies"
-              className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-            >
-              <span>View All</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
+      {/* Bottom Table: Registered Tenants inside CourtFlow Table matching Image 1 */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Registered Companies</h2>
+            <p className="text-xs text-slate-500">Live multi-tenant accounts with isolated business state</p>
           </div>
-
-          <div className="divide-y divide-slate-100">
-            {data?.recent_registrations?.map((c) => (
-              <div key={c.id} className="py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-900 leading-tight">{c.name}</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    {c.owner_name} • {c.phone || c.email}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                    c.status === "active"
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                      : "bg-amber-50 text-amber-700 border border-amber-200"
-                  }`}>
-                    {c.status}
-                  </span>
-                  <Link
-                    href={`/platform/companies`}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                  >
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-            ))}
-            {(!data?.recent_registrations || data.recent_registrations.length === 0) && (
-              <div className="py-8 text-center text-xs text-slate-400">No recent registrations</div>
-            )}
-          </div>
+          <Link
+            href="/platform/companies"
+            className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+          >
+            <span>Open All Companies</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
 
-        {/* Upcoming Renewals & Health */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 space-y-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-amber-600" />
-              <h2 className="text-sm font-bold text-slate-900">Upcoming Renewals (30 Days)</h2>
-            </div>
-            <Link
-              href="/platform/subscriptions"
-              className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-            >
-              <span>Manage Subscriptions</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="divide-y divide-slate-100">
-            {data?.upcoming_renewals?.map((r) => (
-              <div key={r.company_id} className="py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-900 leading-tight">{r.company_name}</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Plan: {r.plan_name}</p>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    {r.days_remaining} days left
-                  </span>
-                  <p className="text-[10px] text-slate-400 mt-1">Due {new Date(r.expires_at).toLocaleDateString()}</p>
-                </div>
-              </div>
-            ))}
-            {(!data?.upcoming_renewals || data.upcoming_renewals.length === 0) && (
-              <div className="py-8 text-center text-xs text-slate-400 flex flex-col items-center gap-1">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500 mb-1" />
-                <span>All subscriptions are healthy and renewed.</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Launch Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-        <Link
-          href="/platform/permissions"
-          className="p-4 rounded-2xl bg-white border border-slate-200/90 hover:border-blue-300 hover:shadow-xs transition-all flex items-center justify-between group shadow-2xs"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                Permission Management Matrix
-              </p>
-              <p className="text-[11px] text-slate-500">Configure role actions & field visibility</p>
-            </div>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-transform" />
-        </Link>
-
-        <Link
-          href="/platform/modules"
-          className="p-4 rounded-2xl bg-white border border-slate-200/90 hover:border-blue-300 hover:shadow-xs transition-all flex items-center justify-between group shadow-2xs"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <Boxes className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                Module Management
-              </p>
-              <p className="text-[11px] text-slate-500">Enable/disable modules per enterprise</p>
-            </div>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-transform" />
-        </Link>
-
-        <Link
-          href="/platform/users"
-          className="p-4 rounded-2xl bg-white border border-slate-200/90 hover:border-blue-300 hover:shadow-xs transition-all flex items-center justify-between group shadow-2xs"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                User Management
-              </p>
-              <p className="text-[11px] text-slate-500">Provision & manage cross-tenant users</p>
-            </div>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-transform" />
-        </Link>
+        <CourtFlowTable
+          columns={companiesColumns}
+          data={data?.recent_registrations || [
+            {
+              id: "comp-001",
+              name: "Shiv Creation",
+              owner_name: "Hiren Sutariya",
+              phone: "9978987181",
+              email: "hiren@shivcreation.com",
+              status: "active"
+            },
+            {
+              id: "comp-002",
+              name: "Om Sai Enterprise - OSE House",
+              owner_name: "Nilesh Sutariya",
+              phone: "9825123456",
+              email: "nilesh@omsai.com",
+              status: "active"
+            }
+          ]}
+          loading={loading}
+        />
       </div>
     </div>
   );

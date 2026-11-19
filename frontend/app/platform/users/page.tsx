@@ -15,6 +15,14 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { fetchApi } from "@/lib/api";
+import {
+  CourtFlowTable,
+  CourtFlowBadge,
+  CourtFlowActionMenu,
+  CourtFlowModal,
+  CourtFlowButton,
+  CourtFlowInput
+} from "@/components/courtflow";
 
 const FIXED_ROLES = ["OWNER", "ADMIN", "ACCOUNTANT", "MANAGER", "EMPLOYEE"];
 
@@ -38,7 +46,6 @@ export default function PlatformUsersPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [companyFilter, setCompanyFilter] = useState("all");
 
-  // Create Modal
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     company_id: "",
@@ -48,12 +55,14 @@ export default function PlatformUsersPage() {
     role: "EMPLOYEE",
     password: ""
   });
-  const [actionLoading, setActionLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [creating, setCreating] = useState(false);
 
-  // Password Reset Modal
-  const [resetUser, setResetUser] = useState<UserItem | null>(null);
+  const [pwdOpen, setPwdOpen] = useState(false);
+  const [pwdTargetUser, setPwdTargetUser] = useState<UserItem | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [updatingPwd, setUpdatingPwd] = useState(false);
+
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -63,17 +72,16 @@ export default function PlatformUsersPage() {
       if (roleFilter !== "all") q.append("role", roleFilter);
       if (companyFilter !== "all") q.append("company_id", companyFilter);
 
-      const [usersRes, compsRes] = await Promise.all([
+      const [resUsers, resCompanies] = await Promise.all([
         fetchApi(`/platform/users?${q.toString()}`),
-        fetchApi(`/platform/companies`)
+        fetchApi("/platform/companies")
       ]);
 
-      if (usersRes && usersRes.success) setUsers(usersRes.users || []);
-      if (compsRes && compsRes.success) {
-        setCompanies(compsRes.companies || []);
-        if (!createForm.company_id && compsRes.companies?.length > 0) {
-          setCreateForm((prev) => ({ ...prev, company_id: compsRes.companies[0].id }));
-        }
+      if (resUsers && resUsers.success) {
+        setUsers(resUsers.users || []);
+      }
+      if (resCompanies && resCompanies.success) {
+        setCompanies(resCompanies.companies || []);
       }
     } catch (e) {
       console.error(e);
@@ -86,400 +94,337 @@ export default function PlatformUsersPage() {
     loadData();
   }, [roleFilter, companyFilter]);
 
-  const handleCreateSubmit = async (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setActionLoading(true);
-    setMessage(null);
+    loadData();
+  };
+
+  const handleCreateUser = async () => {
+    if (!createForm.company_id || !createForm.name || !createForm.username || !createForm.password) {
+      setFeedback({ type: "error", text: "Please fill in all mandatory fields" });
+      return;
+    }
+
+    setCreating(true);
+    setFeedback(null);
     try {
       const res = await fetchApi("/platform/users", {
         method: "POST",
         body: JSON.stringify(createForm)
       });
       if (res && res.success) {
-        setMessage({ type: "success", text: res.message || "User created successfully!" });
+        setFeedback({ type: "success", text: "User provisioned successfully!" });
         loadData();
+        setCreateOpen(false);
         setCreateForm({
-          company_id: companies[0]?.id || "",
+          company_id: "",
           name: "",
           email: "",
           username: "",
           role: "EMPLOYEE",
           password: ""
         });
-        setTimeout(() => setCreateOpen(false), 800);
       } else {
-        setMessage({ type: "error", text: res.error || "Failed to create user" });
+        setFeedback({ type: "error", text: res.error || "Failed to create user" });
       }
-    } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Network error" });
+    } catch (e: any) {
+      setFeedback({ type: "error", text: e.message || "Network error" });
     } finally {
-      setActionLoading(false);
+      setCreating(false);
     }
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resetUser || !newPassword) return;
-    setActionLoading(true);
-    setMessage(null);
+  const handleToggleStatus = async (u: UserItem) => {
+    const nextActive = !u.is_active;
     try {
-      const res = await fetchApi(`/platform/users/${resetUser.id}/reset-password`, {
-        method: "POST",
-        body: JSON.stringify({ new_password: newPassword })
+      const res = await fetchApi(`/platform/users/${u.id}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ is_active: nextActive })
       });
       if (res && res.success) {
-        setMessage({ type: "success", text: "Password reset successfully!" });
-        setTimeout(() => setResetUser(null), 800);
-      } else {
-        setMessage({ type: "error", text: res.error || "Failed to reset password" });
+        loadData();
       }
-    } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Network error" });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const toggleUserActive = async (u: UserItem) => {
-    try {
-      const res = await fetchApi(`/platform/users/${u.id}`, {
-        method: "PUT",
-        body: JSON.stringify({ is_active: !u.is_active })
-      });
-      if (res && res.success) loadData();
     } catch (e) {
       console.error(e);
     }
   };
 
+  const openPasswordReset = (u: UserItem) => {
+    setPwdTargetUser(u);
+    setNewPassword("");
+    setFeedback(null);
+    setPwdOpen(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!pwdTargetUser || !newPassword || newPassword.length < 6) {
+      setFeedback({ type: "error", text: "Password must be at least 6 characters" });
+      return;
+    }
+
+    setUpdatingPwd(true);
+    setFeedback(null);
+    try {
+      const res = await fetchApi(`/platform/users/${pwdTargetUser.id}/reset-password`, {
+        method: "POST",
+        body: JSON.stringify({ new_password: newPassword })
+      });
+      if (res && res.success) {
+        setFeedback({ type: "success", text: "Password successfully reset!" });
+        setTimeout(() => setPwdOpen(false), 900);
+      } else {
+        setFeedback({ type: "error", text: res.error || "Failed to reset password" });
+      }
+    } catch (e: any) {
+      setFeedback({ type: "error", text: e.message || "Network error" });
+    } finally {
+      setUpdatingPwd(false);
+    }
+  };
+
+  const columns = [
+    {
+      key: "user",
+      header: "USER IDENTITY",
+      render: (u: UserItem) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs flex items-center justify-center border border-emerald-200">
+            {u.name ? u.name[0]?.toUpperCase() : "U"}
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900 text-xs">{u.name}</p>
+            <p className="text-[11px] text-slate-400 font-mono">@{u.username}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "company",
+      header: "TENANT / COMPANY",
+      render: (u: UserItem) => (
+        <div>
+          <p className="text-xs font-semibold text-slate-800">{u.company_name}</p>
+          <p className="text-[10px] text-slate-400 font-mono">{u.company_id}</p>
+        </div>
+      ),
+    },
+    {
+      key: "role",
+      header: "FIXED ROLE",
+      render: (u: UserItem) => (
+        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/60 uppercase">
+          {u.role}
+        </span>
+      ),
+    },
+    {
+      key: "email",
+      header: "EMAIL",
+      render: (u: UserItem) => (
+        <span className="text-xs text-slate-600">{u.email || "—"}</span>
+      ),
+    },
+    {
+      key: "status",
+      header: "STATUS",
+      render: (u: UserItem) => (
+        <CourtFlowBadge
+          status={u.is_active ? "active" : "cancelled"}
+          label={u.is_active ? "Active" : "Deactivated"}
+        />
+      ),
+    },
+    {
+      key: "action",
+      header: "ACTION",
+      className: "text-right",
+      render: (u: UserItem) => (
+        <CourtFlowActionMenu
+          onEdit={() => openPasswordReset(u)}
+          onCancel={() => handleToggleStatus(u)}
+        />
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-4 w-full">
-      {/* Filter and Search Bar with Action */}
-      <div className="flex flex-col sm:flex-row gap-3 items-center">
-        <div className="flex-1 relative w-full">
+    <div className="space-y-4 w-full pb-8">
+      {/* Top Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <form onSubmit={handleSearch} className="w-full sm:w-96 relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && loadData()}
-            placeholder="Search by name, email, username..."
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 shadow-2xs"
+            placeholder="Search users by name, username, email..."
+            className="w-full bg-white border border-[#eaecf0] rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-xs"
           />
-        </div>
+        </form>
 
-        <select
-          value={companyFilter}
-          onChange={(e) => setCompanyFilter(e.target.value)}
-          className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 shadow-2xs focus:border-blue-500 focus:outline-none w-full sm:w-auto"
-        >
-          <option value="all">All Companies</option>
-          {companies.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <select
+            value={companyFilter}
+            onChange={(e) => setCompanyFilter(e.target.value)}
+            className="bg-white border border-[#eaecf0] text-slate-700 text-xs rounded-xl px-3 py-2 shadow-xs focus:outline-none focus:border-emerald-500"
+          >
+            <option value="all">All Companies</option>
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
 
-        <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 shadow-2xs focus:border-blue-500 focus:outline-none w-full sm:w-auto"
-        >
-          <option value="all">All Fixed Roles</option>
-          {FIXED_ROLES.map((r) => (
-            <option key={r} value={r}>{r}</option>
-          ))}
-        </select>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="bg-white border border-[#eaecf0] text-slate-700 text-xs rounded-xl px-3 py-2 shadow-xs focus:outline-none focus:border-emerald-500"
+          >
+            <option value="all">All Roles</option>
+            {FIXED_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
 
-        <button
-          onClick={() => { setCreateOpen(true); setMessage(null); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs whitespace-nowrap self-stretch sm:self-auto justify-center"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create User</span>
-        </button>
-      </div>
-
-      {/* Users Table - Excel-like Grid Design */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
-                <th className="py-2.5 px-4 border-r border-slate-200/80">User Details</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">Assigned Company</th>
-                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">Fixed Role</th>
-                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">Status</th>
-                <th className="py-2.5 px-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
-              {users.map((u) => (
-                <tr key={u.id} className="hover:bg-blue-50/30 transition-colors">
-                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
-                    <p className="font-extrabold text-slate-900 text-xs">{u.name}</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5 font-mono">{u.username} • {u.email}</p>
-                  </td>
-
-                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                      <span className="font-bold text-slate-900">{u.company_name}</span>
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-mono">{u.company_id}</span>
-                  </td>
-
-                  <td className="py-3 px-4 text-center border-r border-slate-200/70 whitespace-nowrap">
-                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
-                      u.role === "SuperAdmin"
-                        ? "bg-purple-50 text-purple-700 border border-purple-200"
-                        : u.role === "OWNER"
-                        ? "bg-amber-50 text-amber-700 border border-amber-200"
-                        : u.role === "ACCOUNTANT"
-                        ? "bg-cyan-50 text-cyan-700 border border-cyan-200"
-                        : u.role === "MANAGER"
-                        ? "bg-blue-50 text-blue-700 border border-blue-200"
-                        : "bg-slate-100 text-slate-700 border border-slate-200"
-                    }`}>
-                      {u.role}
-                    </span>
-                  </td>
-
-                  <td className="py-3 px-4 text-center border-r border-slate-200/70 whitespace-nowrap">
-                    <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
-                      u.is_active
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : "bg-rose-50 text-rose-700 border border-rose-200"
-                    }`}>
-                      {u.is_active ? "Active" : "Disabled"}
-                    </span>
-                  </td>
-
-                  <td className="py-3 px-4 text-center whitespace-nowrap space-x-1.5">
-                    <button
-                      onClick={() => { setResetUser(u); setNewPassword(""); setMessage(null); }}
-                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 transition-colors cursor-pointer border border-slate-200"
-                      title="Reset Password"
-                    >
-                      <KeyRound className="w-3.5 h-3.5" />
-                    </button>
-
-                    {u.role !== "SuperAdmin" && (
-                      <button
-                        onClick={() => toggleUserActive(u)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
-                          u.is_active
-                            ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
-                            : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
-                        }`}
-                      >
-                        {u.is_active ? "Deactivate" : "Activate"}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {users.length === 0 && !loading && (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-xs text-slate-400">
-                    No matching users found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <CourtFlowButton
+            variant="primary"
+            icon={<Plus className="w-4 h-4" />}
+            onClick={() => setCreateOpen(true)}
+          >
+            Add User
+          </CourtFlowButton>
         </div>
       </div>
 
-      {/* Create User Modal */}
-      {createOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Users className="w-4 h-4" />
-                </div>
-                <span>Create Tenant User</span>
-              </h3>
-              <button onClick={() => setCreateOpen(false)} className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {message && (
-              <div className={`p-3 rounded-xl text-xs font-bold ${
-                message.type === "success"
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  : "bg-rose-50 text-rose-700 border border-rose-200"
-              }`}>
-                {message.text}
-              </div>
-            )}
-
-            <form onSubmit={handleCreateSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-slate-600 font-bold mb-1">Select Company</label>
-                <select
-                  value={createForm.company_id}
-                  onChange={(e) => setCreateForm({ ...createForm, company_id: e.target.value })}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                  required
-                >
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.id})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-600 font-bold mb-1">Full Name</label>
-                <input
-                  type="text"
-                  value={createForm.name}
-                  onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  placeholder="e.g. Ramesh Patel"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={createForm.email}
-                    onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                    placeholder="name@company.com"
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1">Username / Login ID</label>
-                  <input
-                    type="text"
-                    value={createForm.username}
-                    onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
-                    placeholder="ramesh_patel"
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1">Fixed Predefined Role</label>
-                  <select
-                    value={createForm.role}
-                    onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                  >
-                    {FIXED_ROLES.map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1">Password</label>
-                  <input
-                    type="password"
-                    value={createForm.password}
-                    onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                    placeholder="Min 6 characters"
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                    required
-                    minLength={6}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setCreateOpen(false)}
-                  className="px-4 py-2 text-slate-500 hover:text-slate-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer shadow-xs"
-                >
-                  {actionLoading ? "Creating..." : "Create User"}
-                </button>
-              </div>
-            </form>
-          </div>
+      {feedback && (
+        <div
+          className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+            feedback.type === "success"
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              : "bg-rose-50 text-rose-700 border border-rose-200"
+          }`}
+        >
+          {feedback.text}
         </div>
       )}
+
+      {/* Users CourtFlow Table */}
+      <CourtFlowTable
+        columns={columns}
+        data={users}
+        loading={loading}
+        emptyTitle="No users found"
+        emptyDescription="Try adjusting your search criteria or role filters."
+      />
+
+      {/* CourtFlow Create User Modal */}
+      <CourtFlowModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Provision Platform User"
+        subtitle="Create an authorized tenant user assigned to a predefined fixed role"
+        primaryActionLabel="Create User"
+        onPrimaryAction={handleCreateUser}
+        isLoading={creating}
+        cancelLabel="Cancel"
+      >
+        <div className="space-y-3.5">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-700">Assign Company</label>
+            <select
+              value={createForm.company_id}
+              onChange={(e) => setCreateForm({ ...createForm, company_id: e.target.value })}
+              className="w-full bg-white border border-[#d0d5dd] rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+            >
+              <option value="">-- Select Company --</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.id})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-700">Full Name</label>
+            <CourtFlowInput
+              value={createForm.name}
+              onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+              placeholder="e.g. John Doe"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Username</label>
+              <CourtFlowInput
+                value={createForm.username}
+                onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
+                placeholder="Unique username"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Email Address</label>
+              <CourtFlowInput
+                value={createForm.email}
+                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                placeholder="john@example.com"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Role</label>
+              <select
+                value={createForm.role}
+                onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
+                className="w-full bg-white border border-[#d0d5dd] rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              >
+                {FIXED_ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Initial Password</label>
+              <CourtFlowInput
+                type="password"
+                value={createForm.password}
+                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                placeholder="Minimum 6 chars"
+              />
+            </div>
+          </div>
+        </div>
+      </CourtFlowModal>
 
       {/* Password Reset Modal */}
-      {resetUser && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <KeyRound className="w-4 h-4" />
-                </div>
-                <span>Reset User Password</span>
-              </h3>
-              <button onClick={() => setResetUser(null)} className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {message && (
-              <div className={`p-3 rounded-xl text-xs font-bold ${
-                message.type === "success"
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  : "bg-rose-50 text-rose-700 border border-rose-200"
-              }`}>
-                {message.text}
-              </div>
-            )}
-
-            <form onSubmit={handleResetPassword} className="space-y-3 text-xs">
-              <p className="text-slate-600">
-                Set new password for <span className="font-bold text-slate-900">{resetUser.name}</span> ({resetUser.username})
-              </p>
-
-              <div>
-                <label className="block text-slate-600 font-bold mb-1">New Password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="At least 6 characters"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-                  required
-                  minLength={6}
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setResetUser(null)}
-                  className="px-4 py-2 text-slate-500 hover:text-slate-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer shadow-xs"
-                >
-                  {actionLoading ? "Updating..." : "Reset Password"}
-                </button>
-              </div>
-            </form>
-          </div>
+      <CourtFlowModal
+        isOpen={pwdOpen}
+        onClose={() => setPwdOpen(false)}
+        title="Reset User Password"
+        subtitle={`Set a new secure password for ${pwdTargetUser?.name} (@${pwdTargetUser?.username})`}
+        primaryActionLabel="Reset Password"
+        onPrimaryAction={handleResetPassword}
+        isLoading={updatingPwd}
+        cancelLabel="Cancel"
+      >
+        <div className="space-y-3">
+          <label className="text-xs font-semibold text-slate-700">New Password</label>
+          <CourtFlowInput
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Enter at least 6 characters"
+          />
         </div>
-      )}
+      </CourtFlowModal>
     </div>
   );
 }
