@@ -270,7 +270,7 @@ export function DashboardShell({
               transition: "opacity 300ms cubic-bezier(0.16, 1, 0.3, 1)",
               opacity: isRefreshing ? 0.4 : 1,
             }}
-            className="w-full space-y-3.5 max-w-[1600px] mx-auto"
+            className="w-full space-y-3.5"
           >
             {children}
           </div>

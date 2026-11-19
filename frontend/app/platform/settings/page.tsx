@@ -25,7 +25,7 @@ export default function PlatformSettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 w-full">
       {/* Page Header */}
       <div className="pb-4 border-b border-slate-200">
         <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
