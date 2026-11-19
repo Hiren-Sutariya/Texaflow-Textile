@@ -23,6 +23,17 @@ import { API_BASE_URL } from "@/lib/api";
 
 const pageTitles: Record<string, string> = {
   "/": "Owner Command Center",
+  "/platform": "SaaS Command Center",
+  "/platform/companies": "Enterprise Tenants Directory",
+  "/platform/users": "Cross-Tenant Users Master",
+  "/platform/subscriptions": "Tenant Subscriptions",
+  "/platform/billing": "Billing & Payment Records",
+  "/platform/plans": "Subscription Plans & Pricing",
+  "/platform/modules": "Platform Modules Management",
+  "/platform/permissions": "Centralized Access Control Matrix",
+  "/platform/support": "Diagnostics & Support Console",
+  "/platform/audit-logs": "Platform Security Audit Logs",
+  "/platform/settings": "SaaS Platform Settings",
   "/saas-admin": "SaaS Platform Super Admin",
   "/parties": "Parties Directory",
   "/vendors": "Parties Directory",
@@ -229,16 +240,23 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           </div>
         )}
 
-        {/* SuperAdmin Quick Access Badge */}
-        {user?.role === "SuperAdmin" && (
-          <Link
-            href="/platform"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition-all shadow-2xs"
-            title="SaaS Platform Super Administrator"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
-            <span className="hidden sm:inline">Super Admin</span>
-          </Link>
+        {/* SuperAdmin / Platform Edition Badge */}
+        {pathname.startsWith("/platform") ? (
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold tracking-tight shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span>SaaS SuperAdmin Edition</span>
+          </div>
+        ) : (
+          user?.role === "SuperAdmin" && (
+            <Link
+              href="/platform"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition-all shadow-2xs"
+              title="SaaS Platform Super Administrator"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+              <span className="hidden sm:inline">Super Admin</span>
+            </Link>
+          )
         )}
 
         {/* Tenant Subscription Indicator */}

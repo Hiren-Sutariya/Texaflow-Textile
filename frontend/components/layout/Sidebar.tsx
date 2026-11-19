@@ -17,6 +17,7 @@ import {
   X,
   Sparkles,
   ChevronDown,
+  ChevronRight,
   Wallet,
   TrendingUp,
   LogOut,
@@ -28,7 +29,12 @@ import {
   Clock,
   UserCog,
   CalendarDays,
-  ShieldCheck
+  ShieldCheck,
+  LayoutDashboard,
+  Building2,
+  Boxes,
+  Headphones,
+  Plus
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -95,6 +101,40 @@ const menuGroups: MenuGroup[] = [
   }
 ];
 
+const platformMenuGroups: MenuGroup[] = [
+  {
+    groupTitle: "Platform Core",
+    items: [
+      { name: "Dashboard", href: "/platform", icon: LayoutDashboard },
+      { name: "Companies", href: "/platform/companies", icon: Building2 },
+      { name: "Users", href: "/platform/users", icon: Users },
+      { name: "Subscriptions", href: "/platform/subscriptions", icon: CreditCard },
+    ]
+  },
+  {
+    groupTitle: "Billing & Revenue",
+    items: [
+      { name: "Billing & Ledger", href: "/platform/billing", icon: Receipt },
+      { name: "Plans & Pricing", href: "/platform/plans", icon: Tags },
+    ]
+  },
+  {
+    groupTitle: "Access & Governance",
+    items: [
+      { name: "Permission Matrix", href: "/platform/permissions", icon: ShieldCheck },
+      { name: "Module Management", href: "/platform/modules", icon: Boxes },
+      { name: "Audit Logs", href: "/platform/audit-logs", icon: FileText },
+    ]
+  },
+  {
+    groupTitle: "Operations & Support",
+    items: [
+      { name: "Customer Support", href: "/platform/support", icon: Headphones },
+      { name: "Platform Settings", href: "/platform/settings", icon: Settings },
+    ]
+  }
+];
+
 const quickCreateOptions = [
   { title: "Material Purchase", href: "/purchases/new", icon: ShoppingCart, color: "bg-blue-50 text-blue-600 border-blue-100" },
   { title: "Sales Challan", href: "/sales/new", icon: Truck, color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
@@ -132,6 +172,10 @@ export function Sidebar({
     Finance: true,
     Settings: true,
     "Upcoming Features": false,
+    "Platform Core": true,
+    "Billing & Revenue": true,
+    "Access & Governance": true,
+    "Operations & Support": true,
   });
 
   // Auto-expand "Upcoming Features" if current route matches an upcoming item
@@ -256,33 +300,43 @@ export function Sidebar({
     displayedUserName = "Nilesh Sutariya";
   }
 
-  const brandInitials = displayedFirmName
-    ? displayedFirmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase()
-    : (cid === "comp-002" ? "OS" : (cid === "comp-001" ? "SC" : ""));
+  const isPlatformMode = pathname.startsWith("/platform");
+  if (isPlatformMode) {
+    displayedFirmName = "TexaFlow SaaS";
+    displayedUserName = "Super Administrator";
+  }
 
-  const userInitials = displayedUserName
-    ? displayedUserName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase()
-    : (cid === "comp-002" ? "NS" : (cid === "comp-001" ? "HS" : ""));
+  const brandInitials = isPlatformMode
+    ? "SA"
+    : displayedFirmName
+      ? displayedFirmName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase()
+      : (cid === "comp-002" ? "OS" : (cid === "comp-001" ? "SC" : ""));
+
+  const userInitials = isPlatformMode
+    ? "SA"
+    : displayedUserName
+      ? displayedUserName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase()
+      : (cid === "comp-002" ? "NS" : (cid === "comp-001" ? "HS" : ""));
 
   // Keep cookies constantly in sync in background whenever displayed tenant is known
   useEffect(() => {
-    if (typeof window !== "undefined" && cid) {
+    if (typeof window !== "undefined" && cid && !isPlatformMode) {
       setTenantCookie(cid, displayedFirmName, displayedUserName);
     }
-  }, [cid, displayedFirmName, displayedUserName]);
+  }, [cid, displayedFirmName, displayedUserName, isPlatformMode]);
 
   const renderNavContent = (isMobile = false) => (
     <>
       {/* Brand Header - Perfectly leveled with Navbar header (h-14, border-b border-slate-200/80) */}
       <div suppressHydrationWarning className="h-14 px-3 border-b border-slate-200/80 bg-white relative flex items-center justify-between shrink-0">
         <Link 
-          href="/"
+          href={isPlatformMode ? "/platform" : "/"}
           prefetch={true}
           onClick={() => {
             if (isMobile) onClose?.();
           }}
           className="flex items-center gap-2.5 overflow-hidden py-1 px-1.5 rounded-xl hover:bg-slate-50 transition-colors w-full group outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
-          title="Return to Main Dashboard"
+          title={isPlatformMode ? "SaaS Platform Command Center" : "Return to Main Dashboard"}
         >
           <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center font-black text-sm justify-center shadow-2xs shrink-0 group-hover:scale-105 transition-transform uppercase">
             {brandInitials}
@@ -293,7 +347,7 @@ export function Sidebar({
             </h1>
             <p className="text-[9px] font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span>TexaFlow Textile</span>
+              <span>{isPlatformMode ? "SaaS Super Admin" : "TexaFlow Textile"}</span>
             </p>
           </div>
         </Link>
@@ -313,44 +367,78 @@ export function Sidebar({
       {/* Navigation List - Ultra Clean Linear / Vercel Style */}
       <nav className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-3.5">
         {/* SuperAdmin Quick Access Switcher */}
-        {user?.role === "SuperAdmin" && (
+        {isPlatformMode ? (
           <div>
             <Link
-              href="/platform"
+              href="/vendors"
               onClick={() => {
                 if (isMobile) onClose?.();
               }}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-purple-700 via-indigo-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 text-white text-xs font-bold shadow-md transition-all group border border-purple-400/30"
-              title="Switch to SaaS Platform Administration Console"
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-blue-50/80 hover:bg-blue-100 text-blue-800 text-xs font-bold transition-all border border-blue-200/80 shadow-2xs group"
+              title="Switch to Tenant ERP Mode"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-3.5 h-3.5 text-white" />
+                <div className="w-5 h-5 rounded-md bg-blue-600 text-white flex items-center justify-center text-[10px]">
+                  🏢
                 </div>
-                <span className="truncate">Open Super Admin Panel</span>
+                <span className="truncate">Switch to Tenant ERP</span>
               </div>
-              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-white/25 text-white shrink-0 flex items-center gap-1">
-                <span>Console</span> ➔
-              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
+        ) : (
+          user?.role === "SuperAdmin" && (
+            <div>
+              <Link
+                href="/platform"
+                onClick={() => {
+                  if (isMobile) onClose?.();
+                }}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-purple-700 via-indigo-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 text-white text-xs font-bold shadow-md transition-all group border border-purple-400/30"
+                title="Switch to SaaS Platform Administration Console"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <span className="truncate">Open Super Admin Panel</span>
+                </div>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-white/25 text-white shrink-0 flex items-center gap-1">
+                  <span>Console</span> ➔
+                </span>
+              </Link>
+            </div>
+          )
         )}
 
         {/* Primary Action Button */}
         <div>
-          <button
-            type="button"
-            onClick={() => setShowQuickModal(true)}
-            className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-900 text-xs font-bold shadow-2xs transition-all hover:border-blue-400 hover:text-blue-700 group cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
-          >
-            <SquarePen className="w-4 h-4 text-slate-600 group-hover:text-blue-600 transition-colors" />
-            <span>{t("Create new service")}</span>
-          </button>
+          {isPlatformMode ? (
+            <Link
+              href="/platform/companies"
+              onClick={() => {
+                if (isMobile) onClose?.();
+              }}
+              className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-900 text-xs font-bold shadow-2xs transition-all hover:border-blue-400 hover:text-blue-700 group cursor-pointer outline-none focus:outline-none"
+            >
+              <Plus className="w-4 h-4 text-slate-600 group-hover:text-blue-600 transition-colors" />
+              <span>Register Enterprise</span>
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowQuickModal(true)}
+              className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-900 text-xs font-bold shadow-2xs transition-all hover:border-blue-400 hover:text-blue-700 group cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+            >
+              <SquarePen className="w-4 h-4 text-slate-600 group-hover:text-blue-600 transition-colors" />
+              <span>{t("Create new service")}</span>
+            </button>
+          )}
         </div>
 
         {/* Category Sections */}
         <div className="space-y-4 pt-1">
-          {menuGroups.map((group) => {
+          {(isPlatformMode ? platformMenuGroups : menuGroups).map((group) => {
             const groupKey = group.groupTitle;
             const isOpen = openGroups[groupKey] ?? true;
 
@@ -394,13 +482,14 @@ export function Sidebar({
                 {isOpen && (
                   <div className="space-y-0.5 pt-0.5 animate-in fade-in duration-150">
                     {group.items?.filter((sub) => {
-                      if (user?.role === "SuperAdmin") return true;
+                      if (user?.role === "SuperAdmin" || isPlatformMode) return true;
                       if (!sub.moduleKey) return true;
                       if (activeModules && activeModules[sub.moduleKey] === false) return false;
                       return true;
                     }).map((sub) => {
-                      const isSubActive =
-                        pathname === sub.href || (sub.href !== "/" && pathname.startsWith(sub.href + "/"));
+                      const isSubActive = isPlatformMode
+                        ? (sub.href === "/platform" ? pathname === "/platform" : pathname === sub.href || pathname.startsWith(sub.href + "/"))
+                        : (pathname === sub.href || (sub.href !== "/" && pathname.startsWith(sub.href + "/")));
                       const SubIcon = sub.icon;
 
                       return (
@@ -446,15 +535,15 @@ export function Sidebar({
       {/* User Profile Footer - Solidly rendered with zero blinking on refresh */}
       <div suppressHydrationWarning className="h-[57px] px-3 border-t border-slate-200 bg-white flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-extrabold text-xs flex items-center justify-center border border-amber-200 shrink-0">
-            {user?.role === "SuperAdmin" ? "🛡️" : user?.role === "Manager" ? "🏭" : user?.role === "Accounts" ? "💼" : userInitials}
+          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-700 font-extrabold text-xs flex items-center justify-center border border-blue-200 shrink-0">
+            {isPlatformMode || user?.role === "SuperAdmin" ? "SA" : userInitials}
           </div>
           <div className="truncate">
             <p className="text-xs font-bold text-slate-900 truncate leading-none">
-              {displayedUserName}
+              {isPlatformMode || user?.role === "SuperAdmin" ? "Super Administrator" : displayedUserName}
             </p>
             <p className="text-[10px] text-slate-400 font-medium truncate mt-1">
-              {t(user?.roleTitle || (user?.role === "SuperAdmin" ? "SaaS Super Administrator" : user?.role === "Manager" ? "Factory Manager" : user?.role === "Accounts" ? "Accounts Officer" : "Proprietor & Director"))}
+              {t(isPlatformMode || user?.role === "SuperAdmin" ? "SaaS Super Administrator" : (user?.roleTitle || (user?.role === "Manager" ? "Factory Manager" : user?.role === "Accounts" ? "Accounts Officer" : "Proprietor & Director")))}
             </p>
           </div>
         </div>
