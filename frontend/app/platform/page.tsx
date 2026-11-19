@@ -79,99 +79,47 @@ export default function PlatformDashboardPage() {
   }, []);
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">SaaS Command Center</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Real-time multi-tenant telemetry, subscription health, and revenue monitoring.
-          </p>
-        </div>
-
-        <button
-          onClick={loadData}
-          disabled={loading}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 transition-colors self-start sm:self-auto shadow-2xs cursor-pointer"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : "text-slate-500"}`} />
-          <span>Refresh Data</span>
-        </button>
-      </div>
-
-      {/* KPI Cards Grid - Clean White & Blue */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
-        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-xs transition-all space-y-2">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Companies</span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Building2 className="w-4 h-4" />
-            </div>
+    <div className="space-y-4 w-full">
+      {/* KPI Cards Grid - Matching Attendance Overview Boxes Design */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">TOTAL COMPANIES</p>
+            <p className="text-xl font-black text-slate-900 mt-0.5">{data?.metrics.total_companies ?? "—"}</p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-slate-900">
-              {data?.metrics.total_companies ?? "—"}
-            </span>
-            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-              {data?.metrics.active_companies} active
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-[10px] text-slate-500 font-medium">
-            <span>{data?.metrics.trial_companies ?? 0} in trial</span>
-            <span>•</span>
-            <span className="text-rose-600 font-bold">{data?.metrics.suspended_companies ?? 0} suspended</span>
+          <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0 font-black">
+            <Building2 className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-xs transition-all space-y-2">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Users</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <Users className="w-4 h-4" />
-            </div>
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider truncate">TOTAL USERS</p>
+            <p className="text-xl font-black text-emerald-700 mt-0.5">{data?.metrics.total_users ?? "—"}</p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-slate-900">
-              {data?.metrics.total_users ?? "—"}
-            </span>
-            <span className="text-[11px] font-bold text-slate-400">All tenants</span>
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+            <Users className="w-4 h-4" />
           </div>
-          <p className="text-[10px] text-slate-500 font-medium">5 Predefined Fixed Roles</p>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-xs transition-all space-y-2">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider">Monthly MRR</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
-            </div>
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider truncate">MONTHLY MRR</p>
+            <p className="text-xl font-black text-blue-600 mt-0.5">₹{(data?.metrics.mrr_inr ?? 0).toLocaleString("en-IN")}</p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-blue-600">
-              ₹{(data?.metrics.mrr_inr ?? 0).toLocaleString("en-IN")}
-            </span>
+          <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+            <TrendingUp className="w-4 h-4" />
           </div>
-          <p className="text-[10px] text-slate-500 font-medium">
-            ARR: ₹{(data?.metrics.arr_inr ?? 0).toLocaleString("en-IN")}
-          </p>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-xs transition-all space-y-2">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider">Active Subs</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-              <CreditCard className="w-4 h-4" />
-            </div>
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate">ACTIVE SUBS</p>
+            <p className="text-xl font-black text-amber-700 mt-0.5">{data?.metrics.active_subscriptions ?? "—"}</p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-slate-900">
-              {data?.metrics.active_subscriptions ?? "—"}
-            </span>
-            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Verified</span>
+          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+            <CreditCard className="w-4 h-4" />
           </div>
-          <p className="text-[10px] text-slate-500 font-medium">
-            {data?.metrics.expired_subscriptions ?? 0} expired accounts
-          </p>
         </div>
       </div>
 

@@ -104,31 +104,9 @@ export default function PlatformModulesPage() {
   };
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <Boxes className="w-6 h-6 text-blue-600" />
-            <span>Module Management</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Level 1 Security: Selectively enable or disable entire ERP business modules per tenant company.
-          </p>
-        </div>
-
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20 cursor-pointer"
-        >
-          <Save className={`w-3.5 h-3.5 ${saving ? "animate-spin" : ""}`} />
-          <span>{saving ? "Saving..." : "Save Module Configuration"}</span>
-        </button>
-      </div>
-
+    <div className="space-y-4 w-full">
       {/* Tenant Selector & Bulk Controls - Clean White & Blue */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
         <div className="flex items-center gap-2.5">
           <Building2 className="w-4 h-4 text-blue-600" />
           <span className="text-xs font-bold text-slate-700">Selected Enterprise:</span>
@@ -157,6 +135,14 @@ export default function PlatformModulesPage() {
             className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-xs font-bold text-rose-700 border border-rose-200 transition-colors cursor-pointer shadow-2xs"
           >
             Disable All
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20 cursor-pointer ml-2"
+          >
+            <Save className={`w-3.5 h-3.5 ${saving ? "animate-spin" : ""}`} />
+            <span>{saving ? "Saving..." : "Save Configuration"}</span>
           </button>
         </div>
       </div>

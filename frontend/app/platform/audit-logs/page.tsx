@@ -57,28 +57,7 @@ export default function PlatformAuditLogsPage() {
   }, [companyFilter, actionFilter]);
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <FileText className="w-6 h-6 text-blue-600" />
-            <span>Platform Security & Operational Audit Trail</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Immutable log stream of all administrative actions, permission overrides, and security events.
-          </p>
-        </div>
-
-        <button
-          onClick={loadData}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 transition-colors cursor-pointer self-start sm:self-auto shadow-2xs"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : "text-slate-500"}`} />
-          <span>Refresh Logs</span>
-        </button>
-      </div>
-
+    <div className="space-y-4 w-full">
       {/* Filter Bar */}
       <div className="flex flex-col sm:flex-row gap-3">
         <select
@@ -107,41 +86,41 @@ export default function PlatformAuditLogsPage() {
         </select>
       </div>
 
-      {/* Audit Logs Table - Clean White & Blue */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs">
+      {/* Audit Logs Table - Excel-like Grid Design */}
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
-              <tr>
-                <th className="py-3.5 px-4">Timestamp</th>
-                <th className="py-3.5 px-4">Operator</th>
-                <th className="py-3.5 px-4">Action</th>
-                <th className="py-3.5 px-4">Target Scope</th>
-                <th className="py-3.5 px-4">Details Summary</th>
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Timestamp</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Operator</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Action</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Target Scope</th>
+                <th className="py-2.5 px-4">Details Summary</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-mono">
+            <tbody className="divide-y divide-slate-100 font-mono text-slate-700 bg-white">
               {logs.map((l) => (
-                <tr key={l.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3 px-4 text-slate-500 text-[11px] whitespace-nowrap">
+                <tr key={l.id} className="hover:bg-blue-50/30 transition-colors">
+                  <td className="py-3 px-4 border-r border-slate-200/70 text-slate-500 text-[11px] whitespace-nowrap">
                     {l.created_at ? new Date(l.created_at).toLocaleString() : "—"}
                   </td>
 
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
                     <span className="font-bold text-slate-900 text-xs">{l.actor_email || "superadmin"}</span>
                     <span className="text-[10px] text-blue-700 ml-1.5 uppercase font-sans font-black bg-blue-50 px-1 py-0.2 rounded border border-blue-200">
                       {l.actor_role}
                     </span>
                   </td>
 
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
                     <span className="text-blue-700 font-bold font-mono text-xs">
                       {l.action}
                     </span>
                   </td>
 
-                  <td className="py-3 px-4">
-                    <p className="text-slate-900 font-sans font-medium">{l.target_company_name}</p>
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
+                    <p className="text-slate-900 font-sans font-bold">{l.target_company_name}</p>
                     {l.target_company_id && (
                       <p className="text-[10px] text-slate-400">{l.target_company_id}</p>
                     )}
@@ -158,6 +137,11 @@ export default function PlatformAuditLogsPage() {
                     No matching audit records found.
                   </td>
                 </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
               )}
             </tbody>
           </table>

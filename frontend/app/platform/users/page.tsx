@@ -153,38 +153,10 @@ export default function PlatformUsersPage() {
   };
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Cross-Tenant Users</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Centralized user management across all registered tenant companies with fixed roles.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => { setCreateOpen(true); setMessage(null); }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create User</span>
-          </button>
-
-          <button
-            onClick={loadData}
-            className="p-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 transition-colors cursor-pointer shadow-2xs"
-            title="Refresh list"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : "text-slate-500"}`} />
-          </button>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 relative">
+    <div className="space-y-4 w-full">
+      {/* Filter and Search Bar with Action */}
+      <div className="flex flex-col sm:flex-row gap-3 items-center">
+        <div className="flex-1 relative w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -199,7 +171,7 @@ export default function PlatformUsersPage() {
         <select
           value={companyFilter}
           onChange={(e) => setCompanyFilter(e.target.value)}
-          className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 shadow-2xs focus:border-blue-500 focus:outline-none"
+          className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 shadow-2xs focus:border-blue-500 focus:outline-none w-full sm:w-auto"
         >
           <option value="all">All Companies</option>
           {companies.map((c) => (
@@ -210,45 +182,53 @@ export default function PlatformUsersPage() {
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 shadow-2xs focus:border-blue-500 focus:outline-none"
+          className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 shadow-2xs focus:border-blue-500 focus:outline-none w-full sm:w-auto"
         >
           <option value="all">All Fixed Roles</option>
           {FIXED_ROLES.map((r) => (
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
+
+        <button
+          onClick={() => { setCreateOpen(true); setMessage(null); }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs whitespace-nowrap self-stretch sm:self-auto justify-center"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Create User</span>
+        </button>
       </div>
 
-      {/* Users Table - Clean White & Blue */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs">
+      {/* Users Table - Excel-like Grid Design */}
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
-              <tr>
-                <th className="py-3.5 px-4">User Details</th>
-                <th className="py-3.5 px-4">Assigned Company</th>
-                <th className="py-3.5 px-4">Fixed Role</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                <th className="py-2.5 px-4 border-r border-slate-200/80">User Details</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Assigned Company</th>
+                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">Fixed Role</th>
+                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">Status</th>
+                <th className="py-2.5 px-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
               {users.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-4">
-                    <p className="font-bold text-slate-900 text-xs">{u.name}</p>
+                <tr key={u.id} className="hover:bg-blue-50/30 transition-colors">
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
+                    <p className="font-extrabold text-slate-900 text-xs">{u.name}</p>
                     <p className="text-[11px] text-slate-500 mt-0.5 font-mono">{u.username} • {u.email}</p>
                   </td>
 
-                  <td className="py-3.5 px-4">
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
                       <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                      <span className="font-medium text-slate-900">{u.company_name}</span>
+                      <span className="font-bold text-slate-900">{u.company_name}</span>
                     </div>
                     <span className="text-[10px] text-slate-400 font-mono">{u.company_id}</span>
                   </td>
 
-                  <td className="py-3.5 px-4">
+                  <td className="py-3 px-4 text-center border-r border-slate-200/70 whitespace-nowrap">
                     <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
                       u.role === "SuperAdmin"
                         ? "bg-purple-50 text-purple-700 border border-purple-200"
@@ -264,8 +244,8 @@ export default function PlatformUsersPage() {
                     </span>
                   </td>
 
-                  <td className="py-3.5 px-4">
-                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                  <td className="py-3 px-4 text-center border-r border-slate-200/70 whitespace-nowrap">
+                    <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
                       u.is_active
                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                         : "bg-rose-50 text-rose-700 border border-rose-200"
@@ -274,7 +254,7 @@ export default function PlatformUsersPage() {
                     </span>
                   </td>
 
-                  <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                  <td className="py-3 px-4 text-center whitespace-nowrap space-x-1.5">
                     <button
                       onClick={() => { setResetUser(u); setNewPassword(""); setMessage(null); }}
                       className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 transition-colors cursor-pointer border border-slate-200"

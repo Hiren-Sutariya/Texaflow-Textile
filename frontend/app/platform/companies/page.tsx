@@ -148,25 +148,7 @@ export default function PlatformCompaniesPage() {
   };
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Enterprise Tenants</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Centrally manage company profiles, status, users, and subscription tiers.
-          </p>
-        </div>
-
-        <button
-          onClick={loadCompanies}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 transition-colors cursor-pointer self-start sm:self-auto shadow-2xs"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : "text-slate-500"}`} />
-          <span>Refresh</span>
-        </button>
-      </div>
-
+    <div className="space-y-4 w-full">
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row gap-3">
         <form onSubmit={handleSearchSubmit} className="flex-1 relative">
@@ -197,41 +179,41 @@ export default function PlatformCompaniesPage() {
         </div>
       </div>
 
-      {/* Companies Table - Clean White & Blue */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs">
+      {/* Companies Table - Excel-like Grid Design */}
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
-              <tr>
-                <th className="py-3.5 px-4">Company Details</th>
-                <th className="py-3.5 px-4">Contact & Location</th>
-                <th className="py-3.5 px-4">Tax & Legal</th>
-                <th className="py-3.5 px-4">Subscription Plan</th>
-                <th className="py-3.5 px-4">Users</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Company Details</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Contact & Location</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Tax & Legal</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Subscription Plan</th>
+                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">Users</th>
+                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">Status</th>
+                <th className="py-2.5 px-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
               {companies.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-4">
-                    <p className="font-bold text-slate-900 text-xs">{c.name}</p>
+                <tr key={c.id} className="hover:bg-blue-50/30 transition-colors">
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
+                    <p className="font-extrabold text-slate-900 text-xs">{c.name}</p>
                     <p className="text-[10px] text-slate-400 font-mono mt-0.5">{c.id}</p>
                   </td>
 
-                  <td className="py-3.5 px-4">
-                    <p className="text-slate-900 font-medium">{c.owner_name}</p>
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
+                    <p className="text-slate-900 font-bold">{c.owner_name}</p>
                     <p className="text-[11px] text-slate-500">{c.phone || c.email || "No contact"}</p>
                     {c.city_state && <p className="text-[10px] text-slate-400">{c.city_state}</p>}
                   </td>
 
-                  <td className="py-3.5 px-4 font-mono text-[11px]">
-                    <p className="text-slate-700">GSTIN: {c.gstin || "Unregistered"}</p>
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap font-mono text-[11px]">
+                    <p className="text-slate-700 font-bold">GSTIN: {c.gstin || "Unregistered"}</p>
                     <p className="text-slate-400">PAN: {c.pan || "—"}</p>
                   </td>
 
-                  <td className="py-3.5 px-4">
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
                     {c.subscription ? (
                       <div>
                         <span className="font-bold text-blue-700 text-xs">
@@ -246,14 +228,14 @@ export default function PlatformCompaniesPage() {
                     )}
                   </td>
 
-                  <td className="py-3.5 px-4">
-                    <span className="inline-flex items-center gap-1 text-slate-700 font-bold">
+                  <td className="py-3 px-4 text-center border-r border-slate-200/70 whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1 text-slate-700 font-bold bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
                       <Users className="w-3.5 h-3.5 text-blue-600" />
                       <span>{c.user_count}</span>
                     </span>
                   </td>
 
-                  <td className="py-3.5 px-4">
+                  <td className="py-3 px-4 text-center border-r border-slate-200/70 whitespace-nowrap">
                     <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
                       c.status === "active"
                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
@@ -265,7 +247,7 @@ export default function PlatformCompaniesPage() {
                     </span>
                   </td>
 
-                  <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                  <td className="py-3 px-4 text-center whitespace-nowrap space-x-1.5">
                     <button
                       onClick={() => openEditModal(c)}
                       className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-700 transition-colors cursor-pointer border border-slate-200"

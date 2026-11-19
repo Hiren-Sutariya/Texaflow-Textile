@@ -79,28 +79,7 @@ export default function PlatformPlansPage() {
   };
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <Tag className="w-6 h-6 text-blue-600" />
-            <span>SaaS Subscription Plans & Pricing</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Centrally configure commercial pricing tiers, user allocations, and feature entitlements.
-          </p>
-        </div>
-
-        <button
-          onClick={loadPlans}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 transition-colors cursor-pointer self-start sm:self-auto shadow-2xs"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : "text-slate-500"}`} />
-          <span>Refresh</span>
-        </button>
-      </div>
-
+    <div className="space-y-4 w-full">
       {/* Plans Grid - Clean White & Blue */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {plans.map((p) => (

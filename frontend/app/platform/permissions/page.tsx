@@ -211,44 +211,9 @@ export default function PlatformPermissionsPage() {
   };
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-blue-600" />
-            <span>Centralized Access Control Matrix</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Super Admin exclusively controls module, action, and backend field visibility across all 5 fixed roles.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {selectedCompany !== "*" && (
-            <button
-              onClick={handleResetToDefaults}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-amber-700 transition-colors cursor-pointer shadow-2xs"
-              title="Revert company to platform defaults"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Defaults</span>
-            </button>
-          )}
-
-          <button
-            onClick={handleSaveAll}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20 cursor-pointer"
-          >
-            <Save className={`w-3.5 h-3.5 ${saving ? "animate-spin" : ""}`} />
-            <span>{saving ? "Saving..." : "Save Matrix"}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Target Company Selector - Clean White & Blue */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
+    <div className="space-y-4 w-full">
+      {/* Target Company Selector & Save Controls - Clean White & Blue */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
         <div className="flex items-center gap-2.5">
           <Building2 className="w-4 h-4 text-blue-600" />
           <span className="text-xs font-bold text-slate-700">Target Tenant Scope:</span>
@@ -266,23 +231,45 @@ export default function PlatformPermissionsPage() {
           </select>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 self-start sm:self-auto">
+        {/* Tab Switcher & Actions */}
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              onClick={() => setActiveTab("role_actions")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "role_actions" ? "bg-white text-blue-700 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Level 2 & 3: Role Actions
+            </button>
+            <button
+              onClick={() => setActiveTab("field_level")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "field_level" ? "bg-white text-blue-700 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Level 4: Field-Level Rules
+            </button>
+          </div>
+
+          {selectedCompany !== "*" && (
+            <button
+              onClick={handleResetToDefaults}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-amber-700 transition-colors cursor-pointer shadow-2xs"
+              title="Revert company to platform defaults"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset</span>
+            </button>
+          )}
+
           <button
-            onClick={() => setActiveTab("role_actions")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "role_actions" ? "bg-white text-blue-700 shadow-2xs" : "text-slate-600 hover:text-slate-900"
-            }`}
+            onClick={handleSaveAll}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20 cursor-pointer"
           >
-            Level 2 & 3: Role Actions
-          </button>
-          <button
-            onClick={() => setActiveTab("field_level")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "field_level" ? "bg-white text-blue-700 shadow-2xs" : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            Level 4: Field-Level Rules
+            <Save className={`w-3.5 h-3.5 ${saving ? "animate-spin" : ""}`} />
+            <span>{saving ? "Saving..." : "Save Matrix"}</span>
           </button>
         </div>
       </div>
@@ -317,34 +304,34 @@ export default function PlatformPermissionsPage() {
             ))}
           </div>
 
-          {/* Action Permissions Table */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs">
+          {/* Action Permissions Table - Excel-like Grid Design */}
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                  <tr>
-                    <th className="py-3 px-4">Module Name</th>
-                    {ACTIONS.map((a) => (
-                      <th key={a.key} className="py-3 px-3 text-center">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                    <th className="py-2.5 px-4 border-r border-slate-200/80">Module Name</th>
+                    {ACTIONS.map((a, idx) => (
+                      <th key={a.key} className={`py-2.5 px-3 text-center ${idx < ACTIONS.length - 1 ? "border-r border-slate-200/80" : ""}`}>
                         {a.label}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
                   {modules.map((m) => {
                     const rolePerms = matrix[selectedRole]?.[m.key] || {};
                     return (
-                      <tr key={m.key} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3 px-4">
-                          <p className="font-bold text-slate-900 text-xs">{m.label}</p>
+                      <tr key={m.key} className="hover:bg-blue-50/30 transition-colors">
+                        <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
+                          <p className="font-extrabold text-slate-900 text-xs">{m.label}</p>
                           <p className="text-[10px] text-slate-400 font-mono">{m.key} • {m.category}</p>
                         </td>
 
-                        {ACTIONS.map((a) => {
+                        {ACTIONS.map((a, idx) => {
                           const isChecked = !!rolePerms[a.key];
                           return (
-                            <td key={a.key} className="py-3 px-3 text-center">
+                            <td key={a.key} className={`py-3 px-3 text-center ${idx < ACTIONS.length - 1 ? "border-r border-slate-200/70" : ""}`}>
                               <button
                                 type="button"
                                 onClick={() => toggleAction(selectedRole, m.key, a.key)}
@@ -396,27 +383,27 @@ export default function PlatformPermissionsPage() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50/50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                      <tr>
-                        <th className="py-3 px-4">Field Name</th>
-                        {FIXED_ROLES.map((r) => (
-                          <th key={r} className="py-3 px-3 text-center">{r}</th>
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                        <th className="py-2.5 px-4 border-r border-slate-200/80">Field Name</th>
+                        {FIXED_ROLES.map((r, idx) => (
+                          <th key={r} className={`py-2.5 px-3 text-center ${idx < FIXED_ROLES.length - 1 ? "border-r border-slate-200/80" : ""}`}>{r}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
                       {target.fields.map((f) => (
-                        <tr key={f.key} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-3.5 px-4">
-                            <p className="font-bold text-slate-900 text-xs">{f.label}</p>
+                        <tr key={f.key} className="hover:bg-blue-50/30 transition-colors">
+                          <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
+                            <p className="font-extrabold text-slate-900 text-xs">{f.label}</p>
                             <p className="text-[10px] text-slate-400 font-mono">{f.key}</p>
                           </td>
 
-                          {FIXED_ROLES.map((role) => {
+                          {FIXED_ROLES.map((role, idx) => {
                             const currentPerm = fieldRules?.[target.entity]?.[f.key]?.[role] || "editable";
                             return (
-                              <td key={role} className="py-3.5 px-3 text-center">
+                              <td key={role} className={`py-3 px-3 text-center ${idx < FIXED_ROLES.length - 1 ? "border-r border-slate-200/70" : ""}`}>
                                 <select
                                   value={currentPerm}
                                   onChange={(e) => setFieldPermission(target.entity, f.key, role, e.target.value)}

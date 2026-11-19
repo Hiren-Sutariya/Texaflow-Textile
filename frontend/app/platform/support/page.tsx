@@ -105,92 +105,71 @@ export default function PlatformSupportPage() {
   };
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <Headphones className="w-6 h-6 text-blue-600" />
-            <span>Customer Support & Diagnostic Access</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Audited, time-limited tenant support sessions with mandatory justification. Passwords remain completely private.
-          </p>
+    <div className="space-y-4 w-full">
+      {/* Top Action & Notice Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200 text-xs text-blue-900 flex items-start gap-3 shadow-2xs flex-1">
+          <ShieldAlert className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold text-slate-900">Strict Customer Privacy & Audit Policy</p>
+            <p className="text-slate-600 mt-0.5">
+              Every diagnostic support action is permanently logged with administrator identity and reason.
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => { setOpenModal(true); setSessionResult(null); setErr(null); }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Generate Support Session</span>
-          </button>
-
-          <button
-            onClick={loadData}
-            className="p-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 transition-colors cursor-pointer shadow-2xs"
-            title="Refresh"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : "text-slate-500"}`} />
-          </button>
-        </div>
+        <button
+          onClick={() => { setOpenModal(true); setSessionResult(null); setErr(null); }}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs whitespace-nowrap"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Generate Support Session</span>
+        </button>
       </div>
 
-      {/* Security Notice - Clean White & Blue */}
-      <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 text-xs text-blue-900 flex items-start gap-3 shadow-2xs">
-        <ShieldAlert className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-        <div>
-          <p className="font-bold text-slate-900">Strict Customer Privacy & Audit Policy</p>
-          <p className="text-slate-600 mt-0.5">
-            Every diagnostic support action is permanently logged with the administrator identity, timestamp, and justification reason. Silent or unlogged customer data access is cryptographically forbidden.
-          </p>
-        </div>
-      </div>
-
-      {/* Active Support Sessions Table - Clean White & Blue */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs">
-        <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+      {/* Active Support Sessions Table - Excel-like Grid Design */}
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+        <div className="bg-slate-100/80 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-2">
             <Clock className="w-4 h-4 text-emerald-600" />
             <span>Active Support Sessions ({activeSessions.length})</span>
           </h3>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
-              <tr>
-                <th className="py-3 px-4">Operator / Company</th>
-                <th className="py-3 px-4">Support Justification</th>
-                <th className="py-3 px-4">Started At</th>
-                <th className="py-3 px-4">Expires At</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Operator / Company</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Support Justification</th>
+                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">Started At</th>
+                <th className="py-2.5 px-4 text-center border-r border-slate-200/80">Expires At</th>
+                <th className="py-2.5 px-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
               {activeSessions.map((s) => (
-                <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-4">
-                    <p className="font-bold text-slate-900">{s.company_name}</p>
+                <tr key={s.id} className="hover:bg-blue-50/30 transition-colors">
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
+                    <p className="font-extrabold text-slate-900">{s.company_name}</p>
                     <p className="text-[10px] text-slate-400 font-mono mt-0.5">
                       Operator: {s.admin_email}
                     </p>
                   </td>
 
-                  <td className="py-3.5 px-4 text-slate-700 max-w-xs truncate font-medium">
+                  <td className="py-3 px-4 border-r border-slate-200/70 text-slate-700 max-w-xs truncate font-medium">
                     "{s.reason}"
                   </td>
 
-                  <td className="py-3.5 px-4 text-slate-500 text-[11px]">
+                  <td className="py-3 px-4 text-center border-r border-slate-200/70 text-slate-500 text-[11px] whitespace-nowrap">
                     {s.created_at ? new Date(s.created_at).toLocaleTimeString() : "—"}
                   </td>
 
-                  <td className="py-3.5 px-4 text-amber-700 font-bold text-[11px]">
+                  <td className="py-3 px-4 text-center border-r border-slate-200/70 text-amber-700 font-bold text-[11px] whitespace-nowrap">
                     {new Date(s.expires_at).toLocaleTimeString()}
                   </td>
 
-                  <td className="py-3.5 px-4 text-right">
+                  <td className="py-3 px-4 text-center whitespace-nowrap">
                     <button
                       onClick={() => handleRevoke(s.id)}
                       className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold transition-colors cursor-pointer shadow-2xs"

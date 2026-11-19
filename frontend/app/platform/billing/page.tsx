@@ -9,7 +9,8 @@ import {
   Download,
   Search,
   RefreshCw,
-  CheckCircle2
+  CheckCircle2,
+  TrendingUp
 } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 
@@ -64,45 +65,41 @@ export default function PlatformBillingPage() {
     .reduce((sum, t) => sum + (t.amount || 0), 0);
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <Receipt className="w-6 h-6 text-blue-600" />
-            <span>Billing & Transactions</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Platform-wide revenue ledger, payment transactions, and subscription receipts.
-          </p>
+    <div className="space-y-4 w-full">
+      {/* Overview Cards - Matching Attendance Overview Boxes Design */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider truncate">TOTAL COLLECTED</p>
+            <p className="text-xl font-black text-emerald-700 mt-0.5">₹{totalCollected.toLocaleString("en-IN")}</p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 font-black">
+            <TrendingUp className="w-4 h-4" />
+          </div>
         </div>
 
-        <button
-          onClick={loadData}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 transition-colors cursor-pointer self-start sm:self-auto shadow-2xs"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : "text-slate-500"}`} />
-          <span>Refresh</span>
-        </button>
-      </div>
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">TOTAL TRANSACTIONS</p>
+            <p className="text-xl font-black text-slate-900 mt-0.5">{transactions.length}</p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0 font-black">
+            <Receipt className="w-4 h-4" />
+          </div>
+        </div>
 
-      {/* Overview Cards - Clean White & Blue */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-1">
-          <span className="text-[10px] font-bold uppercase text-slate-500">Total Collected</span>
-          <p className="text-2xl font-black text-emerald-600">₹{totalCollected.toLocaleString("en-IN")}</p>
-        </div>
-        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-1">
-          <span className="text-[10px] font-bold uppercase text-slate-500">Total Transactions</span>
-          <p className="text-2xl font-black text-slate-900">{transactions.length}</p>
-        </div>
-        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-1">
-          <span className="text-[10px] font-bold uppercase text-slate-500">Gateway Status</span>
-          <p className="text-2xl font-black text-blue-600">Live / Idempotent</p>
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider truncate">GATEWAY STATUS</p>
+            <p className="text-xl font-black text-blue-700 mt-0.5">Live / Idempotent</p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 font-black">
+            <CheckCircle2 className="w-4 h-4" />
+          </div>
         </div>
       </div>
 
-      {/* Search */}
+      {/* Search Bar */}
       <div className="relative">
         <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
         <input
@@ -114,31 +111,31 @@ export default function PlatformBillingPage() {
         />
       </div>
 
-      {/* Transactions Table - Clean White & Blue */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs">
+      {/* Transactions Table - Excel-like Grid Design */}
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
-              <tr>
-                <th className="py-3.5 px-4">Receipt / Date</th>
-                <th className="py-3.5 px-4">Tenant Enterprise</th>
-                <th className="py-3.5 px-4">Subscription Plan</th>
-                <th className="py-3.5 px-4">Payment Method</th>
-                <th className="py-3.5 px-4">Amount</th>
-                <th className="py-3.5 px-4 text-right">Status</th>
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Receipt / Date</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Tenant Enterprise</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Subscription Plan</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Payment Method</th>
+                <th className="py-2.5 px-4 border-r border-slate-200/80">Amount</th>
+                <th className="py-2.5 px-4 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
               {filtered.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-4">
-                    <p className="font-bold text-slate-900 text-xs">{t.receipt_no || t.id}</p>
+                <tr key={t.id} className="hover:bg-blue-50/30 transition-colors">
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
+                    <p className="font-extrabold text-slate-900 text-xs">{t.receipt_no || t.id}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
                       {t.created_at ? new Date(t.created_at).toLocaleString() : "—"}
                     </p>
                   </td>
 
-                  <td className="py-3.5 px-4">
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
                       <Building2 className="w-3.5 h-3.5 text-blue-600" />
                       <span className="font-bold text-slate-900">{t.company_name}</span>
@@ -146,22 +143,22 @@ export default function PlatformBillingPage() {
                     <span className="text-[10px] text-slate-400 font-mono">{t.company_id}</span>
                   </td>
 
-                  <td className="py-3.5 px-4 font-medium text-slate-700">
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap font-medium text-slate-700">
                     {t.plan_name}
                   </td>
 
-                  <td className="py-3.5 px-4 text-slate-500 text-[11px]">
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap text-slate-500 text-[11px]">
                     {t.payment_method}
                   </td>
 
-                  <td className="py-3.5 px-4">
+                  <td className="py-3 px-4 border-r border-slate-200/70 whitespace-nowrap">
                     <span className="font-bold text-emerald-600 text-xs">
                       ₹{t.amount.toLocaleString("en-IN")}
                     </span>
                     <span className="text-[10px] text-slate-400 ml-1">{t.currency}</span>
                   </td>
 
-                  <td className="py-3.5 px-4 text-right">
+                  <td className="py-3 px-4 text-center whitespace-nowrap">
                     <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
                       t.status === "success"
                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200"

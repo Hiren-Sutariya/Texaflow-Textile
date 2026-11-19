@@ -25,18 +25,7 @@ export default function PlatformSettingsPage() {
   };
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Page Header */}
-      <div className="pb-4 border-b border-slate-200">
-        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-          <Settings className="w-6 h-6 text-blue-600" />
-          <span>Platform Settings & Security Policies</span>
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Global cryptographic policies, session management, and tenant isolation parameters.
-        </p>
-      </div>
-
+    <div className="space-y-4 w-full">
       {saved && (
         <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 shadow-2xs">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
