@@ -34,6 +34,7 @@ import {
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import { useLanguage } from "@/context/LanguageContext";
 import { fetchApi } from "@/lib/api";
+import { CourtFlowKpiCard } from "@/components/courtflow";
 import { getStoredCompanyId, getTenantItem } from "@/lib/tenantStorage";
 import {
   calculateAttendanceStatus,
@@ -326,27 +327,29 @@ function CustomSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-2.5 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
+        className={`w-full h-10 px-3.5 bg-white border rounded-xl flex items-center justify-between text-xs font-medium transition-all shadow-xs cursor-pointer focus:outline-none ${isOpen
+          ? "border-[#12b76a] text-slate-900 ring-4 ring-[#12b76a]/15"
+          : "border-[#d0d5dd] hover:border-slate-400 text-slate-800"
           }`}
       >
         <div className="flex items-center gap-1.5 truncate pr-1">
           {selectedOption?.value === "events" || selectedOption?.value === "all" ? (
-            <Calendar className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+            <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
           ) : (
-            <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
           )}
-          <span className={`truncate text-xs ${selectedOption ? "font-bold text-slate-900" : "font-medium text-slate-400"}`}>
+          <span className={`truncate text-xs ${selectedOption ? "font-semibold text-slate-900" : "font-normal text-slate-400"}`}>
             {selectedOption ? (selectedOption.shortLabel || selectedOption.label) : placeholder}
           </span>
         </div>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${isOpen ? "rotate-180 text-blue-600" : ""
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180 text-[#12b76a]" : ""
             }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 left-0 top-full mt-1.5 w-full min-w-[175px] bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 p-1.5 max-h-72 overflow-y-auto space-y-1">
+        <div className="absolute z-50 left-0 top-full mt-1.5 w-full min-w-[175px] bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-900/10 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 max-h-72 overflow-y-auto no-scrollbar">
           {options.map((opt) => {
             const isSelected = opt.value === value || (value === "all" && opt.value === "events");
             return (
@@ -357,20 +360,20 @@ function CustomSelect({
                   onChange(opt.value);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${isSelected
-                    ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
-                    : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
+                className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${isSelected
+                  ? "text-[#12b76a] font-semibold bg-emerald-50/60"
+                  : "text-slate-700 hover:bg-slate-50 font-medium"
                   }`}
               >
                 <div className="flex items-center gap-2 truncate">
                   {opt.value === "events" || opt.value === "all" ? (
-                    <Calendar className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                    <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   ) : (
-                    <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   )}
                   <span className="truncate">{opt.label}</span>
                 </div>
-                {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />}
+                {isSelected && <Check className="w-4 h-4 text-[#12b76a] shrink-0 ml-2 stroke-[2.5]" />}
               </button>
             );
           })}
@@ -1049,8 +1052,8 @@ export default function AttendancePage() {
                         karigar_sunday_off: true
                       })}
                       className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${(holidayRules.karigar_sunday_policy || (holidayRules.karigar_sunday_off ? "off" : "working")) === "off"
-                          ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
-                          : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                         }`}
                     >
                       ✓ Sunday Off
@@ -1063,8 +1066,8 @@ export default function AttendancePage() {
                         karigar_sunday_off: false
                       })}
                       className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${holidayRules.karigar_sunday_policy === "half_day"
-                          ? "bg-amber-50 border-amber-600 text-amber-700 shadow-2xs font-extrabold"
-                          : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                        ? "bg-amber-50 border-amber-600 text-amber-700 shadow-2xs font-extrabold"
+                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                         }`}
                     >
                       ½ Half Day
@@ -1077,8 +1080,8 @@ export default function AttendancePage() {
                         karigar_sunday_off: false
                       })}
                       className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${(holidayRules.karigar_sunday_policy || (holidayRules.karigar_sunday_off ? "off" : "working")) === "working"
-                          ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
-                          : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                         }`}
                     >
                       Working
@@ -1098,8 +1101,8 @@ export default function AttendancePage() {
                         staff_sunday_off: true
                       })}
                       className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${(holidayRules.staff_sunday_policy || (holidayRules.staff_sunday_off ? "off" : "working")) === "off"
-                          ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
-                          : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                         }`}
                     >
                       ✓ Sunday Off
@@ -1112,8 +1115,8 @@ export default function AttendancePage() {
                         staff_sunday_off: false
                       })}
                       className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${holidayRules.staff_sunday_policy === "half_day"
-                          ? "bg-amber-50 border-amber-600 text-amber-700 shadow-2xs font-extrabold"
-                          : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                        ? "bg-amber-50 border-amber-600 text-amber-700 shadow-2xs font-extrabold"
+                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                         }`}
                     >
                       ½ Half Day
@@ -1126,8 +1129,8 @@ export default function AttendancePage() {
                         staff_sunday_off: false
                       })}
                       className={`h-8 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${(holidayRules.staff_sunday_policy || (holidayRules.staff_sunday_off ? "off" : "working")) === "working"
-                          ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
-                          : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                         }`}
                     >
                       Working
@@ -1192,8 +1195,8 @@ export default function AttendancePage() {
                         type="button"
                         onClick={() => handleSaveHolidayRules({ ...holidayRules, grace_period_mins: mins })}
                         className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${(holidayRules.grace_period_mins || 15) === mins
-                            ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
-                            : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                          ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                          : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                           }`}
                       >
                         {mins} Min
@@ -1289,8 +1292,8 @@ export default function AttendancePage() {
                     type="button"
                     onClick={() => setNewEventIsMultiDay(false)}
                     className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${!newEventIsMultiDay
-                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
-                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                      ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                       }`}
                   >
                     Single Day
@@ -1304,8 +1307,8 @@ export default function AttendancePage() {
                       }
                     }}
                     className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${newEventIsMultiDay
-                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
-                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                      ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                       }`}
                   >
                     Date Range / Vacation
@@ -1376,8 +1379,8 @@ export default function AttendancePage() {
                     type="button"
                     onClick={() => setNewEventPayType("paid")}
                     className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${newEventPayType === "paid"
-                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
-                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                      ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                       }`}
                   >
                     Paid Holiday
@@ -1386,8 +1389,8 @@ export default function AttendancePage() {
                     type="button"
                     onClick={() => setNewEventPayType("unpaid")}
                     className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${newEventPayType === "unpaid"
-                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
-                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                      ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                       }`}
                   >
                     Unpaid Off
@@ -1403,8 +1406,8 @@ export default function AttendancePage() {
                     type="button"
                     onClick={() => setNewEventTarget("all")}
                     className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${newEventTarget === "all"
-                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
-                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                      ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                       }`}
                   >
                     All
@@ -1413,8 +1416,8 @@ export default function AttendancePage() {
                     type="button"
                     onClick={() => setNewEventTarget("staff")}
                     className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${newEventTarget === "staff"
-                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
-                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                      ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                       }`}
                   >
                     Staff
@@ -1423,8 +1426,8 @@ export default function AttendancePage() {
                     type="button"
                     onClick={() => setNewEventTarget("karigar")}
                     className={`h-8 px-3 rounded-lg font-bold text-xs flex items-center justify-center border transition-all cursor-pointer whitespace-nowrap flex-1 ${newEventTarget === "karigar"
-                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
-                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                      ? "bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-extrabold"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                       }`}
                   >
                     Karigar
@@ -1501,18 +1504,18 @@ export default function AttendancePage() {
                         <td className="py-2.5 px-4 font-extrabold text-slate-900">{evt.name}</td>
                         <td className="py-2.5 px-4 whitespace-nowrap">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${evt.pay_type === "unpaid"
-                              ? "bg-slate-100 text-slate-700 border-slate-300"
-                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            ? "bg-slate-100 text-slate-700 border-slate-300"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
                             }`}>
                             {evt.pay_type === "unpaid" ? "⛔ Unpaid Off" : "💰 Paid Holiday"}
                           </span>
                         </td>
                         <td className="py-2.5 px-4 whitespace-nowrap">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${evt.target === "staff"
-                              ? "bg-purple-50 text-purple-700 border-purple-200"
-                              : evt.target === "karigar"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : "bg-blue-50 text-blue-700 border-blue-200"
+                            ? "bg-purple-50 text-purple-700 border-purple-200"
+                            : evt.target === "karigar"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-blue-50 text-blue-700 border-blue-200"
                             }`}>
                             {evt.target === "staff" ? "👔 Staff Only" : evt.target === "karigar" ? "🧵 Karigar Only" : "👥 All"}
                           </span>
@@ -1565,47 +1568,40 @@ export default function AttendancePage() {
 
   return (
     <div className="space-y-4 font-sans text-xs pb-16">
-      {/* 1. TOP STATS OVERVIEW CARDS (CLEAN & SIMPLE) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">TOTAL WORKERS</p>
-            <p className="text-xl font-black text-slate-900 mt-0.5">{stats.total}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0 font-black">
-            <Users className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider truncate">PRESENT (FULL)</p>
-            <p className="text-xl font-black text-emerald-700 mt-0.5">{stats.present}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-            <CheckCircle2 className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate">HALF DAY (0.5)</p>
-            <p className="text-xl font-black text-amber-700 mt-0.5">{stats.halfDay}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
-            <Clock className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider truncate">ABSENT / PENDING</p>
-            <p className="text-xl font-black text-rose-700 mt-0.5">{stats.absent}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
-            <AlertCircle className="w-4 h-4" />
-          </div>
-        </div>
+      {/* 1. TOP STATS OVERVIEW CARDS matching Image 7 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <CourtFlowKpiCard
+          label="Total Staff & Karigar"
+          value={stats.total}
+          iconBgColor="bg-[#f4f3ff] text-[#7f56d9]"
+          trend={`${stats.total} registered`}
+          trendPositive={true}
+          icon={<Users className="w-5 h-5 text-purple-600" />}
+        />
+        <CourtFlowKpiCard
+          label="Present (Full Day)"
+          value={stats.present}
+          iconBgColor="bg-[#edfcf2] text-[#12b76a]"
+          trend={`${stats.present} on floor today`}
+          trendPositive={true}
+          icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+        />
+        <CourtFlowKpiCard
+          label="Half Day (0.5)"
+          value={stats.halfDay}
+          iconBgColor="bg-[#fff4ed] text-[#fb6514]"
+          trend={`${stats.halfDay} partial shift`}
+          trendPositive={stats.halfDay === 0}
+          icon={<Clock className="w-5 h-5 text-amber-600" />}
+        />
+        <CourtFlowKpiCard
+          label="Absent / Pending"
+          value={stats.absent}
+          iconBgColor="bg-[#fef3f2] text-[#f04438]"
+          trend={stats.absent > 0 ? "Requires review" : "Full attendance"}
+          trendPositive={stats.absent === 0}
+          icon={<AlertCircle className="w-5 h-5 text-rose-600" />}
+        />
       </div>
 
       {/* 2. COMPACT CONTROLS TOOLBAR & VIEW SWITCHER */}
@@ -1634,13 +1630,13 @@ export default function AttendancePage() {
           </div>
 
           <div className="relative flex-1 sm:w-56">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
               placeholder="Search worker by name, code..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-blue-500 font-medium"
+              className="w-full pl-10 pr-3.5 h-10 bg-white border border-[#d0d5dd] rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#12b76a] focus:ring-4 focus:ring-[#12b76a]/15 font-medium shadow-xs transition-all"
             />
           </div>
         </div>
@@ -1661,17 +1657,17 @@ export default function AttendancePage() {
                     }
                     setIsDatePickerOpen(!isDatePickerOpen);
                   }}
-                  className="flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-300 hover:border-blue-400 rounded-xl px-3 h-9 shadow-2xs transition-all cursor-pointer group"
+                  className="flex items-center gap-2 bg-white hover:bg-slate-50 border border-[#d0d5dd] rounded-xl px-3.5 h-10 shadow-xs transition-all cursor-pointer group"
                   title="Select attendance date"
                 >
-                  <Calendar className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-mono font-bold text-slate-800">
+                  <Calendar className="w-4 h-4 text-slate-700" />
+                  <span className="text-xs font-semibold text-slate-800">
                     {(() => {
                       const parts = selectedDate.split("-");
                       return parts.length === 3 ? `${parts[2]} / ${parts[1]} / ${parts[0]}` : selectedDate;
                     })()}
                   </span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isDatePickerOpen ? "rotate-180 text-blue-600" : ""}`} />
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isDatePickerOpen ? "rotate-180 text-[#12b76a]" : ""}`} />
                 </button>
 
                 {isDatePickerOpen && (
@@ -1724,18 +1720,18 @@ export default function AttendancePage() {
                               setSelectedDate(cell.dateStr);
                               setIsDatePickerOpen(false);
                             }}
-                            className={`h-8 rounded-xl text-xs font-bold flex items-center justify-center transition-all cursor-pointer relative ${isSelected
-                                ? "bg-blue-600 text-white shadow-xs scale-105"
-                                : !cell.isCurrent
-                                  ? "text-slate-300 hover:text-slate-500 hover:bg-slate-50"
-                                  : cell.isSunday
-                                    ? "text-rose-600 hover:bg-rose-50"
-                                    : "text-slate-800 hover:bg-blue-50 hover:text-blue-600"
+                            className={`h-8 rounded-xl text-xs font-semibold flex items-center justify-center transition-all cursor-pointer relative ${isSelected
+                              ? "bg-[#12b76a] text-white font-bold shadow-xs"
+                              : !cell.isCurrent
+                                ? "text-slate-300 hover:text-slate-500 hover:bg-slate-50"
+                                : cell.isSunday
+                                  ? "text-rose-600 hover:bg-rose-50"
+                                  : "text-slate-800 hover:bg-slate-100"
                               }`}
                           >
                             <span>{cell.dayNum}</span>
                             {isToday && !isSelected && (
-                              <span className="w-1 h-1 rounded-full bg-blue-600 absolute bottom-1"></span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#12b76a] absolute bottom-1"></span>
                             )}
                           </button>
                         );
@@ -2083,8 +2079,8 @@ export default function AttendancePage() {
                                 type="button"
                                 onClick={() => handleMarkFullDay(worker)}
                                 className={`h-8 px-2.5 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95 ${punch && !isAbsent && (punch.status === "Present" || punch.status === "Full Day" || punch.status === "Overtime")
-                                    ? "bg-emerald-600 text-white font-black shadow-xs ring-2 ring-emerald-500/30"
-                                    : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                  ? "bg-emerald-600 text-white font-black shadow-xs ring-2 ring-emerald-500/30"
+                                  : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
                                   }`}
                                 title="Mark Full Day (Present)"
                               >
@@ -2097,8 +2093,8 @@ export default function AttendancePage() {
                                 type="button"
                                 onClick={() => handleMarkHalfDay(worker)}
                                 className={`h-8 px-2 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95 ${punch?.status === "Half Day"
-                                    ? "bg-amber-500 text-white font-black shadow-xs ring-2 ring-amber-400/30"
-                                    : "bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200"
+                                  ? "bg-amber-500 text-white font-black shadow-xs ring-2 ring-amber-400/30"
+                                  : "bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200"
                                   }`}
                                 title="Mark Half Day (0.5)"
                               >
@@ -2110,8 +2106,8 @@ export default function AttendancePage() {
                                 type="button"
                                 onClick={() => handleMarkAbsent(worker)}
                                 className={`h-8 px-2 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95 ${isAbsent
-                                    ? "bg-rose-600 text-white font-black shadow-xs ring-2 ring-rose-500/30"
-                                    : "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
+                                  ? "bg-rose-600 text-white font-black shadow-xs ring-2 ring-rose-500/30"
+                                  : "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
                                   }`}
                                 title="Mark Absent"
                               >
@@ -2357,16 +2353,16 @@ export default function AttendancePage() {
                   <div
                     key={idx}
                     className={`min-h-[85px] sm:min-h-[105px] p-1.5 sm:p-2 flex flex-col justify-between transition-colors select-none ${isHoliday
-                        ? "bg-sky-100 hover:bg-sky-200/80 text-sky-950"
-                        : isPresent
-                          ? "bg-emerald-100/70 hover:bg-emerald-100/90 text-emerald-950"
-                          : isHalfDay
-                            ? "bg-amber-100/70 hover:bg-amber-100/90 text-amber-950"
-                            : isAbsent
-                              ? "bg-rose-100/70 hover:bg-rose-100/90 text-rose-950"
-                              : cell.isSunday && cell.isSundayOff
-                                ? "bg-slate-50/60 text-slate-800"
-                                : "bg-white text-slate-800"
+                      ? "bg-sky-100 hover:bg-sky-200/80 text-sky-950"
+                      : isPresent
+                        ? "bg-emerald-100/70 hover:bg-emerald-100/90 text-emerald-950"
+                        : isHalfDay
+                          ? "bg-amber-100/70 hover:bg-amber-100/90 text-amber-950"
+                          : isAbsent
+                            ? "bg-rose-100/70 hover:bg-rose-100/90 text-rose-950"
+                            : cell.isSunday && cell.isSundayOff
+                              ? "bg-slate-50/60 text-slate-800"
+                              : "bg-white text-slate-800"
                       }`}
                   >
                     {/* Top Bar: Date number + Small Corner Attendance Tag (when viewing worker) */}
@@ -2378,16 +2374,16 @@ export default function AttendancePage() {
                       ) : (
                         <span
                           className={`font-mono font-bold text-[11px] sm:text-xs ${isHoliday
-                              ? "text-sky-950 font-black"
-                              : isPresent
-                                ? "text-emerald-950 font-black"
-                                : isHalfDay
-                                  ? "text-amber-950 font-black"
-                                  : isAbsent
-                                    ? "text-rose-950 font-black"
-                                    : cell.isSunday && cell.isSundayOff
-                                      ? "text-rose-500 font-extrabold"
-                                      : "text-slate-700"
+                            ? "text-sky-950 font-black"
+                            : isPresent
+                              ? "text-emerald-950 font-black"
+                              : isHalfDay
+                                ? "text-amber-950 font-black"
+                                : isAbsent
+                                  ? "text-rose-950 font-black"
+                                  : cell.isSunday && cell.isSundayOff
+                                    ? "text-rose-500 font-extrabold"
+                                    : "text-slate-700"
                             }`}
                         >
                           {cell.dayNumber}

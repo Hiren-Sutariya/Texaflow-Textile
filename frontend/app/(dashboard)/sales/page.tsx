@@ -7,6 +7,7 @@ import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantSt
 import { getStoredCompanySettings, fetchLiveCompanySettings, CompanySettings, getFieldLabel, getDefaultBillFormat } from "@/lib/companySettings";
 import { calculateDueDate, getDueStatus, parseAnyDate } from "@/lib/creditTerms";
 import { useLanguage } from "@/context/LanguageContext";
+import { CourtFlowKpiCard } from "@/components/courtflow";
 import {
   SalesChallan,
   SalesLineItem,
@@ -77,23 +78,23 @@ function CustomSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-3 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${
-          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
-        }`}
+        className={`w-full h-10 px-3.5 bg-white border rounded-xl flex items-center justify-between text-xs font-medium transition-all shadow-xs cursor-pointer focus:outline-none ${isOpen
+          ? "border-[#12b76a] text-slate-900 ring-4 ring-[#12b76a]/15"
+          : "border-[#d0d5dd] hover:border-slate-400 text-slate-800"
+          }`}
       >
-        <span className={`truncate font-bold ${selectedOption ? "text-slate-900" : "text-slate-400"}`}>
+        <span className={`truncate ${selectedOption ? "font-semibold text-slate-900" : "font-normal text-slate-400"}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${
-            isOpen ? "rotate-180 text-blue-600" : ""
-          }`}
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180 text-[#12b76a]" : ""
+            }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 left-0 min-w-full w-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
-          <div className="max-h-60 overflow-y-auto no-scrollbar space-y-1">
+        <div className="absolute z-50 left-0 min-w-full w-full mt-1.5 bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-900/10 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+          <div className="max-h-60 overflow-y-auto no-scrollbar space-y-0.5">
             {options.map((opt) => {
               const isSelected = opt.value === value;
               return (
@@ -104,14 +105,13 @@ function CustomSelect({
                     onChange(opt.value);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
-                    isSelected
-                      ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
-                      : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
-                  }`}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${isSelected
+                    ? "text-[#12b76a] font-semibold bg-emerald-50/60"
+                    : "text-slate-700 hover:bg-slate-50 font-medium"
+                    }`}
                 >
                   <span className="truncate">{opt.label}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
+                  {isSelected && <Check className="w-4 h-4 text-[#12b76a] shrink-0 ml-2 stroke-[2.5]" />}
                 </button>
               );
             })}
@@ -330,8 +330,8 @@ export default function SalesPage() {
     const totalMtrs = challan.total_quantity || challan.total_meters || 0;
     const totalTakka = challan.total_item || challan.total_takka || 0;
     const totalAmount = (challan.total_amount || 0).toLocaleString("en-IN");
-    
-    const message = 
+
+    const message =
       `*DELIVERY CHALLAN - ${firmName.toUpperCase()}*\n\n` +
       `નમસ્તે *${partyName}*,\n` +
       `આપનું સેલ્સ ચલણ બની ગયેલ છે:\n\n` +
@@ -348,79 +348,52 @@ export default function SalesPage() {
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto select-none pb-12">
-      {/* 4 Stat KPI Cards - EXACT same size and style as Purchases page */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* CARD 1: TOTAL SALES */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
-              {t("TOTAL SALES")}
-            </p>
-            <p className="text-xl font-black text-slate-900 mt-0.5">
-              ₹{totalSalesAmount.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-            <Truck className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* CARD 2: PENDING CREDIT */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate">
-              {t("PENDING CREDIT")}
-            </p>
-            <p className="text-xl font-black text-amber-600 mt-0.5">
-              ₹{pendingAmount.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
-            <Clock className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* CARD 3: UNBILLED CHALLANS */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider truncate">
-              {t("UNBILLED CHALLANS")}
-            </p>
-            <p className={`text-xl font-black ${unbilledChallans.length > 0 ? "text-rose-600" : "text-slate-900"} mt-0.5`}>
-              {unbilledChallans.length}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
-            <AlertTriangle className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* CARD 4: PAID / SETTLED (BILLED CHALLANS) */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider truncate">
-              {t("PAID / SETTLED")}
-            </p>
-            <p className="text-xl font-black text-emerald-600 mt-0.5">
-              {billedChallans.length}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-            <CheckCircle2 className="w-4 h-4" />
-          </div>
-        </div>
+      {/* 4 Stat KPI Cards matching Image 7 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <CourtFlowKpiCard
+          label={t("Total Sales")}
+          value={`₹${totalSalesAmount.toLocaleString("en-IN")}`}
+          iconBgColor="bg-[#f4f3ff] text-[#7f56d9]"
+          trend={`₹${totalSalesAmount.toLocaleString("en-IN")} total`}
+          trendPositive={true}
+          icon={<Truck className="w-5 h-5 text-purple-600" />}
+        />
+        <CourtFlowKpiCard
+          label={t("Pending Credit")}
+          value={`₹${pendingAmount.toLocaleString("en-IN")}`}
+          iconBgColor="bg-[#fff4ed] text-[#fb6514]"
+          trend="Outstanding receivables"
+          trendPositive={pendingAmount === 0}
+          icon={<Clock className="w-5 h-5 text-amber-600" />}
+        />
+        <CourtFlowKpiCard
+          label={t("Unbilled Challans")}
+          value={unbilledChallans.length}
+          iconBgColor="bg-[#fef3f2] text-[#f04438]"
+          trend={unbilledChallans.length > 0 ? "Pending invoicing" : "All invoiced"}
+          trendPositive={unbilledChallans.length === 0}
+          icon={<AlertTriangle className="w-5 h-5 text-rose-600" />}
+        />
+        <CourtFlowKpiCard
+          label={t("Paid / Settled")}
+          value={billedChallans.length}
+          iconBgColor="bg-[#edfcf2] text-[#12b76a]"
+          trend="Billed challans"
+          trendPositive={true}
+          icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+        />
       </div>
 
       {/* Filters & Actions Bar */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3 text-xs">
         <div className="relative flex-1 w-full lg:max-w-md">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder={t("Search by customer, challan no, category, hsn...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-9 pl-9 pr-3 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+            className="w-full h-10 pl-10 pr-3.5 bg-white border border-[#d0d5dd] rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 shadow-xs hover:border-slate-400 focus:outline-none focus:border-[#12b76a] focus:ring-4 focus:ring-[#12b76a]/15 transition-all"
           />
         </div>
 
@@ -455,18 +428,18 @@ export default function SalesPage() {
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
             <Link
               href="/invoices/generate"
-              className="h-9 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer text-xs"
+              className="h-10 px-4 bg-white hover:bg-slate-50 text-slate-700 border border-[#d0d5dd] rounded-xl font-semibold flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer text-xs"
               title={isGujarati ? "ચલણમાંથી માસિક પાકું બિલ બનાવો" : "Generate Monthly Tax Invoice"}
             >
-              <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <FileText className="w-4 h-4 text-slate-500 shrink-0" />
               <span className="truncate">{isGujarati ? "પાકું બિલ" : "Generate Invoice"}</span>
             </Link>
 
             <Link
               href="/sales/new"
-              className="h-9 px-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 hover:bg-blue-700 transition-all shadow-2xs cursor-pointer text-xs"
+              className="h-10 px-4 bg-[#12b76a] hover:bg-[#0e9f5d] text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer text-xs"
             >
-              <Plus className="w-4 h-4 shrink-0" />
+              <Plus className="w-4 h-4 shrink-0 stroke-[2.5]" />
               <span className="truncate">{t("New Sales Challan")}</span>
             </Link>
           </div>
@@ -777,11 +750,10 @@ export default function SalesPage() {
                     </span>
                     <span className="font-mono text-[11px] text-slate-500">{challan.date}</span>
                   </div>
-                  <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                    isBilled
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                      : "bg-amber-50 text-amber-700 border border-amber-200"
-                  }`}>
+                  <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${isBilled
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                    }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${isBilled ? "bg-emerald-500" : "bg-amber-500"}`} />
                     <span>{isBilled ? t("Paid") : t("Pending")}</span>
                   </span>
@@ -997,14 +969,14 @@ export default function SalesPage() {
         const termsList = (companySettings.terms_conditions && companySettings.terms_conditions.trim())
           ? companySettings.terms_conditions.split("\n").map((t: string) => t.trim()).filter(Boolean)
           : [
-              "1. The Goods are dispatched on your account and at your risk and responsibility.",
-              "2. Any complaint regarding goods should be reported in writing within 24 hours of the receipt of the goods.",
-              "3. Goods sold will not taken back.",
-              "4. Payment will be accepted only by A/c payee's draft/cheque",
-              "5. Interest at 2.0% per month charged on account not paid within due course.",
-              "6. Subject to SURAT Jurisdiction. E. & O.E.",
-              "7. No Dyeing guarantee."
-            ];
+            "1. The Goods are dispatched on your account and at your risk and responsibility.",
+            "2. Any complaint regarding goods should be reported in writing within 24 hours of the receipt of the goods.",
+            "3. Goods sold will not taken back.",
+            "4. Payment will be accepted only by A/c payee's draft/cheque",
+            "5. Interest at 2.0% per month charged on account not paid within due course.",
+            "6. Subject to SURAT Jurisdiction. E. & O.E.",
+            "7. No Dyeing guarantee."
+          ];
 
         const companyAddressDisplay = [
           companySettings.address,

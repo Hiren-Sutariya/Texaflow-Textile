@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { getDueStatus } from "@/lib/creditTerms";
+import { CourtFlowKpiCard, CourtFlowBadge, CourtFlowActionMenu } from "@/components/courtflow";
 
 interface ExpenseItem {
   id: string;
@@ -307,7 +308,7 @@ export default function ExpensesPage() {
           setFormCategories((prev) => Array.from(new Set([...prev, ...expCats])));
         }
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     const handleDataRefresh = () => {
       loadLiveExpenses();
@@ -587,76 +588,61 @@ export default function ExpensesPage() {
 
   return (
     <div suppressHydrationWarning className="space-y-4 font-sans text-slate-800 pb-12">
-      {/* 1. TOP 4 ERP METRIC SUMMARY CARDS */}
-      <div suppressHydrationWarning className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* CARD 1: TOTAL EXPENSES */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
-              {periodFilter === "all"
-                ? "TOTAL (ALL TIME)"
-                : periodFilter === "this_week"
-                  ? "TOTAL (THIS WEEK)"
-                  : periodFilter === "this_month"
-                    ? "TOTAL (THIS MONTH)"
-                    : periodFilter === "this_year"
-                      ? "TOTAL (2026)"
-                      : "TOTAL EXPENSES"}
-            </p>
-            <p suppressHydrationWarning className="text-xl font-black text-slate-900 mt-0.5">₹{totalExpenseAmount.toLocaleString("en-IN")}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
-            <Receipt className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* CARD 2: TOTAL PAID */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">TOTAL PAID</p>
-            <p suppressHydrationWarning className="text-xl font-black text-blue-700 mt-0.5">₹{totalPaidAmount.toLocaleString("en-IN")}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-            <Check className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* CARD 3: PENDING / UNPAID */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate">PENDING / DUE</p>
-            <p suppressHydrationWarning className="text-xl font-black text-amber-700 mt-0.5">₹{unpaidExpensesAmount.toLocaleString("en-IN")}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
-            <Clock className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* CARD 4: TOP CATEGORY */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-purple-700 uppercase tracking-wider truncate">TOP CATEGORY</p>
-            <p suppressHydrationWarning className="text-xl font-black text-purple-900 mt-0.5 truncate max-w-[150px]" title={topCategory}>
-              {topCategory || "None"}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-            <Tag className="w-4 h-4" />
-          </div>
-        </div>
+      {/* 1. TOP 4 ERP METRIC SUMMARY CARDS matching Image 7 */}
+      <div suppressHydrationWarning className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <CourtFlowKpiCard
+          label={
+            periodFilter === "all"
+              ? "Total Expenses (All Time)"
+              : periodFilter === "this_week"
+                ? "Total Expenses (This Week)"
+                : periodFilter === "this_month"
+                  ? "Total Expenses (This Month)"
+                  : "Total Expenses"
+          }
+          value={`₹${totalExpenseAmount.toLocaleString("en-IN")}`}
+          iconBgColor="bg-[#fff4ed] text-[#fb6514]"
+          trend={`₹${totalExpenseAmount.toLocaleString("en-IN")} recorded`}
+          trendPositive={true}
+          icon={<Receipt className="w-5 h-5 text-amber-600" />}
+        />
+        <CourtFlowKpiCard
+          label="Total Paid"
+          value={`₹${totalPaidAmount.toLocaleString("en-IN")}`}
+          iconBgColor="bg-[#edfcf2] text-[#12b76a]"
+          trend="Cleared vouchers"
+          trendPositive={true}
+          icon={<Check className="w-5 h-5 text-emerald-600" />}
+        />
+        <CourtFlowKpiCard
+          label="Pending / Due"
+          value={`₹${unpaidExpensesAmount.toLocaleString("en-IN")}`}
+          iconBgColor="bg-[#fef3f2] text-[#f04438]"
+          trend={unpaidExpensesAmount > 0 ? "Payment due" : "All cleared"}
+          trendPositive={unpaidExpensesAmount === 0}
+          icon={<Clock className="w-5 h-5 text-rose-600" />}
+        />
+        <CourtFlowKpiCard
+          label="Top Category"
+          value={topCategory || "None"}
+          iconBgColor="bg-[#f4f3ff] text-[#7f56d9]"
+          trend="Leading expense"
+          trendPositive={true}
+          icon={<Tag className="w-5 h-5 text-purple-600" />}
+        />
       </div>
 
       {/* 2. FILTER BAR */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-3 font-sans">
         {/* Search Bar */}
         <div className="relative flex-1 w-full lg:max-w-xs">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
             placeholder={t("Search by party, category, invoice #, remarks...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-8 h-9 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 font-medium"
+            className="w-full pl-10 pr-8 h-10 bg-white border border-[#d0d5dd] rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#12b76a] focus:ring-4 focus:ring-[#12b76a]/15 font-medium shadow-xs transition-all"
           />
           {search && (
             <button
@@ -678,9 +664,9 @@ export default function ExpensesPage() {
                 key={st}
                 type="button"
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1 rounded-lg font-extrabold text-xs transition-all cursor-pointer flex-1 sm:flex-none text-center ${statusFilter === st
-                    ? "bg-white text-slate-900 shadow-2xs"
-                    : "text-slate-500 hover:text-slate-800"
+                className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all cursor-pointer flex-1 sm:flex-none text-center ${statusFilter === st
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800"
                   }`}
               >
                 {t(st)}
@@ -696,24 +682,24 @@ export default function ExpensesPage() {
                 setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
                 setIsPeriodDropdownOpen(false);
               }}
-              className={`w-full h-9 px-3 bg-white border text-xs font-extrabold rounded-xl flex items-center justify-between gap-1.5 transition-all shadow-2xs cursor-pointer ${isCategoryDropdownOpen
-                  ? "border-2 border-blue-500 ring-2 ring-blue-500/20 text-slate-900"
-                  : "border-slate-300 hover:border-slate-400 text-slate-800"
+              className={`w-full h-10 px-3.5 bg-white border text-xs font-medium rounded-xl flex items-center justify-between gap-1.5 transition-all shadow-xs cursor-pointer focus:outline-none ${isCategoryDropdownOpen
+                ? "border-[#12b76a] ring-4 ring-[#12b76a]/15 text-slate-900"
+                : "border-[#d0d5dd] hover:border-slate-400 text-slate-800"
                 }`}
             >
               <div className="flex items-center gap-1.5 truncate">
-                <Tag className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span className="uppercase tracking-wider truncate">
-                  {selectedCategory === "All" ? t("ALL CATEGORIES") : t(selectedCategory)}
+                <Tag className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <span className="truncate">
+                  {selectedCategory === "All" ? t("All Categories") : t(selectedCategory)}
                 </span>
               </div>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform shrink-0 ${isCategoryDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ml-1 ${isCategoryDropdownOpen ? "rotate-180 text-[#12b76a]" : ""}`} />
             </button>
 
             {isCategoryDropdownOpen && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setIsCategoryDropdownOpen(false)} />
-                <div className="absolute left-0 top-full mt-1 z-50 w-full min-w-full bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 max-h-80 overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 duration-100 font-sans">
+                <div className="absolute left-0 top-full mt-1.5 z-50 w-full min-w-full bg-white rounded-2xl border border-slate-100 shadow-xl shadow-slate-900/10 p-1.5 space-y-0.5 max-h-80 overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 duration-100 font-sans">
                   {/* Option: All Categories */}
                   <button
                     type="button"
@@ -721,13 +707,13 @@ export default function ExpensesPage() {
                       setSelectedCategory("All");
                       setIsCategoryDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-all cursor-pointer border ${selectedCategory === "All"
-                        ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
-                        : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${selectedCategory === "All"
+                      ? "text-[#12b76a] font-semibold bg-emerald-50/60"
+                      : "text-slate-700 hover:bg-slate-50 font-medium"
                       }`}
                   >
                     <span className="truncate">{t("All Categories")}</span>
-                    {selectedCategory === "All" && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
+                    {selectedCategory === "All" && <Check className="w-4 h-4 text-[#12b76a] shrink-0 stroke-[2.5]" />}
                   </button>
 
                   {/* List of categories */}
@@ -741,13 +727,13 @@ export default function ExpensesPage() {
                           setSelectedCategory(cat);
                           setIsCategoryDropdownOpen(false);
                         }}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-all cursor-pointer border ${isSelected
-                            ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
-                            : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${isSelected
+                          ? "text-[#12b76a] font-semibold bg-emerald-50/60"
+                          : "text-slate-700 hover:bg-slate-50 font-medium"
                           }`}
                       >
                         <span className="truncate">{t(cat)}</span>
-                        {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
+                        {isSelected && <Check className="w-4 h-4 text-[#12b76a] shrink-0 stroke-[2.5]" />}
                       </button>
                     );
                   })}
@@ -764,32 +750,32 @@ export default function ExpensesPage() {
                 setIsPeriodDropdownOpen(!isPeriodDropdownOpen);
                 setIsCategoryDropdownOpen(false);
               }}
-              className={`w-full h-9 px-3 bg-white border text-xs font-extrabold rounded-xl flex items-center justify-between gap-1.5 transition-all shadow-2xs cursor-pointer ${isPeriodDropdownOpen
-                  ? "border-2 border-blue-500 ring-2 ring-blue-500/20 text-slate-900"
-                  : "border-slate-300 hover:border-slate-400 text-slate-800"
+              className={`w-full h-10 px-3.5 bg-white border text-xs font-medium rounded-xl flex items-center justify-between gap-1.5 transition-all shadow-xs cursor-pointer focus:outline-none ${isPeriodDropdownOpen
+                ? "border-[#12b76a] ring-4 ring-[#12b76a]/15 text-slate-900"
+                : "border-[#d0d5dd] hover:border-slate-400 text-slate-800"
                 }`}
             >
               <div className="flex items-center gap-1.5 truncate">
-                <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span className="uppercase tracking-wider truncate">
+                <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <span className="truncate">
                   {periodFilter === "all"
-                    ? t("ALL TIME")
+                    ? t("All Time")
                     : periodFilter === "this_week"
-                      ? t("THIS WEEK")
+                      ? t("This Week")
                       : periodFilter === "this_month"
-                        ? t("THIS MONTH")
+                        ? t("This Month")
                         : periodFilter === "this_year"
-                          ? t("THIS YEAR")
-                          : t("CUSTOM DATES")}
+                          ? t("This Year")
+                          : t("Custom Dates")}
                 </span>
               </div>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform shrink-0 ${isPeriodDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ml-1 ${isPeriodDropdownOpen ? "rotate-180 text-[#12b76a]" : ""}`} />
             </button>
 
             {isPeriodDropdownOpen && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setIsPeriodDropdownOpen(false)} />
-                <div className="absolute left-0 top-full mt-1 z-50 w-full min-w-full bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100 font-sans">
+                <div className="absolute left-0 top-full mt-1.5 z-50 w-full min-w-full bg-white rounded-2xl border border-slate-100 shadow-xl shadow-slate-900/10 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 font-sans">
                   {[
                     { id: "all", label: t("All Time") },
                     { id: "this_month", label: t("This Month") },
@@ -808,42 +794,42 @@ export default function ExpensesPage() {
                             setIsPeriodDropdownOpen(false);
                           }
                         }}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-all cursor-pointer border ${isSelected
-                            ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
-                            : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${isSelected
+                          ? "text-[#12b76a] font-semibold bg-emerald-50/60"
+                          : "text-slate-700 hover:bg-slate-50 font-medium"
                           }`}
                       >
                         <span className="truncate">{p.label}</span>
-                        {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0 stroke-[2.5]" />}
+                        {isSelected && <Check className="w-4 h-4 text-[#12b76a] shrink-0 stroke-[2.5]" />}
                       </button>
                     );
                   })}
 
                   {/* EMBEDDED CUSTOM DATE PICKER SECTION */}
                   {periodFilter === "custom_date" && (
-                    <div className="mt-1 pt-1.5 border-t border-slate-100 space-y-1.5 p-2 bg-slate-50 rounded-xl">
+                    <div className="mt-1 pt-1.5 border-t border-slate-100 space-y-2 p-2 bg-slate-50/70 rounded-xl">
                       <div className="flex flex-col gap-1">
-                        <span className="text-[11px] font-bold text-slate-600">{t("From")}:</span>
+                        <span className="text-[11px] font-semibold text-slate-600">{t("From")}:</span>
                         <input
                           type="date"
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
-                          className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-500"
+                          className="w-full bg-white border border-[#d0d5dd] rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#12b76a] focus:ring-2 focus:ring-[#12b76a]/15 shadow-xs"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[11px] font-bold text-slate-600">{t("To")}:</span>
+                        <span className="text-[11px] font-semibold text-slate-600">{t("To")}:</span>
                         <input
                           type="date"
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
-                          className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-500"
+                          className="w-full bg-white border border-[#d0d5dd] rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#12b76a] focus:ring-2 focus:ring-[#12b76a]/15 shadow-xs"
                         />
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsPeriodDropdownOpen(false)}
-                        className="w-full mt-1 py-1.5 text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-2xs cursor-pointer"
+                        className="w-full mt-1 py-2 text-xs font-semibold bg-[#12b76a] hover:bg-[#0e9f5d] text-white rounded-xl transition-all shadow-xs cursor-pointer"
                       >
                         {t("Apply Date Range")}
                       </button>
@@ -854,22 +840,22 @@ export default function ExpensesPage() {
             )}
           </div>
 
-          {/* EXCEL EXPORT BUTTON */}
+          {/* EXCEL EXPORT BUTTON (Matching CourtFlow Secondary Outline) */}
           <button
             onClick={handleExportExcel}
-            className="h-9 px-3.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer flex-1 sm:flex-none"
+            className="h-10 px-4 bg-white hover:bg-slate-50 text-slate-700 border border-[#d0d5dd] rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer flex-1 sm:flex-none"
             title="Download Excel CSV File"
           >
-            <FileSpreadsheet className="w-4 h-4 text-blue-600" />
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             <span>{t("Export Excel")}</span>
           </button>
 
-          {/* ADD EXPENSE BUTTON -> NAVIGATES TO /expenses/new */}
+          {/* ADD EXPENSE BUTTON (Matching CourtFlow Primary Green) */}
           <Link
             href="/expenses/new"
-            className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-98 cursor-pointer flex-1 sm:flex-none"
+            className="h-10 px-4 bg-[#12b76a] hover:bg-[#0e9f5d] text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-98 cursor-pointer flex-1 sm:flex-none"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>{t("Add Expense")}</span>
           </Link>
         </div>
@@ -897,8 +883,8 @@ export default function ExpensesPage() {
                   <div className="flex items-center gap-2">
                     <span
                       className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold border ${item.payment_status === "Paid"
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : "bg-amber-50 text-amber-700 border-amber-200"
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
                         }`}
                     >
                       {item.payment_status === "Paid" ? t("Paid") : t("Pending")}
@@ -982,39 +968,39 @@ export default function ExpensesPage() {
           )}
         </div>
 
-        {/* DESKTOP TABLE VIEW (>= md) - EXCEL-STYLE BOX GRID */}
+        {/* DESKTOP TABLE VIEW (>= md) - Clean CourtFlow Table matching Image 2 */}
         <div suppressHydrationWarning className="hidden md:block overflow-x-auto">
           <table suppressHydrationWarning className="w-full text-left border-collapse text-xs min-w-[950px]">
             <thead>
-              <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
-                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("DATE")}</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("EXPENSE / BILL")}</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("CATEGORY")}</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("VENDOR / PAYEE")}</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("PAYMENT MODE")}</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("STATUS")}</th>
-                <th className="py-2.5 px-4 border-r border-slate-200/80">{t("REMARKS / NOTES")}</th>
-                <th className="py-2.5 px-4 text-right border-r border-slate-200/80">{t("AMOUNT (₹)")}</th>
-                <th className="py-2.5 px-4 text-center w-20">{t("ACTION")}</th>
+              <tr className="bg-white border-b border-[#eaecf0] text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                <th className="py-3.5 px-4">{t("DATE")}</th>
+                <th className="py-3.5 px-4">{t("EXPENSE / BILL")}</th>
+                <th className="py-3.5 px-4">{t("CATEGORY")}</th>
+                <th className="py-3.5 px-4">{t("VENDOR / PAYEE")}</th>
+                <th className="py-3.5 px-4">{t("PAYMENT MODE")}</th>
+                <th className="py-3.5 px-4">{t("STATUS")}</th>
+                <th className="py-3.5 px-4">{t("REMARKS / NOTES")}</th>
+                <th className="py-3.5 px-4 text-right">{t("AMOUNT (₹)")}</th>
+                <th className="py-3.5 px-4 text-center w-20">{t("ACTION")}</th>
               </tr>
             </thead>
             <tbody suppressHydrationWarning className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
               {filteredExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
+                  <td colSpan={9} className="py-12 text-center text-slate-400 font-medium">
                     No expense records found matching your filters. Click &quot;+ Add Expense&quot; to add a record.
                   </td>
                 </tr>
               ) : (
                 filteredExpenses.map((item) => (
-                  <tr key={item.id} className="hover:bg-blue-50/40 transition-colors animate-in fade-in duration-150">
+                  <tr key={item.id} className="hover:bg-slate-50/70 transition-colors animate-in fade-in duration-150">
                     {/* 1. DATE */}
-                    <td className="py-3 px-4 font-mono font-bold text-slate-700 whitespace-nowrap border-r border-slate-200/70">
+                    <td className="py-3.5 px-4 font-mono font-bold text-slate-700 whitespace-nowrap">
                       {formatDateDDMMYYYY(item.date)}
                     </td>
 
                     {/* 2. EXPENSE / BILL */}
-                    <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="inline-flex items-center gap-1.5">
                         <span className="font-mono text-xs font-bold text-slate-800">
                           {item.expense_no || "-"}
@@ -1034,68 +1020,48 @@ export default function ExpensesPage() {
                     </td>
 
                     {/* 3. CATEGORY */}
-                    <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span className="text-xs font-semibold text-slate-800">
                         {t(item.category)}
                       </span>
                     </td>
 
                     {/* 4. VENDOR / PAYEE */}
-                    <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span className="font-bold text-slate-900">{t(item.vendor_name || "-")}</span>
                     </td>
 
                     {/* 5. PAYMENT MODE */}
-                    <td className="py-3 px-4 whitespace-nowrap text-slate-700 font-semibold text-xs border-r border-slate-200/70">
+                    <td className="py-3.5 px-4 whitespace-nowrap text-slate-700 font-semibold text-xs">
                       {t(item.paid_via)}
                     </td>
 
                     {/* 6. STATUS */}
-                    <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200/70">
-                      {item.payment_status === "Paid" ? (
-                        <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          <span>{t("Paid")}</span>
-                        </span>
-                      ) : (
-                        <span className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                          <span>{t("Pending")}</span>
-                        </span>
-                      )}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <CourtFlowBadge
+                        status={item.payment_status === "Paid" ? "active" : "pending"}
+                        label={item.payment_status === "Paid" ? t("Paid") : t("Pending")}
+                      />
                     </td>
 
                     {/* 7. REMARKS / NOTES */}
-                    <td className="py-3 px-4 min-w-[200px] max-w-sm border-r border-slate-200/70">
+                    <td className="py-3.5 px-4 min-w-[200px] max-w-sm">
                       <p className="text-slate-700 text-xs font-medium leading-relaxed break-words">
                         {t(item.notes || "-")}
                       </p>
                     </td>
 
                     {/* 8. AMOUNT (₹) */}
-                    <td className="py-3 px-4 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap border-r border-slate-200/70">
+                    <td className="py-3.5 px-4 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap">
                       ₹{(Number(item.amount) || 0).toLocaleString("en-IN")}
                     </td>
 
                     {/* 9. ACTION */}
-                    <td className="py-3 px-4 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1">
-                        <Link
-                          href={`/expenses/new?edit=${encodeURIComponent(item.id)}&no=${encodeURIComponent(item.expense_no || "")}`}
-                          className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                          title="Edit Expense"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteExpense(item.id)}
-                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                          title="Delete Record"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                      <CourtFlowActionMenu
+                        onEdit={() => window.location.href = `/expenses/new?edit=${encodeURIComponent(item.id)}&no=${encodeURIComponent(item.expense_no || "")}`}
+                        onDelete={() => handleDeleteExpense(item.id)}
+                      />
                     </td>
                   </tr>
                 ))

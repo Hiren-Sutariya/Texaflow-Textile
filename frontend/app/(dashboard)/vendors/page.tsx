@@ -117,42 +117,41 @@ function CustomSelect({
       <button
         type="button"
         onClick={handleToggle}
-        className={`custom-select-trigger w-full h-9 px-3 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
-          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
-        } ${uppercase && selectedOption ? "uppercase" : ""}`}
+        className={`custom-select-trigger w-full h-10 px-3.5 bg-white border rounded-xl flex items-center justify-between text-xs font-medium transition-all shadow-xs cursor-pointer focus:outline-none ${isOpen
+          ? "border-[#12b76a] text-slate-900 ring-4 ring-[#12b76a]/15"
+          : "border-[#d0d5dd] hover:border-slate-400 text-slate-800"
+          } ${uppercase && selectedOption ? "uppercase" : ""}`}
       >
-        <span className={`truncate ${selectedOption ? "font-bold text-slate-900" : "font-medium text-slate-400"}`}>
+        <span className={`truncate ${selectedOption ? "font-semibold text-slate-900" : "font-normal text-slate-400"}`}>
           {selectedOption ? (selectedOption.shortLabel || selectedOption.label) : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1 ${
-            isOpen ? "rotate-180 text-blue-600" : ""
-          }`}
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180 text-[#12b76a]" : ""
+            }`}
         />
       </button>
 
       {isOpen && (
         <div
-          className={`absolute z-50 left-0 min-w-full bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 ${
-            openUpward ? "bottom-full mb-2" : "top-full mt-[18px]"
-          }`}
+          className={`absolute z-50 left-0 min-w-full bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-900/10 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 ${openUpward ? "bottom-full mb-1.5" : "top-full mt-1.5"
+            }`}
         >
           {headerAction && (
-            <div className="p-1 bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
+            <div className="p-1 bg-slate-50 border-b border-slate-100 rounded-xl mb-1 sticky top-0 z-10">
               <button
                 type="button"
                 onClick={() => {
                   setIsOpen(false);
                   headerAction.onClick();
                 }}
-                className="w-full py-1.5 px-3 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+                className="w-full py-1.5 px-3 bg-white hover:bg-slate-100 text-slate-700 font-semibold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-200 shadow-2xs"
               >
                 <Settings className="w-3.5 h-3.5 text-slate-500" />
                 <span>{headerAction.label}</span>
               </button>
             </div>
           )}
-          <div className="p-1.5 max-h-56 overflow-y-auto no-scrollbar space-y-1 pb-2">
+          <div className="p-0.5 max-h-60 overflow-y-auto no-scrollbar space-y-0.5">
             {options.map((opt) => {
               const isSelected = opt.value === value;
               return (
@@ -163,14 +162,13 @@ function CustomSelect({
                     onChange(opt.value);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${
-                    isSelected
-                      ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
-                      : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
-                  } ${uppercase ? "uppercase" : ""}`}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${isSelected
+                    ? "text-[#12b76a] font-semibold bg-emerald-50/60"
+                    : "text-slate-700 hover:bg-slate-50 font-medium"
+                    } ${uppercase ? "uppercase" : ""}`}
                 >
                   <span className="truncate">{opt.label}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
+                  {isSelected && <Check className="w-4 h-4 text-[#12b76a] shrink-0 ml-2 stroke-[2.5]" />}
                 </button>
               );
             })}
@@ -302,7 +300,7 @@ export default function VendorsPage() {
         if (cached && Array.isArray(cached)) return cached;
         const saved = getTenantItem<Vendor[]>("texaflow_vendors");
         if (saved && Array.isArray(saved)) return saved;
-      } catch {}
+      } catch { }
     }
     return [];
   });
@@ -481,22 +479,22 @@ export default function VendorsPage() {
           if (v.billing_address) {
             try {
               parsedBilling = typeof v.billing_address === "string" ? JSON.parse(v.billing_address) : v.billing_address;
-            } catch {}
+            } catch { }
           }
           if (v.shipping_address) {
             try {
               parsedShipping = typeof v.shipping_address === "string" ? JSON.parse(v.shipping_address) : v.shipping_address;
-            } catch {}
+            } catch { }
           }
           if (v.bank_details) {
             try {
               parsedBank = typeof v.bank_details === "string" ? JSON.parse(v.bank_details) : v.bank_details;
-            } catch {}
+            } catch { }
           }
           if (v.contact_persons) {
             try {
               parsedContact = typeof v.contact_persons === "string" ? JSON.parse(v.contact_persons) : v.contact_persons;
-            } catch {}
+            } catch { }
           }
 
           return {
@@ -767,165 +765,165 @@ export default function VendorsPage() {
     try {
       const compiledBank: BankDetail[] = bank.account_number
         ? [
-            {
-              id: `b-${Date.now()}`,
-              account_holder: bank.account_holder || finalDispName,
-              bank_name: bank.bank_name || "-",
-              account_number: bank.account_number,
-              ifsc: bank.ifsc || "-",
-              upi_id: bank.upi_id || "-",
-              qr_setup: bank.qr_setup
-            }
-          ]
+          {
+            id: `b-${Date.now()}`,
+            account_holder: bank.account_holder || finalDispName,
+            bank_name: bank.bank_name || "-",
+            account_number: bank.account_number,
+            ifsc: bank.ifsc || "-",
+            upi_id: bank.upi_id || "-",
+            qr_setup: bank.qr_setup
+          }
+        ]
         : [];
 
       if (editingVendorId) {
         try {
           await fetchApi(`/vendors/${editingVendorId}`, {
             method: "PUT",
-          body: JSON.stringify({
-            account_type: formAccountType,
-            salutation: formSalutation,
-            first_name: formFirstName.trim(),
-            last_name: formLastName.trim(),
-            company_name: formCompanyName.trim(),
-            display_name: finalDispName,
-            email: formEmail.trim(),
-            gstin: formGstin.trim(),
-            work_phone: formWorkPhone.trim(),
-            mobile: formMobile.trim(),
-            pan: formPan.trim(),
-            is_msme: formIsMsme,
-            payment_terms: formPaymentTerms,
-            opening_balance: Number(formOpeningBalance) || 0,
-            city: billing.city || "Surat",
-            billing_address: JSON.stringify(billing),
-            shipping_address: JSON.stringify(shipping),
-            bank_details: JSON.stringify(compiledBank),
-            contact_persons: JSON.stringify(contactPersons),
-            remarks: remarks.trim()
-          })
+            body: JSON.stringify({
+              account_type: formAccountType,
+              salutation: formSalutation,
+              first_name: formFirstName.trim(),
+              last_name: formLastName.trim(),
+              company_name: formCompanyName.trim(),
+              display_name: finalDispName,
+              email: formEmail.trim(),
+              gstin: formGstin.trim(),
+              work_phone: formWorkPhone.trim(),
+              mobile: formMobile.trim(),
+              pan: formPan.trim(),
+              is_msme: formIsMsme,
+              payment_terms: formPaymentTerms,
+              opening_balance: Number(formOpeningBalance) || 0,
+              city: billing.city || "Surat",
+              billing_address: JSON.stringify(billing),
+              shipping_address: JSON.stringify(shipping),
+              bank_details: JSON.stringify(compiledBank),
+              contact_persons: JSON.stringify(contactPersons),
+              remarks: remarks.trim()
+            })
+          });
+        } catch (err) {
+          console.warn("Backend vendor update fallback", err);
+        }
+
+        const updated = vendors.map((v) => {
+          if (v.id === editingVendorId) {
+            return {
+              ...v,
+              account_type: formAccountType,
+              salutation: formSalutation,
+              first_name: formFirstName.trim(),
+              last_name: formLastName.trim(),
+              company_name: formCompanyName.trim(),
+              display_name: finalDispName,
+              email: formEmail.trim(),
+              gstin: formGstin.trim(),
+              work_phone: formWorkPhone.trim(),
+              mobile: formMobile.trim(),
+              vendor_language: formLanguage,
+              pan: formPan.trim(),
+              is_msme: formIsMsme,
+              currency: formCurrency,
+              accounts_payable: formAccountsPayable,
+              opening_balance: Number(formOpeningBalance) || 0,
+              payment_terms: formPaymentTerms,
+              tds: formTds,
+              enable_portal: formEnablePortal,
+              billing_address: billing,
+              shipping_address: shipping,
+              brokerage: {
+                broker_name: brokerage.broker_name.trim(),
+                work_phone: brokerage.work_phone.trim(),
+                mobile: brokerage.mobile.trim(),
+                percentage: Number(brokerage.percentage) || 0,
+                broker_email: brokerage.broker_email.trim()
+              },
+              bank_details: compiledBank,
+              contact_persons: contactPersons,
+              remarks: remarks.trim()
+            };
+          }
+          return v;
         });
-      } catch (err) {
-        console.warn("Backend vendor update fallback", err);
+        saveVendorsList(updated);
+      } else {
+        let assignedId = `ven-${Date.now()}`;
+        let nextSrNo = vendors.length > 0 ? Math.max(...vendors.map((v) => v.srNo)) + 1 : 1;
+        try {
+          const backendRes = await fetchApi<any>("/vendors", {
+            method: "POST",
+            body: JSON.stringify({
+              account_type: formAccountType,
+              salutation: formSalutation,
+              first_name: formFirstName.trim(),
+              last_name: formLastName.trim(),
+              company_name: formCompanyName.trim(),
+              display_name: finalDispName,
+              email: formEmail.trim(),
+              gstin: formGstin.trim(),
+              work_phone: formWorkPhone.trim(),
+              mobile: formMobile.trim(),
+              pan: formPan.trim(),
+              is_msme: formIsMsme,
+              payment_terms: formPaymentTerms,
+              opening_balance: Number(formOpeningBalance) || 0,
+              city: billing.city || "Surat",
+              billing_address: JSON.stringify(billing),
+              shipping_address: JSON.stringify(shipping),
+              bank_details: JSON.stringify(compiledBank),
+              contact_persons: JSON.stringify(contactPersons),
+              remarks: remarks.trim()
+            })
+          });
+          if (backendRes?.id) {
+            assignedId = backendRes.id;
+            if (backendRes.sr_no) nextSrNo = backendRes.sr_no;
+          }
+        } catch (err) {
+          console.warn("Backend vendor create fallback", err);
+        }
+
+        const created: Vendor = {
+          id: assignedId,
+          srNo: nextSrNo,
+          account_type: formAccountType,
+          salutation: formSalutation,
+          first_name: formFirstName.trim(),
+          last_name: formLastName.trim(),
+          company_name: formCompanyName.trim(),
+          display_name: finalDispName,
+          email: formEmail.trim(),
+          gstin: formGstin.trim(),
+          work_phone: formWorkPhone.trim(),
+          mobile: formMobile.trim(),
+          vendor_language: formLanguage,
+          pan: formPan.trim(),
+          is_msme: formIsMsme,
+          currency: formCurrency,
+          accounts_payable: formAccountsPayable,
+          opening_balance: Number(formOpeningBalance) || 0,
+          payment_terms: formPaymentTerms,
+          tds: formTds,
+          enable_portal: formEnablePortal,
+          billing_address: billing,
+          shipping_address: shipping,
+          brokerage: {
+            broker_name: brokerage.broker_name.trim(),
+            work_phone: brokerage.work_phone.trim(),
+            mobile: brokerage.mobile.trim(),
+            percentage: Number(brokerage.percentage) || 0,
+            broker_email: brokerage.broker_email.trim()
+          },
+          bank_details: compiledBank,
+          contact_persons: contactPersons,
+          remarks: remarks.trim()
+        };
+        saveVendorsList([created, ...vendors]);
       }
 
-      const updated = vendors.map((v) => {
-        if (v.id === editingVendorId) {
-          return {
-            ...v,
-            account_type: formAccountType,
-            salutation: formSalutation,
-            first_name: formFirstName.trim(),
-            last_name: formLastName.trim(),
-            company_name: formCompanyName.trim(),
-            display_name: finalDispName,
-            email: formEmail.trim(),
-            gstin: formGstin.trim(),
-            work_phone: formWorkPhone.trim(),
-            mobile: formMobile.trim(),
-            vendor_language: formLanguage,
-            pan: formPan.trim(),
-            is_msme: formIsMsme,
-            currency: formCurrency,
-            accounts_payable: formAccountsPayable,
-            opening_balance: Number(formOpeningBalance) || 0,
-            payment_terms: formPaymentTerms,
-            tds: formTds,
-            enable_portal: formEnablePortal,
-            billing_address: billing,
-            shipping_address: shipping,
-            brokerage: {
-              broker_name: brokerage.broker_name.trim(),
-              work_phone: brokerage.work_phone.trim(),
-              mobile: brokerage.mobile.trim(),
-              percentage: Number(brokerage.percentage) || 0,
-              broker_email: brokerage.broker_email.trim()
-            },
-            bank_details: compiledBank,
-            contact_persons: contactPersons,
-            remarks: remarks.trim()
-          };
-        }
-        return v;
-      });
-      saveVendorsList(updated);
-    } else {
-      let assignedId = `ven-${Date.now()}`;
-      let nextSrNo = vendors.length > 0 ? Math.max(...vendors.map((v) => v.srNo)) + 1 : 1;
-      try {
-        const backendRes = await fetchApi<any>("/vendors", {
-          method: "POST",
-          body: JSON.stringify({
-            account_type: formAccountType,
-            salutation: formSalutation,
-            first_name: formFirstName.trim(),
-            last_name: formLastName.trim(),
-            company_name: formCompanyName.trim(),
-            display_name: finalDispName,
-            email: formEmail.trim(),
-            gstin: formGstin.trim(),
-            work_phone: formWorkPhone.trim(),
-            mobile: formMobile.trim(),
-            pan: formPan.trim(),
-            is_msme: formIsMsme,
-            payment_terms: formPaymentTerms,
-            opening_balance: Number(formOpeningBalance) || 0,
-            city: billing.city || "Surat",
-            billing_address: JSON.stringify(billing),
-            shipping_address: JSON.stringify(shipping),
-            bank_details: JSON.stringify(compiledBank),
-            contact_persons: JSON.stringify(contactPersons),
-            remarks: remarks.trim()
-          })
-        });
-        if (backendRes?.id) {
-          assignedId = backendRes.id;
-          if (backendRes.sr_no) nextSrNo = backendRes.sr_no;
-        }
-      } catch (err) {
-        console.warn("Backend vendor create fallback", err);
-      }
-
-      const created: Vendor = {
-        id: assignedId,
-        srNo: nextSrNo,
-        account_type: formAccountType,
-        salutation: formSalutation,
-        first_name: formFirstName.trim(),
-        last_name: formLastName.trim(),
-        company_name: formCompanyName.trim(),
-        display_name: finalDispName,
-        email: formEmail.trim(),
-        gstin: formGstin.trim(),
-        work_phone: formWorkPhone.trim(),
-        mobile: formMobile.trim(),
-        vendor_language: formLanguage,
-        pan: formPan.trim(),
-        is_msme: formIsMsme,
-        currency: formCurrency,
-        accounts_payable: formAccountsPayable,
-        opening_balance: Number(formOpeningBalance) || 0,
-        payment_terms: formPaymentTerms,
-        tds: formTds,
-        enable_portal: formEnablePortal,
-        billing_address: billing,
-        shipping_address: shipping,
-        brokerage: {
-          broker_name: brokerage.broker_name.trim(),
-          work_phone: brokerage.work_phone.trim(),
-          mobile: brokerage.mobile.trim(),
-          percentage: Number(brokerage.percentage) || 0,
-          broker_email: brokerage.broker_email.trim()
-        },
-        bank_details: compiledBank,
-        contact_persons: contactPersons,
-        remarks: remarks.trim()
-      };
-      saveVendorsList([created, ...vendors]);
-    }
-
-    setIsFormOpen(false);
+      setIsFormOpen(false);
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);
@@ -1059,1055 +1057,1052 @@ export default function VendorsPage() {
         {/* Inline Form Container */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 sm:p-5 space-y-4 pb-6 mb-16">
 
-            {/* PRIMARY INFORMATION */}
-            <div className="space-y-4 pb-6 border-b border-slate-100">
-              <div className="flex items-center gap-2 text-blue-900 font-extrabold text-sm border-b border-slate-200/60 pb-2">
-                <div className="p-1 bg-blue-100 rounded text-blue-700">
-                  <Building2 className="w-4 h-4" />
-                </div>
-                <span>Primary Information</span>
+          {/* PRIMARY INFORMATION */}
+          <div className="space-y-4 pb-6 border-b border-slate-100">
+            <div className="flex items-center gap-2 text-blue-900 font-extrabold text-sm border-b border-slate-200/60 pb-2">
+              <div className="p-1 bg-blue-100 rounded text-blue-700">
+                <Building2 className="w-4 h-4" />
               </div>
+              <span>Primary Information</span>
+            </div>
 
-              {/* Account Type Radio Select */}
-              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
-                <label className="font-extrabold text-rose-600">{t("Account Type*")}</label>
-                <div className="flex items-center gap-4 flex-wrap font-bold text-slate-700">
-                  {ACCOUNT_TYPES.map((type) => {
-                    const isChecked = normalizeAccountType(formAccountType) === type;
-                    return (
-                      <label key={type} className="flex items-center gap-1.5 cursor-pointer select-none">
-                        <input
-                          type="radio"
-                          name="account_type"
-                          checked={isChecked}
-                          onChange={() => setFormAccountType(type)}
-                          className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                        />
-                        <span className={isChecked ? "text-blue-900 font-extrabold" : ""}>
-                          {t(type)}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
+            {/* Account Type Radio Select */}
+            <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+              <label className="font-extrabold text-rose-600">{t("Account Type*")}</label>
+              <div className="flex items-center gap-4 flex-wrap font-bold text-slate-700">
+                {ACCOUNT_TYPES.map((type) => {
+                  const isChecked = normalizeAccountType(formAccountType) === type;
+                  return (
+                    <label key={type} className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="account_type"
+                        checked={isChecked}
+                        onChange={() => setFormAccountType(type)}
+                        className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className={isChecked ? "text-blue-900 font-extrabold" : ""}>
+                        {t(type)}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
+            </div>
 
-              {/* Primary Contact */}
-              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
-                <label className="font-bold text-slate-600">Primary Contact</label>
-                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap max-w-xl">
-                  <div className="w-28 sm:w-32 shrink-0">
+            {/* Primary Contact */}
+            <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+              <label className="font-bold text-slate-600">Primary Contact</label>
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap max-w-xl">
+                <div className="w-28 sm:w-32 shrink-0">
+                  <CustomSelect
+                    value={formSalutation}
+                    onChange={(val) => setFormSalutation(val)}
+                    options={[
+                      { value: "Mr.", label: "Mr." },
+                      { value: "Mrs.", label: "Mrs." },
+                      { value: "Ms.", label: "Ms." },
+                      { value: "Dr.", label: "Dr." },
+                      { value: "Prof.", label: "Prof." }
+                    ]}
+                    placeholder="Salutation"
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="First Name"
+                  value={formFirstName}
+                  onChange={(e) => setFormFirstName(e.target.value)}
+                  className="h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs flex-1 min-w-[120px]"
+                />
+                <input
+                  type="text"
+                  placeholder="Last Name"
+                  value={formLastName}
+                  onChange={(e) => setFormLastName(e.target.value)}
+                  className="h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs flex-1 min-w-[120px]"
+                />
+              </div>
+            </div>
+
+            {/* Company Name */}
+            <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+              <label className="font-bold text-slate-600">Company Name</label>
+              <div className="max-w-md">
+                <input
+                  type="text"
+                  placeholder="e.g. Vardhman Thread Mills"
+                  value={formCompanyName}
+                  onChange={(e) => setFormCompanyName(e.target.value)}
+                  className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Display Name */}
+            <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+              <label className="font-extrabold text-rose-600">Display Name*</label>
+              <div className="max-w-md">
+                <input
+                  type="text"
+                  placeholder="Select or type to add"
+                  value={formDisplayName}
+                  onChange={(e) => setFormDisplayName(e.target.value)}
+                  className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">If left blank, Company Name will be used.</p>
+              </div>
+            </div>
+
+            {/* Email Address */}
+            <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+              <label className="font-bold text-slate-600">Email Address</label>
+              <div className="max-w-md relative">
+                <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                <input
+                  type="email"
+                  placeholder="vendor@example.com"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                  className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
+                />
+              </div>
+            </div>
+
+            {/* GST */}
+            <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+              <label className="font-bold text-slate-600">GST</label>
+              <div className="max-w-md">
+                <input
+                  type="text"
+                  placeholder="e.g. 24AABCU9603R1ZM"
+                  value={formGstin}
+                  onChange={(e) => setFormGstin(e.target.value)}
+                  className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs uppercase"
+                />
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+              <label className="font-bold text-slate-600">Phone</label>
+              <div className="flex items-center gap-2 max-w-xl">
+                {/* Work Phone */}
+                <div className="flex items-center gap-1 flex-1">
+                  <div className="w-20 shrink-0">
                     <CustomSelect
-                      value={formSalutation}
-                      onChange={(val) => setFormSalutation(val)}
-                      options={[
-                        { value: "Mr.", label: "Mr." },
-                        { value: "Mrs.", label: "Mrs." },
-                        { value: "Ms.", label: "Ms." },
-                        { value: "Dr.", label: "Dr." },
-                        { value: "Prof.", label: "Prof." }
-                      ]}
-                      placeholder="Salutation"
+                      value={workPhoneCode}
+                      onChange={(val) => setWorkPhoneCode(val)}
+                      options={COUNTRY_CODES}
                     />
                   </div>
-                  <input
-                    type="text"
-                    placeholder="First Name"
-                    value={formFirstName}
-                    onChange={(e) => setFormFirstName(e.target.value)}
-                    className="h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs flex-1 min-w-[120px]"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Last Name"
-                    value={formLastName}
-                    onChange={(e) => setFormLastName(e.target.value)}
-                    className="h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs flex-1 min-w-[120px]"
-                  />
-                </div>
-              </div>
-
-              {/* Company Name */}
-              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
-                <label className="font-bold text-slate-600">Company Name</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    placeholder="e.g. Vardhman Thread Mills"
-                    value={formCompanyName}
-                    onChange={(e) => setFormCompanyName(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* Display Name */}
-              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
-                <label className="font-extrabold text-rose-600">Display Name*</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    placeholder="Select or type to add"
-                    value={formDisplayName}
-                    onChange={(e) => setFormDisplayName(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-0.5">If left blank, Company Name will be used.</p>
-                </div>
-              </div>
-
-              {/* Email Address */}
-              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
-                <label className="font-bold text-slate-600">Email Address</label>
-                <div className="max-w-md relative">
-                  <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3 pointer-events-none" />
-                  <input
-                    type="email"
-                    placeholder="vendor@example.com"
-                    value={formEmail}
-                    onChange={(e) => setFormEmail(e.target.value)}
-                    className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* GST */}
-              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
-                <label className="font-bold text-slate-600">GST</label>
-                <div className="max-w-md">
-                  <input
-                    type="text"
-                    placeholder="e.g. 24AABCU9603R1ZM"
-                    value={formGstin}
-                    onChange={(e) => setFormGstin(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs uppercase"
-                  />
-                </div>
-              </div>
-
-              {/* Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
-                <label className="font-bold text-slate-600">Phone</label>
-                <div className="flex items-center gap-2 max-w-xl">
-                  {/* Work Phone */}
-                  <div className="flex items-center gap-1 flex-1">
-                    <div className="w-20 shrink-0">
-                      <CustomSelect
-                        value={workPhoneCode}
-                        onChange={(val) => setWorkPhoneCode(val)}
-                        options={COUNTRY_CODES}
-                      />
-                    </div>
-                    <div className="relative flex-1">
-                      <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
-                      <input
-                        type="text"
-                        placeholder="Work Phone"
-                        value={formWorkPhone}
-                        onChange={(e) => setFormWorkPhone(e.target.value)}
-                        className="w-full h-9 pl-8 pr-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Mobile */}
-                  <div className="flex items-center gap-1 flex-1">
-                    <div className="w-20 shrink-0">
-                      <CustomSelect
-                        value={mobileCode}
-                        onChange={(val) => setMobileCode(val)}
-                        options={COUNTRY_CODES}
-                      />
-                    </div>
-                    <div className="relative flex-1">
-                      <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
-                      <input
-                        type="text"
-                        placeholder="Mobile"
-                        value={formMobile}
-                        onChange={(e) => setFormMobile(e.target.value)}
-                        className="w-full h-9 pl-8 pr-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
-                      />
-                    </div>
+                  <div className="relative flex-1">
+                    <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Work Phone"
+                      value={formWorkPhone}
+                      onChange={(e) => setFormWorkPhone(e.target.value)}
+                      className="w-full h-9 pl-8 pr-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
+                    />
                   </div>
                 </div>
-              </div>
 
-              {/* Vendor Language */}
-              <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
-                <label className="font-bold text-slate-600">Vendor Language</label>
-                <div className="max-w-md">
-                  <CustomSelect
-                    value={formLanguage}
-                    onChange={(val) => setFormLanguage(val)}
-                    options={[
-                      { value: "ENGLISH", label: "ENGLISH" },
-                      { value: "GUJARATI", label: "GUJARATI" },
-                      { value: "HINDI", label: "HINDI" }
-                    ]}
-                    uppercase
-                  />
+                {/* Mobile */}
+                <div className="flex items-center gap-1 flex-1">
+                  <div className="w-20 shrink-0">
+                    <CustomSelect
+                      value={mobileCode}
+                      onChange={(val) => setMobileCode(val)}
+                      options={COUNTRY_CODES}
+                    />
+                  </div>
+                  <div className="relative flex-1">
+                    <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Mobile"
+                      value={formMobile}
+                      onChange={(e) => setFormMobile(e.target.value)}
+                      className="w-full h-9 pl-8 pr-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* TABBED SUB-SECTIONS (Matching User Screenshots 1-4) */}
-            <div className="space-y-4">
-              {/* Tab Selector Navigation Bar */}
-              <div className="flex items-center gap-4 sm:gap-6 border-b border-slate-200 text-xs font-bold overflow-x-auto no-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-0.5">
-                {[
-                  "Other Details",
-                  "Address",
-                  "Brokerage",
-                  "Contact Persons",
-                  "Bank Details",
-                  "Remarks"
-                ].map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setActiveSubTab(tab as any)}
-                    className={`pb-2.5 cursor-pointer transition-all border-b-2 whitespace-nowrap ${
-                      activeSubTab === tab
-                        ? "border-blue-600 text-blue-700 font-extrabold"
-                        : "border-transparent text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
+            {/* Vendor Language */}
+            <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-3 items-center text-xs">
+              <label className="font-bold text-slate-600">Vendor Language</label>
+              <div className="max-w-md">
+                <CustomSelect
+                  value={formLanguage}
+                  onChange={(val) => setFormLanguage(val)}
+                  options={[
+                    { value: "ENGLISH", label: "ENGLISH" },
+                    { value: "GUJARATI", label: "GUJARATI" },
+                    { value: "HINDI", label: "HINDI" }
+                  ]}
+                  uppercase
+                />
               </div>
+            </div>
+          </div>
 
-              {/* TAB CONTENT 1: OTHER DETAILS (Screenshot 1 Bottom Half) */}
-              {activeSubTab === "Other Details" && (
-                <div className="space-y-4 animate-in fade-in duration-100 text-xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 items-start text-xs">
-                    {/* Left Column Stack */}
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
-                        <label className="font-bold text-slate-600">PAN</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. AAACV1234F"
-                          value={formPan}
-                          onChange={(e) => setFormPan(e.target.value)}
-                          className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs uppercase"
+          {/* TABBED SUB-SECTIONS (Matching User Screenshots 1-4) */}
+          <div className="space-y-4">
+            {/* Tab Selector Navigation Bar */}
+            <div className="flex items-center gap-4 sm:gap-6 border-b border-slate-200 text-xs font-bold overflow-x-auto no-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-0.5">
+              {[
+                "Other Details",
+                "Address",
+                "Brokerage",
+                "Contact Persons",
+                "Bank Details",
+                "Remarks"
+              ].map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveSubTab(tab as any)}
+                  className={`pb-2.5 cursor-pointer transition-all border-b-2 whitespace-nowrap ${activeSubTab === tab
+                    ? "border-blue-600 text-blue-700 font-extrabold"
+                    : "border-transparent text-slate-500 hover:text-slate-800"
+                    }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* TAB CONTENT 1: OTHER DETAILS (Screenshot 1 Bottom Half) */}
+            {activeSubTab === "Other Details" && (
+              <div className="space-y-4 animate-in fade-in duration-100 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 items-start text-xs">
+                  {/* Left Column Stack */}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                      <label className="font-bold text-slate-600">PAN</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. AAACV1234F"
+                        value={formPan}
+                        onChange={(e) => setFormPan(e.target.value)}
+                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs uppercase"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                      <label className="font-bold text-slate-600">Currency</label>
+                      <div>
+                        <CustomSelect
+                          value={formCurrency}
+                          onChange={(val) => setFormCurrency(val)}
+                          options={[
+                            { value: "INR - INDIAN RUPEE", label: "INR - INDIAN RUPEE" },
+                            { value: "USD - US DOLLAR", label: "USD - US DOLLAR" }
+                          ]}
                         />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
-                        <label className="font-bold text-slate-600">Currency</label>
-                        <div>
-                          <CustomSelect
-                            value={formCurrency}
-                            onChange={(val) => setFormCurrency(val)}
-                            options={[
-                              { value: "INR - INDIAN RUPEE", label: "INR - INDIAN RUPEE" },
-                              { value: "USD - US DOLLAR", label: "USD - US DOLLAR" }
-                            ]}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
-                        <label className="font-bold text-slate-600">Opening Balance</label>
-                        <div className="flex items-center bg-white border border-slate-300 rounded-xl overflow-hidden shadow-2xs">
-                          <span className="px-3 text-xs font-black text-slate-500 bg-slate-50 border-r border-slate-300">INR</span>
-                          <input
-                            type="number"
-                            placeholder="0"
-                            value={formOpeningBalance}
-                            onChange={(e) => setFormOpeningBalance(e.target.value === "" ? "" : Number(e.target.value))}
-                            className="w-full h-9 px-3 text-xs font-bold text-slate-900 focus:outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
-                        <label className="font-bold text-slate-600">TDS</label>
-                        <div>
-                          <CustomSelect
-                            value={formTds}
-                            onChange={(val) => setFormTds(val)}
-                            placeholder="SELECT TAX"
-                            options={[
-                              { value: "TDS 10%", label: "TDS 10%" },
-                              { value: "TDS 5%", label: "TDS 5%" },
-                              { value: "TDS 2%", label: "TDS 2%" },
-                              { value: "TDS 1%", label: "TDS 1%" },
-                              { value: "Not Applicable", label: "Not Applicable" }
-                            ]}
-                          />
-                        </div>
                       </div>
                     </div>
 
-                    {/* Right Column Stack */}
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
-                        <label className="font-bold text-slate-600">Accounts Payable</label>
-                        <div>
-                          <CustomSelect
-                            value={formAccountsPayable}
-                            onChange={(val) => setFormAccountsPayable(val)}
-                            placeholder="SELECT AN ACCOUNT"
-                            options={[
-                              { value: "Trade Payables", label: "Trade Payables" },
-                              { value: "Accounts Payable", label: "Accounts Payable" },
-                              { value: "Sundry Creditors", label: "Sundry Creditors" },
-                              { value: "Vendor Clearing", label: "Vendor Clearing" }
-                            ]}
-                          />
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                      <label className="font-bold text-slate-600">Opening Balance</label>
+                      <div className="flex items-center bg-white border border-slate-300 rounded-xl overflow-hidden shadow-2xs">
+                        <span className="px-3 text-xs font-black text-slate-500 bg-slate-50 border-r border-slate-300">INR</span>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={formOpeningBalance}
+                          onChange={(e) => setFormOpeningBalance(e.target.value === "" ? "" : Number(e.target.value))}
+                          className="w-full h-9 px-3 text-xs font-bold text-slate-900 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                      <label className="font-bold text-slate-600">TDS</label>
+                      <div>
+                        <CustomSelect
+                          value={formTds}
+                          onChange={(val) => setFormTds(val)}
+                          placeholder="SELECT TAX"
+                          options={[
+                            { value: "TDS 10%", label: "TDS 10%" },
+                            { value: "TDS 5%", label: "TDS 5%" },
+                            { value: "TDS 2%", label: "TDS 2%" },
+                            { value: "TDS 1%", label: "TDS 1%" },
+                            { value: "Not Applicable", label: "Not Applicable" }
+                          ]}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column Stack */}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                      <label className="font-bold text-slate-600">Accounts Payable</label>
+                      <div>
+                        <CustomSelect
+                          value={formAccountsPayable}
+                          onChange={(val) => setFormAccountsPayable(val)}
+                          placeholder="SELECT AN ACCOUNT"
+                          options={[
+                            { value: "Trade Payables", label: "Trade Payables" },
+                            { value: "Accounts Payable", label: "Accounts Payable" },
+                            { value: "Sundry Creditors", label: "Sundry Creditors" },
+                            { value: "Vendor Clearing", label: "Vendor Clearing" }
+                          ]}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                      <label className="font-bold text-slate-600">Payment Terms</label>
+                      <div>
+                        <CustomSelect
+                          value={formPaymentTerms}
+                          onChange={(val) => setFormPaymentTerms(val)}
+                          placeholder="SELECT PAYMENT TERMS"
+                          headerAction={{
+                            label: "Manage",
+                            onClick: () => {
+                              setEditingTerms([...paymentTermsOptions]);
+                              setIsConfigureTermsOpen(true);
+                            }
+                          }}
+                          options={paymentTermsOptions.map((t) => ({
+                            value: t.name,
+                            label: t.name
+                          }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2.5 pt-0.5">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="msme_check"
+                          checked={formIsMsme}
+                          onChange={(e) => setFormIsMsme(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <label htmlFor="msme_check" className="font-bold text-slate-800 cursor-pointer select-none">
+                          This vendor is MSME registered
+                        </label>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
-                        <label className="font-bold text-slate-600">Payment Terms</label>
-                        <div>
-                          <CustomSelect
-                            value={formPaymentTerms}
-                            onChange={(val) => setFormPaymentTerms(val)}
-                            placeholder="SELECT PAYMENT TERMS"
-                            headerAction={{
-                              label: "Manage",
-                              onClick: () => {
-                                setEditingTerms([...paymentTermsOptions]);
-                                setIsConfigureTermsOpen(true);
-                              }
-                            }}
-                            options={paymentTermsOptions.map((t) => ({
-                              value: t.name,
-                              label: t.name
-                            }))}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2.5 pt-0.5">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id="msme_check"
-                            checked={formIsMsme}
-                            onChange={(e) => setFormIsMsme(e.target.checked)}
-                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                          />
-                          <label htmlFor="msme_check" className="font-bold text-slate-800 cursor-pointer select-none">
-                            This vendor is MSME registered
-                          </label>
-                        </div>
-
-                        {formIsMsme && (
-                          <div className="space-y-2.5 pt-1.5 pl-3 border-l-2 border-blue-500 animate-in fade-in duration-150">
-                            <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
-                              <label className="font-bold text-slate-600 leading-tight">MSME/Udyam Type</label>
-                              <div>
-                                <CustomSelect
-                                  value={formMsmeType}
-                                  onChange={(val) => setFormMsmeType(val)}
-                                  placeholder="SELECT THE REGISTRATION TYPE"
-                                  options={[
-                                    { value: "Micro", label: "Micro" },
-                                    { value: "Small", label: "Small" },
-                                    { value: "Medium", label: "Medium" }
-                                  ]}
-                                />
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
-                              <label className="font-bold text-slate-600 leading-tight">MSME Reg Number</label>
-                              <input
-                                type="text"
-                                placeholder="Enter the Registration Number"
-                                value={formMsmeNumber}
-                                onChange={(e) => setFormMsmeNumber(e.target.value)}
-                                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
+                      {formIsMsme && (
+                        <div className="space-y-2.5 pt-1.5 pl-3 border-l-2 border-blue-500 animate-in fade-in duration-150">
+                          <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                            <label className="font-bold text-slate-600 leading-tight">MSME/Udyam Type</label>
+                            <div>
+                              <CustomSelect
+                                value={formMsmeType}
+                                onChange={(val) => setFormMsmeType(val)}
+                                placeholder="SELECT THE REGISTRATION TYPE"
+                                options={[
+                                  { value: "Micro", label: "Micro" },
+                                  { value: "Small", label: "Small" },
+                                  { value: "Medium", label: "Medium" }
+                                ]}
                               />
                             </div>
                           </div>
-                        )}
-                      </div>
 
-                      <div className="flex items-center gap-2 pt-1">
-                        <input
-                          type="checkbox"
-                          id="portal_check"
-                          checked={formEnablePortal}
-                          onChange={(e) => setFormEnablePortal(e.target.checked)}
-                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                        />
-                        <label htmlFor="portal_check" className="font-bold text-slate-800 cursor-pointer select-none">
-                          Allow portal access for this vendor
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB CONTENT 2: ADDRESS (Screenshot 2) */}
-              {activeSubTab === "Address" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-100 text-xs">
-                  {/* Billing Address Column */}
-                  <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-200/70">
-                    <h3 className="font-extrabold text-slate-900 text-xs uppercase tracking-wide">Billing Address</h3>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Attention</label>
-                      <input
-                        type="text"
-                        value={billing.attention}
-                        onChange={(e) => setBilling({ ...billing, attention: e.target.value })}
-                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Country/Region</label>
-                      <CustomSelect
-                        value={billing.country}
-                        onChange={(val) => setBilling({ ...billing, country: val })}
-                        options={[
-                          { value: "INDIA", label: "INDIA" },
-                          { value: "USA", label: "USA" },
-                          { value: "UAE", label: "UAE" }
-                        ]}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Address</label>
-                      <div className="space-y-1.5">
-                        <input
-                          type="text"
-                          placeholder="Street 1"
-                          value={billing.street1}
-                          onChange={(e) => setBilling({ ...billing, street1: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Street 2"
-                          value={billing.street2}
-                          onChange={(e) => setBilling({ ...billing, street2: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">City</label>
-                        <input
-                          type="text"
-                          value={billing.city}
-                          onChange={(e) => setBilling({ ...billing, city: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">State</label>
-                        <input
-                          type="text"
-                          value={billing.state}
-                          onChange={(e) => setBilling({ ...billing, state: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none uppercase"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Pin Code</label>
-                        <input
-                          type="text"
-                          value={billing.pincode}
-                          onChange={(e) => setBilling({ ...billing, pincode: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Phone</label>
-                        <input
-                          type="text"
-                          value={billing.phone}
-                          onChange={(e) => setBilling({ ...billing, phone: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Shipping Address Column */}
-                  <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-200/70">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-extrabold text-slate-900 text-xs uppercase tracking-wide">Shipping Address</h3>
-                      <button
-                        type="button"
-                        onClick={handleCopyBillingToShipping}
-                        className="text-blue-700 hover:text-blue-800 font-extrabold text-[11px] flex items-center gap-1 cursor-pointer"
-                      >
-                        <Copy className="w-3 h-3" />
-                        <span>↓ Copy billing address</span>
-                      </button>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Attention</label>
-                      <input
-                        type="text"
-                        value={shipping.attention}
-                        onChange={(e) => setShipping({ ...shipping, attention: e.target.value })}
-                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Country/Region</label>
-                      <CustomSelect
-                        value={shipping.country}
-                        onChange={(val) => setShipping({ ...shipping, country: val })}
-                        options={[
-                          { value: "INDIA", label: "INDIA" },
-                          { value: "USA", label: "USA" },
-                          { value: "UAE", label: "UAE" }
-                        ]}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Address</label>
-                      <div className="space-y-1.5">
-                        <input
-                          type="text"
-                          placeholder="Street 1"
-                          value={shipping.street1}
-                          onChange={(e) => setShipping({ ...shipping, street1: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Street 2"
-                          value={shipping.street2}
-                          onChange={(e) => setShipping({ ...shipping, street2: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">City</label>
-                        <input
-                          type="text"
-                          value={shipping.city}
-                          onChange={(e) => setShipping({ ...shipping, city: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">State</label>
-                        <input
-                          type="text"
-                          value={shipping.state}
-                          onChange={(e) => setShipping({ ...shipping, state: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none uppercase"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Pin Code</label>
-                        <input
-                          type="text"
-                          value={shipping.pincode}
-                          onChange={(e) => setShipping({ ...shipping, pincode: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Phone</label>
-                        <input
-                          type="text"
-                          value={shipping.phone}
-                          onChange={(e) => setShipping({ ...shipping, phone: e.target.value })}
-                          className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB CONTENT 3: BROKERAGE (Screenshot 3) */}
-              {activeSubTab === "Brokerage" && (
-                <div className="space-y-4 animate-in fade-in duration-100 text-xs">
-                  <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl text-blue-900 flex items-start gap-2 text-[11px] font-medium">
-                    <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                    <span>
-                      Provide details of the broker or agent mediating this relationship. This information applies to Supplier (Purchases), Customer (Sales), or Both.
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                      <label className="font-bold text-slate-600">Broker Name</label>
-                      <input
-                        type="text"
-                        placeholder="Enter broker name"
-                        value={brokerage.broker_name}
-                        onChange={(e) => setBrokerage({ ...brokerage, broker_name: e.target.value })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                      <label className="font-bold text-slate-600">Work Phone</label>
-                      <div className="sm:col-span-2 relative">
-                        <span className="absolute left-2.5 top-2 text-[10px] font-extrabold text-slate-400">+91</span>
-                        <input
-                          type="text"
-                          placeholder="Enter phone number"
-                          value={brokerage.work_phone}
-                          onChange={(e) => setBrokerage({ ...brokerage, work_phone: e.target.value })}
-                          className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                      <label className="font-bold text-slate-600">Mobile</label>
-                      <div className="sm:col-span-2 relative">
-                        <span className="absolute left-2.5 top-2 text-[10px] font-extrabold text-slate-400">+91</span>
-                        <input
-                          type="text"
-                          placeholder="Enter mobile number"
-                          value={brokerage.mobile}
-                          onChange={(e) => setBrokerage({ ...brokerage, mobile: e.target.value })}
-                          className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                      <label className="font-bold text-slate-600">Percentage Brokerage (%)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        placeholder="e.g. 2.5"
-                        value={brokerage.percentage}
-                        onChange={(e) => setBrokerage({ ...brokerage, percentage: e.target.value === "" ? "" : Number(e.target.value) })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                      <label className="font-bold text-slate-600">Broker Email</label>
-                      <input
-                        type="email"
-                        placeholder="broker@example.com"
-                        value={brokerage.broker_email}
-                        onChange={(e) => setBrokerage({ ...brokerage, broker_email: e.target.value })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB CONTENT 4: BANK DETAILS (Screenshot 4) */}
-              {activeSubTab === "Bank Details" && (
-                <div className="space-y-4 animate-in fade-in duration-100 text-xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                      <label className="font-bold text-slate-600">Account Holder Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Vardhman Thread Mills"
-                        value={bank.account_holder}
-                        onChange={(e) => setBank({ ...bank, account_holder: e.target.value })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                      <label className="font-bold text-slate-600">Bank Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. HDFC Bank"
-                        value={bank.bank_name}
-                        onChange={(e) => setBank({ ...bank, bank_name: e.target.value })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                      <label className="font-extrabold text-rose-600">Account Number*</label>
-                      <div className="sm:col-span-2 relative">
-                        <input
-                          type={showAccNo ? "text" : "password"}
-                          placeholder="Bank Account Number"
-                          value={bank.account_number}
-                          onChange={(e) => setBank({ ...bank, account_number: e.target.value })}
-                          className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowAccNo(!showAccNo)}
-                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
-                        >
-                          {showAccNo ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                      <label className="font-extrabold text-rose-600">Re-enter Account Number*</label>
-                      <div className="sm:col-span-2 relative">
-                        <input
-                          type={showReAccNo ? "text" : "password"}
-                          placeholder="Re-enter Account Number"
-                          value={bank.re_account_number}
-                          onChange={(e) => setBank({ ...bank, re_account_number: e.target.value })}
-                          className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowReAccNo(!showReAccNo)}
-                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
-                        >
-                          {showReAccNo ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                      <label className="font-extrabold text-rose-600">IFSC*</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. HDFC0000102"
-                        value={bank.ifsc}
-                        onChange={(e) => setBank({ ...bank, ifsc: e.target.value })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2 uppercase"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                      <label className="font-bold text-slate-600">UPI ID</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 1234567890@ybl"
-                        value={bank.upi_id}
-                        onChange={(e) => setBank({ ...bank, upi_id: e.target.value })}
-                        className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
-                      />
-                    </div>
-                  </div>
-
-                  {/* QR Code Setup Radio Options */}
-                  <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-center pt-2">
-                    <label className="font-bold text-slate-600 sm:col-span-1">QR Code Setup</label>
-                    <div className="sm:col-span-5 flex items-center gap-4 font-bold text-slate-700">
-                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                        <input
-                          type="radio"
-                          name="qr_setup"
-                          checked={bank.qr_setup === "Auto Generate from UPI"}
-                          onChange={() => setBank({ ...bank, qr_setup: "Auto Generate from UPI" })}
-                          className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                        />
-                        <span>Auto Generate from UPI</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                        <input
-                          type="radio"
-                          name="qr_setup"
-                          checked={bank.qr_setup === "Upload Custom QR"}
-                          onChange={() => setBank({ ...bank, qr_setup: "Upload Custom QR" })}
-                          className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                        />
-                        <span>Upload Custom QR</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB CONTENT 5: CONTACT PERSONS */}
-              {activeSubTab === "Contact Persons" && (
-                <div className="space-y-4 animate-in fade-in duration-100 text-xs">
-                  <div className="space-y-2">
-                    {contactPersons.map((cp) => (
-                      <div key={cp.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                        <div>
-                          <div className="font-bold text-slate-900">{cp.name} ({cp.designation})</div>
-                          <div className="text-[11px] text-slate-500">{cp.phone} • {cp.email}</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-2 items-center">
+                            <label className="font-bold text-slate-600 leading-tight">MSME Reg Number</label>
+                            <input
+                              type="text"
+                              placeholder="Enter the Registration Number"
+                              value={formMsmeNumber}
+                              onChange={(e) => setFormMsmeNumber(e.target.value)}
+                              className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs text-xs"
+                            />
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setContactPersons(contactPersons.filter((c) => c.id !== cp.id))}
-                          className="p-1 text-slate-400 hover:text-rose-600"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                      )}
+                    </div>
 
-                  <div className="p-3 border border-slate-200 rounded-xl space-y-2 bg-slate-50/50">
-                    <h4 className="font-bold text-slate-800">Add New Contact Person</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <div className="flex items-center gap-2 pt-1">
                       <input
-                        type="text"
-                        placeholder="Name"
-                        value={newContact.name}
-                        onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-                        className="h-8 px-2 bg-white border border-slate-300 rounded-lg text-xs"
+                        type="checkbox"
+                        id="portal_check"
+                        checked={formEnablePortal}
+                        onChange={(e) => setFormEnablePortal(e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
-                      <input
-                        type="text"
-                        placeholder="Designation"
-                        value={newContact.designation}
-                        onChange={(e) => setNewContact({ ...newContact, designation: e.target.value })}
-                        className="h-8 px-2 bg-white border border-slate-300 rounded-lg text-xs"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Phone"
-                        value={newContact.phone}
-                        onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
-                        className="h-8 px-2 bg-white border border-slate-300 rounded-lg text-xs"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!newContact.name) return;
-                          setContactPersons([
-                            ...contactPersons,
-                            { id: `cp-${Date.now()}`, ...newContact }
-                          ]);
-                          setNewContact({ name: "", email: "", phone: "", designation: "" });
-                        }}
-                        className="h-8 bg-blue-600 text-white font-bold rounded-lg text-xs hover:bg-blue-700"
-                      >
-                        + Add Contact
-                      </button>
+                      <label htmlFor="portal_check" className="font-bold text-slate-800 cursor-pointer select-none">
+                        Allow portal access for this vendor
+                      </label>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* TAB CONTENT 6: REMARKS */}
-              {activeSubTab === "Remarks" && (
-                <div className="space-y-3 animate-in fade-in duration-100 text-xs">
-                  <label className="block font-bold text-slate-700">Internal Remarks & Supplier Notes</label>
-                  <textarea
-                    rows={4}
-                    placeholder="Enter any specific notes regarding lead time, yarn quality standards, or payment agreements..."
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    className="w-full p-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
-                  />
+            {/* TAB CONTENT 2: ADDRESS (Screenshot 2) */}
+            {activeSubTab === "Address" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-100 text-xs">
+                {/* Billing Address Column */}
+                <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-200/70">
+                  <h3 className="font-extrabold text-slate-900 text-xs uppercase tracking-wide">Billing Address</h3>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Attention</label>
+                    <input
+                      type="text"
+                      value={billing.attention}
+                      onChange={(e) => setBilling({ ...billing, attention: e.target.value })}
+                      className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Country/Region</label>
+                    <CustomSelect
+                      value={billing.country}
+                      onChange={(val) => setBilling({ ...billing, country: val })}
+                      options={[
+                        { value: "INDIA", label: "INDIA" },
+                        { value: "USA", label: "USA" },
+                        { value: "UAE", label: "UAE" }
+                      ]}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Address</label>
+                    <div className="space-y-1.5">
+                      <input
+                        type="text"
+                        placeholder="Street 1"
+                        value={billing.street1}
+                        onChange={(e) => setBilling({ ...billing, street1: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Street 2"
+                        value={billing.street2}
+                        onChange={(e) => setBilling({ ...billing, street2: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">City</label>
+                      <input
+                        type="text"
+                        value={billing.city}
+                        onChange={(e) => setBilling({ ...billing, city: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">State</label>
+                      <input
+                        type="text"
+                        value={billing.state}
+                        onChange={(e) => setBilling({ ...billing, state: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none uppercase"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Pin Code</label>
+                      <input
+                        type="text"
+                        value={billing.pincode}
+                        onChange={(e) => setBilling({ ...billing, pincode: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Phone</label>
+                      <input
+                        type="text"
+                        value={billing.phone}
+                        onChange={(e) => setBilling({ ...billing, phone: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none"
+                      />
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
 
+                {/* Shipping Address Column */}
+                <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-200/70">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-extrabold text-slate-900 text-xs uppercase tracking-wide">Shipping Address</h3>
+                    <button
+                      type="button"
+                      onClick={handleCopyBillingToShipping}
+                      className="text-blue-700 hover:text-blue-800 font-extrabold text-[11px] flex items-center gap-1 cursor-pointer"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>↓ Copy billing address</span>
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Attention</label>
+                    <input
+                      type="text"
+                      value={shipping.attention}
+                      onChange={(e) => setShipping({ ...shipping, attention: e.target.value })}
+                      className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Country/Region</label>
+                    <CustomSelect
+                      value={shipping.country}
+                      onChange={(val) => setShipping({ ...shipping, country: val })}
+                      options={[
+                        { value: "INDIA", label: "INDIA" },
+                        { value: "USA", label: "USA" },
+                        { value: "UAE", label: "UAE" }
+                      ]}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Address</label>
+                    <div className="space-y-1.5">
+                      <input
+                        type="text"
+                        placeholder="Street 1"
+                        value={shipping.street1}
+                        onChange={(e) => setShipping({ ...shipping, street1: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Street 2"
+                        value={shipping.street2}
+                        onChange={(e) => setShipping({ ...shipping, street2: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">City</label>
+                      <input
+                        type="text"
+                        value={shipping.city}
+                        onChange={(e) => setShipping({ ...shipping, city: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">State</label>
+                      <input
+                        type="text"
+                        value={shipping.state}
+                        onChange={(e) => setShipping({ ...shipping, state: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none uppercase"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Pin Code</label>
+                      <input
+                        type="text"
+                        value={shipping.pincode}
+                        onChange={(e) => setShipping({ ...shipping, pincode: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Phone</label>
+                      <input
+                        type="text"
+                        value={shipping.phone}
+                        onChange={(e) => setShipping({ ...shipping, phone: e.target.value })}
+                        className="w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB CONTENT 3: BROKERAGE (Screenshot 3) */}
+            {activeSubTab === "Brokerage" && (
+              <div className="space-y-4 animate-in fade-in duration-100 text-xs">
+                <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl text-blue-900 flex items-start gap-2 text-[11px] font-medium">
+                  <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <span>
+                    Provide details of the broker or agent mediating this relationship. This information applies to Supplier (Purchases), Customer (Sales), or Both.
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                    <label className="font-bold text-slate-600">Broker Name</label>
+                    <input
+                      type="text"
+                      placeholder="Enter broker name"
+                      value={brokerage.broker_name}
+                      onChange={(e) => setBrokerage({ ...brokerage, broker_name: e.target.value })}
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                    <label className="font-bold text-slate-600">Work Phone</label>
+                    <div className="sm:col-span-2 relative">
+                      <span className="absolute left-2.5 top-2 text-[10px] font-extrabold text-slate-400">+91</span>
+                      <input
+                        type="text"
+                        placeholder="Enter phone number"
+                        value={brokerage.work_phone}
+                        onChange={(e) => setBrokerage({ ...brokerage, work_phone: e.target.value })}
+                        className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                    <label className="font-bold text-slate-600">Mobile</label>
+                    <div className="sm:col-span-2 relative">
+                      <span className="absolute left-2.5 top-2 text-[10px] font-extrabold text-slate-400">+91</span>
+                      <input
+                        type="text"
+                        placeholder="Enter mobile number"
+                        value={brokerage.mobile}
+                        onChange={(e) => setBrokerage({ ...brokerage, mobile: e.target.value })}
+                        className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                    <label className="font-bold text-slate-600">Percentage Brokerage (%)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="e.g. 2.5"
+                      value={brokerage.percentage}
+                      onChange={(e) => setBrokerage({ ...brokerage, percentage: e.target.value === "" ? "" : Number(e.target.value) })}
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                    <label className="font-bold text-slate-600">Broker Email</label>
+                    <input
+                      type="email"
+                      placeholder="broker@example.com"
+                      value={brokerage.broker_email}
+                      onChange={(e) => setBrokerage({ ...brokerage, broker_email: e.target.value })}
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB CONTENT 4: BANK DETAILS (Screenshot 4) */}
+            {activeSubTab === "Bank Details" && (
+              <div className="space-y-4 animate-in fade-in duration-100 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                    <label className="font-bold text-slate-600">Account Holder Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Vardhman Thread Mills"
+                      value={bank.account_holder}
+                      onChange={(e) => setBank({ ...bank, account_holder: e.target.value })}
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                    <label className="font-bold text-slate-600">Bank Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. HDFC Bank"
+                      value={bank.bank_name}
+                      onChange={(e) => setBank({ ...bank, bank_name: e.target.value })}
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                    <label className="font-extrabold text-rose-600">Account Number*</label>
+                    <div className="sm:col-span-2 relative">
+                      <input
+                        type={showAccNo ? "text" : "password"}
+                        placeholder="Bank Account Number"
+                        value={bank.account_number}
+                        onChange={(e) => setBank({ ...bank, account_number: e.target.value })}
+                        className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAccNo(!showAccNo)}
+                        className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                      >
+                        {showAccNo ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                    <label className="font-extrabold text-rose-600">Re-enter Account Number*</label>
+                    <div className="sm:col-span-2 relative">
+                      <input
+                        type={showReAccNo ? "text" : "password"}
+                        placeholder="Re-enter Account Number"
+                        value={bank.re_account_number}
+                        onChange={(e) => setBank({ ...bank, re_account_number: e.target.value })}
+                        className="w-full h-9 pl-3 pr-9 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowReAccNo(!showReAccNo)}
+                        className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                      >
+                        {showReAccNo ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                    <label className="font-extrabold text-rose-600">IFSC*</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. HDFC0000102"
+                      value={bank.ifsc}
+                      onChange={(e) => setBank({ ...bank, ifsc: e.target.value })}
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2 uppercase"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                    <label className="font-bold text-slate-600">UPI ID</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 1234567890@ybl"
+                      value={bank.upi_id}
+                      onChange={(e) => setBank({ ...bank, upi_id: e.target.value })}
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs sm:col-span-2"
+                    />
+                  </div>
+                </div>
+
+                {/* QR Code Setup Radio Options */}
+                <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-center pt-2">
+                  <label className="font-bold text-slate-600 sm:col-span-1">QR Code Setup</label>
+                  <div className="sm:col-span-5 flex items-center gap-4 font-bold text-slate-700">
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="qr_setup"
+                        checked={bank.qr_setup === "Auto Generate from UPI"}
+                        onChange={() => setBank({ ...bank, qr_setup: "Auto Generate from UPI" })}
+                        className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span>Auto Generate from UPI</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="qr_setup"
+                        checked={bank.qr_setup === "Upload Custom QR"}
+                        onChange={() => setBank({ ...bank, qr_setup: "Upload Custom QR" })}
+                        className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span>Upload Custom QR</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB CONTENT 5: CONTACT PERSONS */}
+            {activeSubTab === "Contact Persons" && (
+              <div className="space-y-4 animate-in fade-in duration-100 text-xs">
+                <div className="space-y-2">
+                  {contactPersons.map((cp) => (
+                    <div key={cp.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                      <div>
+                        <div className="font-bold text-slate-900">{cp.name} ({cp.designation})</div>
+                        <div className="text-[11px] text-slate-500">{cp.phone} • {cp.email}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setContactPersons(contactPersons.filter((c) => c.id !== cp.id))}
+                        className="p-1 text-slate-400 hover:text-rose-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-3 border border-slate-200 rounded-xl space-y-2 bg-slate-50/50">
+                  <h4 className="font-bold text-slate-800">Add New Contact Person</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Name"
+                      value={newContact.name}
+                      onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                      className="h-8 px-2 bg-white border border-slate-300 rounded-lg text-xs"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Designation"
+                      value={newContact.designation}
+                      onChange={(e) => setNewContact({ ...newContact, designation: e.target.value })}
+                      className="h-8 px-2 bg-white border border-slate-300 rounded-lg text-xs"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Phone"
+                      value={newContact.phone}
+                      onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                      className="h-8 px-2 bg-white border border-slate-300 rounded-lg text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newContact.name) return;
+                        setContactPersons([
+                          ...contactPersons,
+                          { id: `cp-${Date.now()}`, ...newContact }
+                        ]);
+                        setNewContact({ name: "", email: "", phone: "", designation: "" });
+                      }}
+                      className="h-8 bg-blue-600 text-white font-bold rounded-lg text-xs hover:bg-blue-700"
+                    >
+                      + Add Contact
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB CONTENT 6: REMARKS */}
+            {activeSubTab === "Remarks" && (
+              <div className="space-y-3 animate-in fade-in duration-100 text-xs">
+                <label className="block font-bold text-slate-700">Internal Remarks & Supplier Notes</label>
+                <textarea
+                  rows={4}
+                  placeholder="Enter any specific notes regarding lead time, yarn quality standards, or payment agreements..."
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  className="w-full p-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-2xs text-xs"
+                />
+              </div>
+            )}
           </div>
 
-          {/* UNIFIED Fixed Actions Footer Bar */}
-          <BottomActionBar
-            showSynced={true}
-            rightContent={
-              <>
+        </div>
+
+        {/* UNIFIED Fixed Actions Footer Bar */}
+        <BottomActionBar
+          showSynced={true}
+          rightContent={
+            <>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => setIsFormOpen(false)}
+                className={`px-4 py-2 font-bold rounded-xl border border-slate-300 text-xs transition-colors shadow-2xs ${isSaving
+                  ? "bg-slate-100 text-slate-400 cursor-not-allowed pointer-events-none"
+                  : "bg-white hover:bg-slate-100 text-slate-700 cursor-pointer"
+                  }`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={handleSaveVendor}
+                className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${isSaving
+                  ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
+                  : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
+                  }`}
+              >
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>{t("Saving Party...")}</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>{t("Save Party")}</span>
+                  </>
+                )}
+              </button>
+            </>
+          }
+        />
+
+        {/* CONFIGURE PAYMENT TERMS MODAL (MATCHING USER SCREENSHOT 5) */}
+        {isConfigureTermsOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+              {/* Modal Header */}
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="font-extrabold text-slate-800 text-sm sm:text-base">Configure Payment Terms</h3>
                 <button
                   type="button"
-                  disabled={isSaving}
-                  onClick={() => setIsFormOpen(false)}
-                  className={`px-4 py-2 font-bold rounded-xl border border-slate-300 text-xs transition-colors shadow-2xs ${
-                    isSaving
-                      ? "bg-slate-100 text-slate-400 cursor-not-allowed pointer-events-none"
-                      : "bg-white hover:bg-slate-100 text-slate-700 cursor-pointer"
-                  }`}
+                  onClick={() => setIsConfigureTermsOpen(false)}
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body / Table */}
+              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto text-xs">
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 text-[11px] font-extrabold text-slate-600 uppercase border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-4">TERM NAME</th>
+                        <th className="py-2.5 px-4 text-center">NUMBER OF DAYS</th>
+                        <th className="py-2.5 px-4 text-center">LESS (%)</th>
+                        <th className="py-2.5 px-4 text-center">ACTION</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-800 font-medium">
+                      {editingTerms.map((term, idx) => (
+                        <tr key={term.id || idx} className="hover:bg-slate-50/50">
+                          <td className="py-2.5 px-4 font-bold">
+                            <input
+                              type="text"
+                              value={term.name}
+                              onChange={(e) => {
+                                const next = [...editingTerms];
+                                next[idx].name = e.target.value;
+                                setEditingTerms(next);
+                              }}
+                              className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-xs font-bold text-slate-900"
+                            />
+                          </td>
+                          <td className="py-2.5 px-4 text-center">
+                            <input
+                              type="text"
+                              value={term.days}
+                              onChange={(e) => {
+                                const next = [...editingTerms];
+                                next[idx].days = e.target.value;
+                                setEditingTerms(next);
+                              }}
+                              className="w-20 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center focus:outline-none focus:border-blue-500 text-xs font-semibold text-slate-700 mx-auto"
+                            />
+                          </td>
+                          <td className="py-2.5 px-4 text-center">
+                            <div className="inline-flex items-center gap-1 justify-center">
+                              <input
+                                type="text"
+                                value={term.discount}
+                                onChange={(e) => {
+                                  const next = [...editingTerms];
+                                  next[idx].discount = e.target.value;
+                                  setEditingTerms(next);
+                                }}
+                                className="w-12 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center focus:outline-none focus:border-blue-500 text-xs font-bold text-slate-900"
+                              />
+                              <span className="text-slate-400 font-bold">%</span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-4 text-center">
+                            {term.isDefault ? (
+                              <span className="px-3 py-1 bg-blue-600 text-white font-extrabold rounded-lg text-[10px] inline-block shadow-2xs">
+                                Default
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = editingTerms.map((t, i) => ({
+                                    ...t,
+                                    isDefault: i === idx
+                                  }));
+                                  setEditingTerms(next);
+                                }}
+                                className="text-blue-700 hover:text-blue-800 font-bold text-xs hover:underline cursor-pointer"
+                              >
+                                Mark as Default
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Add New Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingTerms([
+                      ...editingTerms,
+                      {
+                        id: `term-${Date.now()}`,
+                        name: "New Term",
+                        days: "30",
+                        discount: "0",
+                        isDefault: false
+                      }
+                    ]);
+                  }}
+                  className="text-blue-700 hover:text-blue-800 font-extrabold text-xs flex items-center gap-1 transition-colors cursor-pointer py-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add New</span>
+                </button>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsConfigureTermsOpen(false)}
+                  className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200 text-xs transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  disabled={isSaving}
-                  onClick={handleSaveVendor}
-                  className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-md flex items-center gap-2 transition-all ${
-                    isSaving
-                      ? "bg-blue-400 text-white cursor-not-allowed pointer-events-none opacity-80"
-                      : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95"
-                  }`}
+                  onClick={() => {
+                    setPaymentTermsOptions(editingTerms);
+                    const defaultItem = editingTerms.find((t) => t.isDefault);
+                    if (defaultItem) {
+                      setFormPaymentTerms(defaultItem.name);
+                    }
+                    setIsConfigureTermsOpen(false);
+                  }}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs shadow-md transition-all cursor-pointer active:scale-95"
                 >
-                  {isSaving ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>{t("Saving Party...")}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      <span>{t("Save Party")}</span>
-                    </>
-                  )}
+                  Save
                 </button>
-              </>
-            }
-          />
-
-          {/* CONFIGURE PAYMENT TERMS MODAL (MATCHING USER SCREENSHOT 5) */}
-          {isConfigureTermsOpen && (
-            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-              <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-150">
-                {/* Modal Header */}
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                  <h3 className="font-extrabold text-slate-800 text-sm sm:text-base">Configure Payment Terms</h3>
-                  <button
-                    type="button"
-                    onClick={() => setIsConfigureTermsOpen(false)}
-                    className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* Modal Body / Table */}
-                <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto text-xs">
-                  <div className="border border-slate-200 rounded-xl overflow-hidden">
-                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-slate-50 text-[11px] font-extrabold text-slate-600 uppercase border-b border-slate-200">
-                        <tr>
-                          <th className="py-2.5 px-4">TERM NAME</th>
-                          <th className="py-2.5 px-4 text-center">NUMBER OF DAYS</th>
-                          <th className="py-2.5 px-4 text-center">LESS (%)</th>
-                          <th className="py-2.5 px-4 text-center">ACTION</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 text-slate-800 font-medium">
-                        {editingTerms.map((term, idx) => (
-                          <tr key={term.id || idx} className="hover:bg-slate-50/50">
-                            <td className="py-2.5 px-4 font-bold">
-                              <input
-                                type="text"
-                                value={term.name}
-                                onChange={(e) => {
-                                  const next = [...editingTerms];
-                                  next[idx].name = e.target.value;
-                                  setEditingTerms(next);
-                                }}
-                                className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-xs font-bold text-slate-900"
-                              />
-                            </td>
-                            <td className="py-2.5 px-4 text-center">
-                              <input
-                                type="text"
-                                value={term.days}
-                                onChange={(e) => {
-                                  const next = [...editingTerms];
-                                  next[idx].days = e.target.value;
-                                  setEditingTerms(next);
-                                }}
-                                className="w-20 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center focus:outline-none focus:border-blue-500 text-xs font-semibold text-slate-700 mx-auto"
-                              />
-                            </td>
-                            <td className="py-2.5 px-4 text-center">
-                              <div className="inline-flex items-center gap-1 justify-center">
-                                <input
-                                  type="text"
-                                  value={term.discount}
-                                  onChange={(e) => {
-                                    const next = [...editingTerms];
-                                    next[idx].discount = e.target.value;
-                                    setEditingTerms(next);
-                                  }}
-                                  className="w-12 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center focus:outline-none focus:border-blue-500 text-xs font-bold text-slate-900"
-                                />
-                                <span className="text-slate-400 font-bold">%</span>
-                              </div>
-                            </td>
-                            <td className="py-2.5 px-4 text-center">
-                              {term.isDefault ? (
-                                <span className="px-3 py-1 bg-blue-600 text-white font-extrabold rounded-lg text-[10px] inline-block shadow-2xs">
-                                  Default
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const next = editingTerms.map((t, i) => ({
-                                      ...t,
-                                      isDefault: i === idx
-                                    }));
-                                    setEditingTerms(next);
-                                  }}
-                                  className="text-blue-700 hover:text-blue-800 font-bold text-xs hover:underline cursor-pointer"
-                                >
-                                  Mark as Default
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Add New Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingTerms([
-                        ...editingTerms,
-                        {
-                          id: `term-${Date.now()}`,
-                          name: "New Term",
-                          days: "30",
-                          discount: "0",
-                          isDefault: false
-                        }
-                      ]);
-                    }}
-                    className="text-blue-700 hover:text-blue-800 font-extrabold text-xs flex items-center gap-1 transition-colors cursor-pointer py-1"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Add New</span>
-                  </button>
-                </div>
-
-                {/* Modal Footer */}
-                <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsConfigureTermsOpen(false)}
-                    className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200 text-xs transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentTermsOptions(editingTerms);
-                      const defaultItem = editingTerms.find((t) => t.isDefault);
-                      if (defaultItem) {
-                        setFormPaymentTerms(defaultItem.name);
-                      }
-                      setIsConfigureTermsOpen(false);
-                    }}
-                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs shadow-md transition-all cursor-pointer active:scale-95"
-                  >
-                    Save
-                  </button>
-                </div>
               </div>
             </div>
-          )}
-        </div>
-      );
-    }
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // DEFAULT VIEW: VENDORS TABLE LIST PAGE (MATCHING PARTIES PAGE DESIGN)
   if (!hasMounted) return null;
@@ -2118,13 +2113,13 @@ export default function VendorsPage() {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
         {/* Left Side: Search Input */}
         <div className="relative w-full md:w-72">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="Search Name, GST, Phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-9 pl-8 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-medium shadow-2xs hover:border-blue-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-colors"
+            className="w-full h-10 pl-10 pr-3.5 bg-white border border-[#d0d5dd] rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 shadow-xs hover:border-slate-400 focus:outline-none focus:border-[#12b76a] focus:ring-4 focus:ring-[#12b76a]/15 transition-all"
           />
         </div>
 
@@ -2169,360 +2164,350 @@ export default function VendorsPage() {
             <button
               type="button"
               onClick={openNewVendorForm}
-              className="flex-1 sm:flex-none h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
+              className="flex-1 sm:flex-none h-10 px-4 bg-[#12b76a] hover:bg-[#0e9f5d] text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>{t("New Party")}</span>
             </button>
 
             {/* Action Menu (Three Dots Button matching screenshots) */}
             <div ref={actionMenuRef} className="relative inline-block shrink-0">
 
-            <button
-              type="button"
-              onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
-              className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer shadow-2xs ${
-                isActionMenuOpen
-                  ? "bg-blue-50 border-blue-500 text-blue-700 ring-2 ring-blue-500/20"
-                  : "bg-white hover:bg-slate-100 border-slate-300 text-slate-600"
-              }`}
-              title="More Actions & Filters"
-            >
-              <MoreHorizontal className="w-4 h-4" />
-            </button>
-
-            {isActionMenuOpen && (
-              <div
-                className="absolute right-0 top-full mt-2 z-50 bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-2 sm:p-2.5 w-[260px] sm:w-[360px] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150 font-sans"
+              <button
+                type="button"
+                onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
+                className={`h-10 w-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer shadow-xs ${isActionMenuOpen
+                  ? "bg-emerald-50 border-[#12b76a] text-[#12b76a] ring-4 ring-[#12b76a]/15"
+                  : "bg-white hover:bg-slate-50 border-[#d0d5dd] text-slate-700"
+                  }`}
+                title="More Actions & Filters"
               >
-                {/* Mobile Single Column (< sm) */}
-                <div className="block sm:hidden space-y-2 text-xs">
-                  <div>
-                    <div className="px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                      Sort Vendors
-                    </div>
-                    <div className="space-y-1 mt-0.5">
-                      {[
-                        { id: "name", label: "Name" },
-                        { id: "created", label: "Created Time" },
-                        { id: "modified", label: "Last Modified" }
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => {
-                            if (sortBy === item.id) {
-                              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                            } else {
-                              setSortBy(item.id as any);
-                              setSortOrder("asc");
-                            }
-                            setIsActionMenuOpen(false);
-                          }}
-                          className={`w-full text-left px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-between text-xs ${
-                            sortBy === item.id
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+
+              {isActionMenuOpen && (
+                <div
+                  className="absolute right-0 top-full mt-2 z-50 bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-2 sm:p-2.5 w-[260px] sm:w-[360px] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150 font-sans"
+                >
+                  {/* Mobile Single Column (< sm) */}
+                  <div className="block sm:hidden space-y-2 text-xs">
+                    <div>
+                      <div className="px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        Sort Vendors
+                      </div>
+                      <div className="space-y-1 mt-0.5">
+                        {[
+                          { id: "name", label: "Name" },
+                          { id: "created", label: "Created Time" },
+                          { id: "modified", label: "Last Modified" }
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              if (sortBy === item.id) {
+                                setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                              } else {
+                                setSortBy(item.id as any);
+                                setSortOrder("asc");
+                              }
+                              setIsActionMenuOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-between text-xs ${sortBy === item.id
                               ? "bg-blue-600 text-white font-bold shadow-2xs"
                               : "text-slate-700 hover:bg-slate-100 font-medium"
-                          }`}
-                        >
-                          <span>{item.label}</span>
-                          {sortBy === item.id && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 shrink-0" />}
-                        </button>
-                      ))}
+                              }`}
+                          >
+                            <span>{item.label}</span>
+                            {sortBy === item.id && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-1.5 space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleExportCSV();
+                          setIsActionMenuOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-slate-700 hover:bg-slate-100 font-semibold rounded-xl text-xs flex items-center gap-2 cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Export CSV</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleRefreshList();
+                          setIsActionMenuOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 bg-blue-50 text-blue-950 font-bold rounded-xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs flex items-center justify-between transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <RefreshCw className={`w-3.5 h-3.5 text-blue-700 ${isRefreshing ? "animate-spin" : ""}`} />
+                          <span>Refresh List</span>
+                        </div>
+                        <Check className="w-3.5 h-3.5 text-blue-600" />
+                      </button>
                     </div>
                   </div>
 
-                  <div className="border-t border-slate-100 pt-1.5 space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleExportCSV();
-                        setIsActionMenuOpen(false);
-                      }}
-                      className="w-full text-left px-3 py-2 text-slate-700 hover:bg-slate-100 font-semibold rounded-xl text-xs flex items-center gap-2 cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Export CSV</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleRefreshList();
-                        setIsActionMenuOpen(false);
-                      }}
-                      className="w-full text-left px-3 py-2 bg-blue-50 text-blue-950 font-bold rounded-xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs flex items-center justify-between transition-all cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <RefreshCw className={`w-3.5 h-3.5 text-blue-700 ${isRefreshing ? "animate-spin" : ""}`} />
-                        <span>Refresh List</span>
-                      </div>
-                      <Check className="w-3.5 h-3.5 text-blue-600" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Desktop Split-Panel Menu (sm and above) */}
-                <div
-                  className="hidden sm:flex items-stretch divide-x divide-slate-100"
-                  onMouseLeave={() => setActiveHoverMenu(null)}
-                >
-                  {/* Left Sub-Panel: Dynamic options based on hovered menu item */}
-                  <div className="w-1/2 pr-2.5 flex flex-col justify-start gap-1">
-                    {(!activeHoverMenu || activeHoverMenu === "sort") && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (sortBy === "name") {
-                              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                            } else {
-                              setSortBy("name");
-                              setSortOrder("asc");
-                            }
-                          }}
-                          className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
-                            sortBy === "name"
+                  {/* Desktop Split-Panel Menu (sm and above) */}
+                  <div
+                    className="hidden sm:flex items-stretch divide-x divide-slate-100"
+                    onMouseLeave={() => setActiveHoverMenu(null)}
+                  >
+                    {/* Left Sub-Panel: Dynamic options based on hovered menu item */}
+                    <div className="w-1/2 pr-2.5 flex flex-col justify-start gap-1">
+                      {(!activeHoverMenu || activeHoverMenu === "sort") && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (sortBy === "name") {
+                                setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                              } else {
+                                setSortBy("name");
+                                setSortOrder("asc");
+                              }
+                            }}
+                            className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${sortBy === "name"
                               ? "bg-blue-600 text-white font-bold shadow-md"
                               : "text-slate-700 hover:bg-slate-100 font-medium"
+                              }`}
+                          >
+                            <span>Name</span>
+                            <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (sortBy === "created") {
+                                setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                              } else {
+                                setSortBy("created");
+                                setSortOrder("asc");
+                              }
+                            }}
+                            className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${sortBy === "created"
+                              ? "bg-blue-600 text-white font-bold shadow-md"
+                              : "text-slate-700 hover:bg-slate-100 font-medium"
+                              }`}
+                          >
+                            <span>Created Time</span>
+                            {sortBy === "created" && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (sortBy === "modified") {
+                                setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                              } else {
+                                setSortBy("modified");
+                                setSortOrder("asc");
+                              }
+                            }}
+                            className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${sortBy === "modified"
+                              ? "bg-blue-600 text-white font-bold shadow-md"
+                              : "text-slate-700 hover:bg-slate-100 font-medium"
+                              }`}
+                          >
+                            <span>Last Modified Time</span>
+                            {sortBy === "modified" && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />}
+                          </button>
+                        </>
+                      )}
+
+                      {activeHoverMenu === "import" && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsActionMenuOpen(false);
+                              setIsImportModalOpen(true);
+                            }}
+                            className="w-full text-left px-3.5 py-2.5 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer flex items-center justify-between"
+                          >
+                            <span>Import Excel / CSV</span>
+                            <Upload className="w-3.5 h-3.5 text-emerald-700" />
+                          </button>
+                        </>
+                      )}
+
+                      {activeHoverMenu === "export" && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleExportCSV}
+                            className="w-full text-left px-3.5 py-2.5 bg-blue-50 text-blue-950 font-bold rounded-2xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs transition-all cursor-pointer"
+                          >
+                            <span>Export CSV File</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleExportCSV}
+                            className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                          >
+                            <span>Export Excel Sheet</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleExportCSV}
+                            className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                          >
+                            <span>Export Filtered Data</span>
+                          </button>
+                        </>
+                      )}
+
+                      {activeHoverMenu === "preferences" && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setIsActionMenuOpen(false)}
+                            className="w-full text-left px-3.5 py-2.5 bg-blue-50 text-blue-950 font-bold rounded-2xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs transition-all cursor-pointer"
+                          >
+                            <span>Column Visibility</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsActionMenuOpen(false)}
+                            className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                          >
+                            <span>Dense Row Height</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsActionMenuOpen(false)}
+                            className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                          >
+                            <span>Reset Grid Layout</span>
+                          </button>
+                        </>
+                      )}
+
+                      {activeHoverMenu === "refresh" && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleRefreshList}
+                            className="w-full text-left px-3.5 py-2.5 bg-blue-50 text-blue-950 font-bold rounded-2xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs transition-all cursor-pointer"
+                          >
+                            <span>Refresh List</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFilterAccountType("ALL");
+                              setFilterMsme("ALL");
+                              setSearch("");
+                              setIsActionMenuOpen(false);
+                            }}
+                            className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                          >
+                            <span>Reset All Filters</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Right Panel: Main Actions List */}
+                    <div className="w-1/2 pl-2.5 flex flex-col gap-1 text-xs text-slate-700 font-semibold">
+                      <div
+                        onMouseEnter={() => setActiveHoverMenu("sort")}
+                        onClick={() => setActiveHoverMenu(activeHoverMenu === "sort" ? null : "sort")}
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${activeHoverMenu === "sort" || !activeHoverMenu
+                          ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
+                          : "hover:bg-slate-100 text-slate-700"
                           }`}
-                        >
-                          <span>Name</span>
-                          <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />
-                        </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (sortBy === "created") {
-                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                          } else {
-                            setSortBy("created");
-                            setSortOrder("asc");
-                          }
-                        }}
-                        className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
-                          sortBy === "created"
-                            ? "bg-blue-600 text-white font-bold shadow-md"
-                            : "text-slate-700 hover:bg-slate-100 font-medium"
-                        }`}
                       >
-                        <span>Created Time</span>
-                        {sortBy === "created" && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />}
-                      </button>
+                        <div className="flex items-center gap-2">
+                          <ArrowUpDown className="w-3.5 h-3.5 text-blue-700" />
+                          <span>Sort by</span>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-blue-700" />
+                      </div>
 
                       <button
                         type="button"
-                        onClick={() => {
-                          if (sortBy === "modified") {
-                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                          } else {
-                            setSortBy("modified");
-                            setSortOrder("asc");
-                          }
-                        }}
-                        className={`w-full text-left px-3.5 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between text-xs ${
-                          sortBy === "modified"
-                            ? "bg-blue-600 text-white font-bold shadow-md"
-                            : "text-slate-700 hover:bg-slate-100 font-medium"
-                        }`}
-                      >
-                        <span>Last Modified Time</span>
-                        {sortBy === "modified" && <ArrowUpDown className="w-3.5 h-3.5 opacity-90 ml-1 shrink-0" />}
-                      </button>
-                    </>
-                  )}
-
-                  {activeHoverMenu === "import" && (
-                    <>
-                      <button
-                        type="button"
+                        onMouseEnter={() => setActiveHoverMenu("import")}
                         onClick={() => {
                           setIsActionMenuOpen(false);
                           setIsImportModalOpen(true);
                         }}
-                        className="w-full text-left px-3.5 py-2.5 bg-emerald-50 text-emerald-950 font-bold rounded-2xl border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 text-xs transition-all cursor-pointer flex items-center justify-between"
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${activeHoverMenu === "import"
+                          ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
+                          : "hover:bg-slate-100 text-slate-700"
+                          }`}
                       >
-                        <span>Import Excel / CSV</span>
-                        <Upload className="w-3.5 h-3.5 text-emerald-700" />
+                        <div className="flex items-center gap-2">
+                          <Upload className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Import</span>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                       </button>
-                    </>
-                  )}
 
-                  {activeHoverMenu === "export" && (
-                    <>
                       <button
                         type="button"
+                        onMouseEnter={() => setActiveHoverMenu("export")}
                         onClick={handleExportCSV}
-                        className="w-full text-left px-3.5 py-2.5 bg-blue-50 text-blue-950 font-bold rounded-2xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs transition-all cursor-pointer"
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${activeHoverMenu === "export"
+                          ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
+                          : "hover:bg-slate-100 text-slate-700"
+                          }`}
                       >
-                        <span>Export CSV File</span>
+                        <div className="flex items-center gap-2">
+                          <Download className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Export</span>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={handleExportCSV}
-                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
-                      >
-                        <span>Export Excel Sheet</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleExportCSV}
-                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
-                      >
-                        <span>Export Filtered Data</span>
-                      </button>
-                    </>
-                  )}
 
-                  {activeHoverMenu === "preferences" && (
-                    <>
                       <button
                         type="button"
-                        onClick={() => setIsActionMenuOpen(false)}
-                        className="w-full text-left px-3.5 py-2.5 bg-blue-50 text-blue-950 font-bold rounded-2xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs transition-all cursor-pointer"
-                      >
-                        <span>Column Visibility</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsActionMenuOpen(false)}
-                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
-                      >
-                        <span>Dense Row Height</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsActionMenuOpen(false)}
-                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
-                      >
-                        <span>Reset Grid Layout</span>
-                      </button>
-                    </>
-                  )}
-
-                  {activeHoverMenu === "refresh" && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleRefreshList}
-                        className="w-full text-left px-3.5 py-2.5 bg-blue-50 text-blue-950 font-bold rounded-2xl border border-blue-200/80 shadow-2xs hover:bg-blue-100 text-xs transition-all cursor-pointer"
-                      >
-                        <span>Refresh List</span>
-                      </button>
-                      <button
-                        type="button"
+                        onMouseEnter={() => setActiveHoverMenu("preferences")}
                         onClick={() => {
-                          setFilterAccountType("ALL");
-                          setFilterMsme("ALL");
-                          setSearch("");
                           setIsActionMenuOpen(false);
                         }}
-                        className="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-slate-100 font-medium rounded-2xl text-xs transition-all cursor-pointer"
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${activeHoverMenu === "preferences"
+                          ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
+                          : "hover:bg-slate-100 text-slate-700"
+                          }`}
                       >
-                        <span>Reset All Filters</span>
+                        <div className="flex items-center gap-2">
+                          <Sliders className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Preferences</span>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                       </button>
-                    </>
-                  )}
-                </div>
 
-                {/* Right Panel: Main Actions List */}
-                <div className="w-1/2 pl-2.5 flex flex-col gap-1 text-xs text-slate-700 font-semibold">
-                  <div
-                    onMouseEnter={() => setActiveHoverMenu("sort")}
-                    onClick={() => setActiveHoverMenu(activeHoverMenu === "sort" ? null : "sort")}
-                    className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
-                      activeHoverMenu === "sort" || !activeHoverMenu
-                        ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
-                        : "hover:bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <ArrowUpDown className="w-3.5 h-3.5 text-blue-700" />
-                      <span>Sort by</span>
+                      <button
+                        type="button"
+                        onMouseEnter={() => setActiveHoverMenu("refresh")}
+                        onClick={handleRefreshList}
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${activeHoverMenu === "refresh"
+                          ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
+                          : "hover:bg-slate-100 text-slate-700"
+                          }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-blue-600" : ""}`} />
+                          <span>Refresh List</span>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      </button>
                     </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-blue-700" />
                   </div>
-
-                  <button
-                    type="button"
-                    onMouseEnter={() => setActiveHoverMenu("import")}
-                    onClick={() => {
-                      setIsActionMenuOpen(false);
-                      setIsImportModalOpen(true);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
-                      activeHoverMenu === "import"
-                        ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
-                        : "hover:bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Upload className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Import</span>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onMouseEnter={() => setActiveHoverMenu("export")}
-                    onClick={handleExportCSV}
-                    className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
-                      activeHoverMenu === "export"
-                        ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
-                        : "hover:bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Download className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Export</span>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onMouseEnter={() => setActiveHoverMenu("preferences")}
-                    onClick={() => {
-                      setIsActionMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
-                      activeHoverMenu === "preferences"
-                        ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
-                        : "hover:bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Sliders className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Preferences</span>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onMouseEnter={() => setActiveHoverMenu("refresh")}
-                    onClick={handleRefreshList}
-                    className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between font-bold transition-all cursor-pointer ${
-                      activeHoverMenu === "refresh"
-                        ? "bg-blue-50 text-blue-950 font-extrabold border border-blue-200/80 shadow-2xs"
-                        : "hover:bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-blue-600" : ""}`} />
-                      <span>Refresh List</span>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                  </button>
                 </div>
-              </div>
+              )}
             </div>
-            )}
           </div>
         </div>
       </div>
-    </div>
 
       {/* VENDORS TABLE CONTAINER */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
@@ -2661,21 +2646,20 @@ export default function VendorsPage() {
                     </td>
                     <td className="py-3 px-4 text-center whitespace-nowrap border-r border-slate-200/70">
                       <span className="text-xs font-bold text-slate-800 inline-flex items-center gap-1.5">
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          normalizeAccountType(v.account_type) === "Customer"
-                            ? "bg-emerald-500"
-                            : normalizeAccountType(v.account_type) === "Dyeing & Printing Mill"
+                        <span className={`w-1.5 h-1.5 rounded-full ${normalizeAccountType(v.account_type) === "Customer"
+                          ? "bg-emerald-500"
+                          : normalizeAccountType(v.account_type) === "Dyeing & Printing Mill"
                             ? "bg-purple-500"
                             : normalizeAccountType(v.account_type) === "Job Work"
-                            ? "bg-amber-500"
-                            : normalizeAccountType(v.account_type) === "Broker"
-                            ? "bg-teal-500"
-                            : normalizeAccountType(v.account_type) === "Trading Partner"
-                            ? "bg-cyan-500"
-                            : normalizeAccountType(v.account_type) === "Internal Firm"
-                            ? "bg-slate-500"
-                            : "bg-blue-500"
-                        }`} />
+                              ? "bg-amber-500"
+                              : normalizeAccountType(v.account_type) === "Broker"
+                                ? "bg-teal-500"
+                                : normalizeAccountType(v.account_type) === "Trading Partner"
+                                  ? "bg-cyan-500"
+                                  : normalizeAccountType(v.account_type) === "Internal Firm"
+                                    ? "bg-slate-500"
+                                    : "bg-blue-500"
+                          }`} />
                         <span>{t(normalizeAccountType(v.account_type))}</span>
                       </span>
                     </td>

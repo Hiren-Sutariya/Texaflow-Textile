@@ -7,6 +7,7 @@ import { getTenantItem, setTenantItem, getStoredCompanyId } from "@/lib/tenantSt
 import { getStoredCompanySettings, fetchLiveCompanySettings, CompanySettings, getFieldLabel } from "@/lib/companySettings";
 import { useLanguage } from "@/context/LanguageContext";
 import { getDueStatus, calculateDueDate, parseAnyDate } from "@/lib/creditTerms";
+import { CourtFlowKpiCard, CourtFlowBadge, CourtFlowActionMenu } from "@/components/courtflow";
 import {
   Plus,
   Search,
@@ -74,21 +75,23 @@ function CustomSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-9 px-3 bg-white border border-slate-300 rounded-xl flex items-center justify-between shadow-2xs hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer ${isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : ""
+        className={`w-full h-10 px-3.5 bg-white border rounded-xl flex items-center justify-between text-xs font-medium transition-all shadow-xs cursor-pointer focus:outline-none ${isOpen
+          ? "border-[#12b76a] text-slate-900 ring-4 ring-[#12b76a]/15"
+          : "border-[#d0d5dd] hover:border-slate-400 text-slate-800"
           }`}
       >
-        <span className={`truncate font-bold ${selectedOption ? "text-slate-900" : "text-slate-400"}`}>
+        <span className={`truncate ${selectedOption ? "font-semibold text-slate-900" : "font-normal text-slate-400"}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${isOpen ? "rotate-180 text-blue-600" : ""
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180 text-[#12b76a]" : ""
             }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 left-0 min-w-full w-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
-          <div className="max-h-60 overflow-y-auto no-scrollbar space-y-1">
+        <div className="absolute z-50 left-0 min-w-full w-full mt-1.5 bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-900/10 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+          <div className="max-h-60 overflow-y-auto no-scrollbar space-y-0.5">
             {options.map((opt) => {
               const isSelected = opt.value === value;
               return (
@@ -99,13 +102,13 @@ function CustomSelect({
                     onChange(opt.value);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer border ${isSelected
-                      ? "bg-blue-50 text-blue-950 font-extrabold border-blue-500 shadow-2xs"
-                      : "text-slate-800 hover:bg-slate-50 hover:border-slate-300 font-medium border-slate-200 bg-white"
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${isSelected
+                    ? "text-[#12b76a] font-semibold bg-emerald-50/60"
+                    : "text-slate-700 hover:bg-slate-50 font-medium"
                     }`}
                 >
                   <span className="truncate">{opt.label}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
+                  {isSelected && <Check className="w-4 h-4 text-[#12b76a] shrink-0 ml-2 stroke-[2.5]" />}
                 </button>
               );
             })}
@@ -684,7 +687,7 @@ export default function PurchasesPage() {
       if (Array.isArray(stored) && stored.length > 0) {
         return Array.from(new Set(stored.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean)));
       }
-    } catch {}
+    } catch { }
     return [];
   };
 
@@ -717,7 +720,7 @@ export default function PurchasesPage() {
         } else {
           setMaterialCategoriesList([]);
         }
-      } catch {}
+      } catch { }
     };
     loadCats();
     window.addEventListener("texaflow_material_categories_changed", loadCats);
@@ -946,87 +949,60 @@ export default function PurchasesPage() {
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto select-none pb-12">
-      {/* 4 Stat KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* CARD 1: TOTAL PURCHASES */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
-              {t("TOTAL PURCHASES")}
-            </p>
-            <p className="text-xl font-black text-slate-900 mt-0.5">
-              ₹{totalPurchasesAmount.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-            <ShoppingCart className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* CARD 2: PENDING CREDIT */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider truncate">
-              {t("PENDING CREDIT")}
-            </p>
-            <p className="text-xl font-black text-amber-600 mt-0.5">
-              ₹{pendingCreditAmount.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
-            <Clock className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* CARD 3: OVERDUE BILLS */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider truncate">
-              {t("OVERDUE BILLS")}
-            </p>
-            <p className={`text-xl font-black ${overdueCount > 0 ? "text-rose-600" : "text-slate-900"} mt-0.5`}>
-              {overdueCount}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
-            <AlertTriangle className="w-4 h-4" />
-          </div>
-        </div>
-
-        {/* CARD 4: PAID / SETTLED */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider truncate">
-              {t("PAID / SETTLED")}
-            </p>
-            <p className="text-xl font-black text-emerald-600 mt-0.5">
-              {purchases.length - pendingCreditPurchases.length}
-            </p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-            <CheckCircle2 className="w-4 h-4" />
-          </div>
-        </div>
+      {/* 4 Stat KPI Cards matching Image 7 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <CourtFlowKpiCard
+          label={t("Total Purchases")}
+          value={`₹${totalPurchasesAmount.toLocaleString("en-IN")}`}
+          iconBgColor="bg-[#f4f3ff] text-[#7f56d9]"
+          trend={`₹${totalPurchasesAmount.toLocaleString("en-IN")} total`}
+          trendPositive={true}
+          icon={<ShoppingCart className="w-5 h-5 text-purple-600" />}
+        />
+        <CourtFlowKpiCard
+          label={t("Pending Credit")}
+          value={`₹${pendingCreditAmount.toLocaleString("en-IN")}`}
+          iconBgColor="bg-[#fff4ed] text-[#fb6514]"
+          trend={`${pendingCreditPurchases.length} bills pending`}
+          trendPositive={pendingCreditPurchases.length === 0}
+          icon={<Clock className="w-5 h-5 text-amber-600" />}
+        />
+        <CourtFlowKpiCard
+          label={t("Overdue Bills")}
+          value={overdueCount}
+          iconBgColor="bg-[#fef3f2] text-[#f04438]"
+          trend={overdueCount > 0 ? "Requires payment attention" : "All bills on schedule"}
+          trendPositive={overdueCount === 0}
+          icon={<AlertTriangle className="w-5 h-5 text-rose-600" />}
+        />
+        <CourtFlowKpiCard
+          label={t("Paid / Settled")}
+          value={purchases.length - pendingCreditPurchases.length}
+          iconBgColor="bg-[#edfcf2] text-[#12b76a]"
+          trend="Cleared purchase vouchers"
+          trendPositive={true}
+          icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+        />
       </div>
 
 
 
       {/* Filters & Actions Bar */}
-      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
+      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder={t("Search by supplier, bill no, material, choli order...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-9 pl-9 pr-3 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+            className="w-full h-10 pl-10 pr-3.5 bg-white border border-[#d0d5dd] rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 shadow-xs hover:border-slate-400 focus:outline-none focus:border-[#12b76a] focus:ring-4 focus:ring-[#12b76a]/15 transition-all"
           />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Status Dropdown (Matching Image 3) */}
-          <div className="w-40 shrink-0">
+          {/* Status Dropdown (Matching CourtFlow Image 5 & 10) */}
+          <div className="w-44 shrink-0">
             <CustomSelect
               value={statusFilter}
               onChange={(val) => setStatusFilter(val as any)}
@@ -1040,8 +1016,8 @@ export default function PurchasesPage() {
             />
           </div>
 
-          {/* Category Dropdown (Matching Image 3) */}
-          <div className="w-40 shrink-0">
+          {/* Category Dropdown (Matching CourtFlow Image 5 & 10) */}
+          <div className="w-44 shrink-0">
             <CustomSelect
               value={selectedCategory}
               onChange={(val) => setSelectedCategory(val)}
@@ -1052,12 +1028,12 @@ export default function PurchasesPage() {
             />
           </div>
 
-          {/* New Purchase Bill Button (Single + Icon) */}
+          {/* New Purchase Bill Button (Green #12b76a matching CourtFlow Image 7) */}
           <Link
             href="/purchases/new"
-            className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+            className="h-10 px-4 bg-[#12b76a] hover:bg-[#0e9f5d] text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>{t("New Purchase Bill")}</span>
           </Link>
         </div>
@@ -1080,15 +1056,14 @@ export default function PurchasesPage() {
                 <div key={item.id} className="p-3.5 bg-white rounded-2xl border border-slate-200 space-y-2.5 shadow-2xs">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-mono font-bold text-slate-500">{item.date}</span>
-                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${
-                      dueInfo.isBillPending
-                        ? "text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200"
-                        : dueInfo.isPaid
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${dueInfo.isBillPending
+                      ? "text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200"
+                      : dueInfo.isPaid
                         ? "text-emerald-600"
                         : dueInfo.isOverdue
-                        ? "text-rose-600"
-                        : "text-amber-600"
-                    }`}>
+                          ? "text-rose-600"
+                          : "text-amber-600"
+                      }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${dueInfo.isBillPending ? "bg-amber-500 animate-pulse" : dueInfo.isPaid ? "bg-emerald-500" : dueInfo.isOverdue ? "bg-rose-600" : "bg-amber-500"}`}></span>
                       <span>{dueInfo.isBillPending ? t("Bill Pending") : dueInfo.isPaid ? t("Paid") : dueInfo.isOverdue ? t("Overdue") : t("Pending / Credit")}</span>
                     </span>
@@ -1142,9 +1117,8 @@ export default function PurchasesPage() {
                       <Calendar className="w-3.5 h-3.5 text-slate-500" />
                       {t("Due")}: {item.due_date || (item.credit_days ? calculateDueDate(item.date, item.credit_days) : item.date)}
                     </span>
-                    <span className={`font-mono text-xs font-bold inline-flex items-center gap-1 ${
-                      dueInfo.isPaid ? "text-emerald-600" : dueInfo.isOverdue ? "text-rose-600" : "text-amber-700"
-                    }`}>
+                    <span className={`font-mono text-xs font-bold inline-flex items-center gap-1 ${dueInfo.isPaid ? "text-emerald-600" : dueInfo.isOverdue ? "text-rose-600" : "text-amber-700"
+                      }`}>
                       <Clock className="w-3.5 h-3.5" />
                       <span>{dueInfo.text}</span>
                     </span>
@@ -1181,70 +1155,69 @@ export default function PurchasesPage() {
           )}
         </div>
 
-        {/* Desktop Table View (>= md) - Clean, Modern Space Allocation */}
+        {/* Desktop Table View (>= md) - Clean CourtFlow Table matching Image 2 */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs table-fixed min-w-[1250px]">
             <thead>
-              <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+              <tr className="bg-white border-b border-[#eaecf0] text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                 {/* 1. DATE */}
-                <th className="py-2.5 px-2.5 w-[7%] border-r border-slate-200/80">{t("DATE")}</th>
+                <th className="py-3.5 px-3 w-[7%]">{t("DATE")}</th>
                 {/* 2. BILL / CHALLAN NO */}
-                <th className="py-2.5 px-2 w-[7.5%] border-r border-slate-200/80">
+                <th className="py-3.5 px-2.5 w-[7.5%]">
                   {getFieldLabel(companySettings, "purchase_bill_no", t("CHALLAN NO"))}
                 </th>
                 {/* 3. SUPPLIER / MILL */}
-                <th className="py-2.5 px-2.5 w-[14.5%] border-r border-slate-200/80">
+                <th className="py-3.5 px-3 w-[14.5%]">
                   {getFieldLabel(companySettings, "purchase_supplier", t("SUPPLIER / MILL"))}
                 </th>
                 {/* 4. CATEGORY */}
-                <th className="py-2.5 px-2 w-[10.5%] border-r border-slate-200/80">
+                <th className="py-3.5 px-2.5 w-[10.5%]">
                   {getFieldLabel(companySettings, "item_name", t("CATEGORY"))}
                 </th>
                 {/* 5. ITEM */}
-                <th className="py-2.5 px-1.5 text-center w-[4.5%] border-r border-slate-200/80">
+                <th className="py-3.5 px-2 text-center w-[4.5%]">
                   {getFieldLabel(companySettings, "item_unit", t("ITEM"))}
                 </th>
                 {/* 6. QUANTITY */}
-                <th className="py-2.5 px-1.5 text-center w-[6.5%] border-r border-slate-200/80">
+                <th className="py-3.5 px-2 text-center w-[6.5%]">
                   {getFieldLabel(companySettings, "purchase_qty", t("QUANTITY"))}
                 </th>
                 {/* 7. WEIGHT */}
-                <th className="py-2.5 px-1.5 text-center w-[5%] border-r border-slate-200/80">
+                <th className="py-3.5 px-2 text-center w-[5%]">
                   {getFieldLabel(companySettings, "weight", t("WEIGHT"))}
                 </th>
                 {/* KG */}
-                <th className="py-2.5 px-1.5 text-center w-[5%] border-r border-slate-200/80">
+                <th className="py-3.5 px-2 text-center w-[5%]">
                   {getFieldLabel(companySettings, "kg", t("KG"))}
                 </th>
                 {/* 8. CARTOON */}
-                <th className="py-2.5 px-1.5 text-center w-[4.5%] border-r border-slate-200/80">
+                <th className="py-3.5 px-2 text-center w-[4.5%]">
                   {getFieldLabel(companySettings, "cartoon", t("CARTOON"))}
                 </th>
                 {/* 9. RATE (₹) */}
-                <th className="py-2.5 px-2 text-right w-[7%] border-r border-slate-200/80">
+                <th className="py-3.5 px-2.5 text-right w-[7%]">
                   {getFieldLabel(companySettings, "purchase_rate", t("RATE (₹)"))}
                 </th>
                 {/* 10. GST (%) */}
-                <th className="py-2.5 px-1.5 text-center w-[5.5%] border-r border-slate-200/80">
+                <th className="py-3.5 px-2 text-center w-[5.5%]">
                   {t("GST (%)")}
                 </th>
                 {/* 11. AMOUNT (₹) */}
-                <th className="py-2.5 px-2 text-right w-[8.5%] border-r border-slate-200/80">
+                <th className="py-3.5 px-2.5 text-right w-[8.5%]">
                   {getFieldLabel(companySettings, "purchase_total", t("AMOUNT (₹)"))}
                 </th>
                 {/* 12. DUE (DAYS) */}
-                <th className="py-2.5 px-1.5 text-center w-[7.5%] border-r border-slate-200/80">{t("DUE (DAYS)")}</th>
+                <th className="py-3.5 px-2 text-center w-[7.5%]">{t("DUE (DAYS)")}</th>
                 {/* 13. STATUS */}
-                <th className="py-2.5 px-2 text-center w-[8%] border-r border-slate-200/80">{t("STATUS")}</th>
+                <th className="py-3.5 px-2.5 text-center w-[8%]">{t("STATUS")}</th>
                 {/* 14. ACTION */}
-                <th className="py-2.5 px-2 text-center w-[6.5%]">{t("ACTION")}</th>
+                <th className="py-3.5 px-2 text-center w-[6.5%]">{t("ACTION")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
               {filteredPurchases.length === 0 ? (
                 <tr>
                   <td colSpan={14} className="py-12 text-center text-slate-400 font-medium">
-
                     {t('No delivery challans found matching your filters. Click "+ New Purchase Bill" to add.')}
                   </td>
                 </tr>
@@ -1254,28 +1227,26 @@ export default function PurchasesPage() {
                   return (
                     <tr
                       key={item.id}
-                      className={`transition-colors group ${
-                        dueInfo.isOverdue ? "hover:bg-red-50/60" : "hover:bg-slate-50"
-                      }`}
+                      className="hover:bg-slate-50/70 border-b border-slate-100 transition-colors group"
                     >
                       {/* 1. DATE */}
-                      <td className="py-2.5 px-2.5 font-mono font-bold text-slate-700 whitespace-nowrap align-middle border-r border-slate-200/70">
+                      <td className="py-3 px-3 font-mono font-bold text-slate-700 whitespace-nowrap align-middle">
                         {item.date}
                       </td>
 
                       {/* 2. BILL NO */}
-                      <td className="py-2.5 px-2 whitespace-nowrap align-middle border-r border-slate-200/70">
+                      <td className="py-3 px-2.5 whitespace-nowrap align-middle">
                         <span className="font-mono text-xs font-bold text-slate-800">
                           {item.purchase_no}
                         </span>
                       </td>
 
                       {/* 3. SUPPLIER / MILL */}
-                      <td className="py-2.5 px-2.5 align-middle border-r border-slate-200/70">
+                      <td className="py-3 px-3 align-middle">
                         <Link
                           href={`/ledger?party=${encodeURIComponent(item.vendor_name)}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="font-bold text-slate-900 hover:text-blue-600 hover:underline text-xs block truncate tracking-tight transition-colors cursor-pointer"
+                          className="font-bold text-slate-900 hover:text-emerald-600 text-xs block truncate tracking-tight transition-colors cursor-pointer"
                           title={`View Ledger for ${item.vendor_name}`}
                         >
                           {item.vendor_name}
@@ -1283,42 +1254,42 @@ export default function PurchasesPage() {
                       </td>
 
                       {/* 4. CATEGORY */}
-                      <td className="py-2.5 px-2 align-middle border-r border-slate-200/70">
+                      <td className="py-3 px-2.5 align-middle">
                         <CategoryDisplayCell item={item} t={t} />
                       </td>
 
                       {/* 5. ITEM */}
-                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
+                      <td className="py-3 px-2 text-center align-middle whitespace-nowrap">
                         <ItemDescriptionDisplayCell item={item} />
                       </td>
 
                       {/* 6. QUANTITY */}
-                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
+                      <td className="py-3 px-2 text-center align-middle whitespace-nowrap">
                         <QuantityDisplayCell item={item} />
                       </td>
 
                       {/* 7. WEIGHT */}
-                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
+                      <td className="py-3 px-2 text-center align-middle whitespace-nowrap">
                         <WeightDisplayCell item={item} />
                       </td>
 
                       {/* KG */}
-                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
+                      <td className="py-3 px-2 text-center align-middle whitespace-nowrap">
                         <KgDisplayCell item={item} />
                       </td>
 
                       {/* 8. CARTOON */}
-                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
+                      <td className="py-3 px-2 text-center align-middle whitespace-nowrap">
                         <CartoonDisplayCell item={item} />
                       </td>
 
                       {/* 9. RATE (₹) */}
-                      <td className="py-2.5 px-2 text-right align-middle whitespace-nowrap font-mono font-bold text-slate-800 text-xs tracking-tight border-r border-slate-200/70">
+                      <td className="py-3 px-2.5 text-right align-middle whitespace-nowrap font-mono font-bold text-slate-800 text-xs tracking-tight">
                         <RateDisplayCell item={item} />
                       </td>
 
                       {/* 10. GST (%) */}
-                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
+                      <td className="py-3 px-2 text-center align-middle whitespace-nowrap">
                         {item.tax_mode && item.tax_mode !== "none" && Number(item.tax_rate || 0) > 0 ? (
                           <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
                             {item.tax_rate}%
@@ -1329,13 +1300,12 @@ export default function PurchasesPage() {
                       </td>
 
                       {/* 11. AMOUNT (₹) */}
-                      <td className="py-2.5 px-2 text-right align-middle whitespace-nowrap font-mono font-black text-slate-950 text-xs tracking-tight border-r border-slate-200/70">
+                      <td className="py-3 px-2.5 text-right align-middle whitespace-nowrap font-mono font-black text-slate-950 text-xs tracking-tight">
                         ₹{item.amount.toLocaleString("en-IN")}
                       </td>
 
-
-                      {/* 11. DUE (DAYS) */}
-                      <td className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
+                      {/* 12. DUE (DAYS) */}
+                      <td className="py-3 px-2 text-center align-middle whitespace-nowrap">
                         {dueInfo.isBillPending ? (
                           <span className="text-xs font-bold text-amber-700 inline-flex items-center gap-1 justify-center">
                             <span>-</span>
@@ -1350,11 +1320,6 @@ export default function PurchasesPage() {
                             <Clock className="w-3 h-3 text-rose-600" />
                             <span>{dueInfo.text}</span>
                           </span>
-                        ) : dueInfo.isDueToday ? (
-                          <span className="font-mono text-xs font-bold text-amber-700 inline-flex items-center gap-1 justify-center">
-                            <Clock className="w-3 h-3 text-amber-600" />
-                            <span>{t("Due Today")}</span>
-                          </span>
                         ) : (
                           <span className="font-mono text-xs font-bold text-amber-700 inline-flex items-center gap-1 justify-center">
                             <Clock className="w-3 h-3 text-amber-600" />
@@ -1363,50 +1328,36 @@ export default function PurchasesPage() {
                         )}
                       </td>
 
-                      {/* 12. STATUS */}
-                      <td className="py-2.5 px-2 text-center align-middle whitespace-nowrap border-r border-slate-200/70">
-                        {dueInfo.isBillPending ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                            <span>{t("Bill Pending")}</span>
-                          </span>
-                        ) : dueInfo.isPaid ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            <span>{t("Paid")}</span>
-                          </span>
-                        ) : dueInfo.isOverdue ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
-                            <span>{t("Overdue")}</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                            <span>{t("Pending")}</span>
-                          </span>
-                        )}
+                      {/* 13. STATUS */}
+                      <td className="py-3 px-2.5 text-center align-middle whitespace-nowrap">
+                        <CourtFlowBadge
+                          status={
+                            dueInfo.isBillPending
+                              ? "pending"
+                              : dueInfo.isPaid
+                                ? "active"
+                                : dueInfo.isOverdue
+                                  ? "cancelled"
+                                  : "pending"
+                          }
+                          label={
+                            dueInfo.isBillPending
+                              ? t("Bill Pending")
+                              : dueInfo.isPaid
+                                ? t("Paid")
+                                : dueInfo.isOverdue
+                                  ? t("Overdue")
+                                  : t("Pending")
+                          }
+                        />
                       </td>
 
-                      {/* 13. ACTION */}
-                      <td className="py-2.5 px-2 text-center align-middle whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Link
-                            href={`/purchases/new?edit=${item.id}`}
-                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                            title={t("Edit")}
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => handleDeletePurchase(item.id, item.purchase_no)}
-                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            title={t("Delete")}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                      {/* 14. ACTION */}
+                      <td className="py-3 px-2 text-center align-middle whitespace-nowrap">
+                        <CourtFlowActionMenu
+                          onEdit={() => window.location.href = `/purchases/new?edit=${item.id}`}
+                          onDelete={() => handleDeletePurchase(item.id, item.purchase_no)}
+                        />
                       </td>
                     </tr>
                   );
