@@ -352,18 +352,16 @@ export function Sidebar({
                       href={sub.href}
                       prefetch={true}
                       onClick={() => isMobile && onClose?.()}
-                      className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs transition-all duration-150 select-none ${
-                        isSubActive
-                          ? "bg-blue-50 text-blue-700 font-bold shadow-2xs"
-                          : "text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 font-medium hover:translate-x-0.5"
-                      }`}
+                      className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs transition-all duration-150 select-none ${isSubActive
+                        ? "bg-blue-50 text-blue-700 font-bold shadow-2xs"
+                        : "text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 font-medium hover:translate-x-0.5"
+                        }`}
                     >
                       <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 shrink-0 ${
-                          isSubActive
-                            ? "bg-blue-600 text-white shadow-2xs"
-                            : "bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600"
-                        }`}
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 shrink-0 ${isSubActive
+                          ? "bg-blue-600 text-white shadow-2xs"
+                          : "bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600"
+                          }`}
                       >
                         <SubIcon className="w-3.5 h-3.5" />
                       </div>
