@@ -150,10 +150,10 @@ export default function PlatformDashboardPage() {
         <CourtFlowKpiCard
           label="Total Registered Users"
           value={data?.metrics.total_users ?? 5}
-          iconBgColor="bg-[#edfcf2] text-[#12b76a]"
+          iconBgColor="bg-blue-50 text-blue-600"
           trend="All 5 Fixed Roles"
           trendPositive={true}
-          icon={<Users className="w-5 h-5 text-emerald-600" />}
+          icon={<Users className="w-5 h-5 text-blue-600" />}
         />
         <CourtFlowKpiCard
           label="Monthly MRR"
@@ -186,14 +186,14 @@ export default function PlatformDashboardPage() {
                 <span className="text-2xl font-bold text-slate-900">
                   ₹{(data?.metrics.mrr_inr ?? 8332).toLocaleString("en-IN")}
                 </span>
-                <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
                   ↗ 12% vs last month
                 </span>
               </div>
             </div>
             <Link
               href="/platform/billing"
-              className="text-xs font-semibold text-slate-600 hover:text-emerald-600 flex items-center gap-1 transition-colors"
+              className="text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center gap-1 transition-colors"
             >
               <span>Open Analytics</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -206,8 +206,8 @@ export default function PlatformDashboardPage() {
               <svg className="w-full h-full overflow-visible" viewBox="0 0 600 140" preserveAspectRatio="none">
                 <defs>
                   <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#12b76a" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#12b76a" stopOpacity="0.0" />
+                    <stop offset="0%" stopColor="#2563eb" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
                 <path
@@ -217,11 +217,11 @@ export default function PlatformDashboardPage() {
                 <path
                   d="M0,110 C80,105 160,100 240,90 C320,80 400,30 480,25 C540,20 580,35 600,40"
                   fill="none"
-                  stroke="#12b76a"
+                  stroke="#2563eb"
                   strokeWidth="3"
                   strokeLinecap="round"
                 />
-                <circle cx="480" cy="25" r="4" fill="#12b76a" stroke="#ffffff" strokeWidth="2" />
+                <circle cx="480" cy="25" r="4" fill="#2563eb" stroke="#ffffff" strokeWidth="2" />
               </svg>
             </div>
             <div className="flex justify-between text-[11px] font-medium text-slate-400 pt-2 border-t border-slate-100">

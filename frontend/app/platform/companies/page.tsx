@@ -265,7 +265,7 @@ export default function PlatformCompaniesPage() {
               onClick={() => setStatusFilter(st)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize transition-colors shadow-xs ${
                 statusFilter === st
-                  ? "bg-[#12b76a] text-white"
+                  ? "bg-blue-600 text-white"
                   : "bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50"
               }`}
             >

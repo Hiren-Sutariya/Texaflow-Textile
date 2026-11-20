@@ -171,13 +171,13 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           {pageTitle}
         </h1>
 
-        {/* Quick Action Pills matching Image 4 */}
+        {/* Quick Action Pills matching Om Sai ERP blue styling */}
         <div className="hidden md:flex items-center gap-2 pl-2">
           {isPlatform ? (
             <>
               <Link
                 href="/platform/companies"
-                className="h-8.5 px-3.5 rounded-xl bg-[#12b76a] hover:bg-[#0e9f5d] text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors"
+                className="h-8.5 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>Register Company</span>
@@ -195,7 +195,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
               <Link
                 href={primaryAction.href}
                 onClick={primaryAction.onClick}
-                className="h-8.5 px-3.5 rounded-xl bg-[#12b76a] hover:bg-[#0e9f5d] text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors"
+                className="h-8.5 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>{primaryAction.label}</span>
@@ -220,7 +220,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           <input
             type="text"
             placeholder="Search..."
-            className="w-full h-9 rounded-xl border border-slate-200 bg-white pl-8.5 pr-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+            className="w-full h-9 rounded-xl border border-slate-200 bg-white pl-8.5 pr-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
           />
         </div>
 
@@ -230,7 +230,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           title="Notifications"
         >
           <Bell className="w-4 h-4" />
-          <span className="w-2 h-2 rounded-full bg-emerald-500 absolute top-2 right-2 ring-2 ring-white" />
+          <span className="w-2 h-2 rounded-full bg-blue-600 absolute top-2 right-2 ring-2 ring-white" />
         </button>
 
         <div className="relative" ref={langDropdownRef}>
@@ -254,7 +254,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
                 className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center justify-between"
               >
                 <span>English</span>
-                {language === "en" && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                {language === "en" && <Check className="w-3.5 h-3.5 text-blue-600" />}
               </button>
               <button
                 type="button"
@@ -265,7 +265,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
                 className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center justify-between"
               >
                 <span>ગુજરાતી</span>
-                {language === "gu" && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                {language === "gu" && <Check className="w-3.5 h-3.5 text-blue-600" />}
               </button>
             </div>
           )}
@@ -286,7 +286,7 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 transition-colors"
           title="Refresh"
         >
-          <RefreshCw className={`w-4 h-4 ${isSpinning ? "animate-spin text-emerald-600" : ""}`} />
+          <RefreshCw className={`w-4 h-4 ${isSpinning ? "animate-spin text-blue-600" : ""}`} />
         </button>
       </div>
     </header>

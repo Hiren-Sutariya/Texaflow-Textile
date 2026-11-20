@@ -82,7 +82,7 @@ export function CourtFlowSelect({
           : error
             ? "border-[#fda29b] text-slate-900 focus:border-[#f04438] focus:ring-4 focus:ring-[#fda29b]/25"
             : isOpen
-              ? "border-[#12b76a] text-slate-900 ring-4 ring-[#12b76a]/15"
+              ? "border-blue-600 text-slate-900 ring-4 ring-blue-600/15"
               : "border-[#d0d5dd] hover:border-slate-400 text-slate-800"
           } ${triggerClassName}`}
       >
@@ -90,7 +90,7 @@ export function CourtFlowSelect({
           {selectedOption ? (selectedOption.shortLabel || selectedOption.label) : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180 text-[#12b76a]" : ""
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180 text-blue-600" : ""
             }`}
         />
       </button>
@@ -113,12 +113,12 @@ export function CourtFlowSelect({
                     setIsOpen(false);
                   }}
                   className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${isSelected
-                    ? "text-[#12b76a] font-semibold bg-emerald-50/60"
+                    ? "text-blue-600 font-semibold bg-blue-50/60"
                     : "text-slate-700 hover:bg-slate-50 font-medium"
                     }`}
                 >
                   <span className="truncate">{opt.label}</span>
-                  {isSelected && <Check className="w-4 h-4 text-[#12b76a] shrink-0 ml-2 stroke-[2.5]" />}
+                  {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0 ml-2 stroke-[2.5]" />}
                 </button>
               );
             })}

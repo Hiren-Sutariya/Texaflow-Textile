@@ -25,7 +25,7 @@ export const CourtFlowInput = React.forwardRef<HTMLInputElement, CourtFlowInputP
 
         <input
           ref={ref}
-          className={`w-full h-10 bg-white border border-[#d0d5dd] rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#12b76a] focus:ring-2 focus:ring-[#12b76a]/20 shadow-2xs transition-all ${
+          className={`w-full h-10 bg-white border border-[#d0d5dd] rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 shadow-2xs transition-all ${
             hasLeadingIcon ? "pl-10 pr-3.5" : "px-3.5"
           } ${className}`}
           {...props}

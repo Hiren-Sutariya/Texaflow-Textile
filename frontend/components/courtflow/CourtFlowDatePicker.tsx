@@ -144,7 +144,7 @@ export function CourtFlowDatePicker({
           : error
             ? "border-[#fda29b] text-slate-900 focus:border-[#f04438] focus:ring-4 focus:ring-[#fda29b]/25"
             : isOpen
-              ? "border-[#12b76a] text-slate-900 ring-4 ring-[#12b76a]/15"
+              ? "border-blue-600 text-slate-900 ring-4 ring-blue-600/15"
               : "border-[#d0d5dd] hover:border-slate-400 text-slate-800"
           } ${triggerClassName}`}
       >
@@ -155,7 +155,7 @@ export function CourtFlowDatePicker({
           </span>
         </div>
         <ChevronDown
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180 text-[#12b76a]" : ""
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180 text-blue-600" : ""
             }`}
         />
       </button>
@@ -222,9 +222,9 @@ export function CourtFlowDatePicker({
                   type="button"
                   onClick={() => handleSelectDay(day)}
                   className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs transition-colors cursor-pointer ${selected
-                    ? "bg-[#12b76a] text-white font-bold shadow-xs"
+                    ? "bg-blue-600 text-white font-bold shadow-xs"
                     : today
-                      ? "border border-emerald-300 text-emerald-700 font-semibold hover:bg-emerald-50/50"
+                      ? "border border-blue-300 text-blue-700 font-semibold hover:bg-blue-50/50"
                       : "text-slate-700 font-medium hover:bg-slate-100 hover:text-slate-900"
                     }`}
                 >
@@ -245,7 +245,7 @@ export function CourtFlowDatePicker({
                 onChange?.(`${now.getFullYear()}-${mm}-${dd}`);
                 setIsOpen(false);
               }}
-              className="text-[11px] font-semibold text-[#12b76a] hover:text-[#0e9f5d] transition-colors cursor-pointer"
+              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
             >
               Today
             </button>

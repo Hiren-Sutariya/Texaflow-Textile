@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { 
-  Users, 
-  ShoppingCart, 
-  CreditCard, 
-  Receipt, 
-  UserCheck, 
-  BarChart3, 
+import {
+  Users,
+  ShoppingCart,
+  CreditCard,
+  Receipt,
+  UserCheck,
+  BarChart3,
   Settings,
   FileText,
   X,
@@ -125,8 +125,8 @@ interface SidebarProps {
   serverOwnerName?: string;
 }
 
-export function Sidebar({ 
-  mobileOpen = false, 
+export function Sidebar({
+  mobileOpen = false,
   onClose,
   serverCompanyId,
   serverFirmName,
@@ -140,6 +140,11 @@ export function Sidebar({
   const [liveUpdatedFirm, setLiveUpdatedFirm] = useState<string>("");
   const [liveUpdatedOwner, setLiveUpdatedOwner] = useState<string>("");
   const [activeModules, setActiveModules] = useState<Record<string, boolean> | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     async function loadActiveModules() {
@@ -248,7 +253,7 @@ export function Sidebar({
     <div className="flex flex-col h-full bg-white text-slate-800">
       {/* Brand Header - Leveled with Navbar header (h-16, border-b border-slate-200/80) */}
       <div className="h-16 px-4 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white">
-        <Link 
+        <Link
           href={isPlatformMode ? "/platform" : "/"}
           prefetch={true}
           onClick={() => {
@@ -287,9 +292,9 @@ export function Sidebar({
       </div>
 
       {/* Navigation List in exact Om Sai ERP white & blue style */}
-      <nav className="flex-1 overflow-y-auto no-scrollbar px-3 py-3 space-y-4">
+      <nav suppressHydrationWarning className="flex-1 overflow-y-auto no-scrollbar px-3 py-3 space-y-4">
         {/* Switcher Button for SuperAdmin */}
-        {user?.role === "SuperAdmin" && (
+        {mounted && user?.role === "SuperAdmin" && (
           <div className="px-0.5">
             {isPlatformMode ? (
               <Link
@@ -307,7 +312,7 @@ export function Sidebar({
               <Link
                 href="/platform"
                 onClick={() => isMobile && onClose?.()}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow-xs transition-all"
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all"
               >
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-white" />
@@ -336,8 +341,8 @@ export function Sidebar({
                 .map((sub) => {
                   const isSubActive = isPlatformMode
                     ? (sub.href === "/platform"
-                        ? pathname === "/platform"
-                        : pathname === sub.href || pathname.startsWith(sub.href + "/"))
+                      ? pathname === "/platform"
+                      : pathname === sub.href || pathname.startsWith(sub.href + "/"))
                     : pathname === sub.href || (sub.href !== "/" && pathname.startsWith(sub.href + "/"));
                   const SubIcon = sub.icon;
 

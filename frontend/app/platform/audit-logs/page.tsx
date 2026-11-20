@@ -124,7 +124,7 @@ export default function PlatformAuditLogsPage() {
               onClick={() => setActionFilter(act)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shadow-xs ${
                 actionFilter === act
-                  ? "bg-[#12b76a] text-white"
+                  ? "bg-blue-600 text-white"
                   : "bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50"
               }`}
             >

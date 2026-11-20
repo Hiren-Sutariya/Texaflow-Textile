@@ -26,7 +26,7 @@ export const CourtFlowButton: React.FC<CourtFlowButtonProps> = ({
   if (size === "sm") sizeStyle = "h-8.5 px-3 text-xs gap-1.5";
   if (size === "lg") sizeStyle = "h-11 px-5 text-sm gap-2.5";
 
-  let variantStyle = "bg-[#12b76a] hover:bg-[#0e9f5d] text-white shadow-xs border border-[#12b76a]";
+  let variantStyle = "bg-blue-600 hover:bg-blue-700 text-white shadow-xs border border-blue-600";
   if (variant === "secondary") {
     variantStyle = "bg-white hover:bg-slate-50 text-slate-700 border border-[#d0d5dd] shadow-2xs";
   } else if (variant === "danger") {
